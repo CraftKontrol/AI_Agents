@@ -40,8 +40,7 @@
                 <div class="input-group">
                     <label for="apiSelector">Select API:</label>
                     <select id="apiSelector">
-                        <option value="demo">Demo Mode</option>
-                        <option value="remoteok">RemoteOK</option>
+                        <option value="remoteok" selected>RemoteOK</option>
                         <option value="github" disabled>GitHub Jobs (Coming Soon)</option>
                         <option value="stackoverflow" disabled>Stack Overflow Jobs (Coming Soon)</option>
                     </select>
@@ -61,6 +60,13 @@
             <div id="loadingIndicator" class="loading-indicator" style="display: none;">
                 <div class="spinner"></div>
                 <p>Loading...</p>
+            </div>
+
+            <div class="welcome-message" id="welcomeMessage">
+                <h2>Welcome to Keyword Find and Search</h2>
+                <p>🔍 Enter your keywords and let AI generate optimized search terms</p>
+                <p>🤖 Powered by Mistral AI and RemoteOK API</p>
+                <p>📊 Results are organized by relevance and date for easy browsing</p>
             </div>
 
             <div id="resultsSection" class="results-section" style="display: none;">

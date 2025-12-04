@@ -108,8 +108,6 @@ function formatDate(date) {
 async function generateSearchTerms() {
     const keywordsInput = document.getElementById('keywordsInput');
     const keywords = keywordsInput.value.trim();
-    const apiSelector = document.getElementById('apiSelector');
-    const selectedApi = apiSelector.value;
     
     if (!keywords) {
         showError('Please enter at least one keyword');
@@ -120,33 +118,7 @@ async function generateSearchTerms() {
     hideError();
     
     try {
-        // For Demo Mode, use a simple term generation without calling Mistral AI
-        if (selectedApi === 'demo') {
-            // Simulate API delay
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
-            // Generate search terms from keywords
-            const keywordList = keywords.split(',').map(k => k.trim()).filter(k => k);
-            generatedSearchTerms = [];
-            
-            // Add original keywords
-            generatedSearchTerms.push(...keywordList);
-            
-            // Add some variations
-            keywordList.forEach(keyword => {
-                generatedSearchTerms.push(`${keyword} developer`);
-                generatedSearchTerms.push(`${keyword} engineer`);
-            });
-            
-            // Limit to 10 terms
-            generatedSearchTerms = generatedSearchTerms.slice(0, 10);
-            
-            displaySearchTerms();
-            hideLoading();
-            return;
-        }
-        
-        // For other modes, use Mistral AI
+        // Use Mistral AI to generate search terms
         const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
             method: 'POST',
             headers: {
@@ -230,10 +202,12 @@ async function performSearch() {
     try {
         let results = [];
         
-        if (selectedApi === 'demo') {
-            results = await searchDemoMode();
-        } else if (selectedApi === 'remoteok') {
+        if (selectedApi === 'remoteok') {
             results = await searchRemoteOK();
+        } else {
+            showError('This API is coming soon. Currently only RemoteOK is available.');
+            hideLoading();
+            return;
         }
         
         currentResults = results;
@@ -248,54 +222,6 @@ async function performSearch() {
     }
 }
 
-// Demo Mode Search
-async function searchDemoMode() {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Ensure we have search terms
-    if (!generatedSearchTerms || generatedSearchTerms.length === 0) {
-        throw new Error('No search terms available. Please generate search terms first.');
-    }
-    
-    const companies = ['TechCorp', 'InnovateLabs', 'CloudSystems', 'DataWorks', 'DevTools Inc', 'RemoteFirst', 'CodeFactory', 'StartupHub', 'DigitalCraft', 'WebSolutions'];
-    const locations = ['Remote', 'Remote - US', 'Remote - EU', 'Remote - Worldwide', 'Remote - Americas'];
-    const technologies = ['JavaScript', 'React', 'Node.js', 'Python', 'TypeScript', 'Vue.js', 'Docker', 'AWS', 'Go', 'Kubernetes'];
-    
-    const mockResults = [];
-    const numResults = 10 + Math.floor(Math.random() * 6);
-    
-    for (let i = 0; i < numResults; i++) {
-        const daysAgo = Math.floor(Math.random() * 14) + 1;
-        const date = new Date();
-        date.setDate(date.getDate() - daysAgo);
-        
-        const numTags = 2 + Math.floor(Math.random() * 4);
-        const tags = [];
-        for (let j = 0; j < numTags; j++) {
-            const tech = technologies[Math.floor(Math.random() * technologies.length)];
-            if (!tags.includes(tech)) {
-                tags.push(tech);
-            }
-        }
-        
-        const searchTerm = generatedSearchTerms[i % generatedSearchTerms.length];
-        
-        mockResults.push({
-            title: `${searchTerm} Developer`,
-            company: companies[Math.floor(Math.random() * companies.length)],
-            location: locations[Math.floor(Math.random() * locations.length)],
-            date: date.toISOString(),
-            description: `We are looking for an experienced ${searchTerm} developer to join our remote team. You will work on exciting projects using modern technologies and best practices.`,
-            tags: tags,
-            url: `https://example.com/job/${i + 1}`,
-            relevance: 1 - (i * 0.05)
-        });
-    }
-    
-    return mockResults;
-}
-
 // RemoteOK Search
 async function searchRemoteOK() {
     if (!generatedSearchTerms || generatedSearchTerms.length === 0) {
@@ -303,37 +229,42 @@ async function searchRemoteOK() {
     }
     
     try {
+        // Fetch from RemoteOK API
         const response = await fetch('https://remoteok.com/api');
         
         if (!response.ok) {
-            throw new Error('Failed to fetch from RemoteOK API');
+            throw new Error(`RemoteOK API returned status ${response.status}`);
         }
         
         const data = await response.json();
         
-        // Skip the first element (it's legal info from RemoteOK)
+        // RemoteOK API returns legal info as first element, skip it
         const jobs = data.slice(1).filter(item => item.position && item.company);
         
-        // Score and map all jobs
+        if (jobs.length === 0) {
+            throw new Error('No jobs available from RemoteOK at the moment');
+        }
+        
+        // Score all jobs based on search terms
         const scoredJobs = jobs.map(item => {
             let relevance = 0;
             const position = (item.position || '').toLowerCase();
             const company = (item.company || '').toLowerCase();
             const description = (item.description || '').toLowerCase();
             const tags = (item.tags || []).join(' ').toLowerCase();
-            const searchText = `${position} ${company} ${description} ${tags}`;
             
             generatedSearchTerms.forEach(term => {
                 const termLower = term.toLowerCase();
-                // Higher score for title matches
+                
+                // Highest priority: Title matches (3 points)
                 if (position.includes(termLower)) {
                     relevance += 3;
                 }
-                // Medium score for company/tag matches
+                // Medium priority: Company/tag matches (2 points)
                 if (company.includes(termLower) || tags.includes(termLower)) {
                     relevance += 2;
                 }
-                // Lower score for description matches
+                // Lower priority: Description matches (1 point)
                 if (description.includes(termLower)) {
                     relevance += 1;
                 }
@@ -343,26 +274,42 @@ async function searchRemoteOK() {
                 title: item.position,
                 company: item.company,
                 location: item.location || 'Remote',
-                date: item.date ? new Date(item.date * 1000).toISOString() : new Date().toISOString(),
+                date: (item.date && typeof item.date === 'number') ? new Date(item.date * 1000).toISOString() : new Date().toISOString(),
                 description: item.description || 'No description available',
                 tags: item.tags || [],
-                url: item.url || `https://remoteok.com/remote-jobs/${item.id}`,
+                url: item.url || (item.id ? `https://remoteok.com/remote-jobs/${item.id}` : null),
                 relevance: relevance
             };
         });
         
-        // Try strict matching first (relevance > 0)
+        // Filter for jobs with some relevance
         let filtered = scoredJobs.filter(item => item.relevance > 0);
         
-        // If no strict matches, return top 20 most recent jobs as fallback
+        // If no matches found, show most recent jobs as fallback
         if (filtered.length === 0) {
-            console.log('No exact matches found, showing recent jobs');
-            filtered = scoredJobs.slice(0, 20);
-            // Add a message to inform user
-            showError('No exact matches found. Showing recent remote jobs instead. Try different keywords or use Demo Mode.');
+            console.log('No keyword matches found, showing recent jobs');
+            filtered = scoredJobs
+                .sort((a, b) => new Date(b.date) - new Date(a.date))
+                .slice(0, 20);
+            
+            // Show info message to user
+            const infoDiv = document.createElement('div');
+            infoDiv.className = 'info-message';
+            infoDiv.textContent = 'ℹ️ No exact matches found. Showing recent remote jobs. Try different keywords for better results.';
+            
+            const resultsSection = document.getElementById('resultsSection');
+            if (resultsSection) {
+                resultsSection.insertBefore(infoDiv, resultsSection.firstChild);
+                // Remove info message after 5 seconds with null check
+                setTimeout(() => {
+                    if (infoDiv && infoDiv.parentNode) {
+                        infoDiv.remove();
+                    }
+                }, 5000);
+            }
         }
         
-        // Sort by relevance and limit results
+        // Sort by relevance (highest first) and limit to 30 results
         filtered.sort((a, b) => b.relevance - a.relevance);
         filtered = filtered.slice(0, 30);
         
@@ -370,11 +317,13 @@ async function searchRemoteOK() {
         
     } catch (error) {
         console.error('RemoteOK API Error:', error);
-        // Check if it's a CORS error
-        if (error.message.includes('CORS') || error.message.includes('fetch')) {
-            throw new Error('Unable to access RemoteOK API (CORS restriction). Please use Demo Mode instead.');
+        
+        // Provide specific error messages
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            throw new Error('Unable to connect to RemoteOK API. Please check your internet connection.');
         }
-        throw new Error('Failed to search RemoteOK. Please try Demo Mode instead.');
+        
+        throw new Error(`RemoteOK search failed: ${error.message}`);
     }
 }
 
@@ -383,11 +332,20 @@ function displayResults(results) {
     const resultsSection = document.getElementById('resultsSection');
     const resultsContainer = document.getElementById('resultsContainer');
     const resultCount = document.getElementById('resultCount');
+    const welcomeMessage = document.getElementById('welcomeMessage');
     
     if (!results || results.length === 0) {
         resultsSection.style.display = 'none';
+        if (welcomeMessage) {
+            welcomeMessage.style.display = 'block';
+        }
         showError('No results found');
         return;
+    }
+    
+    // Hide welcome message when showing results
+    if (welcomeMessage) {
+        welcomeMessage.style.display = 'none';
     }
     
     resultCount.textContent = results.length;
@@ -406,12 +364,19 @@ function createResultCard(result) {
     card.className = 'result-card';
     
     const title = document.createElement('h3');
-    const link = document.createElement('a');
-    link.href = result.url;
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
-    link.textContent = result.title;
-    title.appendChild(link);
+    
+    // Only create a link if we have a valid URL
+    if (result.url && result.url !== '#') {
+        const link = document.createElement('a');
+        link.href = result.url;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = result.title;
+        title.appendChild(link);
+    } else {
+        // If no valid URL, just show the title as text
+        title.textContent = result.title;
+    }
     
     const meta = document.createElement('div');
     meta.className = 'result-meta';
@@ -500,6 +465,10 @@ function sortResults(type) {
 
 // Loading and Error States
 function showLoading() {
+    const welcomeMessage = document.getElementById('welcomeMessage');
+    if (welcomeMessage) {
+        welcomeMessage.style.display = 'none';
+    }
     document.getElementById('loadingIndicator').style.display = 'block';
     document.getElementById('resultsSection').style.display = 'none';
     document.getElementById('errorMessage').style.display = 'none';

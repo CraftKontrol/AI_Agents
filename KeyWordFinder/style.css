@@ -258,6 +258,24 @@ body {
     min-height: 400px;
 }
 
+/* Welcome Message */
+.welcome-message {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.welcome-message h2 {
+    color: #ffffff;
+    font-size: 28px;
+    margin-bottom: 30px;
+}
+
+.welcome-message p {
+    color: #e0e0e0;
+    font-size: 18px;
+    margin-bottom: 15px;
+}
+
 /* Loading Indicator */
 .loading-indicator {
     text-align: center;
@@ -402,6 +420,16 @@ body {
     border-radius: 0;
     border-left: 4px solid #ff6b6b;
     margin: 20px 0;
+}
+
+/* Info Message */
+.info-message {
+    background-color: #3a3a3a;
+    color: #4a9eff;
+    padding: 15px;
+    margin: 20px;
+    border-radius: 0;
+    border-left: 4px solid #4a9eff;
 }
 
 /* Responsive Design */
