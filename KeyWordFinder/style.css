@@ -115,12 +115,100 @@ body {
 
 .header-right {
     flex: 1;
+    padding: 15px; /* Reduced from 20px */
+    display: flex;
+    flex-direction: column;
+    gap: 10px; /* Reduced from 15px */
 }
 
 .header-right h2 {
     color: #ffffff;
     font-size: 24px;
     margin-bottom: 20px;
+}
+
+/* Keyword Section - more compact */
+.keyword-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px; /* Reduced from 10px */
+}
+
+.keyword-section label {
+    font-size: 12px; /* Reduced from 14px */
+    font-weight: 500;
+    color: #e0e0e0;
+    margin-bottom: 3px; /* Reduced from 5px */
+}
+
+#keywords {
+    width: 100%;
+    padding: 8px 12px; /* Reduced from 10px 15px */
+    background: #3a3a3a;
+    border: 1px solid #4a4a4a;
+    color: #e0e0e0;
+    font-size: 13px; /* Reduced from 14px */
+    resize: vertical;
+    font-family: inherit;
+    min-height: 50px; /* Reduced from default */
+    max-height: 80px; /* Limit max height */
+    border-radius: 0;
+}
+
+#keywords::placeholder {
+    color: #666;
+}
+
+/* API Selector - more compact */
+.api-selector {
+    display: flex;
+    align-items: center;
+    gap: 8px; /* Reduced from 10px */
+}
+
+.api-selector label {
+    font-size: 12px; /* Reduced from 14px */
+    color: #e0e0e0;
+    white-space: nowrap;
+}
+
+#apiSelect {
+    flex: 1;
+    padding: 8px 12px; /* Reduced from 10px 15px */
+    background: #3a3a3a;
+    border: 1px solid #4a4a4a;
+    color: #e0e0e0;
+    font-size: 13px; /* Reduced from 14px */
+    border-radius: 0;
+    cursor: pointer;
+}
+
+#apiSelect option:disabled {
+    color: #666;
+}
+
+/* Generate Button - more compact */
+.generate-button {
+    padding: 10px 20px; /* Reduced from 12px 25px */
+    background: #4a9eff;
+    color: #ffffff;
+    border: none;
+    font-size: 13px; /* Reduced from 14px */
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.3s ease;
+    border-radius: 0;
+    width: 100%;
+}
+
+.generate-button:hover {
+    background-color: #6ab0ff;
+}
+
+.generate-button:disabled {
+    background-color: #3a3a3a;
+    color: #666;
+    cursor: not-allowed;
 }
 
 /* Input Groups */
@@ -219,35 +307,64 @@ body {
     color: #ffffff;
 }
 
-/* Search Terms Display */
+/* Search Terms Display - more compact */
 .search-terms-display {
-    margin-top: 25px;
-    padding: 20px;
-    background-color: #3a3a3a;
+    background: #2a2a2a;
+    padding: 10px; /* Reduced from 15px */
+    display: flex;
+    flex-direction: column;
+    gap: 8px; /* Reduced from 10px */
     border-radius: 0;
 }
 
 .search-terms-display h3 {
-    color: #ffffff;
-    margin-bottom: 15px;
-    font-size: 18px;
+    font-size: 13px; /* Reduced from 14px */
+    color: #e0e0e0;
+    margin: 0;
+    font-weight: 600;
 }
 
-.search-terms-list {
-    margin-bottom: 20px;
-    padding: 15px;
-    background-color: #2a2a2a;
+#searchTermsList {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px; /* Reduced from 8px */
+    margin-bottom: 8px;
+    padding: 10px;
+    background-color: #3a3a3a;
     border-radius: 0;
 }
 
 .search-term-tag {
-    display: inline-block;
-    padding: 10px 15px;
-    margin: 5px;
-    background-color: #4a9eff;
-    color: #ffffff;
+    background: #3a3a3a;
+    color: #4a9eff;
+    padding: 4px 10px; /* Reduced from 5px 12px */
+    font-size: 11px; /* Reduced from 12px */
+    border: 1px solid #4a9eff;
     border-radius: 0;
-    font-size: 14px;
+    display: inline-block;
+}
+
+.search-button {
+    padding: 8px 16px; /* Reduced from 10px 20px */
+    background: #4a9eff;
+    color: #ffffff;
+    border: none;
+    font-size: 13px; /* Reduced from 14px */
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.3s ease;
+    align-self: flex-start;
+    border-radius: 0;
+}
+
+.search-button:hover {
+    background-color: #6ab0ff;
+}
+
+.search-button:disabled {
+    background-color: #3a3a3a;
+    color: #666;
+    cursor: not-allowed;
 }
 
 /* Main Content */
@@ -405,6 +522,29 @@ body {
 }
 
 /* Responsive Design */
+@media (max-width: 1200px) {
+    .header {
+        flex-direction: column;
+    }
+    
+    .header-left,
+    .header-right {
+        width: 100%;
+    }
+    
+    .header-left {
+        border-right: none;
+        border-bottom: 2px solid #3a3a3a;
+        padding-right: 0;
+        padding-bottom: 30px;
+        margin-bottom: 30px;
+    }
+    
+    .header-right {
+        padding: 15px 20px;
+    }
+}
+
 @media (max-width: 968px) {
     .header {
         flex-direction: column;
@@ -431,6 +571,22 @@ body {
     
     .btn-sort {
         width: 100%;
+    }
+}
+
+@media (max-width: 768px) {
+    .header-right {
+        padding: 10px 15px;
+        gap: 8px;
+    }
+    
+    .api-selector {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .api-selector label {
+        margin-bottom: 5px;
     }
 }
 

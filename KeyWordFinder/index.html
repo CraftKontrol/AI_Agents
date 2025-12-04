@@ -32,26 +32,25 @@
                 <button onclick="clearSavedApiKey()" class="btn-secondary">Clear API Key</button>
             </div>
             <div class="header-right">
-                <h2>Search Configuration</h2>
-                <div class="input-group">
-                    <label for="keywordsInput">Enter Keywords (comma-separated):</label>
-                    <textarea id="keywordsInput" placeholder="e.g., javascript, react, remote" rows="3"></textarea>
+                <div class="keyword-section">
+                    <label for="keywords">Keywords (comma separated):</label>
+                    <textarea id="keywords" placeholder="e.g., javascript, react, node.js..." rows="2"></textarea>
+                    <div class="api-selector">
+                        <label for="apiSelect">API:</label>
+                        <select id="apiSelect">
+                            <option value="demo">Demo Mode</option>
+                            <option value="remoteok" selected>RemoteOK</option>
+                            <option value="github">GitHub Jobs (Coming Soon)</option>
+                            <option value="stackoverflow">Stack Overflow Jobs (Coming Soon)</option>
+                        </select>
+                    </div>
+                    <button class="generate-button" id="generateBtn" onclick="generateSearchTerms()">Generate Search Terms</button>
                 </div>
-                <div class="input-group">
-                    <label for="apiSelector">Select API:</label>
-                    <select id="apiSelector">
-                        <option value="demo">Demo Mode</option>
-                        <option value="remoteok">RemoteOK</option>
-                        <option value="github" disabled>GitHub Jobs (Coming Soon)</option>
-                        <option value="stackoverflow" disabled>Stack Overflow Jobs (Coming Soon)</option>
-                    </select>
-                </div>
-                <button onclick="generateSearchTerms()" class="btn-primary" id="generateBtn">Generate Search Terms</button>
                 
                 <div id="searchTermsDisplay" class="search-terms-display" style="display: none;">
                     <h3>Generated Search Terms:</h3>
-                    <div id="searchTermsList" class="search-terms-list"></div>
-                    <button onclick="performSearch()" class="btn-primary" id="searchBtn">Execute Search</button>
+                    <div id="searchTermsList"></div>
+                    <button onclick="performSearch()" class="search-button" id="searchBtn">Execute Search</button>
                 </div>
             </div>
         </header>

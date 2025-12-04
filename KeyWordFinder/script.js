@@ -106,9 +106,9 @@ function formatDate(date) {
 
 // Mistral AI Integration
 async function generateSearchTerms() {
-    const keywordsInput = document.getElementById('keywordsInput');
+    const keywordsInput = document.getElementById('keywords');
     const keywords = keywordsInput.value.trim();
-    const apiSelector = document.getElementById('apiSelector');
+    const apiSelector = document.getElementById('apiSelect');
     const selectedApi = apiSelector.value;
     
     if (!keywords) {
@@ -216,7 +216,7 @@ function displaySearchTerms() {
 
 // Search Execution
 async function performSearch() {
-    const apiSelector = document.getElementById('apiSelector');
+    const apiSelector = document.getElementById('apiSelect');
     const selectedApi = apiSelector.value;
     
     if (generatedSearchTerms.length === 0) {
