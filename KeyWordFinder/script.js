@@ -375,13 +375,25 @@ async function scrapeJobBoard(scraperType, targetUrl, searchTerm) {
         throw new Error(`Unknown scraper type: ${scraperType}`);
     }
     
+    // Debug logging for all scraper types
+    console.log(`${config.name} API URL:`, apiUrl.replace(scraperApiKey, scraperApiKey.substring(0, 10) + '...'));
+    console.log('Target URL:', targetUrl);
+    console.log('Using API key:', scraperApiKey.substring(0, 10) + '...');
+    
     const response = await fetch(apiUrl, requestOptions);
     
     if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Scraper Error Response:', errorText);
+        console.error('Response Status:', response.status);
+        
         if (response.status === 401 || response.status === 403) {
-            throw new Error('Invalid API key. Please check your scraper API credentials.');
+            throw new Error(`Invalid ${config.name} API key. Please check your credentials.`);
+        } else if (response.status === 429) {
+            throw new Error(`${config.name} rate limit exceeded. Please wait and try again.`);
+        } else {
+            throw new Error(`${config.name} returned status ${response.status}: ${errorText}`);
         }
-        throw new Error(`Scraper API returned status ${response.status}`);
     }
     
     let html;
