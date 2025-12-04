@@ -32,14 +32,6 @@ const SCRAPER_CONFIGS = {
     }
 };
 
-// Search targets - websites to scrape for job listings
-const SEARCH_TARGETS = [
-    'https://remoteok.com/remote-jobs/',
-    'https://www.linkedin.com/jobs/search/',
-    'https://www.indeed.com/jobs',
-    'https://angel.co/jobs'
-];
-
 // Initialize app on page load
 document.addEventListener('DOMContentLoaded', function() {
     loadApiKey();
@@ -357,6 +349,8 @@ async function scrapeJobBoard(scraperType, targetUrl, searchTerm) {
         apiUrl = `${config.endpoint}?${config.keyParam}=${scraperApiKey}&url=${encodeURIComponent(targetUrl)}`;
     } else if (scraperType === 'scrapfly') {
         apiUrl = `${config.endpoint}?${config.keyParam}=${scraperApiKey}&url=${encodeURIComponent(targetUrl)}&render_js=false`;
+    } else {
+        throw new Error(`Unknown scraper type: ${scraperType}`);
     }
     
     const response = await fetch(apiUrl);
@@ -380,6 +374,7 @@ function parseJobListings(html, searchTerm, sourceUrl) {
     const doc = parser.parseFromString(html, 'text/html');
     
     // Detect which site we're scraping and use appropriate selectors
+    // Currently only RemoteOK is implemented. Other sites can be added as needed.
     if (sourceUrl.includes('remoteok.com')) {
         // RemoteOK specific parsing
         const jobCards = doc.querySelectorAll('tr.job');
