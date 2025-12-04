@@ -1,1 +1,47 @@
-
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KeyWord Finder</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>KeyWord Finder</h1>
+            <p class="subtitle">Search for keywords in your text</p>
+        </header>
+        
+        <main>
+            <div class="input-section">
+                <div class="form-group">
+                    <label for="textInput">Enter your text:</label>
+                    <textarea id="textInput" rows="8" placeholder="Paste or type your text here..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="keywordInput">Enter keywords to search (comma-separated):</label>
+                    <input type="text" id="keywordInput" placeholder="e.g., javascript, python, coding">
+                </div>
+                
+                <button id="searchBtn" class="btn-primary">Find Keywords</button>
+                <button id="clearBtn" class="btn-secondary">Clear</button>
+            </div>
+            
+            <div class="results-section">
+                <h2>Results</h2>
+                <div id="results" class="results-container">
+                    <p class="placeholder">Results will appear here...</p>
+                </div>
+            </div>
+        </main>
+        
+        <footer>
+            <p>&copy; 2025 Craft Kontrol - KeyWord Finder</p>
+        </footer>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
