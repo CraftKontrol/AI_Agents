@@ -355,7 +355,12 @@ async function scrapeJobBoard(scraperType, targetUrl, searchTerm) {
     
     if (scraperType === 'scrapingbee') {
         // ScrapingBee API: https://www.scrapingbee.com/documentation/
-        apiUrl = `${config.endpoint}?${config.keyParam}=${scraperApiKey}&url=${encodeURIComponent(targetUrl)}&render_js=true&premium_proxy=true`;
+        // Parameters:
+        // - render_js=false: Faster performance for static content (Google search doesn't need JS rendering)
+        // - block_ads=true: Blocks advertisements for cleaner HTML
+        // - block_resources=false: Allows all resources to load
+        // Note: premium_proxy parameter removed for compatibility with basic plans
+        apiUrl = `${config.endpoint}?${config.keyParam}=${scraperApiKey}&url=${encodeURIComponent(targetUrl)}&render_js=false&block_ads=true&block_resources=false`;
     } else if (scraperType === 'scraperapi') {
         // ScraperAPI: https://www.scraperapi.com/documentation
         apiUrl = `${config.endpoint}?${config.keyParam}=${scraperApiKey}&url=${encodeURIComponent(targetUrl)}&render=true`;
@@ -386,13 +391,17 @@ async function scrapeJobBoard(scraperType, targetUrl, searchTerm) {
         const errorText = await response.text();
         console.error('Scraper Error Response:', errorText);
         console.error('Response Status:', response.status);
+        console.error('Full API URL (masked):', apiUrl.replace(scraperApiKey, scraperApiKey.substring(0, 10) + '...'));
         
-        if (response.status === 401 || response.status === 403) {
+        if (response.status === 400) {
+            // Bad request - usually indicates incorrect parameters or plan limitations
+            throw new Error(`${config.name} bad request (400). This may indicate: 1) Invalid parameters for your plan, 2) URL encoding issues, or 3) Plan limitations. Response: ${errorText.substring(0, 200)}`);
+        } else if (response.status === 401 || response.status === 403) {
             throw new Error(`Invalid ${config.name} API key. Please check your credentials.`);
         } else if (response.status === 429) {
             throw new Error(`${config.name} rate limit exceeded. Please wait and try again.`);
         } else {
-            throw new Error(`${config.name} returned status ${response.status}: ${errorText}`);
+            throw new Error(`${config.name} returned status ${response.status}: ${errorText.substring(0, 200)}`);
         }
     }
     
