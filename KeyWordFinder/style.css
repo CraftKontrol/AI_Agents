@@ -546,18 +546,6 @@ body {
 }
 
 @media (max-width: 968px) {
-    .header {
-        flex-direction: column;
-    }
-    
-    .header-left {
-        border-right: none;
-        border-bottom: 2px solid #3a3a3a;
-        padding-right: 0;
-        padding-bottom: 30px;
-        margin-bottom: 30px;
-    }
-    
     .results-header {
         flex-direction: column;
         align-items: flex-start;
