@@ -274,10 +274,10 @@ async function searchRemoteOK() {
                 title: item.position,
                 company: item.company,
                 location: item.location || 'Remote',
-                date: item.date ? new Date(item.date * 1000).toISOString() : new Date().toISOString(),
+                date: (item.date && typeof item.date === 'number') ? new Date(item.date * 1000).toISOString() : new Date().toISOString(),
                 description: item.description || 'No description available',
                 tags: item.tags || [],
-                url: item.url || `https://remoteok.com/remote-jobs/${item.id}`,
+                url: item.url || (item.id ? `https://remoteok.com/remote-jobs/${item.id}` : '#'),
                 relevance: relevance
             };
         });
@@ -293,18 +293,20 @@ async function searchRemoteOK() {
                 .slice(0, 20);
             
             // Show info message to user
-            setTimeout(() => {
-                const infoDiv = document.createElement('div');
-                infoDiv.className = 'info-message';
-                infoDiv.textContent = 'ℹ️ No exact matches found. Showing recent remote jobs. Try different keywords for better results.';
-                
-                const resultsSection = document.getElementById('resultsSection');
-                if (resultsSection) {
-                    resultsSection.insertBefore(infoDiv, resultsSection.firstChild);
-                    // Remove info message after 5 seconds
-                    setTimeout(() => infoDiv.remove(), 5000);
-                }
-            }, 100);
+            const infoDiv = document.createElement('div');
+            infoDiv.className = 'info-message';
+            infoDiv.textContent = 'ℹ️ No exact matches found. Showing recent remote jobs. Try different keywords for better results.';
+            
+            const resultsSection = document.getElementById('resultsSection');
+            if (resultsSection) {
+                resultsSection.insertBefore(infoDiv, resultsSection.firstChild);
+                // Remove info message after 5 seconds with null check
+                setTimeout(() => {
+                    if (infoDiv && infoDiv.parentNode) {
+                        infoDiv.remove();
+                    }
+                }, 5000);
+            }
         }
         
         // Sort by relevance (highest first) and limit to 30 results
