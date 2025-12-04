@@ -277,7 +277,7 @@ async function searchRemoteOK() {
                 date: (item.date && typeof item.date === 'number') ? new Date(item.date * 1000).toISOString() : new Date().toISOString(),
                 description: item.description || 'No description available',
                 tags: item.tags || [],
-                url: item.url || (item.id ? `https://remoteok.com/remote-jobs/${item.id}` : '#'),
+                url: item.url || (item.id ? `https://remoteok.com/remote-jobs/${item.id}` : null),
                 relevance: relevance
             };
         });
@@ -364,12 +364,19 @@ function createResultCard(result) {
     card.className = 'result-card';
     
     const title = document.createElement('h3');
-    const link = document.createElement('a');
-    link.href = result.url;
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
-    link.textContent = result.title;
-    title.appendChild(link);
+    
+    // Only create a link if we have a valid URL
+    if (result.url && result.url !== '#') {
+        const link = document.createElement('a');
+        link.href = result.url;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = result.title;
+        title.appendChild(link);
+    } else {
+        // If no valid URL, just show the title as text
+        title.textContent = result.title;
+    }
     
     const meta = document.createElement('div');
     meta.className = 'result-meta';
