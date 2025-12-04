@@ -1,1 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Keyword Find and Search</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- API Key Section -->
+    <div id="apiKeySection" class="api-key-section">
+        <h2>API Key Required</h2>
+        <p class="security-notice">Your API key is stored locally and never sent to any server except Mistral AI for generating search terms.</p>
+        <div class="api-key-input-group">
+            <input type="password" id="apiKeyInput" placeholder="Enter your Mistral AI API key">
+            <button onclick="saveApiKey()" class="btn-primary">Save Key</button>
+        </div>
+        <div class="checkbox-group">
+            <input type="checkbox" id="rememberKey" checked>
+            <label for="rememberKey">Remember API key</label>
+        </div>
+    </div>
 
+    <!-- Main Application -->
+    <div id="mainApp" class="main-app" style="display: none;">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <h1>Keyword Find and Search</h1>
+                <p class="credits">Created by Craft Kontrol</p>
+                <p id="lastModified" class="last-modified">Last updated: Loading...</p>
+                <button onclick="clearSavedApiKey()" class="btn-secondary">Clear API Key</button>
+            </div>
+            <div class="header-right">
+                <h2>Search Configuration</h2>
+                <div class="input-group">
+                    <label for="keywordsInput">Enter Keywords (comma-separated):</label>
+                    <textarea id="keywordsInput" placeholder="e.g., javascript, react, remote" rows="3"></textarea>
+                </div>
+                <div class="input-group">
+                    <label for="apiSelector">Select API:</label>
+                    <select id="apiSelector">
+                        <option value="demo">Demo Mode</option>
+                        <option value="remoteok">RemoteOK</option>
+                        <option value="github" disabled>GitHub Jobs (Coming Soon)</option>
+                        <option value="stackoverflow" disabled>Stack Overflow Jobs (Coming Soon)</option>
+                    </select>
+                </div>
+                <button onclick="generateSearchTerms()" class="btn-primary" id="generateBtn">Generate Search Terms</button>
+                
+                <div id="searchTermsDisplay" class="search-terms-display" style="display: none;">
+                    <h3>Generated Search Terms:</h3>
+                    <div id="searchTermsList" class="search-terms-list"></div>
+                    <button onclick="performSearch()" class="btn-primary" id="searchBtn">Execute Search</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Results Section -->
+        <main class="main-content">
+            <div id="loadingIndicator" class="loading-indicator" style="display: none;">
+                <div class="spinner"></div>
+                <p>Loading...</p>
+            </div>
+
+            <div id="resultsSection" class="results-section" style="display: none;">
+                <div class="results-header">
+                    <h2>Search Results (<span id="resultCount">0</span>)</h2>
+                    <div class="sort-buttons">
+                        <button onclick="sortResults('relevance')" class="btn-sort active" id="sortRelevance">Sort by Relevance</button>
+                        <button onclick="sortResults('date')" class="btn-sort" id="sortDate">Sort by Date</button>
+                    </div>
+                </div>
+                <div id="resultsContainer" class="results-container"></div>
+            </div>
+
+            <div id="errorMessage" class="error-message" style="display: none;"></div>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
