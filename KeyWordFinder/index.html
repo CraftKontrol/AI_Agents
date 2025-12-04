@@ -38,11 +38,12 @@
                     <textarea id="keywordsInput" placeholder="e.g., javascript, react, remote" rows="3"></textarea>
                 </div>
                 <div class="input-group">
-                    <label for="apiSelector">Select API:</label>
+                    <label for="apiSelector">Scraper API:</label>
                     <select id="apiSelector">
-                        <option value="remoteok" selected>RemoteOK</option>
-                        <option value="github" disabled>GitHub Jobs (Coming Soon)</option>
-                        <option value="stackoverflow" disabled>Stack Overflow Jobs (Coming Soon)</option>
+                        <option value="scrapingbee" selected>ScrapingBee</option>
+                        <option value="scraperapi">ScraperAPI</option>
+                        <option value="brightdata">Bright Data</option>
+                        <option value="scrapfly">ScrapFly</option>
                     </select>
                 </div>
                 <button onclick="generateSearchTerms()" class="btn-primary" id="generateBtn">Generate Search Terms</button>
@@ -65,8 +66,8 @@
             <div class="welcome-message" id="welcomeMessage">
                 <h2>Welcome to Keyword Find and Search</h2>
                 <p>🔍 Enter your keywords and let AI generate optimized search terms</p>
-                <p>🤖 Powered by Mistral AI and RemoteOK API</p>
-                <p>📊 Results are organized by relevance and date for easy browsing</p>
+                <p>🤖 Powered by Mistral AI and web scraping technology</p>
+                <p>📊 Search results from multiple sources, organized by relevance and date</p>
             </div>
 
             <div id="resultsSection" class="results-section" style="display: none;">

@@ -481,3 +481,30 @@ body {
         width: 100%;
     }
 }
+
+/* Scraper API status */
+.scraper-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: #888;
+    margin-top: 5px;
+}
+
+.scraper-status.active {
+    color: #4a9eff;
+}
+
+.scraper-status button {
+    padding: 3px 8px;
+    background: #3a3a3a;
+    color: #e0e0e0;
+    border: 1px solid #4a4a4a;
+    font-size: 10px;
+    cursor: pointer;
+}
+
+.scraper-status button:hover {
+    background: #4a4a4a;
+}
