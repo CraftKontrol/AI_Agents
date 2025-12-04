@@ -356,12 +356,8 @@ async function scrapeJobBoard(scraperType, targetUrl, searchTerm) {
     if (scraperType === 'scrapingbee') {
         // ScrapingBee API: https://www.scrapingbee.com/documentation/
         // Parameters:
-        // - custom_google=True: Required for scraping Google search results (costs 20 credits per request)
-        // - render_js=false: Faster performance for static content (Google search doesn't need JS rendering)
-        // - block_ads=true: Blocks advertisements for cleaner HTML
-        // - block_resources=false: Allows all resources to load
-        // Note: premium_proxy parameter removed for compatibility with basic plans
-        apiUrl = `${config.endpoint}?${config.keyParam}=${scraperApiKey}&url=${encodeURIComponent(targetUrl)}&custom_google=True`;
+        // - custom_google=true: Required for scraping Google search results (costs 20 credits per request)
+        apiUrl = `${config.endpoint}?${config.keyParam}=${scraperApiKey}&url=${encodeURIComponent(targetUrl)}&custom_google=true`;
     } else if (scraperType === 'scraperapi') {
         // ScraperAPI: https://www.scraperapi.com/documentation
         apiUrl = `${config.endpoint}?${config.keyParam}=${scraperApiKey}&url=${encodeURIComponent(targetUrl)}&render=true`;
