@@ -103,6 +103,8 @@ function formatDate(date) {
 async function generateSearchTerms() {
     const keywordsInput = document.getElementById('keywordsInput');
     const keywords = keywordsInput.value.trim();
+    const apiSelector = document.getElementById('apiSelector');
+    const selectedApi = apiSelector.value;
     
     if (!keywords) {
         showError('Please enter at least one keyword');
@@ -113,6 +115,33 @@ async function generateSearchTerms() {
     hideError();
     
     try {
+        // For Demo Mode, use a simple term generation without calling Mistral AI
+        if (selectedApi === 'demo') {
+            // Simulate API delay
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // Generate search terms from keywords
+            const keywordList = keywords.split(',').map(k => k.trim()).filter(k => k);
+            generatedSearchTerms = [];
+            
+            // Add original keywords
+            generatedSearchTerms.push(...keywordList);
+            
+            // Add some variations
+            keywordList.forEach(keyword => {
+                generatedSearchTerms.push(`${keyword} developer`);
+                generatedSearchTerms.push(`${keyword} engineer`);
+            });
+            
+            // Limit to 10 terms
+            generatedSearchTerms = generatedSearchTerms.slice(0, 10);
+            
+            displaySearchTerms();
+            hideLoading();
+            return;
+        }
+        
+        // For other modes, use Mistral AI
         const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
             method: 'POST',
             headers: {
