@@ -297,7 +297,6 @@ async function searchRemoteOK() {
                 const infoDiv = document.createElement('div');
                 infoDiv.className = 'info-message';
                 infoDiv.textContent = 'ℹ️ No exact matches found. Showing recent remote jobs. Try different keywords for better results.';
-                infoDiv.style.cssText = 'background: #3a3a3a; color: #4a9eff; padding: 15px; margin: 20px; border-radius: 0; border-left: 4px solid #4a9eff;';
                 
                 const resultsSection = document.getElementById('resultsSection');
                 if (resultsSection) {
