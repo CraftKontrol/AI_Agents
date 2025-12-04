@@ -356,6 +356,11 @@ async function scrapeJobBoard(scraperType, targetUrl, searchTerm) {
     if (scraperType === 'scrapingbee') {
         // ScrapingBee API: https://www.scrapingbee.com/documentation/
         apiUrl = `${config.endpoint}?${config.keyParam}=${scraperApiKey}&url=${encodeURIComponent(targetUrl)}&render_js=true&premium_proxy=true`;
+        
+        // Debug logging for ScrapingBee
+        console.log('ScrapingBee API URL:', apiUrl.replace(scraperApiKey, scraperApiKey.substring(0, 10) + '...'));
+        console.log('Target URL:', targetUrl);
+        console.log('Using API key:', scraperApiKey.substring(0, 10) + '...');
     } else if (scraperType === 'scraperapi') {
         // ScraperAPI: https://www.scraperapi.com/documentation
         apiUrl = `${config.endpoint}?${config.keyParam}=${scraperApiKey}&url=${encodeURIComponent(targetUrl)}&render=true`;
@@ -378,10 +383,17 @@ async function scrapeJobBoard(scraperType, targetUrl, searchTerm) {
     const response = await fetch(apiUrl, requestOptions);
     
     if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Scraper Error Response:', errorText);
+        console.error('Response Status:', response.status);
+        
         if (response.status === 401 || response.status === 403) {
-            throw new Error('Invalid API key. Please check your scraper API credentials.');
+            throw new Error('Invalid ScrapingBee API key. Please check your credentials.');
+        } else if (response.status === 429) {
+            throw new Error('ScrapingBee rate limit exceeded. Please wait and try again.');
+        } else {
+            throw new Error(`ScrapingBee returned status ${response.status}: ${errorText}`);
         }
-        throw new Error(`Scraper API returned status ${response.status}`);
     }
     
     let html;
