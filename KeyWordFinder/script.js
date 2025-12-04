@@ -300,6 +300,9 @@ async function searchWithScraper(scraperType) {
         
         for (const term of termsToSearch) {
             // Use Google job search as a universal source
+            // Note: Scraping Google may violate their Terms of Service. In production,
+            // consider using job-specific APIs (LinkedIn, Indeed, etc.) or sites that
+            // explicitly allow scraping, or implement with proper rate limiting and user agents.
             const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(term + ' jobs')}`;
             
             try {
@@ -358,11 +361,13 @@ async function scrapeJobBoard(scraperType, targetUrl, searchTerm) {
         apiUrl = `${config.endpoint}?${config.keyParam}=${scraperApiKey}&url=${encodeURIComponent(targetUrl)}&render=true`;
     } else if (scraperType === 'brightdata') {
         // Bright Data Web Unlocker: https://docs.brightdata.com/
+        // Note: This is a simplified implementation. In production, you would need to:
+        // 1. Configure a proxy zone in your Bright Data account
+        // 2. Use the proper proxy endpoint URL
+        // 3. Authenticate using the correct method for your setup
         apiUrl = targetUrl;
         requestOptions.headers['Authorization'] = `Bearer ${scraperApiKey}`;
         requestOptions.headers['X-Brightdata-Customer'] = scraperApiKey;
-        // Note: Bright Data typically requires a proxy setup
-        // This is a simplified implementation
     } else if (scraperType === 'scrapfly') {
         // ScrapFly API: https://scrapfly.io/docs/scrape-api/getting-started
         apiUrl = `${config.endpoint}?${config.keyParam}=${scraperApiKey}&url=${encodeURIComponent(targetUrl)}&render_js=true&asp=true`;
@@ -384,8 +389,16 @@ async function scrapeJobBoard(scraperType, targetUrl, searchTerm) {
     // Handle different response formats
     if (scraperType === 'scrapfly') {
         // ScrapFly returns JSON
-        const jsonResponse = await response.json();
-        html = jsonResponse.result?.content || jsonResponse.content || '';
+        try {
+            const jsonResponse = await response.json();
+            html = jsonResponse.result?.content || jsonResponse.content || '';
+            if (!html) {
+                console.warn('ScrapFly response did not contain expected content field');
+            }
+        } catch (e) {
+            console.error('Failed to parse ScrapFly JSON response:', e);
+            html = '';
+        }
     } else {
         html = await response.text();
     }
@@ -419,12 +432,13 @@ function parseJobListings(html, searchTerm, sourceUrl) {
     }
     
     // If no specific job elements found, look for any divs with links and text
+    // This is a fallback for generic content parsing - limit to avoid performance issues
     if (jobElements.length === 0) {
         jobElements = Array.from(doc.querySelectorAll('div')).filter(div => {
             const hasLink = div.querySelector('a');
             const hasText = div.textContent.trim().length > 50;
             return hasLink && hasText;
-        }).slice(0, 20);
+        }).slice(0, 20); // Limit to first 20 to avoid processing too many elements
     }
     
     jobElements.forEach((element, index) => {
@@ -460,8 +474,8 @@ function parseJobListings(html, searchTerm, sourceUrl) {
                 // Make absolute URL if relative
                 if (link && !link.startsWith('http')) {
                     try {
-                        const baseUrl = new URL(sourceUrl);
-                        link = new URL(link, baseUrl.origin).href;
+                        // Resolve relative URLs against the full source URL
+                        link = new URL(link, sourceUrl).href;
                     } catch (e) {
                         link = sourceUrl;
                     }
