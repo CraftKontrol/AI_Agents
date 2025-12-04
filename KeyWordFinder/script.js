@@ -298,7 +298,6 @@ async function searchDemoMode() {
 
 // RemoteOK Search
 async function searchRemoteOK() {
-    // Ensure we have search terms
     if (!generatedSearchTerms || generatedSearchTerms.length === 0) {
         throw new Error('No search terms available. Please generate search terms first.');
     }
@@ -312,42 +311,69 @@ async function searchRemoteOK() {
         
         const data = await response.json();
         
-        // Filter results based on search terms
-        const filtered = data
-            .filter(item => item.position && item.company)
-            .map(item => {
-                // Calculate relevance based on search term matches
-                let relevance = 0;
-                const searchText = `${item.position} ${item.company} ${item.description || ''} ${(item.tags || []).join(' ')}`.toLowerCase();
-                
-                generatedSearchTerms.forEach(term => {
-                    if (searchText.includes(term.toLowerCase())) {
-                        relevance += 1;
-                    }
-                });
-                
-                return {
-                    title: item.position,
-                    company: item.company,
-                    location: item.location || 'Remote',
-                    date: item.date ? new Date(item.date).toISOString() : new Date().toISOString(),
-                    description: item.description || 'No description available',
-                    tags: item.tags || [],
-                    url: item.url || `https://remoteok.com/remote-jobs/${item.id}`,
-                    relevance: generatedSearchTerms.length > 0 ? relevance / generatedSearchTerms.length : 0
-                };
-            })
-            .filter(item => item.relevance > 0)
-            .slice(0, 30);
+        // Skip the first element (it's legal info from RemoteOK)
+        const jobs = data.slice(1).filter(item => item.position && item.company);
         
+        // Score and map all jobs
+        const scoredJobs = jobs.map(item => {
+            let relevance = 0;
+            const position = (item.position || '').toLowerCase();
+            const company = (item.company || '').toLowerCase();
+            const description = (item.description || '').toLowerCase();
+            const tags = (item.tags || []).join(' ').toLowerCase();
+            const searchText = `${position} ${company} ${description} ${tags}`;
+            
+            generatedSearchTerms.forEach(term => {
+                const termLower = term.toLowerCase();
+                // Higher score for title matches
+                if (position.includes(termLower)) {
+                    relevance += 3;
+                }
+                // Medium score for company/tag matches
+                if (company.includes(termLower) || tags.includes(termLower)) {
+                    relevance += 2;
+                }
+                // Lower score for description matches
+                if (description.includes(termLower)) {
+                    relevance += 1;
+                }
+            });
+            
+            return {
+                title: item.position,
+                company: item.company,
+                location: item.location || 'Remote',
+                date: item.date ? new Date(item.date * 1000).toISOString() : new Date().toISOString(),
+                description: item.description || 'No description available',
+                tags: item.tags || [],
+                url: item.url || `https://remoteok.com/remote-jobs/${item.id}`,
+                relevance: relevance
+            };
+        });
+        
+        // Try strict matching first (relevance > 0)
+        let filtered = scoredJobs.filter(item => item.relevance > 0);
+        
+        // If no strict matches, return top 20 most recent jobs as fallback
         if (filtered.length === 0) {
-            throw new Error('No results found matching your search terms');
+            console.log('No exact matches found, showing recent jobs');
+            filtered = scoredJobs.slice(0, 20);
+            // Add a message to inform user
+            showError('No exact matches found. Showing recent remote jobs instead. Try different keywords or use Demo Mode.');
         }
+        
+        // Sort by relevance and limit results
+        filtered.sort((a, b) => b.relevance - a.relevance);
+        filtered = filtered.slice(0, 30);
         
         return filtered;
         
     } catch (error) {
         console.error('RemoteOK API Error:', error);
+        // Check if it's a CORS error
+        if (error.message.includes('CORS') || error.message.includes('fetch')) {
+            throw new Error('Unable to access RemoteOK API (CORS restriction). Please use Demo Mode instead.');
+        }
         throw new Error('Failed to search RemoteOK. Please try Demo Mode instead.');
     }
 }
