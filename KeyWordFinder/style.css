@@ -121,12 +121,6 @@ body {
     gap: 10px; /* Reduced from 15px */
 }
 
-.header-right h2 {
-    color: #ffffff;
-    font-size: 24px;
-    margin-bottom: 20px;
-}
-
 /* Keyword Section - more compact */
 .keyword-section {
     display: flex;
