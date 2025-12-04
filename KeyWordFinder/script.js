@@ -65,6 +65,7 @@ function clearSavedApiKey() {
 // Last Modified Date
 async function fetchLastModified() {
     try {
+        // Try to fetch the last modified date from the file
         const response = await fetch('index.html', {
             method: 'HEAD'
         });
@@ -76,16 +77,20 @@ async function fetchLastModified() {
             const formatted = formatDate(date);
             document.getElementById('lastModified').textContent = `Last updated: ${formatted}`;
         } else {
-            const now = new Date();
-            const formatted = formatDate(now);
-            document.getElementById('lastModified').textContent = `Last updated: ${formatted}`;
+            // Fallback to current date if header is not available
+            setCurrentDate();
         }
     } catch (error) {
-        console.error('Error fetching last modified date:', error);
-        const now = new Date();
-        const formatted = formatDate(now);
-        document.getElementById('lastModified').textContent = `Last updated: ${formatted}`;
+        // If fetch fails (e.g., file:// protocol), use current date
+        console.log('Could not fetch last modified date, using current date');
+        setCurrentDate();
     }
+}
+
+function setCurrentDate() {
+    const now = new Date();
+    const formatted = formatDate(now);
+    document.getElementById('lastModified').textContent = `Last updated: ${formatted}`;
 }
 
 function formatDate(date) {
@@ -248,6 +253,11 @@ async function searchDemoMode() {
     // Simulate API delay
     await new Promise(resolve => setTimeout(resolve, 1000));
     
+    // Ensure we have search terms
+    if (!generatedSearchTerms || generatedSearchTerms.length === 0) {
+        throw new Error('No search terms available. Please generate search terms first.');
+    }
+    
     const companies = ['TechCorp', 'InnovateLabs', 'CloudSystems', 'DataWorks', 'DevTools Inc', 'RemoteFirst', 'CodeFactory', 'StartupHub', 'DigitalCraft', 'WebSolutions'];
     const locations = ['Remote', 'Remote - US', 'Remote - EU', 'Remote - Worldwide', 'Remote - Americas'];
     const technologies = ['JavaScript', 'React', 'Node.js', 'Python', 'TypeScript', 'Vue.js', 'Docker', 'AWS', 'Go', 'Kubernetes'];
@@ -288,6 +298,11 @@ async function searchDemoMode() {
 
 // RemoteOK Search
 async function searchRemoteOK() {
+    // Ensure we have search terms
+    if (!generatedSearchTerms || generatedSearchTerms.length === 0) {
+        throw new Error('No search terms available. Please generate search terms first.');
+    }
+    
     try {
         const response = await fetch('https://remoteok.com/api');
         
@@ -319,7 +334,7 @@ async function searchRemoteOK() {
                     description: item.description || 'No description available',
                     tags: item.tags || [],
                     url: item.url || `https://remoteok.com/remote-jobs/${item.id}`,
-                    relevance: relevance / generatedSearchTerms.length
+                    relevance: generatedSearchTerms.length > 0 ? relevance / generatedSearchTerms.length : 0
                 };
             })
             .filter(item => item.relevance > 0)
