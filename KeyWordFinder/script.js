@@ -158,7 +158,9 @@ function formatDate(date) {
 // Mistral AI Integration
 async function generateSearchTerms() {
     const keywordsInput = document.getElementById('keywordsInput');
+    const termCountInput = document.getElementById('termCountInput');
     const keywords = keywordsInput.value.trim();
+    const termCount = parseInt(termCountInput.value) || 5;
     
     if (!keywords) {
         showError('Please enter at least one keyword');
@@ -181,11 +183,11 @@ async function generateSearchTerms() {
                 messages: [
                     {
                         role: 'system',
-                        content: 'You are a search term optimization assistant. Generate 5-10 relevant, diverse search terms based on the provided keywords. Return only the search terms as a comma-separated list, nothing else.'
+                        content: `You are a search term optimization assistant. Generate exactly ${termCount} relevant, diverse search terms based on the provided keywords. Return only the search terms as a comma-separated list, nothing else.`
                     },
                     {
                         role: 'user',
-                        content: `Generate 5-10 optimized search terms for job searching based on these keywords: ${keywords}`
+                        content: `Generate exactly ${termCount} optimized search terms for job searching based on these keywords: ${keywords}`
                     }
                 ],
                 temperature: 0.7,
@@ -225,6 +227,7 @@ async function generateSearchTerms() {
 function displaySearchTerms() {
     const display = document.getElementById('searchTermsDisplay');
     const list = document.getElementById('searchTermsList');
+    const apiSelectorGroup = document.getElementById('apiSelectorGroup');
     
     list.innerHTML = '';
     generatedSearchTerms.forEach(term => {
@@ -235,6 +238,8 @@ function displaySearchTerms() {
     });
     
     display.style.display = 'block';
+    // Show scraper API selector after terms are generated
+    apiSelectorGroup.style.display = 'block';
 }
 
 // Search Execution
@@ -294,11 +299,11 @@ async function searchWithScraper(scraperType) {
         const termsToSearch = generatedSearchTerms.slice(0, 3);
         
         for (const term of termsToSearch) {
-            // Try scraping from RemoteOK first (most reliable structure)
-            const remoteOkUrl = `https://remoteok.com/remote-jobs?search=${encodeURIComponent(term)}`;
+            // Use Google job search as a universal source
+            const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(term + ' jobs')}`;
             
             try {
-                const results = await scrapeJobBoard(scraperType, remoteOkUrl, term);
+                const results = await scrapeJobBoard(scraperType, searchUrl, term);
                 allResults.push(...results);
             } catch (error) {
                 console.error(`Error scraping for term "${term}":`, error);
@@ -340,20 +345,32 @@ async function scrapeJobBoard(scraperType, targetUrl, searchTerm) {
     
     // Build scraper API request based on the service
     let apiUrl;
+    let requestOptions = {
+        method: 'GET',
+        headers: {}
+    };
     
     if (scraperType === 'scrapingbee') {
-        apiUrl = `${config.endpoint}?${config.keyParam}=${scraperApiKey}&url=${encodeURIComponent(targetUrl)}&render_js=false`;
+        // ScrapingBee API: https://www.scrapingbee.com/documentation/
+        apiUrl = `${config.endpoint}?${config.keyParam}=${scraperApiKey}&url=${encodeURIComponent(targetUrl)}&render_js=true&premium_proxy=true`;
     } else if (scraperType === 'scraperapi') {
-        apiUrl = `${config.endpoint}?${config.keyParam}=${scraperApiKey}&url=${encodeURIComponent(targetUrl)}`;
+        // ScraperAPI: https://www.scraperapi.com/documentation
+        apiUrl = `${config.endpoint}?${config.keyParam}=${scraperApiKey}&url=${encodeURIComponent(targetUrl)}&render=true`;
     } else if (scraperType === 'brightdata') {
-        apiUrl = `${config.endpoint}?${config.keyParam}=${scraperApiKey}&url=${encodeURIComponent(targetUrl)}`;
+        // Bright Data Web Unlocker: https://docs.brightdata.com/
+        apiUrl = targetUrl;
+        requestOptions.headers['Authorization'] = `Bearer ${scraperApiKey}`;
+        requestOptions.headers['X-Brightdata-Customer'] = scraperApiKey;
+        // Note: Bright Data typically requires a proxy setup
+        // This is a simplified implementation
     } else if (scraperType === 'scrapfly') {
-        apiUrl = `${config.endpoint}?${config.keyParam}=${scraperApiKey}&url=${encodeURIComponent(targetUrl)}&render_js=false`;
+        // ScrapFly API: https://scrapfly.io/docs/scrape-api/getting-started
+        apiUrl = `${config.endpoint}?${config.keyParam}=${scraperApiKey}&url=${encodeURIComponent(targetUrl)}&render_js=true&asp=true`;
     } else {
         throw new Error(`Unknown scraper type: ${scraperType}`);
     }
     
-    const response = await fetch(apiUrl);
+    const response = await fetch(apiUrl, requestOptions);
     
     if (!response.ok) {
         if (response.status === 401 || response.status === 403) {
@@ -362,7 +379,16 @@ async function scrapeJobBoard(scraperType, targetUrl, searchTerm) {
         throw new Error(`Scraper API returned status ${response.status}`);
     }
     
-    const html = await response.text();
+    let html;
+    
+    // Handle different response formats
+    if (scraperType === 'scrapfly') {
+        // ScrapFly returns JSON
+        const jsonResponse = await response.json();
+        html = jsonResponse.result?.content || jsonResponse.content || '';
+    } else {
+        html = await response.text();
+    }
     
     // Parse the HTML to extract job listings
     return parseJobListings(html, searchTerm, targetUrl);
@@ -373,62 +399,140 @@ function parseJobListings(html, searchTerm, sourceUrl) {
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
     
-    // Detect which site we're scraping and use appropriate selectors
-    // Currently only RemoteOK is implemented. Other sites can be added as needed.
-    if (sourceUrl.includes('remoteok.com')) {
-        // RemoteOK specific parsing
-        const jobCards = doc.querySelectorAll('tr.job');
-        
-        jobCards.forEach((card, index) => {
-            try {
-                const title = card.querySelector('.company_and_position h2')?.textContent?.trim();
-                const company = card.querySelector('.company h3')?.textContent?.trim();
-                const tags = Array.from(card.querySelectorAll('.tag')).map(tag => tag.textContent.trim());
-                const link = card.querySelector('a.preventLink')?.getAttribute('href');
-                const dateText = card.querySelector('.time')?.textContent?.trim();
-                
-                if (title && company) {
-                    // Calculate relevance
-                    let relevance = 0;
-                    const searchText = `${title} ${company} ${tags.join(' ')}`.toLowerCase();
-                    const termLower = searchTerm.toLowerCase();
-                    
-                    if (title.toLowerCase().includes(termLower)) relevance += 3;
-                    if (company.toLowerCase().includes(termLower)) relevance += 2;
-                    if (tags.some(tag => tag.toLowerCase().includes(termLower))) relevance += 2;
-                    
-                    // Parse date
-                    let date = new Date();
-                    if (dateText) {
-                        // RemoteOK uses relative dates like "2d ago"
-                        const match = dateText.match(/(\d+)([dhm])/);
-                        if (match) {
-                            const value = parseInt(match[1]);
-                            const unit = match[2];
-                            if (unit === 'd') date.setDate(date.getDate() - value);
-                            else if (unit === 'h') date.setHours(date.getHours() - value);
-                            else if (unit === 'm') date.setMinutes(date.getMinutes() - value);
-                        }
-                    }
-                    
-                    results.push({
-                        title: title,
-                        company: company,
-                        location: 'Remote',
-                        date: date.toISOString(),
-                        description: `${company} is hiring for ${title}. ${tags.slice(0, 3).join(', ')}`,
-                        tags: tags.slice(0, 5),
-                        url: link ? `https://remoteok.com${link}` : sourceUrl,
-                        relevance: relevance || 0.5
-                    });
-                }
-            } catch (error) {
-                console.error('Error parsing job card:', error);
-            }
-        });
+    // Generic parsing approach that works with various job boards and search results
+    // Look for common patterns in job listings across different sites
+    
+    // Common selectors for job listings
+    const possibleSelectors = [
+        'article', '.job', '.job-card', '.job-listing', '.result', 
+        '.search-result', 'li[data-job]', '[class*="job"]', '[id*="job"]',
+        '.g', '.yuRUbf', // Google search result selectors
+    ];
+    
+    let jobElements = [];
+    for (const selector of possibleSelectors) {
+        const elements = doc.querySelectorAll(selector);
+        if (elements.length > 0) {
+            jobElements = Array.from(elements);
+            break;
+        }
     }
     
-    // Add parsing for other sites as needed
+    // If no specific job elements found, look for any divs with links and text
+    if (jobElements.length === 0) {
+        jobElements = Array.from(doc.querySelectorAll('div')).filter(div => {
+            const hasLink = div.querySelector('a');
+            const hasText = div.textContent.trim().length > 50;
+            return hasLink && hasText;
+        }).slice(0, 20);
+    }
+    
+    jobElements.forEach((element, index) => {
+        try {
+            // Extract title - look for headings or prominent links
+            let title = '';
+            const titleSelectors = ['h1', 'h2', 'h3', 'h4', '.title', '[class*="title"]', 'a[href*="job"]', 'a'];
+            for (const selector of titleSelectors) {
+                const titleEl = element.querySelector(selector);
+                if (titleEl && titleEl.textContent.trim()) {
+                    title = titleEl.textContent.trim();
+                    break;
+                }
+            }
+            
+            // Extract company - look for company-related elements
+            let company = '';
+            const companySelectors = ['.company', '[class*="company"]', '[class*="employer"]', 'span'];
+            for (const selector of companySelectors) {
+                const companyEl = element.querySelector(selector);
+                if (companyEl && companyEl.textContent.trim() && companyEl.textContent.trim() !== title) {
+                    company = companyEl.textContent.trim();
+                    break;
+                }
+            }
+            if (!company) company = 'Company Not Listed';
+            
+            // Extract link
+            let link = '';
+            const linkEl = element.querySelector('a[href]');
+            if (linkEl) {
+                link = linkEl.getAttribute('href');
+                // Make absolute URL if relative
+                if (link && !link.startsWith('http')) {
+                    try {
+                        const baseUrl = new URL(sourceUrl);
+                        link = new URL(link, baseUrl.origin).href;
+                    } catch (e) {
+                        link = sourceUrl;
+                    }
+                }
+            }
+            
+            // Extract description - get text content
+            const description = element.textContent.trim().substring(0, 200);
+            
+            // Extract date if available
+            let date = new Date();
+            const dateSelectors = ['time', '.date', '[class*="date"]', '[datetime]'];
+            for (const selector of dateSelectors) {
+                const dateEl = element.querySelector(selector);
+                if (dateEl) {
+                    const dateText = dateEl.getAttribute('datetime') || dateEl.textContent;
+                    const parsedDate = new Date(dateText);
+                    if (!isNaN(parsedDate.getTime())) {
+                        date = parsedDate;
+                        break;
+                    }
+                }
+            }
+            
+            // Extract tags/keywords
+            const tags = [];
+            const tagElements = element.querySelectorAll('.tag, [class*="skill"], [class*="tag"]');
+            tagElements.forEach(tag => {
+                const tagText = tag.textContent.trim();
+                if (tagText && tags.length < 5) {
+                    tags.push(tagText);
+                }
+            });
+            
+            // Calculate relevance based on search term matching
+            let relevance = 0;
+            const searchText = `${title} ${company} ${description} ${tags.join(' ')}`.toLowerCase();
+            const termLower = searchTerm.toLowerCase();
+            const termWords = termLower.split(/\s+/);
+            
+            // Check title match
+            if (title.toLowerCase().includes(termLower)) relevance += 5;
+            termWords.forEach(word => {
+                if (title.toLowerCase().includes(word)) relevance += 2;
+            });
+            
+            // Check company match
+            if (company.toLowerCase().includes(termLower)) relevance += 2;
+            
+            // Check description/content match
+            termWords.forEach(word => {
+                if (searchText.includes(word)) relevance += 1;
+            });
+            
+            // Only add results that have at least a title and some relevance
+            if (title && title.length > 3 && relevance > 0) {
+                results.push({
+                    title: title.substring(0, 150),
+                    company: company.substring(0, 100),
+                    location: 'Remote/Various',
+                    date: date.toISOString(),
+                    description: description,
+                    tags: tags,
+                    url: link || sourceUrl,
+                    relevance: relevance
+                });
+            }
+        } catch (error) {
+            console.error('Error parsing job element:', error);
+        }
+    });
     
     return results;
 }
@@ -438,20 +542,11 @@ function displayResults(results) {
     const resultsSection = document.getElementById('resultsSection');
     const resultsContainer = document.getElementById('resultsContainer');
     const resultCount = document.getElementById('resultCount');
-    const welcomeMessage = document.getElementById('welcomeMessage');
     
     if (!results || results.length === 0) {
         resultsSection.style.display = 'none';
-        if (welcomeMessage) {
-            welcomeMessage.style.display = 'block';
-        }
         showError('No results found');
         return;
-    }
-    
-    // Hide welcome message when showing results
-    if (welcomeMessage) {
-        welcomeMessage.style.display = 'none';
     }
     
     resultCount.textContent = results.length;
@@ -571,10 +666,6 @@ function sortResults(type) {
 
 // Loading and Error States
 function showLoading() {
-    const welcomeMessage = document.getElementById('welcomeMessage');
-    if (welcomeMessage) {
-        welcomeMessage.style.display = 'none';
-    }
     document.getElementById('loadingIndicator').style.display = 'block';
     document.getElementById('resultsSection').style.display = 'none';
     document.getElementById('errorMessage').style.display = 'none';
