@@ -4,11 +4,70 @@ let generatedSearchTerms = [];
 let currentResults = [];
 let currentSortType = 'relevance';
 
+// Scraper API configurations
+const SCRAPER_CONFIGS = {
+    scrapingbee: {
+        name: 'ScrapingBee',
+        endpoint: 'https://app.scrapingbee.com/api/v1/',
+        requiresKey: true,
+        keyParam: 'api_key'
+    },
+    scraperapi: {
+        name: 'ScraperAPI',
+        endpoint: 'https://api.scraperapi.com/',
+        requiresKey: true,
+        keyParam: 'api_key'
+    },
+    brightdata: {
+        name: 'Bright Data',
+        endpoint: 'https://api.brightdata.com/request',
+        requiresKey: true,
+        keyParam: 'token'
+    },
+    scrapfly: {
+        name: 'ScrapFly',
+        endpoint: 'https://api.scrapfly.io/scrape',
+        requiresKey: true,
+        keyParam: 'key'
+    }
+};
+
+// Search targets - websites to scrape for job listings
+const SEARCH_TARGETS = [
+    'https://remoteok.com/remote-jobs/',
+    'https://www.linkedin.com/jobs/search/',
+    'https://www.indeed.com/jobs',
+    'https://angel.co/jobs'
+];
+
 // Initialize app on page load
 document.addEventListener('DOMContentLoaded', function() {
     loadApiKey();
+    loadScraperApiKey();
     fetchLastModified();
 });
+
+// Scraper API Key Management
+let scraperApiKey = '';
+
+function loadScraperApiKey() {
+    const savedKey = localStorage.getItem('scraperApiKey');
+    if (savedKey) {
+        scraperApiKey = savedKey;
+        return true;
+    }
+    return false;
+}
+
+function saveScraperApiKey(key) {
+    scraperApiKey = key;
+    localStorage.setItem('scraperApiKey', key);
+}
+
+function clearScraperApiKey() {
+    scraperApiKey = '';
+    localStorage.removeItem('scraperApiKey');
+}
 
 // API Key Management
 function loadApiKey() {
@@ -196,19 +255,21 @@ async function performSearch() {
         return;
     }
     
+    // Check if scraper API key is set
+    if (!scraperApiKey) {
+        const key = prompt(`Enter your ${SCRAPER_CONFIGS[selectedApi].name} API key:`);
+        if (!key) {
+            showError('Scraper API key is required to perform searches');
+            return;
+        }
+        saveScraperApiKey(key);
+    }
+    
     showLoading();
     hideError();
     
     try {
-        let results = [];
-        
-        if (selectedApi === 'remoteok') {
-            results = await searchRemoteOK();
-        } else {
-            showError('This API is coming soon. Currently only RemoteOK is available.');
-            hideLoading();
-            return;
-        }
+        const results = await searchWithScraper(selectedApi);
         
         currentResults = results;
         currentSortType = 'relevance';
@@ -219,112 +280,162 @@ async function performSearch() {
         hideLoading();
         showError(error.message);
         console.error('Error performing search:', error);
+        
+        // If API key error, clear saved key
+        if (error.message.includes('API key') || error.message.includes('401') || error.message.includes('403')) {
+            clearScraperApiKey();
+        }
     }
 }
 
-// RemoteOK Search
-async function searchRemoteOK() {
+// Scraper-based Search
+async function searchWithScraper(scraperType) {
     if (!generatedSearchTerms || generatedSearchTerms.length === 0) {
         throw new Error('No search terms available. Please generate search terms first.');
     }
     
+    const config = SCRAPER_CONFIGS[scraperType];
+    const allResults = [];
+    
     try {
-        // Fetch from RemoteOK API
-        const response = await fetch('https://remoteok.com/api');
+        // Search using the first few search terms (limit to avoid rate limits)
+        const termsToSearch = generatedSearchTerms.slice(0, 3);
         
-        if (!response.ok) {
-            throw new Error(`RemoteOK API returned status ${response.status}`);
+        for (const term of termsToSearch) {
+            // Try scraping from RemoteOK first (most reliable structure)
+            const remoteOkUrl = `https://remoteok.com/remote-jobs?search=${encodeURIComponent(term)}`;
+            
+            try {
+                const results = await scrapeJobBoard(scraperType, remoteOkUrl, term);
+                allResults.push(...results);
+            } catch (error) {
+                console.error(`Error scraping for term "${term}":`, error);
+                // Continue with other terms even if one fails
+            }
+            
+            // Add delay between requests to avoid rate limiting
+            await new Promise(resolve => setTimeout(resolve, 1000));
         }
         
-        const data = await response.json();
-        
-        // RemoteOK API returns legal info as first element, skip it
-        const jobs = data.slice(1).filter(item => item.position && item.company);
-        
-        if (jobs.length === 0) {
-            throw new Error('No jobs available from RemoteOK at the moment');
+        if (allResults.length === 0) {
+            throw new Error('No results found. Please try different keywords or check your API key.');
         }
         
-        // Score all jobs based on search terms
-        const scoredJobs = jobs.map(item => {
-            let relevance = 0;
-            const position = (item.position || '').toLowerCase();
-            const company = (item.company || '').toLowerCase();
-            const description = (item.description || '').toLowerCase();
-            const tags = (item.tags || []).join(' ').toLowerCase();
-            
-            generatedSearchTerms.forEach(term => {
-                const termLower = term.toLowerCase();
-                
-                // Highest priority: Title matches (3 points)
-                if (position.includes(termLower)) {
-                    relevance += 3;
-                }
-                // Medium priority: Company/tag matches (2 points)
-                if (company.includes(termLower) || tags.includes(termLower)) {
-                    relevance += 2;
-                }
-                // Lower priority: Description matches (1 point)
-                if (description.includes(termLower)) {
-                    relevance += 1;
-                }
-            });
-            
-            return {
-                title: item.position,
-                company: item.company,
-                location: item.location || 'Remote',
-                date: (item.date && typeof item.date === 'number') ? new Date(item.date * 1000).toISOString() : new Date().toISOString(),
-                description: item.description || 'No description available',
-                tags: item.tags || [],
-                url: item.url || (item.id ? `https://remoteok.com/remote-jobs/${item.id}` : null),
-                relevance: relevance
-            };
-        });
+        // Remove duplicates based on URL
+        const uniqueResults = [];
+        const seenUrls = new Set();
         
-        // Filter for jobs with some relevance
-        let filtered = scoredJobs.filter(item => item.relevance > 0);
-        
-        // If no matches found, show most recent jobs as fallback
-        if (filtered.length === 0) {
-            console.log('No keyword matches found, showing recent jobs');
-            filtered = scoredJobs
-                .sort((a, b) => new Date(b.date) - new Date(a.date))
-                .slice(0, 20);
-            
-            // Show info message to user
-            const infoDiv = document.createElement('div');
-            infoDiv.className = 'info-message';
-            infoDiv.textContent = 'ℹ️ No exact matches found. Showing recent remote jobs. Try different keywords for better results.';
-            
-            const resultsSection = document.getElementById('resultsSection');
-            if (resultsSection) {
-                resultsSection.insertBefore(infoDiv, resultsSection.firstChild);
-                // Remove info message after 5 seconds with null check
-                setTimeout(() => {
-                    if (infoDiv && infoDiv.parentNode) {
-                        infoDiv.remove();
-                    }
-                }, 5000);
+        for (const result of allResults) {
+            if (!seenUrls.has(result.url)) {
+                seenUrls.add(result.url);
+                uniqueResults.push(result);
             }
         }
         
-        // Sort by relevance (highest first) and limit to 30 results
-        filtered.sort((a, b) => b.relevance - a.relevance);
-        filtered = filtered.slice(0, 30);
+        // Sort by relevance
+        uniqueResults.sort((a, b) => b.relevance - a.relevance);
         
-        return filtered;
+        return uniqueResults.slice(0, 30);
         
     } catch (error) {
-        console.error('RemoteOK API Error:', error);
-        
-        // Provide specific error messages
-        if (error.name === 'TypeError' && error.message.includes('fetch')) {
-            throw new Error('Unable to connect to RemoteOK API. Please check your internet connection.');
-        }
-        
-        throw new Error(`RemoteOK search failed: ${error.message}`);
+        console.error('Scraper Error:', error);
+        throw new Error(`Failed to scrape job listings: ${error.message}`);
     }
+}
+
+async function scrapeJobBoard(scraperType, targetUrl, searchTerm) {
+    const config = SCRAPER_CONFIGS[scraperType];
+    
+    // Build scraper API request based on the service
+    let apiUrl;
+    
+    if (scraperType === 'scrapingbee') {
+        apiUrl = `${config.endpoint}?${config.keyParam}=${scraperApiKey}&url=${encodeURIComponent(targetUrl)}&render_js=false`;
+    } else if (scraperType === 'scraperapi') {
+        apiUrl = `${config.endpoint}?${config.keyParam}=${scraperApiKey}&url=${encodeURIComponent(targetUrl)}`;
+    } else if (scraperType === 'brightdata') {
+        apiUrl = `${config.endpoint}?${config.keyParam}=${scraperApiKey}&url=${encodeURIComponent(targetUrl)}`;
+    } else if (scraperType === 'scrapfly') {
+        apiUrl = `${config.endpoint}?${config.keyParam}=${scraperApiKey}&url=${encodeURIComponent(targetUrl)}&render_js=false`;
+    }
+    
+    const response = await fetch(apiUrl);
+    
+    if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+            throw new Error('Invalid API key. Please check your scraper API credentials.');
+        }
+        throw new Error(`Scraper API returned status ${response.status}`);
+    }
+    
+    const html = await response.text();
+    
+    // Parse the HTML to extract job listings
+    return parseJobListings(html, searchTerm, targetUrl);
+}
+
+function parseJobListings(html, searchTerm, sourceUrl) {
+    const results = [];
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    
+    // Detect which site we're scraping and use appropriate selectors
+    if (sourceUrl.includes('remoteok.com')) {
+        // RemoteOK specific parsing
+        const jobCards = doc.querySelectorAll('tr.job');
+        
+        jobCards.forEach((card, index) => {
+            try {
+                const title = card.querySelector('.company_and_position h2')?.textContent?.trim();
+                const company = card.querySelector('.company h3')?.textContent?.trim();
+                const tags = Array.from(card.querySelectorAll('.tag')).map(tag => tag.textContent.trim());
+                const link = card.querySelector('a.preventLink')?.getAttribute('href');
+                const dateText = card.querySelector('.time')?.textContent?.trim();
+                
+                if (title && company) {
+                    // Calculate relevance
+                    let relevance = 0;
+                    const searchText = `${title} ${company} ${tags.join(' ')}`.toLowerCase();
+                    const termLower = searchTerm.toLowerCase();
+                    
+                    if (title.toLowerCase().includes(termLower)) relevance += 3;
+                    if (company.toLowerCase().includes(termLower)) relevance += 2;
+                    if (tags.some(tag => tag.toLowerCase().includes(termLower))) relevance += 2;
+                    
+                    // Parse date
+                    let date = new Date();
+                    if (dateText) {
+                        // RemoteOK uses relative dates like "2d ago"
+                        const match = dateText.match(/(\d+)([dhm])/);
+                        if (match) {
+                            const value = parseInt(match[1]);
+                            const unit = match[2];
+                            if (unit === 'd') date.setDate(date.getDate() - value);
+                            else if (unit === 'h') date.setHours(date.getHours() - value);
+                            else if (unit === 'm') date.setMinutes(date.getMinutes() - value);
+                        }
+                    }
+                    
+                    results.push({
+                        title: title,
+                        company: company,
+                        location: 'Remote',
+                        date: date.toISOString(),
+                        description: `${company} is hiring for ${title}. ${tags.slice(0, 3).join(', ')}`,
+                        tags: tags.slice(0, 5),
+                        url: link ? `https://remoteok.com${link}` : sourceUrl,
+                        relevance: relevance || 0.5
+                    });
+                }
+            } catch (error) {
+                console.error('Error parsing job card:', error);
+            }
+        });
+    }
+    
+    // Add parsing for other sites as needed
+    
+    return results;
 }
 
 // Display Results
