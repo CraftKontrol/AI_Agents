@@ -85,7 +85,7 @@ body {
     gap: 30px;
     margin-bottom: 30px;
     background-color: #2a2a2a;
-    padding: 30px;
+    padding: 20px;
     border-radius: 0;
 }
 
@@ -125,19 +125,19 @@ body {
 
 /* Input Groups */
 .input-group {
-    margin-bottom: 20px;
+    margin-bottom: 15px;
 }
 
 .input-group label {
     display: block;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
     color: #e0e0e0;
     font-weight: 500;
 }
 
 .input-group textarea {
     width: 100%;
-    padding: 20px;
+    padding: 12px;
     background-color: #1a1a1a;
     color: #e0e0e0;
     border: 1px solid #3a3a3a;
@@ -151,9 +151,19 @@ body {
     color: #666;
 }
 
+.input-group input[type="number"] {
+    width: 100%;
+    padding: 12px;
+    background-color: #1a1a1a;
+    color: #e0e0e0;
+    border: 1px solid #3a3a3a;
+    border-radius: 0;
+    font-size: 16px;
+}
+
 .input-group select {
     width: 100%;
-    padding: 20px;
+    padding: 12px;
     background-color: #1a1a1a;
     color: #e0e0e0;
     border: 1px solid #3a3a3a;
@@ -170,7 +180,7 @@ body {
 .btn-primary,
 .btn-secondary,
 .btn-sort {
-    padding: 20px 30px;
+    padding: 15px 25px;
     border: none;
     border-radius: 0;
     font-size: 16px;
@@ -207,7 +217,7 @@ body {
 .btn-sort {
     background-color: #3a3a3a;
     color: #e0e0e0;
-    padding: 15px 25px;
+    padding: 12px 20px;
 }
 
 .btn-sort:hover {
@@ -256,24 +266,6 @@ body {
     padding: 30px;
     border-radius: 0;
     min-height: 400px;
-}
-
-/* Welcome Message */
-.welcome-message {
-    text-align: center;
-    padding: 60px 20px;
-}
-
-.welcome-message h2 {
-    color: #ffffff;
-    font-size: 28px;
-    margin-bottom: 30px;
-}
-
-.welcome-message p {
-    color: #e0e0e0;
-    font-size: 18px;
-    margin-bottom: 15px;
 }
 
 /* Loading Indicator */
