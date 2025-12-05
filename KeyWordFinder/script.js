@@ -912,7 +912,20 @@ function updateLoadingProgress(searchTerm, current, total) {
     const loadingIndicator = document.getElementById('loadingIndicator');
     const progressText = loadingIndicator.querySelector('p');
     if (progressText) {
-        progressText.innerHTML = `Searching with term ${current} of ${total}...<br><strong>"${searchTerm}"</strong>`;
+        // Clear existing content
+        progressText.textContent = '';
+        
+        // Create text node for first line
+        const line1 = document.createTextNode(`Searching with term ${current} of ${total}...`);
+        progressText.appendChild(line1);
+        
+        // Create line break
+        progressText.appendChild(document.createElement('br'));
+        
+        // Create strong element with search term (properly escaped)
+        const strong = document.createElement('strong');
+        strong.textContent = `"${searchTerm}"`; // textContent automatically escapes
+        progressText.appendChild(strong);
     }
 }
 
@@ -1237,11 +1250,25 @@ function toggleStatistics() {
     
     if (statsContent.style.display === 'none') {
         statsContent.style.display = 'block';
-        toggleIcon.textContent = '▼';
-        toggleBtn.innerHTML = '<span id="toggleIcon">▼</span> Collapse';
+        if (toggleIcon) {
+            toggleIcon.textContent = '▼';
+        }
+        toggleBtn.textContent = '';
+        const icon = document.createElement('span');
+        icon.id = 'toggleIcon';
+        icon.textContent = '▼';
+        toggleBtn.appendChild(icon);
+        toggleBtn.appendChild(document.createTextNode(' Collapse'));
     } else {
         statsContent.style.display = 'none';
-        toggleIcon.textContent = '▶';
-        toggleBtn.innerHTML = '<span id="toggleIcon">▶</span> Expand';
+        if (toggleIcon) {
+            toggleIcon.textContent = '▶';
+        }
+        toggleBtn.textContent = '';
+        const icon = document.createElement('span');
+        icon.id = 'toggleIcon';
+        icon.textContent = '▶';
+        toggleBtn.appendChild(icon);
+        toggleBtn.appendChild(document.createTextNode(' Expand'));
     }
 }
