@@ -233,11 +233,30 @@ function formatDate(date) {
 function parseAIJsonResponse(rawText) {
     // Remove markdown code blocks if present
     let jsonText = rawText.trim();
-    if (jsonText.includes('```')) {
-        jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    
+    // Match and remove markdown code blocks more precisely
+    // Handles formats like ```json\n{...}\n``` or ```\n{...}\n```
+    const codeBlockMatch = jsonText.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?```$/);
+    if (codeBlockMatch) {
+        jsonText = codeBlockMatch[1].trim();
     }
     
     return JSON.parse(jsonText);
+}
+
+// Helper function to validate URLs for deep scraping
+function isValidJobUrl(url) {
+    if (!url || typeof url !== 'string') {
+        return false;
+    }
+    
+    try {
+        const urlObj = new URL(url);
+        // Only allow HTTP and HTTPS protocols
+        return urlObj.protocol === 'http:' || urlObj.protocol === 'https:';
+    } catch (e) {
+        return false;
+    }
 }
 
 // Mistral AI Integration
@@ -648,7 +667,7 @@ async function parseTavilyResults(data, searchTerm) {
             // Note: Deep scraping with Tavily is disabled due to CORS restrictions
             // Direct fetch to job posting URLs will fail in browser environment
             // Other scraper types (ScrapingBee, ScraperAPI, etc.) use proxy services
-            if (DEEP_SCRAPING_CONFIG.TAVILY_DEEP_SCRAPING_ENABLED && url && url !== '#' && url.startsWith('http')) {
+            if (DEEP_SCRAPING_CONFIG.TAVILY_DEEP_SCRAPING_ENABLED && isValidJobUrl(url)) {
                 // Update loading indicator
                 updateLoadingProgress(`Deep scraping result ${i + 1} of ${data.results.length}`, i + 1, data.results.length);
                 
