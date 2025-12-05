@@ -245,6 +245,7 @@ function truncateContent(content, maxLength = 200) {
         str = typeof content === 'string' ? content : JSON.stringify(content);
     } catch (e) {
         // Handle circular references or other stringify errors
+        console.warn('⚠️ Failed to stringify content for logging:', e.message);
         str = String(content);
     }
     if (str.length <= maxLength) return str;
@@ -252,12 +253,12 @@ function truncateContent(content, maxLength = 200) {
 }
 
 // Helper function to log Mistral API requests
-function logMistralRequest(endpoint, model, messages, params = {}) {
+function logMistralRequest(endpoint, model, messages, params = {}, apiKeyToMask = apiKey) {
     const timestamp = new Date().toISOString();
     console.groupCollapsed(`🚀 Mistral API Request - ${timestamp}`);
     console.log('📡 Endpoint:', endpoint);
     console.log('🤖 Model:', model);
-    console.log('🔑 API Key:', maskApiKey(apiKey));
+    console.log('🔑 API Key:', maskApiKey(apiKeyToMask));
     
     if (Object.keys(params).length > 0) {
         console.log('⚙️ Parameters:', params);
@@ -407,7 +408,7 @@ async function generateSearchTerms() {
         };
         
         // Log the request
-        logMistralRequest(endpoint, model, messages, params);
+        logMistralRequest(endpoint, model, messages, params, apiKey);
         
         // Use Mistral AI to generate search terms
         const response = await fetch(endpoint, {
@@ -1005,7 +1006,7 @@ async function extractJobDataWithAI(htmlContent) {
         };
         
         // Log the request
-        logMistralRequest(endpoint, model, messages, params);
+        logMistralRequest(endpoint, model, messages, params, apiKey);
         
         const response = await fetch(endpoint, {
             method: 'POST',
