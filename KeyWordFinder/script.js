@@ -249,11 +249,11 @@ async function generateSearchTerms() {
                 messages: [
                     {
                         role: 'system',
-                        content: `You are a search term optimization assistant. Generate exactly ${termCount} relevant, diverse search terms based on the provided keywords. Return only the search terms as a comma-separated list, nothing else.`
+                        content: `You are a search term optimization assistant. Generate exactly ${termCount} relevant, diverse search terms based on the provided keywords. Return ONLY a valid JSON array of strings, nothing else. Format: ["term1", "term2", "term3"]. Do not include any explanations or additional text.`
                     },
                     {
                         role: 'user',
-                        content: `Generate exactly ${termCount} optimized search terms for job searching based on these keywords: ${keywords}`
+                        content: `Generate exactly ${termCount} optimized search terms for job searching based on these keywords: ${keywords}. Return as a JSON array.`
                     }
                 ],
                 temperature: 0.7,
@@ -274,11 +274,32 @@ async function generateSearchTerms() {
         const data = await response.json();
         const generatedText = data.choices[0].message.content.trim();
         
-        // Parse the generated terms
-        generatedSearchTerms = generatedText
-            .split(',')
-            .map(term => term.trim())
-            .filter(term => term.length > 0);
+        // Parse JSON response
+        try {
+            // Remove markdown code blocks if present
+            let jsonText = generatedText;
+            if (jsonText.includes('```')) {
+                jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+            }
+            
+            generatedSearchTerms = JSON.parse(jsonText);
+            
+            // Validate that it's an array
+            if (!Array.isArray(generatedSearchTerms)) {
+                throw new Error('Response is not an array');
+            }
+            
+            // Filter out empty terms
+            generatedSearchTerms = generatedSearchTerms.filter(term => term && term.trim().length > 0);
+            
+            if (generatedSearchTerms.length === 0) {
+                throw new Error('No valid search terms generated');
+            }
+        } catch (parseError) {
+            console.error('Failed to parse JSON response:', generatedText);
+            console.error('Parse error:', parseError);
+            throw new Error('Failed to parse search terms. Please try again.');
+        }
         
         displaySearchTerms();
         hideLoading();
@@ -587,7 +608,7 @@ async function scrapeTavilySearch(searchTerm) {
     return parseTavilyResults(data, searchTerm);
 }
 
-function parseTavilyResults(data, searchTerm) {
+async function parseTavilyResults(data, searchTerm) {
     const results = [];
     
     // Common skills to extract from job content
@@ -599,7 +620,9 @@ function parseTavilyResults(data, searchTerm) {
         return results;
     }
     
-    data.results.forEach(item => {
+    for (let i = 0; i < data.results.length; i++) {
+        const item = data.results[i];
+        
         try {
             // Extract basic information
             const title = item.title || 'Untitled';
@@ -607,40 +630,76 @@ function parseTavilyResults(data, searchTerm) {
             const content = item.content || '';
             const score = item.score || 0;
             
-            // Try to extract company from content or URL
-            let company = 'Company Not Listed';
-            // Look for common patterns in the content:
-            // 1. "at CompanyName" or "@ CompanyName"
-            // 2. "CompanyName -" or "CompanyName |" at start of content
-            // 3. "Company: CompanyName"
-            const companyPatterns = [
-                /(?:at|@)\s+([A-Z][a-zA-Z0-9\s&.-]+?)(?:\s+[-–|]|\s*\n|$)/,
-                /^([A-Z][a-zA-Z0-9\s&.-]+?)\s+[-–|]/,
-                /Company:\s*([A-Z][a-zA-Z0-9\s&.-]+)/i
-            ];
-            
-            for (const pattern of companyPatterns) {
-                const match = content.match(pattern);
-                if (match && match[1]) {
-                    company = match[1].trim();
-                    break;
+            // Try deep scraping if URL is valid
+            let deepScrapedData = null;
+            if (url && url !== '#' && url.startsWith('http')) {
+                // Update loading indicator
+                updateLoadingProgress(`Deep scraping result ${i + 1} of ${data.results.length}`, i + 1, data.results.length);
+                
+                try {
+                    deepScrapedData = await scrapeJobPostDetails(url, 'tavily');
+                    
+                    // Add delay between deep scrapes to avoid rate limiting
+                    if (i < data.results.length - 1) {
+                        await new Promise(resolve => setTimeout(resolve, 2500));
+                    }
+                } catch (error) {
+                    console.error('Deep scraping failed for URL:', url, error);
                 }
             }
             
-            // Extract location if available
+            // Use deep scraped data if available, otherwise use basic extraction
+            let company = 'Company Not Listed';
             let location = 'Remote/Various';
-            const locationPatterns = [
-                /Location:\s*([^|\n]+)/i,
-                /(?:in|@)\s+([A-Z][a-zA-Z\s,]+?)(?:\s|$)/,  // Updated to support multi-word locations
-                /(Remote|Hybrid|On-site)/i
-            ];
+            let description = content.substring(0, 200);
+            const tags = [];
             
-            for (const pattern of locationPatterns) {
-                const match = content.match(pattern);
-                if (match && match[1]) {
-                    location = match[1].trim();
-                    break;
+            if (deepScrapedData) {
+                // Use AI-extracted data
+                if (deepScrapedData.company) company = deepScrapedData.company;
+                if (deepScrapedData.location) location = deepScrapedData.location;
+                if (deepScrapedData.description) description = deepScrapedData.description.substring(0, 200);
+                if (deepScrapedData.skills && Array.isArray(deepScrapedData.skills)) {
+                    tags.push(...deepScrapedData.skills.slice(0, 5));
                 }
+            } else {
+                // Fallback to basic extraction
+                // Try to extract company from content or URL
+                const companyPatterns = [
+                    /(?:at|@)\s+([A-Z][a-zA-Z0-9\s&.-]+?)(?:\s+[-–|]|\s*\n|$)/,
+                    /^([A-Z][a-zA-Z0-9\s&.-]+?)\s+[-–|]/,
+                    /Company:\s*([A-Z][a-zA-Z0-9\s&.-]+)/i
+                ];
+                
+                for (const pattern of companyPatterns) {
+                    const match = content.match(pattern);
+                    if (match && match[1]) {
+                        company = match[1].trim();
+                        break;
+                    }
+                }
+                
+                // Extract location if available
+                const locationPatterns = [
+                    /Location:\s*([^|\n]+)/i,
+                    /(?:in|@)\s+([A-Z][a-zA-Z\s,]+?)(?:\s|$)/,
+                    /(Remote|Hybrid|On-site)/i
+                ];
+                
+                for (const pattern of locationPatterns) {
+                    const match = content.match(pattern);
+                    if (match && match[1]) {
+                        location = match[1].trim();
+                        break;
+                    }
+                }
+                
+                // Extract tags/keywords from content
+                COMMON_SKILLS.forEach(skill => {
+                    if (content.toLowerCase().includes(skill.toLowerCase())) {
+                        tags.push(skill);
+                    }
+                });
             }
             
             // Use published_date if available, otherwise use current date
@@ -657,31 +716,141 @@ function parseTavilyResults(data, searchTerm) {
             // Multiply by 10 to match the relevance scale used in parseJobListings
             const relevance = Math.round(score * 10);
             
-            // Extract tags/keywords from content
-            const tags = [];
-            COMMON_SKILLS.forEach(skill => {
-                if (content.toLowerCase().includes(skill.toLowerCase())) {
-                    tags.push(skill);
-                }
-            });
-            
             results.push({
                 title: title.substring(0, 150),
                 company: company.substring(0, 100),
                 location: location.substring(0, 100),
                 date: date.toISOString(),
-                description: content.substring(0, 200),
+                description: description,
                 tags: tags.slice(0, 5),
                 url: url,
                 relevance: relevance,
-                searchTerm: searchTerm // Track which search term found this result
+                searchTerm: searchTerm, // Track which search term found this result
+                deepScraped: deepScrapedData !== null // Track if deep scraping was successful
             });
         } catch (error) {
             console.error('Error parsing Tavily result:', error);
         }
-    });
+    }
     
     return results;
+}
+
+// Deep scraping function to extract job details from individual job post pages
+async function scrapeJobPostDetails(jobUrl, scraperType) {
+    try {
+        console.log('Deep scraping job post:', jobUrl);
+        
+        const config = SCRAPER_CONFIGS[scraperType];
+        let html = '';
+        
+        // Special handling for Tavily - it doesn't support direct URL scraping
+        if (scraperType === 'tavily') {
+            // For Tavily, fetch the page directly
+            const response = await fetch(jobUrl);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch job post: ${response.status}`);
+            }
+            html = await response.text();
+        } else {
+            // Use scraper API for other services
+            let apiUrl;
+            let requestOptions = {
+                method: 'GET',
+                headers: {}
+            };
+            
+            if (scraperType === 'scrapingbee') {
+                apiUrl = `${config.endpoint}?${config.keyParam}=${scraperApiKey}&url=${encodeURIComponent(jobUrl)}`;
+            } else if (scraperType === 'scraperapi') {
+                apiUrl = `${config.endpoint}?${config.keyParam}=${scraperApiKey}&url=${encodeURIComponent(jobUrl)}&render=true`;
+            } else if (scraperType === 'brightdata') {
+                apiUrl = jobUrl;
+                requestOptions.headers['Authorization'] = `Bearer ${scraperApiKey}`;
+                requestOptions.headers['X-Brightdata-Customer'] = scraperApiKey;
+            } else if (scraperType === 'scrapfly') {
+                apiUrl = `${config.endpoint}?${config.keyParam}=${scraperApiKey}&url=${encodeURIComponent(jobUrl)}&render_js=true&asp=true`;
+            }
+            
+            const response = await fetch(apiUrl, requestOptions);
+            
+            if (!response.ok) {
+                throw new Error(`Scraper API error: ${response.status}`);
+            }
+            
+            if (scraperType === 'scrapfly') {
+                const jsonResponse = await response.json();
+                html = jsonResponse.result?.content || jsonResponse.content || '';
+            } else {
+                html = await response.text();
+            }
+        }
+        
+        // Extract job data using Mistral AI
+        const jobData = await extractJobDataWithAI(html);
+        return jobData;
+        
+    } catch (error) {
+        console.error('Error in deep scraping:', error);
+        return null;
+    }
+}
+
+// Extract structured job data using Mistral AI
+async function extractJobDataWithAI(htmlContent) {
+    try {
+        // Truncate HTML to avoid token limits (keep first 8000 chars)
+        const truncatedHtml = htmlContent.substring(0, 8000);
+        
+        const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: 'mistral-small-latest',
+                messages: [
+                    {
+                        role: 'system',
+                        content: `You are a job posting data extraction assistant. Extract structured information from HTML content and return it as valid JSON. Return ONLY a JSON object with these fields: title, company, location, salary, requirements, description, skills. If a field is not found, use null. Format: {"title":"...", "company":"...", "location":"...", "salary":"...", "requirements":"...", "description":"...", "skills":["skill1","skill2"]}`
+                    },
+                    {
+                        role: 'user',
+                        content: `Extract job information from this HTML:\n\n${truncatedHtml}`
+                    }
+                ],
+                temperature: 0.3,
+                max_tokens: 500
+            })
+        });
+        
+        if (!response.ok) {
+            console.error('Mistral API error for job extraction:', response.status);
+            return null;
+        }
+        
+        const data = await response.json();
+        const extractedText = data.choices[0].message.content.trim();
+        
+        // Parse JSON response
+        try {
+            let jsonText = extractedText;
+            if (jsonText.includes('```')) {
+                jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+            }
+            
+            const jobData = JSON.parse(jsonText);
+            return jobData;
+        } catch (parseError) {
+            console.error('Failed to parse job data JSON:', extractedText);
+            return null;
+        }
+        
+    } catch (error) {
+        console.error('Error extracting job data with AI:', error);
+        return null;
+    }
 }
 
 function parseJobListings(html, searchTerm, sourceUrl) {
@@ -1046,7 +1215,9 @@ function calculateStatistics(results) {
         locationDistribution: {},
         averageRelevance: 0,
         topCompanies: {},
-        searchTermSuccess: {}
+        searchTermSuccess: {},
+        deepScrapedCount: 0,
+        surfaceScrapedCount: 0
     };
     
     // Calculate unique companies
@@ -1059,6 +1230,13 @@ function calculateStatistics(results) {
     let totalRelevance = 0;
     
     results.forEach(result => {
+        // Track deep scraping
+        if (result.deepScraped) {
+            stats.deepScrapedCount++;
+        } else {
+            stats.surfaceScrapedCount++;
+        }
+        
         // Unique companies
         if (result.company && result.company !== 'Company Not Listed') {
             companies.add(result.company);
@@ -1149,6 +1327,27 @@ function generateStatisticsHTML(stats) {
                     <div class="stat-info">
                         <div class="stat-value">${Object.keys(stats.resultsBySearchTerm).length}</div>
                         <div class="stat-label">Search Terms Used</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Deep Scraping Stats -->
+            <div class="stat-section">
+                <h3>🤖 AI Deep Scraping Analysis</h3>
+                <div class="stat-breakdown">
+                    <div class="stat-item">
+                        <div class="stat-item-label">🔬 Deep Scraped (AI-Enhanced)</div>
+                        <div class="stat-item-bar">
+                            <div class="stat-item-fill" style="width: ${stats.totalResults > 0 ? (stats.deepScrapedCount / stats.totalResults * 100).toFixed(1) : 0}%"></div>
+                        </div>
+                        <div class="stat-item-value">${stats.deepScrapedCount} (${stats.totalResults > 0 ? (stats.deepScrapedCount / stats.totalResults * 100).toFixed(1) : 0}%)</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-item-label">📄 Surface Scraped (Basic)</div>
+                        <div class="stat-item-bar">
+                            <div class="stat-item-fill stat-fill-location" style="width: ${stats.totalResults > 0 ? (stats.surfaceScrapedCount / stats.totalResults * 100).toFixed(1) : 0}%"></div>
+                        </div>
+                        <div class="stat-item-value">${stats.surfaceScrapedCount} (${stats.totalResults > 0 ? (stats.surfaceScrapedCount / stats.totalResults * 100).toFixed(1) : 0}%)</div>
                     </div>
                 </div>
             </div>
