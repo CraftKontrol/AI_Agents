@@ -510,6 +510,9 @@ async function scrapeTavilySearch(searchTerm) {
 function parseTavilyResults(data, searchTerm) {
     const results = [];
     
+    // Common skills to extract from job content
+    const COMMON_SKILLS = ['JavaScript', 'Python', 'Java', 'React', 'Node.js', 'AWS', 'SQL', 'Docker', 'Kubernetes', 'remote'];
+    
     // Tavily returns results in format: { results: [{ title, url, content, score }] }
     if (!data.results || !Array.isArray(data.results)) {
         console.warn('Tavily response did not contain expected results array');
@@ -526,7 +529,10 @@ function parseTavilyResults(data, searchTerm) {
             
             // Try to extract company from content or URL
             let company = 'Company Not Listed';
-            // Look for common patterns in the content
+            // Look for common patterns in the content:
+            // 1. "at CompanyName" or "@ CompanyName"
+            // 2. "CompanyName -" or "CompanyName |" at start of content
+            // 3. "Company: CompanyName"
             const companyPatterns = [
                 /(?:at|@)\s+([A-Z][a-zA-Z0-9\s&.-]+?)(?:\s+[-–|]|\s*\n|$)/,
                 /^([A-Z][a-zA-Z0-9\s&.-]+?)\s+[-–|]/,
@@ -545,7 +551,7 @@ function parseTavilyResults(data, searchTerm) {
             let location = 'Remote/Various';
             const locationPatterns = [
                 /Location:\s*([^|\n]+)/i,
-                /(?:in|@)\s+([A-Z][a-z]+(?:,\s*[A-Z]{2})?)/,
+                /(?:in|@)\s+([A-Z][a-zA-Z\s,]+?)(?:\s|$)/,  // Updated to support multi-word locations
                 /(Remote|Hybrid|On-site)/i
             ];
             
@@ -558,7 +564,14 @@ function parseTavilyResults(data, searchTerm) {
             }
             
             // Use published_date if available, otherwise use current date
-            const date = item.published_date ? new Date(item.published_date) : new Date();
+            let date = new Date();
+            if (item.published_date) {
+                const parsedDate = new Date(item.published_date);
+                // Validate the parsed date
+                if (!isNaN(parsedDate.getTime())) {
+                    date = parsedDate;
+                }
+            }
             
             // Map Tavily's score to relevance (score is typically 0-1)
             // Multiply by 10 to match the relevance scale used in parseJobListings
@@ -566,8 +579,7 @@ function parseTavilyResults(data, searchTerm) {
             
             // Extract tags/keywords from content
             const tags = [];
-            const commonSkills = ['JavaScript', 'Python', 'Java', 'React', 'Node.js', 'AWS', 'SQL', 'Docker', 'Kubernetes', 'remote'];
-            commonSkills.forEach(skill => {
+            COMMON_SKILLS.forEach(skill => {
                 if (content.toLowerCase().includes(skill.toLowerCase())) {
                     tags.push(skill);
                 }
