@@ -4,12 +4,12 @@ let generatedSearchTerms = [];
 let currentResults = [];
 let currentSortType = 'relevance';
 let searchTermResults = {}; // Track results by search term
-let tavilyDeepResults = []; // Store deep-parsed Tavily results
+let deepResults = []; // Store deep-parsed results
 
 // Deep scraping constants
 const DEEP_SCRAPING_CONFIG = {
     HTML_TRUNCATE_LENGTH: 8000,  // Max HTML chars to send to AI (balances quality vs API limits)
-    MAX_TOKENS_JOB_EXTRACTION: 500,  // Max tokens for AI job data extraction
+    MAX_TOKENS_CONTENT_EXTRACTION: 500,  // Max tokens for AI content data extraction
     RATE_LIMIT_DELAY_MS: 2500,  // Delay between deep scrape requests to avoid rate limiting
     TAVILY_DEEP_SCRAPING_ENABLED: false  // Disabled due to CORS restrictions in browser
 };
@@ -355,7 +355,7 @@ function parseAIJsonResponse(rawText) {
 }
 
 // Helper function to validate URLs for deep scraping
-function isValidJobUrl(url) {
+function isValidUrl(url) {
     if (!url || typeof url !== 'string') {
         return false;
     }
@@ -400,7 +400,7 @@ async function generateSearchTerms() {
             },
             {
                 role: 'user',
-                content: `Generate exactly ${termCount} optimized search terms for job searching based on these keywords: ${keywords}. Return as a JSON array.`
+                content: `Generate exactly ${termCount} optimized search terms based on these keywords: ${keywords}. Return as a JSON array.`
             }
         ];
         const params = {
@@ -581,12 +581,12 @@ async function searchWithScraper(scraperType) {
             // Update loading indicator to show progress
             updateLoadingProgress(term, i + 1, termsToSearch.length);
             
-            // Use Google job search as a universal source
+            // Use Google search as a universal source
             // Use the search term EXACTLY as generated (no modifications)
             const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(term)}`;
             
             try {
-                const results = await scrapeJobBoard(scraperType, searchUrl, term);
+                const results = await scrapeContent(scraperType, searchUrl, term);
                 
                 // Track results by search term
                 searchTermResults[term] = results.length;
@@ -624,11 +624,11 @@ async function searchWithScraper(scraperType) {
         
     } catch (error) {
         console.error('Scraper Error:', error);
-        throw new Error(`Failed to scrape job listings: ${error.message}`);
+        throw new Error(`Failed to scrape content: ${error.message}`);
     }
 }
 
-async function scrapeJobBoard(scraperType, targetUrl, searchTerm) {
+async function scrapeContent(scraperType, targetUrl, searchTerm) {
     const config = SCRAPER_CONFIGS[scraperType];
     
     // Special handling for Tavily - uses POST with JSON body
@@ -723,8 +723,8 @@ async function scrapeJobBoard(scraperType, targetUrl, searchTerm) {
         html = await response.text();
     }
     
-    // Parse the HTML to extract job listings
-    return parseJobListings(html, searchTerm, targetUrl);
+    // Parse the HTML to extract content listings
+    return parseContentListings(html, searchTerm, targetUrl);
 }
 
 // Tavily Search Integration
@@ -734,7 +734,7 @@ async function scrapeTavilySearch(searchTerm) {
     // Build the request body for Tavily API
     const requestBody = {
         api_key: scraperApiKey,
-        query: `${searchTerm} jobs`,
+        query: searchTerm,
         search_depth: 'basic',
         include_answer: false,
         max_results: 10
@@ -789,8 +789,8 @@ async function scrapeTavilySearch(searchTerm) {
 async function parseTavilyResults(data, searchTerm) {
     const results = [];
     
-    // Common skills to extract from job content
-    const COMMON_SKILLS = ['JavaScript', 'Python', 'Java', 'React', 'Node.js', 'AWS', 'SQL', 'Docker', 'Kubernetes', 'remote'];
+    // Common keywords to extract from content
+    const COMMON_KEYWORDS = [];
     
     // Tavily returns results in format: { results: [{ title, url, content, score }] }
     if (!data.results || !Array.isArray(data.results)) {
@@ -811,9 +811,9 @@ async function parseTavilyResults(data, searchTerm) {
             // Try deep scraping if URL is valid
             let deepScrapedData = null;
             // Note: Deep scraping with Tavily is disabled due to CORS restrictions
-            // Direct fetch to job posting URLs will fail in browser environment
+            // Direct fetch to URLs will fail in browser environment
             // Other scraper types (ScrapingBee, ScraperAPI, etc.) use proxy services
-            if (DEEP_SCRAPING_CONFIG.TAVILY_DEEP_SCRAPING_ENABLED && isValidJobUrl(url)) {
+            if (DEEP_SCRAPING_CONFIG.TAVILY_DEEP_SCRAPING_ENABLED && isValidUrl(url)) {
                 // Update loading indicator
                 updateLoadingProgress(`Deep scraping result ${i + 1} of ${data.results.length}`, i + 1, data.results.length);
                 
@@ -840,8 +840,8 @@ async function parseTavilyResults(data, searchTerm) {
                 if (deepScrapedData.company) company = deepScrapedData.company;
                 if (deepScrapedData.location) location = deepScrapedData.location;
                 if (deepScrapedData.description) description = deepScrapedData.description.substring(0, 200);
-                if (deepScrapedData.skills && Array.isArray(deepScrapedData.skills)) {
-                    tags.push(...deepScrapedData.skills.slice(0, 5));
+                if (deepScrapedData.keywords && Array.isArray(deepScrapedData.keywords)) {
+                    tags.push(...deepScrapedData.keywords.slice(0, 5));
                 }
             } else {
                 // Fallback to basic extraction
@@ -863,8 +863,7 @@ async function parseTavilyResults(data, searchTerm) {
                 // Extract location if available
                 const locationPatterns = [
                     /Location:\s*([^|\n]+)/i,
-                    /(?:in|@)\s+([A-Z][a-zA-Z\s,]+?)(?:\s|$)/,
-                    /(Remote|Hybrid|On-site)/i
+                    /(?:in|@)\s+([A-Z][a-zA-Z\s,]+?)(?:\s|$)/
                 ];
                 
                 for (const pattern of locationPatterns) {
@@ -875,10 +874,10 @@ async function parseTavilyResults(data, searchTerm) {
                     }
                 }
                 
-                // Extract tags/keywords from content
-                COMMON_SKILLS.forEach(skill => {
-                    if (content.toLowerCase().includes(skill.toLowerCase())) {
-                        tags.push(skill);
+                // Extract tags/keywords from content if common keywords are defined
+                COMMON_KEYWORDS.forEach(keyword => {
+                    if (content.toLowerCase().includes(keyword.toLowerCase())) {
+                        tags.push(keyword);
                     }
                 });
             }
@@ -917,8 +916,8 @@ async function parseTavilyResults(data, searchTerm) {
     return results;
 }
 
-// Deep Parse Tavily Results - Main Function
-async function runTavilyDeepParse() {
+// Deep Parse Results - Main Function
+async function runDeepParse() {
     if (generatedSearchTerms.length === 0) {
         showError('Please generate search terms first');
         return;
@@ -939,10 +938,10 @@ async function runTavilyDeepParse() {
     
     showLoading();
     hideError();
-    tavilyDeepResults = []; // Reset results
+    deepResults = []; // Reset results
     
     try {
-        console.log('🔬 Starting Tavily deep parse for', generatedSearchTerms.length, 'search terms');
+        console.log('🔬 Starting deep parse for', generatedSearchTerms.length, 'search terms');
         
         const allResults = [];
         let totalProcessed = 0;
@@ -976,7 +975,7 @@ async function runTavilyDeepParse() {
                     
                     if (html && html.length > 100) {
                         // Extract structured data with Mistral AI
-                        const extractedData = await extractJobDataWithAI(html);
+                        const extractedData = await extractContentDataWithAI(html);
                         
                         if (extractedData) {
                             // Log what was extracted
@@ -999,7 +998,7 @@ async function runTavilyDeepParse() {
                                 description: extractedData.description || result.description,
                                 salary: extractedData.salary || null,
                                 requirements: extractedData.requirements || null,
-                                tags: (extractedData.skills && extractedData.skills.length > 0) ? extractedData.skills : result.tags,
+                                tags: (extractedData.keywords && extractedData.keywords.length > 0) ? extractedData.keywords : result.tags,
                                 posted_date: extractedData.posted_date || null,
                                 application_deadline: extractedData.application_deadline || null,
                                 // Update date with posted_date if available
@@ -1035,7 +1034,7 @@ async function runTavilyDeepParse() {
             }
         }
         
-        tavilyDeepResults = allResults;
+        deepResults = allResults;
         currentResults = allResults;
         
         // Remove duplicates based on URL
@@ -1049,7 +1048,7 @@ async function runTavilyDeepParse() {
             }
         }
         
-        tavilyDeepResults = uniqueResults;
+        deepResults = uniqueResults;
         currentResults = uniqueResults;
         
         console.log('🎉 Deep parsing complete!');
@@ -1075,7 +1074,7 @@ async function fetchTavilyResults(searchTerm, maxResults = 10) {
     
     const requestBody = {
         api_key: scraperApiKey,
-        query: `${searchTerm} jobs`,
+        query: searchTerm,
         search_depth: 'basic',
         include_answer: false,
         max_results: maxResults
@@ -1104,20 +1103,18 @@ async function fetchTavilyResults(searchTerm, maxResults = 10) {
         return [];
     }
     
-    // Filter out listing pages - only keep individual job post pages
+    // Filter out listing pages - only keep individual content pages
     const filteredResults = data.results.filter(item => {
         const url = item.url || '';
         const title = (item.title || '').toLowerCase();
         const content = (item.content || '').toLowerCase();
         
-        // Patterns that indicate a listing/search page (not a single job post)
+        // Patterns that indicate a listing/search page (not a single content page)
         const listingPatterns = [
             /\/search[\/\?]/i,
-            /\/jobs[\/\?]/i,
             /\/browse[\/\?]/i,
             /\/listings[\/\?]/i,
-            /\/careers\/?$/i,  // Main careers page, not specific job
-            /\/opportunities\/?$/i,
+            /\/results[\/\?]/i,
             /page=\d+/i,  // Pagination
             /results\?/i,
             /search\?/i,
@@ -1127,36 +1124,33 @@ async function fetchTavilyResults(searchTerm, maxResults = 10) {
         // Check if URL suggests it's a listing page
         const isListingUrl = listingPatterns.some(pattern => pattern.test(url));
         
-        // Check content for multiple job indicators
-        const hasMultipleJobIndicators = 
-            (content.match(/apply now/gi) || []).length > 2 ||  // Multiple "apply now" buttons
-            (content.match(/view job/gi) || []).length > 2 ||   // Multiple "view job" links
-            (content.match(/\d+ jobs/gi) || []).length > 0 ||   // "X jobs found"
+        // Check content for multiple item indicators
+        const hasMultipleItemIndicators = 
+            (content.match(/view more/gi) || []).length > 2 ||
+            (content.match(/\d+ results/gi) || []).length > 0 ||
             (content.match(/showing \d+ of \d+/gi) || []).length > 0;  // Pagination text
         
         // Title patterns that indicate listing pages
         const listingTitlePatterns = [
-            /job search/i,
-            /\d+ jobs/i,
             /search results/i,
-            /job listings/i,
-            /browse jobs/i,
-            /all jobs/i
+            /\d+ results/i,
+            /browse/i,
+            /all results/i
         ];
         
         const isListingTitle = listingTitlePatterns.some(pattern => pattern.test(title));
         
-        // Only include if it appears to be a single job post
-        const isSingleJobPost = !isListingUrl && !hasMultipleJobIndicators && !isListingTitle;
+        // Only include if it appears to be a single content page
+        const isSinglePage = !isListingUrl && !hasMultipleItemIndicators && !isListingTitle;
         
-        if (!isSingleJobPost) {
+        if (!isSinglePage) {
             console.log(`  🚫 Filtered out listing page: ${url.substring(0, 60)}...`);
         }
         
-        return isSingleJobPost;
+        return isSinglePage;
     });
     
-    console.log(`  ✅ Filtered ${data.results.length} results to ${filteredResults.length} individual job posts`);
+    console.log(`  ✅ Filtered ${data.results.length} results to ${filteredResults.length} individual pages`);
     
     // Convert Tavily results to our format
     return filteredResults.slice(0, maxResults).map(item => ({
@@ -1235,10 +1229,10 @@ async function fetchHtmlWithScraper(url) {
     }
 }
 
-// Deep scraping function to extract job details from individual job post pages
-async function scrapeJobPostDetails(jobUrl, scraperType) {
+// Deep scraping function to extract content details from individual pages
+async function scrapeContentDetails(url, scraperType) {
     try {
-        console.log('Deep scraping job post:', jobUrl);
+        console.log('Deep scraping content:', url);
         
         const config = SCRAPER_CONFIGS[scraperType];
         let html = '';
@@ -1295,12 +1289,12 @@ async function scrapeJobPostDetails(jobUrl, scraperType) {
     }
 }
 
-// Extract structured job data using Mistral AI
-async function extractJobDataWithAI(htmlContent) {
+// Extract structured content data using Mistral AI
+async function extractContentDataWithAI(htmlContent) {
     const startTime = Date.now();
     
     try {
-        console.log('🔍 Starting job data extraction with AI...');
+        console.log('🔍 Starting content data extraction with AI...');
         
         // Truncate HTML to avoid token limits
         const truncatedHtml = htmlContent.substring(0, DEEP_SCRAPING_CONFIG.HTML_TRUNCATE_LENGTH);
@@ -1312,16 +1306,16 @@ async function extractJobDataWithAI(htmlContent) {
         const messages = [
             {
                 role: 'system',
-                content: `You are a job posting data extraction assistant. Extract structured information from HTML content and return it as valid JSON. Return ONLY a JSON object with these fields: title, company, location, salary, requirements, description, skills, posted_date, application_deadline. Extract the company name carefully - look for employer, company, or organization name. Extract dates in ISO format (YYYY-MM-DD) if available. If a field is not found, use null. Format: {"title":"...", "company":"...", "location":"...", "salary":"...", "requirements":"...", "description":"...", "skills":["skill1","skill2"], "posted_date":"YYYY-MM-DD", "application_deadline":"YYYY-MM-DD"}`
+                content: `You are a content data extraction assistant. Extract structured information from HTML content and return it as valid JSON. Return ONLY a JSON object with these fields: title, company, location, salary, requirements, description, keywords, posted_date, application_deadline. Extract the company/organization name carefully. Extract dates in ISO format (YYYY-MM-DD) if available. If a field is not found, use null. Format: {"title":"...", "company":"...", "location":"...", "salary":"...", "requirements":"...", "description":"...", "keywords":["keyword1","keyword2"], "posted_date":"YYYY-MM-DD", "application_deadline":"YYYY-MM-DD"}`
             },
             {
                 role: 'user',
-                content: `Extract job information from this HTML. Pay special attention to finding the company/employer name and any dates (posting date, deadline, start date):\n\n${truncatedHtml}`
+                content: `Extract information from this HTML. Pay special attention to finding the company/organization name and any dates (posting date, deadline, start date):\n\n${truncatedHtml}`
             }
         ];
         const params = {
             temperature: 0.3,
-            max_tokens: DEEP_SCRAPING_CONFIG.MAX_TOKENS_JOB_EXTRACTION
+            max_tokens: DEEP_SCRAPING_CONFIG.MAX_TOKENS_CONTENT_EXTRACTION
         };
         
         // Log the request
@@ -1372,45 +1366,44 @@ async function extractJobDataWithAI(htmlContent) {
     }
 }
 
-function parseJobListings(html, searchTerm, sourceUrl) {
+function parseContentListings(html, searchTerm, sourceUrl) {
     const results = [];
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
     
-    // Generic parsing approach that works with various job boards and search results
-    // Look for common patterns in job listings across different sites
+    // Generic parsing approach that works with various content sources and search results
+    // Look for common patterns in content listings across different sites
     
-    // Common selectors for job listings
+    // Common selectors for content listings
     const possibleSelectors = [
-        'article', '.job', '.job-card', '.job-listing', '.result', 
-        '.search-result', 'li[data-job]', '[class*="job"]', '[id*="job"]',
-        '.g', '.yuRUbf', // Google search result selectors
+        'article', '.result', '.search-result', '.item', '.card', '.listing',
+        '.g', '.yuRUbf', '[class*="result"]', '[class*="item"]'
     ];
     
-    let jobElements = [];
+    let contentElements = [];
     for (const selector of possibleSelectors) {
         const elements = doc.querySelectorAll(selector);
         if (elements.length > 0) {
-            jobElements = Array.from(elements);
+            contentElements = Array.from(elements);
             break;
         }
     }
     
-    // If no specific job elements found, look for any divs with links and text
+    // If no specific content elements found, look for any divs with links and text
     // This is a fallback for generic content parsing - limit to avoid performance issues
-    if (jobElements.length === 0) {
-        jobElements = Array.from(doc.querySelectorAll('div')).filter(div => {
+    if (contentElements.length === 0) {
+        contentElements = Array.from(doc.querySelectorAll('div')).filter(div => {
             const hasLink = div.querySelector('a');
             const hasText = div.textContent.trim().length > 50;
             return hasLink && hasText;
         }).slice(0, 20); // Limit to first 20 to avoid processing too many elements
     }
     
-    jobElements.forEach((element, index) => {
+    contentElements.forEach((element, index) => {
         try {
             // Extract title - look for headings or prominent links
             let title = '';
-            const titleSelectors = ['h1', 'h2', 'h3', 'h4', '.title', '[class*="title"]', 'a[href*="job"]', 'a'];
+            const titleSelectors = ['h1', 'h2', 'h3', 'h4', '.title', '[class*="title"]', 'a'];
             for (const selector of titleSelectors) {
                 const titleEl = element.querySelector(selector);
                 if (titleEl && titleEl.textContent.trim()) {
@@ -1419,9 +1412,9 @@ function parseJobListings(html, searchTerm, sourceUrl) {
                 }
             }
             
-            // Extract company - look for company-related elements
+            // Extract source/company - look for source-related elements
             let company = '';
-            const companySelectors = ['.company', '[class*="company"]', '[class*="employer"]', 'span'];
+            const companySelectors = ['.company', '[class*="company"]', '[class*="source"]', '[class*="author"]', 'span'];
             for (const selector of companySelectors) {
                 const companyEl = element.querySelector(selector);
                 if (companyEl && companyEl.textContent.trim() && companyEl.textContent.trim() !== title) {
@@ -1429,7 +1422,7 @@ function parseJobListings(html, searchTerm, sourceUrl) {
                     break;
                 }
             }
-            if (!company) company = 'Company Not Listed';
+            if (!company) company = 'Source Not Listed';
             
             // Extract link
             let link = '';
@@ -1510,7 +1503,7 @@ function parseJobListings(html, searchTerm, sourceUrl) {
                 });
             }
         } catch (error) {
-            console.error('Error parsing job element:', error);
+            console.error('Error parsing content element:', error);
         }
     });
     
@@ -1781,10 +1774,10 @@ function calculateStatistics(results) {
         aiExtractedCount: 0,
         salaryDataCount: 0,
         requirementsCount: 0,
-        skillsExtractedCount: 0
+        keywordsExtractedCount: 0
     };
     
-    // Calculate unique companies
+    // Calculate unique sources/companies
     const companies = new Set();
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -1811,12 +1804,12 @@ function calculateStatistics(results) {
         if (result.requirements) {
             stats.requirementsCount++;
         }
-        if (result.extractedData && result.extractedData.skills && result.extractedData.skills.length > 0) {
-            stats.skillsExtractedCount++;
+        if (result.extractedData && result.extractedData.keywords && result.extractedData.keywords.length > 0) {
+            stats.keywordsExtractedCount++;
         }
         
-        // Unique companies
-        if (result.company && result.company !== 'Company Not Listed') {
+        // Unique sources/companies
+        if (result.company && result.company !== 'Source Not Listed') {
             companies.add(result.company);
             stats.topCompanies[result.company] = (stats.topCompanies[result.company] || 0) + 1;
         }
@@ -1888,7 +1881,7 @@ function generateStatisticsHTML(stats) {
                     <div class="stat-icon">🏢</div>
                     <div class="stat-info">
                         <div class="stat-value">${stats.uniqueCompanies}</div>
-                        <div class="stat-label">Unique Companies</div>
+                        <div class="stat-label">Unique Sources</div>
                     </div>
                 </div>
                 
@@ -1935,11 +1928,11 @@ function generateStatisticsHTML(stats) {
                         <div class="stat-item-value">${stats.requirementsCount} (${stats.totalResults > 0 ? (stats.requirementsCount / stats.totalResults * 100).toFixed(1) : 0}%)</div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-item-label">🎯 Skills Identified</div>
+                        <div class="stat-item-label">🎯 Keywords Identified</div>
                         <div class="stat-item-bar">
-                            <div class="stat-item-fill" style="width: ${stats.totalResults > 0 ? (stats.skillsExtractedCount / stats.totalResults * 100).toFixed(1) : 0}%"></div>
+                            <div class="stat-item-fill" style="width: ${stats.totalResults > 0 ? (stats.keywordsExtractedCount / stats.totalResults * 100).toFixed(1) : 0}%"></div>
                         </div>
-                        <div class="stat-item-value">${stats.skillsExtractedCount} (${stats.totalResults > 0 ? (stats.skillsExtractedCount / stats.totalResults * 100).toFixed(1) : 0}%)</div>
+                        <div class="stat-item-value">${stats.keywordsExtractedCount} (${stats.totalResults > 0 ? (stats.keywordsExtractedCount / stats.totalResults * 100).toFixed(1) : 0}%)</div>
                     </div>
                 </div>
             </div>
@@ -1960,9 +1953,9 @@ function generateStatisticsHTML(stats) {
                 </div>
             </div>
             
-            <!-- Top Companies -->
+            <!-- Top Sources -->
             <div class="stat-section">
-                <h3>🏆 Top Companies</h3>
+                <h3>🏆 Top Sources</h3>
                 <div class="stat-breakdown">
                     ${generateTopCompanies(stats.topCompanies)}
                 </div>
@@ -1970,7 +1963,7 @@ function generateStatisticsHTML(stats) {
             
             <!-- Common Tags -->
             <div class="stat-section">
-                <h3>💼 Most Common Skills/Tags</h3>
+                <h3>💼 Most Common Keywords/Tags</h3>
                 <div class="stat-tags">
                     ${generateCommonTags(stats.commonTags)}
                 </div>
