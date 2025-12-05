@@ -9,7 +9,8 @@ let searchTermResults = {}; // Track results by search term
 const DEEP_SCRAPING_CONFIG = {
     HTML_TRUNCATE_LENGTH: 8000,  // Max HTML chars to send to AI (balances quality vs API limits)
     MAX_TOKENS_JOB_EXTRACTION: 500,  // Max tokens for AI job data extraction
-    RATE_LIMIT_DELAY_MS: 2500  // Delay between deep scrape requests to avoid rate limiting
+    RATE_LIMIT_DELAY_MS: 2500,  // Delay between deep scrape requests to avoid rate limiting
+    TAVILY_DEEP_SCRAPING_ENABLED: false  // Disabled due to CORS restrictions in browser
 };
 
 // Scraper API configurations
@@ -228,6 +229,17 @@ function formatDate(date) {
     return `${month}/${day}/${year} ${hours}:${minutes}:${seconds}`;
 }
 
+// Helper function to parse JSON responses from AI
+function parseAIJsonResponse(rawText) {
+    // Remove markdown code blocks if present
+    let jsonText = rawText.trim();
+    if (jsonText.includes('```')) {
+        jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    }
+    
+    return JSON.parse(jsonText);
+}
+
 // Mistral AI Integration
 async function generateSearchTerms() {
     const keywordsInput = document.getElementById('keywordsInput');
@@ -283,13 +295,7 @@ async function generateSearchTerms() {
         
         // Parse JSON response
         try {
-            // Remove markdown code blocks if present
-            let jsonText = generatedText;
-            if (jsonText.includes('```')) {
-                jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-            }
-            
-            generatedSearchTerms = JSON.parse(jsonText);
+            generatedSearchTerms = parseAIJsonResponse(generatedText);
             
             // Validate that it's an array
             if (!Array.isArray(generatedSearchTerms)) {
@@ -642,7 +648,7 @@ async function parseTavilyResults(data, searchTerm) {
             // Note: Deep scraping with Tavily is disabled due to CORS restrictions
             // Direct fetch to job posting URLs will fail in browser environment
             // Other scraper types (ScrapingBee, ScraperAPI, etc.) use proxy services
-            if (false && url && url !== '#' && url.startsWith('http')) {
+            if (DEEP_SCRAPING_CONFIG.TAVILY_DEEP_SCRAPING_ENABLED && url && url !== '#' && url.startsWith('http')) {
                 // Update loading indicator
                 updateLoadingProgress(`Deep scraping result ${i + 1} of ${data.results.length}`, i + 1, data.results.length);
                 
@@ -845,12 +851,7 @@ async function extractJobDataWithAI(htmlContent) {
         
         // Parse JSON response
         try {
-            let jsonText = extractedText;
-            if (jsonText.includes('```')) {
-                jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-            }
-            
-            const jobData = JSON.parse(jsonText);
+            const jobData = parseAIJsonResponse(extractedText);
             return jobData;
         } catch (parseError) {
             console.error('Failed to parse job data JSON:', extractedText);
