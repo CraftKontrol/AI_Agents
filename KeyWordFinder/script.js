@@ -94,6 +94,13 @@ function saveScraperApiKey(key) {
 
 function clearScraperApiKey() {
     const scraperType = getSelectedScraper();
+    
+    // Check if SCRAPER_CONFIGS has the scraperType
+    if (!SCRAPER_CONFIGS || !SCRAPER_CONFIGS[scraperType]) {
+        console.error('Unknown scraper type:', scraperType);
+        return;
+    }
+    
     const scraperName = SCRAPER_CONFIGS[scraperType].name;
     
     if (confirm(`Are you sure you want to clear your saved ${scraperName} API key?`)) {
@@ -107,6 +114,7 @@ function updateScraperKeyUI() {
     const statusElement = document.getElementById('scraperKeyStatus');
     const managementElement = document.getElementById('scraperKeyManagement');
     
+    // Only update UI if elements exist
     if (!statusElement || !managementElement) return;
     
     const hasSavedKey = loadScraperApiKey();
