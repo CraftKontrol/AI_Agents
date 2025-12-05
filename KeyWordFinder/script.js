@@ -233,13 +233,20 @@ function formatDate(date) {
 function maskApiKey(key) {
     if (!key || typeof key !== 'string') return '***';
     if (key.length <= 10) return '***';
-    return key.substring(0, 8) + '...' + key.substring(key.length - 4);
+    // Show only first 4 and last 4 characters for better security
+    return key.substring(0, 4) + '...' + key.substring(key.length - 4);
 }
 
 // Helper function to truncate long content for logging
 function truncateContent(content, maxLength = 200) {
     if (!content) return '';
-    const str = typeof content === 'string' ? content : JSON.stringify(content);
+    let str;
+    try {
+        str = typeof content === 'string' ? content : JSON.stringify(content);
+    } catch (e) {
+        // Handle circular references or other stringify errors
+        str = String(content);
+    }
     if (str.length <= maxLength) return str;
     return str.substring(0, maxLength) + `... (${str.length - maxLength} more chars)`;
 }
@@ -290,9 +297,9 @@ function logMistralResponse(startTime, response, data, error = null) {
     if (data) {
         if (data.usage) {
             console.group('🎯 Token Usage:');
-            console.log('  📥 Prompt tokens:', data.usage.prompt_tokens || 0);
-            console.log('  📤 Completion tokens:', data.usage.completion_tokens || 0);
-            console.log('  📊 Total tokens:', data.usage.total_tokens || 0);
+            console.log('  📥 Prompt tokens:', data.usage.prompt_tokens ?? 'N/A');
+            console.log('  📤 Completion tokens:', data.usage.completion_tokens ?? 'N/A');
+            console.log('  📊 Total tokens:', data.usage.total_tokens ?? 'N/A');
             console.groupEnd();
         }
         
