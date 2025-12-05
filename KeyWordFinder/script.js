@@ -5,6 +5,13 @@ let currentResults = [];
 let currentSortType = 'relevance';
 let searchTermResults = {}; // Track results by search term
 
+// Deep scraping constants
+const DEEP_SCRAPING_CONFIG = {
+    HTML_TRUNCATE_LENGTH: 8000,  // Max HTML chars to send to AI (balances quality vs API limits)
+    MAX_TOKENS_JOB_EXTRACTION: 500,  // Max tokens for AI job data extraction
+    RATE_LIMIT_DELAY_MS: 2500  // Delay between deep scrape requests to avoid rate limiting
+};
+
 // Scraper API configurations
 const SCRAPER_CONFIGS = {
     scrapingbee: {
@@ -605,7 +612,7 @@ async function scrapeTavilySearch(searchTerm) {
     const data = await response.json();
     
     // Parse Tavily results
-    return parseTavilyResults(data, searchTerm);
+    return await parseTavilyResults(data, searchTerm);
 }
 
 async function parseTavilyResults(data, searchTerm) {
@@ -632,7 +639,10 @@ async function parseTavilyResults(data, searchTerm) {
             
             // Try deep scraping if URL is valid
             let deepScrapedData = null;
-            if (url && url !== '#' && url.startsWith('http')) {
+            // Note: Deep scraping with Tavily is disabled due to CORS restrictions
+            // Direct fetch to job posting URLs will fail in browser environment
+            // Other scraper types (ScrapingBee, ScraperAPI, etc.) use proxy services
+            if (false && url && url !== '#' && url.startsWith('http')) {
                 // Update loading indicator
                 updateLoadingProgress(`Deep scraping result ${i + 1} of ${data.results.length}`, i + 1, data.results.length);
                 
@@ -641,7 +651,7 @@ async function parseTavilyResults(data, searchTerm) {
                     
                     // Add delay between deep scrapes to avoid rate limiting
                     if (i < data.results.length - 1) {
-                        await new Promise(resolve => setTimeout(resolve, 2500));
+                        await new Promise(resolve => setTimeout(resolve, DEEP_SCRAPING_CONFIG.RATE_LIMIT_DELAY_MS));
                     }
                 } catch (error) {
                     console.error('Deep scraping failed for URL:', url, error);
@@ -799,8 +809,8 @@ async function scrapeJobPostDetails(jobUrl, scraperType) {
 // Extract structured job data using Mistral AI
 async function extractJobDataWithAI(htmlContent) {
     try {
-        // Truncate HTML to avoid token limits (keep first 8000 chars)
-        const truncatedHtml = htmlContent.substring(0, 8000);
+        // Truncate HTML to avoid token limits
+        const truncatedHtml = htmlContent.substring(0, DEEP_SCRAPING_CONFIG.HTML_TRUNCATE_LENGTH);
         
         const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
             method: 'POST',
@@ -821,7 +831,7 @@ async function extractJobDataWithAI(htmlContent) {
                     }
                 ],
                 temperature: 0.3,
-                max_tokens: 500
+                max_tokens: DEEP_SCRAPING_CONFIG.MAX_TOKENS_JOB_EXTRACTION
             })
         });
         
