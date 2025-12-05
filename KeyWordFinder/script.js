@@ -1245,29 +1245,19 @@ function generateLocationDistribution(locationDistribution) {
 
 function toggleStatistics() {
     const statsContent = document.getElementById('statsContent');
-    const toggleIcon = document.getElementById('toggleIcon');
+    const toggleBtn = document.getElementById('toggleStatsBtn');
+    
+    if (!statsContent || !toggleBtn) {
+        return;
+    }
     
     if (statsContent.style.display === 'none') {
         // Expand
         statsContent.style.display = 'block';
-        if (toggleIcon) {
-            toggleIcon.textContent = '▼';
-            // Update the text after the icon by finding the text node
-            const parent = toggleIcon.parentNode;
-            if (parent && parent.lastChild && parent.lastChild.nodeType === Node.TEXT_NODE) {
-                parent.lastChild.textContent = ' Collapse';
-            }
-        }
+        toggleBtn.innerHTML = '<span id="toggleIcon">▼</span> Collapse';
     } else {
         // Collapse
         statsContent.style.display = 'none';
-        if (toggleIcon) {
-            toggleIcon.textContent = '▶';
-            // Update the text after the icon by finding the text node
-            const parent = toggleIcon.parentNode;
-            if (parent && parent.lastChild && parent.lastChild.nodeType === Node.TEXT_NODE) {
-                parent.lastChild.textContent = ' Expand';
-            }
-        }
+        toggleBtn.innerHTML = '<span id="toggleIcon">▶</span> Expand';
     }
 }
