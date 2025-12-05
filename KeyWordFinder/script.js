@@ -1245,30 +1245,29 @@ function generateLocationDistribution(locationDistribution) {
 
 function toggleStatistics() {
     const statsContent = document.getElementById('statsContent');
-    const toggleBtn = document.getElementById('toggleStatsBtn');
     const toggleIcon = document.getElementById('toggleIcon');
     
     if (statsContent.style.display === 'none') {
+        // Expand
         statsContent.style.display = 'block';
         if (toggleIcon) {
             toggleIcon.textContent = '▼';
+            // Update the text after the icon by finding the text node
+            const parent = toggleIcon.parentNode;
+            if (parent && parent.lastChild && parent.lastChild.nodeType === Node.TEXT_NODE) {
+                parent.lastChild.textContent = ' Collapse';
+            }
         }
-        toggleBtn.textContent = '';
-        const icon = document.createElement('span');
-        icon.id = 'toggleIcon';
-        icon.textContent = '▼';
-        toggleBtn.appendChild(icon);
-        toggleBtn.appendChild(document.createTextNode(' Collapse'));
     } else {
+        // Collapse
         statsContent.style.display = 'none';
         if (toggleIcon) {
             toggleIcon.textContent = '▶';
+            // Update the text after the icon by finding the text node
+            const parent = toggleIcon.parentNode;
+            if (parent && parent.lastChild && parent.lastChild.nodeType === Node.TEXT_NODE) {
+                parent.lastChild.textContent = ' Expand';
+            }
         }
-        toggleBtn.textContent = '';
-        const icon = document.createElement('span');
-        icon.id = 'toggleIcon';
-        icon.textContent = '▶';
-        toggleBtn.appendChild(icon);
-        toggleBtn.appendChild(document.createTextNode(' Expand'));
     }
 }
