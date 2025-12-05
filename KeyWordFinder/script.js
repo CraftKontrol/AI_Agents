@@ -1045,7 +1045,7 @@ function generateStatisticsHTML(stats) {
         <div class="stats-header">
             <h2>Search Statistics</h2>
             <button onclick="toggleStatistics()" class="btn-toggle-stats" id="toggleStatsBtn">
-                <span id="toggleIcon">▼</span> Collapse
+                <span>▼</span> Collapse
             </button>
         </div>
         <div id="statsContent" class="stats-content">
@@ -1129,6 +1129,13 @@ function generateStatisticsHTML(stats) {
     return html;
 }
 
+// Helper function to escape HTML to prevent XSS
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 function generateSearchTermBreakdown(resultsBySearchTerm, total) {
     if (Object.keys(resultsBySearchTerm).length === 0) {
         return '<div class="stat-empty">No search term data available</div>';
@@ -1142,7 +1149,7 @@ function generateSearchTermBreakdown(resultsBySearchTerm, total) {
         const percentage = ((count / total) * 100).toFixed(1);
         return `
             <div class="stat-item">
-                <div class="stat-item-label">${term}</div>
+                <div class="stat-item-label">${escapeHtml(term)}</div>
                 <div class="stat-item-bar">
                     <div class="stat-item-fill" style="width: ${percentage}%"></div>
                 </div>
@@ -1194,7 +1201,7 @@ function generateTopCompanies(topCompanies) {
         const percentage = ((count / maxCount) * 100).toFixed(1);
         return `
             <div class="stat-item">
-                <div class="stat-item-label">${company}</div>
+                <div class="stat-item-label">${escapeHtml(company)}</div>
                 <div class="stat-item-bar">
                     <div class="stat-item-fill stat-fill-company" style="width: ${percentage}%"></div>
                 </div>
@@ -1214,7 +1221,7 @@ function generateCommonTags(commonTags) {
     }
     
     return sorted.map(([tag, count]) => {
-        return `<span class="stat-tag-item" title="${count} occurrences">${tag} <span class="tag-count">${count}</span></span>`;
+        return `<span class="stat-tag-item" title="${count} occurrences">${escapeHtml(tag)} <span class="tag-count">${count}</span></span>`;
     }).join('');
 }
 
@@ -1233,7 +1240,7 @@ function generateLocationDistribution(locationDistribution) {
         const percentage = ((count / total) * 100).toFixed(1);
         return `
             <div class="stat-item">
-                <div class="stat-item-label">${location}</div>
+                <div class="stat-item-label">${escapeHtml(location)}</div>
                 <div class="stat-item-bar">
                     <div class="stat-item-fill stat-fill-location" style="width: ${percentage}%"></div>
                 </div>
@@ -1254,10 +1261,10 @@ function toggleStatistics() {
     if (statsContent.style.display === 'none') {
         // Expand
         statsContent.style.display = 'block';
-        toggleBtn.innerHTML = '<span id="toggleIcon">▼</span> Collapse';
+        toggleBtn.innerHTML = '<span>▼</span> Collapse';
     } else {
         // Collapse
         statsContent.style.display = 'none';
-        toggleBtn.innerHTML = '<span id="toggleIcon">▶</span> Expand';
+        toggleBtn.innerHTML = '<span>▶</span> Expand';
     }
 }
