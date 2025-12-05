@@ -44,28 +44,87 @@ document.addEventListener('DOMContentLoaded', function() {
     loadApiKey();
     loadScraperApiKey();
     fetchLastModified();
+    
+    // Add event listener to API selector to load appropriate key when scraper changes
+    const apiSelector = document.getElementById('apiSelector');
+    if (apiSelector) {
+        apiSelector.addEventListener('change', function() {
+            loadScraperApiKey();
+            updateScraperKeyUI();
+        });
+    }
 });
 
 // Scraper API Key Management
 let scraperApiKey = '';
 
+function getSelectedScraper() {
+    const apiSelector = document.getElementById('apiSelector');
+    return apiSelector ? apiSelector.value : 'tavily';
+}
+
 function loadScraperApiKey() {
-    const savedKey = localStorage.getItem('scraperApiKey');
-    if (savedKey) {
+    const scraperType = getSelectedScraper();
+    const savedKey = localStorage.getItem(`scraperApiKey_${scraperType}`);
+    const rememberKey = localStorage.getItem('rememberScraperKey') !== 'false';
+    
+    if (savedKey && rememberKey) {
         scraperApiKey = savedKey;
         return true;
     }
+    scraperApiKey = '';
     return false;
 }
 
 function saveScraperApiKey(key) {
+    const scraperType = getSelectedScraper();
+    const rememberCheckbox = document.getElementById('rememberScraperKey');
+    const rememberKey = rememberCheckbox ? rememberCheckbox.checked : true;
+    
     scraperApiKey = key;
-    localStorage.setItem('scraperApiKey', key);
+    
+    if (rememberKey) {
+        localStorage.setItem(`scraperApiKey_${scraperType}`, key);
+        localStorage.setItem('rememberScraperKey', 'true');
+    } else {
+        localStorage.setItem('rememberScraperKey', 'false');
+    }
+    
+    updateScraperKeyUI();
 }
 
 function clearScraperApiKey() {
-    scraperApiKey = '';
-    localStorage.removeItem('scraperApiKey');
+    const scraperType = getSelectedScraper();
+    
+    // Check if SCRAPER_CONFIGS has the scraperType
+    if (!SCRAPER_CONFIGS || !SCRAPER_CONFIGS[scraperType]) {
+        console.error('Unknown scraper type:', scraperType);
+        return;
+    }
+    
+    const scraperName = SCRAPER_CONFIGS[scraperType].name;
+    
+    if (confirm(`Are you sure you want to clear your saved ${scraperName} API key?`)) {
+        scraperApiKey = '';
+        localStorage.removeItem(`scraperApiKey_${scraperType}`);
+        updateScraperKeyUI();
+    }
+}
+
+function updateScraperKeyUI() {
+    const statusElement = document.getElementById('scraperKeyStatus');
+    const managementElement = document.getElementById('scraperKeyManagement');
+    
+    // Only update UI if elements exist
+    if (!statusElement || !managementElement) return;
+    
+    const hasSavedKey = loadScraperApiKey();
+    
+    if (hasSavedKey) {
+        statusElement.style.display = 'inline-block';
+    } else {
+        statusElement.style.display = 'none';
+    }
 }
 
 // API Key Management
@@ -235,6 +294,7 @@ function displaySearchTerms() {
     const display = document.getElementById('searchTermsDisplay');
     const list = document.getElementById('searchTermsList');
     const apiSelectorGroup = document.getElementById('apiSelectorGroup');
+    const scraperKeyManagement = document.getElementById('scraperKeyManagement');
     
     list.innerHTML = '';
     generatedSearchTerms.forEach(term => {
@@ -247,6 +307,12 @@ function displaySearchTerms() {
     display.style.display = 'block';
     // Show scraper API selector after terms are generated
     apiSelectorGroup.style.display = 'block';
+    if (scraperKeyManagement) {
+        scraperKeyManagement.style.display = 'block';
+    }
+    
+    // Update UI to show if key is saved
+    updateScraperKeyUI();
 }
 
 // Search Execution
@@ -258,6 +324,9 @@ async function performSearch() {
         showError('Please generate search terms first');
         return;
     }
+    
+    // Try to load saved API key first
+    const hasSavedKey = loadScraperApiKey();
     
     // Check if scraper API key is set
     if (!scraperApiKey) {
