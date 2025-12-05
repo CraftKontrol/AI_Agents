@@ -30,6 +30,13 @@
                 <p class="credits">Created by Craft Kontrol</p>
                 <p id="lastModified" class="last-modified">Last updated: Loading...</p>
                 <button onclick="clearSavedApiKey()" class="btn-secondary">Clear API Key</button>
+
+                <!-- Statistics Section -->
+                <div id="statisticsSection" class="statistics-section" style="display: none;">
+                    <div id="statisticsContainer" class="statistics-container"></div>
+                </div>
+
+                <div id="errorMessage" class="error-message" style="display: none;"></div>
             </div>
             <div class="header-right">
                 <h2>Search Configuration</h2>
@@ -43,7 +50,12 @@
                 </div>
                 <button onclick="generateSearchTerms()" class="btn-primary" id="generateBtn">Generate Search Terms</button>
                 
-                <div id="apiSelectorGroup" class="input-group" style="display: none;">
+                
+                
+                <div id="searchTermsDisplay" class="search-terms-display" style="display: none;">
+                    <h3>Generated Search Terms:</h3>
+                    <div id="searchTermsList" class="search-terms-list"></div>
+                    <div id="apiSelectorGroup" class="input-group" style="display: none;">
                     <label for="apiSelector">Scraper API:</label>
                     <select id="apiSelector">
                         <option value="scrapingbee">ScrapingBee</option>
@@ -65,12 +77,8 @@
                     </div>
                     <button onclick="clearScraperApiKey()" class="btn-secondary">Clear Scraper API Key</button>
                 </div>
-                
-                <div id="searchTermsDisplay" class="search-terms-display" style="display: none;">
-                    <h3>Generated Search Terms:</h3>
-                    <div id="searchTermsList" class="search-terms-list"></div>
-                    <button onclick="performSearch()" class="btn-primary" id="searchBtn">Execute Search</button>
-                </div>
+                    <button onclick="runTavilyDeepParse()" class="btn-primary" id="searchBtn">Execute Search</button>
+                   
             </div>
         </header>
 
@@ -92,12 +100,7 @@
                 <div id="resultsContainer" class="results-container"></div>
             </div>
 
-            <!-- Statistics Section -->
-            <div id="statisticsSection" class="statistics-section" style="display: none;">
-                <div id="statisticsContainer" class="statistics-container"></div>
-            </div>
-
-            <div id="errorMessage" class="error-message" style="display: none;"></div>
+            
         </main>
     </div>
 

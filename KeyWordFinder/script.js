@@ -4,6 +4,7 @@ let generatedSearchTerms = [];
 let currentResults = [];
 let currentSortType = 'relevance';
 let searchTermResults = {}; // Track results by search term
+let tavilyDeepResults = []; // Store deep-parsed Tavily results
 
 // Deep scraping constants
 const DEEP_SCRAPING_CONFIG = {
@@ -916,6 +917,324 @@ async function parseTavilyResults(data, searchTerm) {
     return results;
 }
 
+// Deep Parse Tavily Results - Main Function
+async function runTavilyDeepParse() {
+    if (generatedSearchTerms.length === 0) {
+        showError('Please generate search terms first');
+        return;
+    }
+    
+    // Try to load saved API keys
+    const hasSavedKey = loadScraperApiKey();
+    
+    // Check if scraper API key is set
+    if (!scraperApiKey) {
+        const key = prompt('Enter your Tavily API key:');
+        if (!key) {
+            showError('Tavily API key is required to perform deep parsing');
+            return;
+        }
+        saveScraperApiKey(key);
+    }
+    
+    showLoading();
+    hideError();
+    tavilyDeepResults = []; // Reset results
+    
+    try {
+        console.log('🔬 Starting Tavily deep parse for', generatedSearchTerms.length, 'search terms');
+        
+        const allResults = [];
+        let totalProcessed = 0;
+        
+        // Process each search term
+        for (let termIdx = 0; termIdx < generatedSearchTerms.length; termIdx++) {
+            const term = generatedSearchTerms[termIdx];
+            
+            console.log(`🔍 Processing search term ${termIdx + 1}/${generatedSearchTerms.length}: "${term}"`);
+            updateLoadingProgress(`Fetching results for "${term}"`, termIdx + 1, generatedSearchTerms.length);
+            
+            // Fetch Tavily results for this term (limit to 10)
+            const tavilyResults = await fetchTavilyResults(term, 10);
+            console.log(`  ✅ Got ${tavilyResults.length} results from Tavily`);
+            
+            // Deep scrape and parse each result
+            for (let i = 0; i < tavilyResults.length && i < 10; i++) {
+                const result = tavilyResults[i];
+                totalProcessed++;
+                
+                console.log(`  🔬 Deep scraping result ${i + 1}/${Math.min(tavilyResults.length, 10)}: ${result.url}`);
+                updateLoadingProgress(
+                    `Deep parsing result ${totalProcessed} - "${result.title.substring(0, 50)}..."`,
+                    totalProcessed,
+                    Math.min(generatedSearchTerms.length * 10, tavilyResults.length * generatedSearchTerms.length)
+                );
+                
+                try {
+                    // Fetch HTML from the URL
+                    const html = await fetchHtmlWithScraper(result.url);
+                    
+                    if (html && html.length > 100) {
+                        // Extract structured data with Mistral AI
+                        const extractedData = await extractJobDataWithAI(html);
+                        
+                        if (extractedData) {
+                            // Log what was extracted
+                            console.log(`    📋 Extracted data:`, {
+                                company: extractedData.company,
+                                salary: extractedData.salary,
+                                posted_date: extractedData.posted_date,
+                                application_deadline: extractedData.application_deadline
+                            });
+                            
+                            // Merge extracted data with original result
+                            const enrichedResult = {
+                                ...result,
+                                extractedData: extractedData,
+                                deepScraped: true,
+                                // Override with AI-extracted data if available
+                                title: extractedData.title || result.title,
+                                company: extractedData.company || result.company || 'Company Not Listed',
+                                location: extractedData.location || result.location,
+                                description: extractedData.description || result.description,
+                                salary: extractedData.salary || null,
+                                requirements: extractedData.requirements || null,
+                                tags: (extractedData.skills && extractedData.skills.length > 0) ? extractedData.skills : result.tags,
+                                posted_date: extractedData.posted_date || null,
+                                application_deadline: extractedData.application_deadline || null,
+                                // Update date with posted_date if available
+                                date: extractedData.posted_date ? new Date(extractedData.posted_date).toISOString() : result.date
+                            };
+                            
+                            allResults.push(enrichedResult);
+                            console.log(`    ✅ Successfully extracted data from ${result.url}`);
+                        } else {
+                            // Add original result even if extraction failed
+                            allResults.push({ ...result, deepScraped: false });
+                            console.log(`    ⚠️ AI extraction failed, using original data`);
+                        }
+                    } else {
+                        // HTML fetch failed or too short
+                        allResults.push({ ...result, deepScraped: false });
+                        console.log(`    ⚠️ HTML fetch failed or content too short`);
+                    }
+                    
+                    // Rate limiting - delay between requests
+                    await new Promise(resolve => setTimeout(resolve, DEEP_SCRAPING_CONFIG.RATE_LIMIT_DELAY_MS));
+                    
+                } catch (error) {
+                    console.error(`    ❌ Error processing ${result.url}:`, error.message);
+                    // Add original result even if deep scraping failed
+                    allResults.push({ ...result, deepScraped: false });
+                }
+            }
+            
+            // Delay between search terms
+            if (termIdx < generatedSearchTerms.length - 1) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+        }
+        
+        tavilyDeepResults = allResults;
+        currentResults = allResults;
+        
+        // Remove duplicates based on URL
+        const uniqueResults = [];
+        const seenUrls = new Set();
+        
+        for (const result of allResults) {
+            if (!seenUrls.has(result.url)) {
+                seenUrls.add(result.url);
+                uniqueResults.push(result);
+            }
+        }
+        
+        tavilyDeepResults = uniqueResults;
+        currentResults = uniqueResults;
+        
+        console.log('🎉 Deep parsing complete!');
+        console.log(`  📊 Total results: ${allResults.length}`);
+        console.log(`  🔗 Unique results: ${uniqueResults.length}`);
+        console.log(`  🔬 Deep scraped: ${uniqueResults.filter(r => r.deepScraped).length}`);
+        console.log(`  📄 Surface only: ${uniqueResults.filter(r => !r.deepScraped).length}`);
+        
+        displayResults(uniqueResults);
+        displayStatistics(uniqueResults);
+        hideLoading();
+        
+    } catch (error) {
+        hideLoading();
+        showError(`Deep parsing failed: ${error.message}`);
+        console.error('❌ Deep parsing error:', error);
+    }
+}
+
+// Fetch Tavily search results (limit to max_results)
+async function fetchTavilyResults(searchTerm, maxResults = 10) {
+    const config = SCRAPER_CONFIGS['tavily'];
+    
+    const requestBody = {
+        api_key: scraperApiKey,
+        query: `${searchTerm} jobs`,
+        search_depth: 'basic',
+        include_answer: false,
+        max_results: maxResults
+    };
+    
+    console.log(`  📡 Tavily API request for: "${searchTerm}"`);
+    
+    const response = await fetch(config.endpoint, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+    });
+    
+    if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Tavily Error Response:', errorText);
+        throw new Error(`Tavily API error (${response.status}): ${errorText.substring(0, 100)}`);
+    }
+    
+    const data = await response.json();
+    
+    if (!data.results || !Array.isArray(data.results)) {
+        console.warn('Tavily response missing results array');
+        return [];
+    }
+    
+    // Filter out listing pages - only keep individual job post pages
+    const filteredResults = data.results.filter(item => {
+        const url = item.url || '';
+        const title = (item.title || '').toLowerCase();
+        const content = (item.content || '').toLowerCase();
+        
+        // Patterns that indicate a listing/search page (not a single job post)
+        const listingPatterns = [
+            /\/search[\/\?]/i,
+            /\/jobs[\/\?]/i,
+            /\/browse[\/\?]/i,
+            /\/listings[\/\?]/i,
+            /\/careers\/?$/i,  // Main careers page, not specific job
+            /\/opportunities\/?$/i,
+            /page=\d+/i,  // Pagination
+            /results\?/i,
+            /search\?/i,
+            /filter=/i
+        ];
+        
+        // Check if URL suggests it's a listing page
+        const isListingUrl = listingPatterns.some(pattern => pattern.test(url));
+        
+        // Check content for multiple job indicators
+        const hasMultipleJobIndicators = 
+            (content.match(/apply now/gi) || []).length > 2 ||  // Multiple "apply now" buttons
+            (content.match(/view job/gi) || []).length > 2 ||   // Multiple "view job" links
+            (content.match(/\d+ jobs/gi) || []).length > 0 ||   // "X jobs found"
+            (content.match(/showing \d+ of \d+/gi) || []).length > 0;  // Pagination text
+        
+        // Title patterns that indicate listing pages
+        const listingTitlePatterns = [
+            /job search/i,
+            /\d+ jobs/i,
+            /search results/i,
+            /job listings/i,
+            /browse jobs/i,
+            /all jobs/i
+        ];
+        
+        const isListingTitle = listingTitlePatterns.some(pattern => pattern.test(title));
+        
+        // Only include if it appears to be a single job post
+        const isSingleJobPost = !isListingUrl && !hasMultipleJobIndicators && !isListingTitle;
+        
+        if (!isSingleJobPost) {
+            console.log(`  🚫 Filtered out listing page: ${url.substring(0, 60)}...`);
+        }
+        
+        return isSingleJobPost;
+    });
+    
+    console.log(`  ✅ Filtered ${data.results.length} results to ${filteredResults.length} individual job posts`);
+    
+    // Convert Tavily results to our format
+    return filteredResults.slice(0, maxResults).map(item => ({
+        title: item.title || 'Untitled',
+        company: 'Company Not Listed',
+        location: 'Remote/Various',
+        date: item.published_date ? new Date(item.published_date).toISOString() : new Date().toISOString(),
+        description: item.content || '',
+        tags: [],
+        url: item.url || '#',
+        relevance: Math.round((item.score || 0) * 10),
+        searchTerm: searchTerm,
+        deepScraped: false
+    }));
+}
+
+// Fetch HTML content using the selected scraper or direct fetch
+async function fetchHtmlWithScraper(url) {
+    const scraperType = getSelectedScraper();
+    
+    try {
+        // For Tavily or if no scraper configured, try direct fetch
+        if (scraperType === 'tavily' || !scraperApiKey) {
+            console.log(`    📥 Direct fetch: ${url}`);
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            
+            return await response.text();
+        }
+        
+        // Use configured scraper API
+        const config = SCRAPER_CONFIGS[scraperType];
+        let apiUrl;
+        let requestOptions = {
+            method: 'GET',
+            headers: {}
+        };
+        
+        if (scraperType === 'scrapingbee') {
+            apiUrl = `${config.endpoint}?${config.keyParam}=${scraperApiKey}&url=${encodeURIComponent(url)}`;
+        } else if (scraperType === 'scraperapi') {
+            apiUrl = `${config.endpoint}?${config.keyParam}=${scraperApiKey}&url=${encodeURIComponent(url)}&render=true`;
+        } else if (scraperType === 'brightdata') {
+            apiUrl = url;
+            requestOptions.headers['Authorization'] = `Bearer ${scraperApiKey}`;
+        } else if (scraperType === 'scrapfly') {
+            apiUrl = `${config.endpoint}?${config.keyParam}=${scraperApiKey}&url=${encodeURIComponent(url)}&render_js=true`;
+        }
+        
+        console.log(`    📥 ${config.name} fetch: ${url.substring(0, 50)}...`);
+        
+        const response = await fetch(apiUrl, requestOptions);
+        
+        if (!response.ok) {
+            throw new Error(`${config.name} error: ${response.status}`);
+        }
+        
+        if (scraperType === 'scrapfly') {
+            const jsonResponse = await response.json();
+            return jsonResponse.result?.content || jsonResponse.content || '';
+        }
+        
+        return await response.text();
+        
+    } catch (error) {
+        console.error(`    ❌ Fetch failed for ${url}:`, error.message);
+        return null;
+    }
+}
+
 // Deep scraping function to extract job details from individual job post pages
 async function scrapeJobPostDetails(jobUrl, scraperType) {
     try {
@@ -993,11 +1312,11 @@ async function extractJobDataWithAI(htmlContent) {
         const messages = [
             {
                 role: 'system',
-                content: `You are a job posting data extraction assistant. Extract structured information from HTML content and return it as valid JSON. Return ONLY a JSON object with these fields: title, company, location, salary, requirements, description, skills. If a field is not found, use null. Format: {"title":"...", "company":"...", "location":"...", "salary":"...", "requirements":"...", "description":"...", "skills":["skill1","skill2"]}`
+                content: `You are a job posting data extraction assistant. Extract structured information from HTML content and return it as valid JSON. Return ONLY a JSON object with these fields: title, company, location, salary, requirements, description, skills, posted_date, application_deadline. Extract the company name carefully - look for employer, company, or organization name. Extract dates in ISO format (YYYY-MM-DD) if available. If a field is not found, use null. Format: {"title":"...", "company":"...", "location":"...", "salary":"...", "requirements":"...", "description":"...", "skills":["skill1","skill2"], "posted_date":"YYYY-MM-DD", "application_deadline":"YYYY-MM-DD"}`
             },
             {
                 role: 'user',
-                content: `Extract job information from this HTML:\n\n${truncatedHtml}`
+                content: `Extract job information from this HTML. Pay special attention to finding the company/employer name and any dates (posting date, deadline, start date):\n\n${truncatedHtml}`
             }
         ];
         const params = {
@@ -1273,8 +1592,49 @@ function createResultCard(result) {
     description.className = 'result-description';
     description.textContent = result.description.substring(0, 200) + (result.description.length > 200 ? '...' : '');
     
+    // Add salary if extracted by AI
+    if (result.salary) {
+        const salary = document.createElement('div');
+        salary.className = 'result-salary';
+        salary.innerHTML = `💰 <strong>Salary:</strong> ${escapeHtml(result.salary)}`;
+        card.appendChild(salary);
+    }
+    
+    // Add application deadline if extracted
+    if (result.application_deadline) {
+        const deadline = document.createElement('div');
+        deadline.className = 'result-deadline';
+        deadline.innerHTML = `⏰ <strong>Application Deadline:</strong> ${escapeHtml(result.application_deadline)}`;
+        card.appendChild(deadline);
+    }
+    
+    // Add posted date if extracted (show separately from regular date)
+    if (result.posted_date) {
+        const posted = document.createElement('div');
+        posted.className = 'result-posted';
+        posted.innerHTML = `📅 <strong>Posted:</strong> ${formatResultDate(result.posted_date)}`;
+        card.appendChild(posted);
+    }
+    
+    // Add requirements if extracted by AI
+    if (result.requirements) {
+        const requirements = document.createElement('p');
+        requirements.className = 'result-requirements';
+        requirements.innerHTML = `📋 <strong>Requirements:</strong> ${escapeHtml(result.requirements.substring(0, 150))}${result.requirements.length > 150 ? '...' : ''}`;
+        card.appendChild(requirements);
+    }
+    
     const tags = document.createElement('div');
     tags.className = 'result-tags';
+    
+    // Add AI badge if deep scraped
+    if (result.deepScraped) {
+        const aiBadge = document.createElement('span');
+        aiBadge.className = 'result-ai-badge';
+        aiBadge.textContent = '🤖 AI-Enhanced';
+        aiBadge.title = 'Data extracted and enhanced by Mistral AI';
+        tags.appendChild(aiBadge);
+    }
     
     if (result.tags && result.tags.length > 0) {
         result.tags.slice(0, 5).forEach(tag => {
@@ -1417,7 +1777,11 @@ function calculateStatistics(results) {
         topCompanies: {},
         searchTermSuccess: {},
         deepScrapedCount: 0,
-        surfaceScrapedCount: 0
+        surfaceScrapedCount: 0,
+        aiExtractedCount: 0,
+        salaryDataCount: 0,
+        requirementsCount: 0,
+        skillsExtractedCount: 0
     };
     
     // Calculate unique companies
@@ -1435,6 +1799,20 @@ function calculateStatistics(results) {
             stats.deepScrapedCount++;
         } else {
             stats.surfaceScrapedCount++;
+        }
+        
+        // Track AI extraction metrics
+        if (result.extractedData) {
+            stats.aiExtractedCount++;
+        }
+        if (result.salary) {
+            stats.salaryDataCount++;
+        }
+        if (result.requirements) {
+            stats.requirementsCount++;
+        }
+        if (result.extractedData && result.extractedData.skills && result.extractedData.skills.length > 0) {
+            stats.skillsExtractedCount++;
         }
         
         // Unique companies
@@ -1533,21 +1911,35 @@ function generateStatisticsHTML(stats) {
             
             <!-- Deep Scraping Stats -->
             <div class="stat-section">
-                <h3>🤖 AI Deep Scraping Analysis</h3>
+                <h3>🤖 Mistral AI Extraction Analysis</h3>
                 <div class="stat-breakdown">
                     <div class="stat-item">
-                        <div class="stat-item-label">🔬 Deep Scraped (AI-Enhanced)</div>
+                        <div class="stat-item-label">🔬 AI-Enhanced Results</div>
                         <div class="stat-item-bar">
                             <div class="stat-item-fill" style="width: ${stats.totalResults > 0 ? (stats.deepScrapedCount / stats.totalResults * 100).toFixed(1) : 0}%"></div>
                         </div>
                         <div class="stat-item-value">${stats.deepScrapedCount} (${stats.totalResults > 0 ? (stats.deepScrapedCount / stats.totalResults * 100).toFixed(1) : 0}%)</div>
                     </div>
                     <div class="stat-item">
-                        <div class="stat-item-label">📄 Surface Scraped (Basic)</div>
+                        <div class="stat-item-label">💰 Salary Data Extracted</div>
                         <div class="stat-item-bar">
-                            <div class="stat-item-fill stat-fill-location" style="width: ${stats.totalResults > 0 ? (stats.surfaceScrapedCount / stats.totalResults * 100).toFixed(1) : 0}%"></div>
+                            <div class="stat-item-fill stat-fill-company" style="width: ${stats.totalResults > 0 ? (stats.salaryDataCount / stats.totalResults * 100).toFixed(1) : 0}%"></div>
                         </div>
-                        <div class="stat-item-value">${stats.surfaceScrapedCount} (${stats.totalResults > 0 ? (stats.surfaceScrapedCount / stats.totalResults * 100).toFixed(1) : 0}%)</div>
+                        <div class="stat-item-value">${stats.salaryDataCount} (${stats.totalResults > 0 ? (stats.salaryDataCount / stats.totalResults * 100).toFixed(1) : 0}%)</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-item-label">📋 Requirements Extracted</div>
+                        <div class="stat-item-bar">
+                            <div class="stat-item-fill stat-fill-location" style="width: ${stats.totalResults > 0 ? (stats.requirementsCount / stats.totalResults * 100).toFixed(1) : 0}%"></div>
+                        </div>
+                        <div class="stat-item-value">${stats.requirementsCount} (${stats.totalResults > 0 ? (stats.requirementsCount / stats.totalResults * 100).toFixed(1) : 0}%)</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-item-label">🎯 Skills Identified</div>
+                        <div class="stat-item-bar">
+                            <div class="stat-item-fill" style="width: ${stats.totalResults > 0 ? (stats.skillsExtractedCount / stats.totalResults * 100).toFixed(1) : 0}%"></div>
+                        </div>
+                        <div class="stat-item-value">${stats.skillsExtractedCount} (${stats.totalResults > 0 ? (stats.skillsExtractedCount / stats.totalResults * 100).toFixed(1) : 0}%)</div>
                     </div>
                 </div>
             </div>
