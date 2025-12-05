@@ -229,6 +229,107 @@ function formatDate(date) {
     return `${month}/${day}/${year} ${hours}:${minutes}:${seconds}`;
 }
 
+// Helper function to mask API keys in logs
+function maskApiKey(key) {
+    if (!key || typeof key !== 'string') return '***';
+    if (key.length <= 10) return '***';
+    return key.substring(0, 8) + '...' + key.substring(key.length - 4);
+}
+
+// Helper function to truncate long content for logging
+function truncateContent(content, maxLength = 200) {
+    if (!content) return '';
+    const str = typeof content === 'string' ? content : JSON.stringify(content);
+    if (str.length <= maxLength) return str;
+    return str.substring(0, maxLength) + `... (${str.length - maxLength} more chars)`;
+}
+
+// Helper function to log Mistral API requests
+function logMistralRequest(endpoint, model, messages, params = {}) {
+    const timestamp = new Date().toISOString();
+    console.groupCollapsed(`🚀 Mistral API Request - ${timestamp}`);
+    console.log('📡 Endpoint:', endpoint);
+    console.log('🤖 Model:', model);
+    console.log('🔑 API Key:', maskApiKey(apiKey));
+    
+    if (Object.keys(params).length > 0) {
+        console.log('⚙️ Parameters:', params);
+    }
+    
+    console.group('📝 Messages:');
+    messages.forEach((msg, idx) => {
+        console.log(`${idx + 1}. [${msg.role}]:`, truncateContent(msg.content, 300));
+    });
+    console.groupEnd();
+    
+    console.groupEnd();
+}
+
+// Helper function to log Mistral API responses
+function logMistralResponse(startTime, response, data, error = null) {
+    const endTime = Date.now();
+    const duration = endTime - startTime;
+    const timestamp = new Date().toISOString();
+    
+    if (error) {
+        console.groupCollapsed(`❌ Mistral API Error - ${timestamp} (${duration}ms)`);
+        console.error('⏱️ Duration:', duration + 'ms');
+        console.error('💥 Error:', error.message);
+        console.error('📊 Status:', response?.status || 'N/A');
+        if (response?.status) {
+            console.error('📋 Status Text:', response.statusText);
+        }
+        console.groupEnd();
+        return;
+    }
+    
+    console.groupCollapsed(`✅ Mistral API Response - ${timestamp} (${duration}ms)`);
+    console.log('⏱️ Duration:', duration + 'ms');
+    console.log('📊 Status:', response.status, response.statusText);
+    
+    if (data) {
+        if (data.usage) {
+            console.group('🎯 Token Usage:');
+            console.log('  📥 Prompt tokens:', data.usage.prompt_tokens || 0);
+            console.log('  📤 Completion tokens:', data.usage.completion_tokens || 0);
+            console.log('  📊 Total tokens:', data.usage.total_tokens || 0);
+            console.groupEnd();
+        }
+        
+        if (data.choices && data.choices.length > 0) {
+            console.group('📨 Response Content:');
+            const content = data.choices[0].message?.content || '';
+            console.log('  📝 Content:', truncateContent(content, 500));
+            console.log('  📏 Full length:', content.length, 'characters');
+            if (data.choices[0].finish_reason) {
+                console.log('  🏁 Finish reason:', data.choices[0].finish_reason);
+            }
+            console.groupEnd();
+        }
+        
+        if (data.model) {
+            console.log('🤖 Model used:', data.model);
+        }
+    }
+    
+    console.groupEnd();
+}
+
+// Helper function to log JSON parsing attempts
+function logJsonParsing(rawText, success, result = null, error = null) {
+    if (success) {
+        console.groupCollapsed('✅ JSON Parsing Success');
+        console.log('📝 Raw response:', truncateContent(rawText, 300));
+        console.log('✨ Parsed result:', result);
+        console.groupEnd();
+    } else {
+        console.groupCollapsed('❌ JSON Parsing Failed');
+        console.error('📝 Raw response:', truncateContent(rawText, 300));
+        console.error('💥 Parse error:', error?.message || 'Unknown error');
+        console.groupEnd();
+    }
+}
+
 // Helper function to parse JSON responses from AI
 function parseAIJsonResponse(rawText) {
     // Remove markdown code blocks if present
@@ -274,45 +375,71 @@ async function generateSearchTerms() {
     showLoading();
     hideError();
     
+    const startTime = Date.now();
+    
     try {
+        console.log('🔍 Starting search term generation...');
+        console.log('  📝 Keywords:', keywords);
+        console.log('  🔢 Term count:', termCount);
+        
+        const endpoint = 'https://api.mistral.ai/v1/chat/completions';
+        const model = 'mistral-small-latest';
+        const messages = [
+            {
+                role: 'system',
+                content: `You are a search term optimization assistant. Generate exactly ${termCount} relevant, diverse search terms based on the provided keywords. Return ONLY a valid JSON array of strings, nothing else. Format: ["term1", "term2", "term3"]. Do not include any explanations or additional text.`
+            },
+            {
+                role: 'user',
+                content: `Generate exactly ${termCount} optimized search terms for job searching based on these keywords: ${keywords}. Return as a JSON array.`
+            }
+        ];
+        const params = {
+            temperature: 0.7,
+            max_tokens: 200
+        };
+        
+        // Log the request
+        logMistralRequest(endpoint, model, messages, params);
+        
         // Use Mistral AI to generate search terms
-        const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+        const response = await fetch(endpoint, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${apiKey}`
             },
             body: JSON.stringify({
-                model: 'mistral-small-latest',
-                messages: [
-                    {
-                        role: 'system',
-                        content: `You are a search term optimization assistant. Generate exactly ${termCount} relevant, diverse search terms based on the provided keywords. Return ONLY a valid JSON array of strings, nothing else. Format: ["term1", "term2", "term3"]. Do not include any explanations or additional text.`
-                    },
-                    {
-                        role: 'user',
-                        content: `Generate exactly ${termCount} optimized search terms for job searching based on these keywords: ${keywords}. Return as a JSON array.`
-                    }
-                ],
-                temperature: 0.7,
-                max_tokens: 200
+                model: model,
+                messages: messages,
+                temperature: params.temperature,
+                max_tokens: params.max_tokens
             })
         });
         
         if (!response.ok) {
+            let errorMessage = '';
             if (response.status === 401) {
-                throw new Error('Invalid API key. Please check your Mistral AI API key.');
+                errorMessage = 'Invalid API key. Please check your Mistral AI API key.';
             } else if (response.status === 429) {
-                throw new Error('Rate limit exceeded. Please try again later.');
+                errorMessage = 'Rate limit exceeded. Please try again later.';
             } else {
-                throw new Error(`API error: ${response.status}`);
+                errorMessage = `API error: ${response.status}`;
             }
+            const error = new Error(errorMessage);
+            logMistralResponse(startTime, response, null, error);
+            throw error;
         }
         
         const data = await response.json();
+        
+        // Log the successful response
+        logMistralResponse(startTime, response, data);
+        
         const generatedText = data.choices[0].message.content.trim();
         
         // Parse JSON response
+        console.log('🔄 Attempting to parse search terms from AI response...');
         try {
             generatedSearchTerms = parseAIJsonResponse(generatedText);
             
@@ -322,24 +449,34 @@ async function generateSearchTerms() {
             }
             
             // Filter out empty terms
+            const originalCount = generatedSearchTerms.length;
             generatedSearchTerms = generatedSearchTerms.filter(term => term && term.trim().length > 0);
             
             if (generatedSearchTerms.length === 0) {
                 throw new Error('No valid search terms generated');
             }
+            
+            // Log parsing success
+            logJsonParsing(generatedText, true, generatedSearchTerms);
+            
+            console.log('✅ Successfully generated search terms:', generatedSearchTerms.length);
+            if (originalCount !== generatedSearchTerms.length) {
+                console.warn('⚠️ Filtered out', originalCount - generatedSearchTerms.length, 'empty terms');
+            }
         } catch (parseError) {
-            console.error('Failed to parse JSON response:', generatedText);
-            console.error('Parse error:', parseError);
+            logJsonParsing(generatedText, false, null, parseError);
             throw new Error('Failed to parse search terms. Please try again.');
         }
         
         displaySearchTerms();
         hideLoading();
         
+        console.log('🎉 Search term generation completed successfully!');
+        
     } catch (error) {
         hideLoading();
         showError(error.message);
-        console.error('Error generating search terms:', error);
+        console.error('❌ Error generating search terms:', error);
     }
 }
 
@@ -833,52 +970,77 @@ async function scrapeJobPostDetails(jobUrl, scraperType) {
 
 // Extract structured job data using Mistral AI
 async function extractJobDataWithAI(htmlContent) {
+    const startTime = Date.now();
+    
     try {
+        console.log('🔍 Starting job data extraction with AI...');
+        
         // Truncate HTML to avoid token limits
         const truncatedHtml = htmlContent.substring(0, DEEP_SCRAPING_CONFIG.HTML_TRUNCATE_LENGTH);
+        console.log('  📄 HTML length:', htmlContent.length, 'chars');
+        console.log('  ✂️ Truncated to:', truncatedHtml.length, 'chars');
         
-        const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+        const endpoint = 'https://api.mistral.ai/v1/chat/completions';
+        const model = 'mistral-small-latest';
+        const messages = [
+            {
+                role: 'system',
+                content: `You are a job posting data extraction assistant. Extract structured information from HTML content and return it as valid JSON. Return ONLY a JSON object with these fields: title, company, location, salary, requirements, description, skills. If a field is not found, use null. Format: {"title":"...", "company":"...", "location":"...", "salary":"...", "requirements":"...", "description":"...", "skills":["skill1","skill2"]}`
+            },
+            {
+                role: 'user',
+                content: `Extract job information from this HTML:\n\n${truncatedHtml}`
+            }
+        ];
+        const params = {
+            temperature: 0.3,
+            max_tokens: DEEP_SCRAPING_CONFIG.MAX_TOKENS_JOB_EXTRACTION
+        };
+        
+        // Log the request
+        logMistralRequest(endpoint, model, messages, params);
+        
+        const response = await fetch(endpoint, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${apiKey}`
             },
             body: JSON.stringify({
-                model: 'mistral-small-latest',
-                messages: [
-                    {
-                        role: 'system',
-                        content: `You are a job posting data extraction assistant. Extract structured information from HTML content and return it as valid JSON. Return ONLY a JSON object with these fields: title, company, location, salary, requirements, description, skills. If a field is not found, use null. Format: {"title":"...", "company":"...", "location":"...", "salary":"...", "requirements":"...", "description":"...", "skills":["skill1","skill2"]}`
-                    },
-                    {
-                        role: 'user',
-                        content: `Extract job information from this HTML:\n\n${truncatedHtml}`
-                    }
-                ],
-                temperature: 0.3,
-                max_tokens: DEEP_SCRAPING_CONFIG.MAX_TOKENS_JOB_EXTRACTION
+                model: model,
+                messages: messages,
+                temperature: params.temperature,
+                max_tokens: params.max_tokens
             })
         });
         
         if (!response.ok) {
-            console.error('Mistral API error for job extraction:', response.status);
+            const error = new Error(`Mistral API error for job extraction: ${response.status}`);
+            logMistralResponse(startTime, response, null, error);
             return null;
         }
         
         const data = await response.json();
+        
+        // Log the successful response
+        logMistralResponse(startTime, response, data);
+        
         const extractedText = data.choices[0].message.content.trim();
         
         // Parse JSON response
+        console.log('🔄 Attempting to parse job data from AI response...');
         try {
             const jobData = parseAIJsonResponse(extractedText);
+            logJsonParsing(extractedText, true, jobData);
+            console.log('✅ Successfully extracted job data');
             return jobData;
         } catch (parseError) {
-            console.error('Failed to parse job data JSON:', extractedText);
+            logJsonParsing(extractedText, false, null, parseError);
             return null;
         }
         
     } catch (error) {
-        console.error('Error extracting job data with AI:', error);
+        console.error('❌ Error extracting job data with AI:', error);
         return null;
     }
 }
