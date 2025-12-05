@@ -253,12 +253,12 @@ function truncateContent(content, maxLength = 200) {
 }
 
 // Helper function to log Mistral API requests
-function logMistralRequest(endpoint, model, messages, params = {}, apiKeyToMask = apiKey) {
+function logMistralRequest(endpoint, model, messages, params = {}, apiKeyToMask = null) {
     const timestamp = new Date().toISOString();
     console.groupCollapsed(`🚀 Mistral API Request - ${timestamp}`);
     console.log('📡 Endpoint:', endpoint);
     console.log('🤖 Model:', model);
-    console.log('🔑 API Key:', maskApiKey(apiKeyToMask));
+    console.log('🔑 API Key:', maskApiKey(apiKeyToMask || apiKey));
     
     if (Object.keys(params).length > 0) {
         console.log('⚙️ Parameters:', params);
