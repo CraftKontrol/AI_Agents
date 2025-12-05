@@ -3,6 +3,7 @@ let apiKey = '';
 let generatedSearchTerms = [];
 let currentResults = [];
 let currentSortType = 'relevance';
+let searchTermResults = {}; // Track results by search term
 
 // Scraper API configurations
 const SCRAPER_CONFIGS = {
@@ -277,6 +278,7 @@ async function performSearch() {
         currentResults = results;
         currentSortType = 'relevance';
         displayResults(results);
+        displayStatistics(results);
         hideLoading();
         
     } catch (error) {
@@ -299,23 +301,32 @@ async function searchWithScraper(scraperType) {
     
     const config = SCRAPER_CONFIGS[scraperType];
     const allResults = [];
+    searchTermResults = {}; // Reset tracking
     
     try {
-        // Search using the first few search terms (limit to avoid rate limits)
-        const termsToSearch = generatedSearchTerms.slice(0, 3);
+        // Search using ALL generated search terms (not just first 3)
+        const termsToSearch = generatedSearchTerms;
         
-        for (const term of termsToSearch) {
+        for (let i = 0; i < termsToSearch.length; i++) {
+            const term = termsToSearch[i];
+            
+            // Update loading indicator to show progress
+            updateLoadingProgress(term, i + 1, termsToSearch.length);
+            
             // Use Google job search as a universal source
-            // Note: Scraping Google may violate their Terms of Service. In production,
-            // consider using job-specific APIs (LinkedIn, Indeed, etc.) or sites that
-            // explicitly allow scraping, or implement with proper rate limiting and user agents.
-            const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(term + ' jobs')}`;
+            // Use the search term EXACTLY as generated (no modifications)
+            const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(term)}`;
             
             try {
                 const results = await scrapeJobBoard(scraperType, searchUrl, term);
+                
+                // Track results by search term
+                searchTermResults[term] = results.length;
+                
                 allResults.push(...results);
             } catch (error) {
                 console.error(`Error scraping for term "${term}":`, error);
+                searchTermResults[term] = 0;
                 // Continue with other terms even if one fails
             }
             
@@ -593,7 +604,8 @@ function parseTavilyResults(data, searchTerm) {
                 description: content.substring(0, 200),
                 tags: tags.slice(0, 5),
                 url: url,
-                relevance: relevance
+                relevance: relevance,
+                searchTerm: searchTerm // Track which search term found this result
             });
         } catch (error) {
             console.error('Error parsing Tavily result:', error);
@@ -736,7 +748,8 @@ function parseJobListings(html, searchTerm, sourceUrl) {
                     description: description,
                     tags: tags,
                     url: link || sourceUrl,
-                    relevance: relevance
+                    relevance: relevance,
+                    searchTerm: searchTerm // Track which search term found this result
                 });
             }
         } catch (error) {
@@ -809,6 +822,15 @@ function createResultCard(result) {
         meta.appendChild(location);
     }
     
+    // Add search term badge if available
+    if (result.searchTerm) {
+        const searchTermBadge = document.createElement('span');
+        searchTermBadge.className = 'result-search-term';
+        searchTermBadge.textContent = result.searchTerm;
+        searchTermBadge.title = 'Search term used to find this result';
+        meta.appendChild(searchTermBadge);
+    }
+    
     const description = document.createElement('p');
     description.className = 'result-description';
     description.textContent = result.description.substring(0, 200) + (result.description.length > 200 ? '...' : '');
@@ -872,6 +894,7 @@ function sortResults(type) {
     }
     
     displayResults(currentResults);
+    displayStatistics(currentResults); // Update statistics when sorting changes
 }
 
 // Loading and Error States
@@ -885,6 +908,14 @@ function hideLoading() {
     document.getElementById('loadingIndicator').style.display = 'none';
 }
 
+function updateLoadingProgress(searchTerm, current, total) {
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const progressText = loadingIndicator.querySelector('p');
+    if (progressText) {
+        progressText.innerHTML = `Searching with term ${current} of ${total}...<br><strong>"${searchTerm}"</strong>`;
+    }
+}
+
 function showError(message) {
     const errorElement = document.getElementById('errorMessage');
     errorElement.textContent = message;
@@ -893,4 +924,324 @@ function showError(message) {
 
 function hideError() {
     document.getElementById('errorMessage').style.display = 'none';
+}
+
+// Statistics Dashboard
+function displayStatistics(results) {
+    if (!results || results.length === 0) {
+        const statsSection = document.getElementById('statisticsSection');
+        if (statsSection) {
+            statsSection.style.display = 'none';
+        }
+        return;
+    }
+    
+    const stats = calculateStatistics(results);
+    const statsSection = document.getElementById('statisticsSection');
+    
+    if (!statsSection) {
+        console.error('Statistics section not found in HTML');
+        return;
+    }
+    
+    const statsContainer = document.getElementById('statisticsContainer');
+    statsContainer.innerHTML = generateStatisticsHTML(stats);
+    statsSection.style.display = 'block';
+}
+
+function calculateStatistics(results) {
+    const stats = {
+        totalResults: results.length,
+        uniqueCompanies: 0,
+        resultsBySearchTerm: {},
+        commonTags: {},
+        dateDistribution: {
+            today: 0,
+            thisWeek: 0,
+            thisMonth: 0,
+            older: 0
+        },
+        locationDistribution: {},
+        averageRelevance: 0,
+        topCompanies: {},
+        searchTermSuccess: {}
+    };
+    
+    // Calculate unique companies
+    const companies = new Set();
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+    
+    let totalRelevance = 0;
+    
+    results.forEach(result => {
+        // Unique companies
+        if (result.company && result.company !== 'Company Not Listed') {
+            companies.add(result.company);
+            stats.topCompanies[result.company] = (stats.topCompanies[result.company] || 0) + 1;
+        }
+        
+        // Results by search term
+        if (result.searchTerm) {
+            stats.resultsBySearchTerm[result.searchTerm] = (stats.resultsBySearchTerm[result.searchTerm] || 0) + 1;
+        }
+        
+        // Common tags
+        if (result.tags && Array.isArray(result.tags)) {
+            result.tags.forEach(tag => {
+                stats.commonTags[tag] = (stats.commonTags[tag] || 0) + 1;
+            });
+        }
+        
+        // Date distribution
+        const resultDate = new Date(result.date);
+        if (resultDate >= today) {
+            stats.dateDistribution.today++;
+        } else if (resultDate >= weekAgo) {
+            stats.dateDistribution.thisWeek++;
+        } else if (resultDate >= monthAgo) {
+            stats.dateDistribution.thisMonth++;
+        } else {
+            stats.dateDistribution.older++;
+        }
+        
+        // Location distribution
+        if (result.location) {
+            stats.locationDistribution[result.location] = (stats.locationDistribution[result.location] || 0) + 1;
+        }
+        
+        // Average relevance
+        totalRelevance += result.relevance || 0;
+    });
+    
+    stats.uniqueCompanies = companies.size;
+    stats.averageRelevance = results.length > 0 ? (totalRelevance / results.length).toFixed(1) : 0;
+    
+    // Add search term success rates from tracking
+    Object.keys(searchTermResults).forEach(term => {
+        stats.searchTermSuccess[term] = searchTermResults[term] || 0;
+    });
+    
+    return stats;
+}
+
+function generateStatisticsHTML(stats) {
+    let html = `
+        <div class="stats-header">
+            <h2>Search Statistics</h2>
+            <button onclick="toggleStatistics()" class="btn-toggle-stats" id="toggleStatsBtn">
+                <span id="toggleIcon">▼</span> Collapse
+            </button>
+        </div>
+        <div id="statsContent" class="stats-content">
+            <div class="stats-grid">
+                <!-- Overview Stats -->
+                <div class="stat-card stat-primary">
+                    <div class="stat-icon">📊</div>
+                    <div class="stat-info">
+                        <div class="stat-value">${stats.totalResults}</div>
+                        <div class="stat-label">Total Results</div>
+                    </div>
+                </div>
+                
+                <div class="stat-card stat-success">
+                    <div class="stat-icon">🏢</div>
+                    <div class="stat-info">
+                        <div class="stat-value">${stats.uniqueCompanies}</div>
+                        <div class="stat-label">Unique Companies</div>
+                    </div>
+                </div>
+                
+                <div class="stat-card stat-info">
+                    <div class="stat-icon">⭐</div>
+                    <div class="stat-info">
+                        <div class="stat-value">${stats.averageRelevance}</div>
+                        <div class="stat-label">Avg Relevance</div>
+                    </div>
+                </div>
+                
+                <div class="stat-card stat-warning">
+                    <div class="stat-icon">🔍</div>
+                    <div class="stat-info">
+                        <div class="stat-value">${Object.keys(stats.resultsBySearchTerm).length}</div>
+                        <div class="stat-label">Search Terms Used</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Results by Search Term -->
+            <div class="stat-section">
+                <h3>📈 Results per Search Term</h3>
+                <div class="stat-breakdown">
+                    ${generateSearchTermBreakdown(stats.resultsBySearchTerm, stats.totalResults)}
+                </div>
+            </div>
+            
+            <!-- Date Distribution -->
+            <div class="stat-section">
+                <h3>📅 Date Distribution</h3>
+                <div class="stat-breakdown">
+                    ${generateDateDistribution(stats.dateDistribution)}
+                </div>
+            </div>
+            
+            <!-- Top Companies -->
+            <div class="stat-section">
+                <h3>🏆 Top Companies</h3>
+                <div class="stat-breakdown">
+                    ${generateTopCompanies(stats.topCompanies)}
+                </div>
+            </div>
+            
+            <!-- Common Tags -->
+            <div class="stat-section">
+                <h3>💼 Most Common Skills/Tags</h3>
+                <div class="stat-tags">
+                    ${generateCommonTags(stats.commonTags)}
+                </div>
+            </div>
+            
+            <!-- Location Distribution -->
+            <div class="stat-section">
+                <h3>📍 Location Distribution</h3>
+                <div class="stat-breakdown">
+                    ${generateLocationDistribution(stats.locationDistribution)}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    return html;
+}
+
+function generateSearchTermBreakdown(resultsBySearchTerm, total) {
+    if (Object.keys(resultsBySearchTerm).length === 0) {
+        return '<div class="stat-empty">No search term data available</div>';
+    }
+    
+    const sorted = Object.entries(resultsBySearchTerm)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10);
+    
+    return sorted.map(([term, count]) => {
+        const percentage = ((count / total) * 100).toFixed(1);
+        return `
+            <div class="stat-item">
+                <div class="stat-item-label">${term}</div>
+                <div class="stat-item-bar">
+                    <div class="stat-item-fill" style="width: ${percentage}%"></div>
+                </div>
+                <div class="stat-item-value">${count} (${percentage}%)</div>
+            </div>
+        `;
+    }).join('');
+}
+
+function generateDateDistribution(dateDistribution) {
+    const total = Object.values(dateDistribution).reduce((a, b) => a + b, 0);
+    if (total === 0) {
+        return '<div class="stat-empty">No date data available</div>';
+    }
+    
+    const items = [
+        { label: 'Today', count: dateDistribution.today, icon: '🆕' },
+        { label: 'This Week', count: dateDistribution.thisWeek, icon: '📆' },
+        { label: 'This Month', count: dateDistribution.thisMonth, icon: '📅' },
+        { label: 'Older', count: dateDistribution.older, icon: '📜' }
+    ];
+    
+    return items.map(item => {
+        const percentage = ((item.count / total) * 100).toFixed(1);
+        return `
+            <div class="stat-item">
+                <div class="stat-item-label">${item.icon} ${item.label}</div>
+                <div class="stat-item-bar">
+                    <div class="stat-item-fill" style="width: ${percentage}%"></div>
+                </div>
+                <div class="stat-item-value">${item.count} (${percentage}%)</div>
+            </div>
+        `;
+    }).join('');
+}
+
+function generateTopCompanies(topCompanies) {
+    const sorted = Object.entries(topCompanies)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10);
+    
+    if (sorted.length === 0) {
+        return '<div class="stat-empty">No company data available</div>';
+    }
+    
+    const maxCount = sorted[0][1];
+    
+    return sorted.map(([company, count]) => {
+        const percentage = ((count / maxCount) * 100).toFixed(1);
+        return `
+            <div class="stat-item">
+                <div class="stat-item-label">${company}</div>
+                <div class="stat-item-bar">
+                    <div class="stat-item-fill stat-fill-company" style="width: ${percentage}%"></div>
+                </div>
+                <div class="stat-item-value">${count} listing${count !== 1 ? 's' : ''}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+function generateCommonTags(commonTags) {
+    const sorted = Object.entries(commonTags)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 15);
+    
+    if (sorted.length === 0) {
+        return '<div class="stat-empty">No tags available</div>';
+    }
+    
+    return sorted.map(([tag, count]) => {
+        return `<span class="stat-tag-item" title="${count} occurrences">${tag} <span class="tag-count">${count}</span></span>`;
+    }).join('');
+}
+
+function generateLocationDistribution(locationDistribution) {
+    const sorted = Object.entries(locationDistribution)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10);
+    
+    if (sorted.length === 0) {
+        return '<div class="stat-empty">No location data available</div>';
+    }
+    
+    const total = Object.values(locationDistribution).reduce((a, b) => a + b, 0);
+    
+    return sorted.map(([location, count]) => {
+        const percentage = ((count / total) * 100).toFixed(1);
+        return `
+            <div class="stat-item">
+                <div class="stat-item-label">${location}</div>
+                <div class="stat-item-bar">
+                    <div class="stat-item-fill stat-fill-location" style="width: ${percentage}%"></div>
+                </div>
+                <div class="stat-item-value">${count} (${percentage}%)</div>
+            </div>
+        `;
+    }).join('');
+}
+
+function toggleStatistics() {
+    const statsContent = document.getElementById('statsContent');
+    const toggleBtn = document.getElementById('toggleStatsBtn');
+    const toggleIcon = document.getElementById('toggleIcon');
+    
+    if (statsContent.style.display === 'none') {
+        statsContent.style.display = 'block';
+        toggleIcon.textContent = '▼';
+        toggleBtn.innerHTML = '<span id="toggleIcon">▼</span> Collapse';
+    } else {
+        statsContent.style.display = 'none';
+        toggleIcon.textContent = '▶';
+        toggleBtn.innerHTML = '<span id="toggleIcon">▶</span> Expand';
+    }
 }
