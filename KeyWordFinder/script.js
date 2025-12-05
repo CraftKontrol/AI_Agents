@@ -29,6 +29,12 @@ const SCRAPER_CONFIGS = {
         endpoint: 'https://api.scrapfly.io/scrape',
         requiresKey: true,
         keyParam: 'key'
+    },
+    tavily: {
+        name: 'Tavily',
+        endpoint: 'https://api.tavily.com/search',
+        requiresKey: true,
+        keyParam: 'api_key'
     }
 };
 
@@ -346,6 +352,11 @@ async function searchWithScraper(scraperType) {
 async function scrapeJobBoard(scraperType, targetUrl, searchTerm) {
     const config = SCRAPER_CONFIGS[scraperType];
     
+    // Special handling for Tavily - uses POST with JSON body
+    if (scraperType === 'tavily') {
+        return await scrapeTavilySearch(searchTerm);
+    }
+    
     // Build scraper API request based on the service
     let apiUrl;
     let requestOptions = {
@@ -435,6 +446,161 @@ async function scrapeJobBoard(scraperType, targetUrl, searchTerm) {
     
     // Parse the HTML to extract job listings
     return parseJobListings(html, searchTerm, targetUrl);
+}
+
+// Tavily Search Integration
+async function scrapeTavilySearch(searchTerm) {
+    const config = SCRAPER_CONFIGS['tavily'];
+    
+    // Build the request body for Tavily API
+    const requestBody = {
+        api_key: scraperApiKey,
+        query: `${searchTerm} jobs`,
+        search_depth: 'basic',
+        include_answer: false,
+        max_results: 10
+    };
+    
+    // Debug logging
+    console.log(`${config.name} API Endpoint:`, config.endpoint);
+    console.log('Search Query:', requestBody.query);
+    console.log('Using API key:', scraperApiKey.substring(0, 10) + '...');
+    
+    const response = await fetch(config.endpoint, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+    });
+    
+    if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Tavily Error Response:', errorText);
+        console.error('Response Status:', response.status);
+        
+        if (response.status === 400) {
+            let errorMessage = `${config.name} bad request (400).`;
+            try {
+                const errorJson = JSON.parse(errorText);
+                if (errorJson.error) {
+                    errorMessage += ` Error: ${errorJson.error}`;
+                } else {
+                    errorMessage += ` Response: ${errorText.substring(0, 200)}`;
+                }
+            } catch (e) {
+                errorMessage += ` Response: ${errorText.substring(0, 200)}`;
+            }
+            throw new Error(errorMessage);
+        } else if (response.status === 401 || response.status === 403) {
+            throw new Error(`Invalid ${config.name} API key. Please check your credentials.`);
+        } else if (response.status === 429) {
+            throw new Error(`${config.name} rate limit exceeded. Please wait and try again.`);
+        } else {
+            throw new Error(`${config.name} returned status ${response.status}: ${errorText.substring(0, 200)}`);
+        }
+    }
+    
+    const data = await response.json();
+    
+    // Parse Tavily results
+    return parseTavilyResults(data, searchTerm);
+}
+
+function parseTavilyResults(data, searchTerm) {
+    const results = [];
+    
+    // Common skills to extract from job content
+    const COMMON_SKILLS = ['JavaScript', 'Python', 'Java', 'React', 'Node.js', 'AWS', 'SQL', 'Docker', 'Kubernetes', 'remote'];
+    
+    // Tavily returns results in format: { results: [{ title, url, content, score }] }
+    if (!data.results || !Array.isArray(data.results)) {
+        console.warn('Tavily response did not contain expected results array');
+        return results;
+    }
+    
+    data.results.forEach(item => {
+        try {
+            // Extract basic information
+            const title = item.title || 'Untitled';
+            const url = item.url || '#';
+            const content = item.content || '';
+            const score = item.score || 0;
+            
+            // Try to extract company from content or URL
+            let company = 'Company Not Listed';
+            // Look for common patterns in the content:
+            // 1. "at CompanyName" or "@ CompanyName"
+            // 2. "CompanyName -" or "CompanyName |" at start of content
+            // 3. "Company: CompanyName"
+            const companyPatterns = [
+                /(?:at|@)\s+([A-Z][a-zA-Z0-9\s&.-]+?)(?:\s+[-–|]|\s*\n|$)/,
+                /^([A-Z][a-zA-Z0-9\s&.-]+?)\s+[-–|]/,
+                /Company:\s*([A-Z][a-zA-Z0-9\s&.-]+)/i
+            ];
+            
+            for (const pattern of companyPatterns) {
+                const match = content.match(pattern);
+                if (match && match[1]) {
+                    company = match[1].trim();
+                    break;
+                }
+            }
+            
+            // Extract location if available
+            let location = 'Remote/Various';
+            const locationPatterns = [
+                /Location:\s*([^|\n]+)/i,
+                /(?:in|@)\s+([A-Z][a-zA-Z\s,]+?)(?:\s|$)/,  // Updated to support multi-word locations
+                /(Remote|Hybrid|On-site)/i
+            ];
+            
+            for (const pattern of locationPatterns) {
+                const match = content.match(pattern);
+                if (match && match[1]) {
+                    location = match[1].trim();
+                    break;
+                }
+            }
+            
+            // Use published_date if available, otherwise use current date
+            let date = new Date();
+            if (item.published_date) {
+                const parsedDate = new Date(item.published_date);
+                // Validate the parsed date
+                if (!isNaN(parsedDate.getTime())) {
+                    date = parsedDate;
+                }
+            }
+            
+            // Map Tavily's score to relevance (score is typically 0-1)
+            // Multiply by 10 to match the relevance scale used in parseJobListings
+            const relevance = Math.round(score * 10);
+            
+            // Extract tags/keywords from content
+            const tags = [];
+            COMMON_SKILLS.forEach(skill => {
+                if (content.toLowerCase().includes(skill.toLowerCase())) {
+                    tags.push(skill);
+                }
+            });
+            
+            results.push({
+                title: title.substring(0, 150),
+                company: company.substring(0, 100),
+                location: location.substring(0, 100),
+                date: date.toISOString(),
+                description: content.substring(0, 200),
+                tags: tags.slice(0, 5),
+                url: url,
+                relevance: relevance
+            });
+        } catch (error) {
+            console.error('Error parsing Tavily result:', error);
+        }
+    });
+    
+    return results;
 }
 
 function parseJobListings(html, searchTerm, sourceUrl) {
