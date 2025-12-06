@@ -70,23 +70,23 @@
         <!-- Results Container -->
         <div id="resultsContainer" style="display: none;">
             
-            <!-- Astrological Chart -->
-            <section class="chart-section">
-                <h2 data-en="Astrological Chart" data-fr="Carte Astrologique">Carte Astrologique</h2>
-                <div class="legend">
-                    <span data-en="Planets positioned in zodiac wheel with aspects" data-fr="Planètes positionnées dans la roue du zodiaque avec aspects">Planètes positionnées dans la roue du zodiaque avec aspects</span>
-                </div>
-                <div class="chart-container">
-                    <canvas id="astroChart" width="600" height="600"></canvas>
-                </div>
-            </section>
+
 
             <!-- Two Column Layout -->
             <div class="data-grid">
                 
                 <!-- Left Column -->
                 <div class="data-column">
-                    
+                          <!-- Moon Phase -->
+                    <section class="data-section">
+                        <h2 data-en="Moon Phase" data-fr="Phase Lunaire">Phase Lunaire</h2>
+                        <div class="legend">
+                            <span data-en="Current lunar phase and illumination" data-fr="Phase lunaire actuelle et illumination">Phase lunaire actuelle et illumination</span>
+                        </div>
+                        <div id="moonPhase" class="moon-phase-display"></div>
+                    </section>
+
+
                     <!-- Planetary Positions -->
                     <section class="data-section">
                         <h2 data-en="Planetary Positions" data-fr="Positions Planétaires">Positions Planétaires</h2>
@@ -97,14 +97,7 @@
                         <div id="planetaryPositions" class="positions-list"></div>
                     </section>
 
-                    <!-- Moon Phase -->
-                    <section class="data-section">
-                        <h2 data-en="Moon Phase" data-fr="Phase Lunaire">Phase Lunaire</h2>
-                        <div class="legend">
-                            <span data-en="Current lunar phase and illumination" data-fr="Phase lunaire actuelle et illumination">Phase lunaire actuelle et illumination</span>
-                        </div>
-                        <div id="moonPhase" class="moon-phase-display"></div>
-                    </section>
+              
 
                 </div>
 
@@ -120,7 +113,23 @@
                         <div id="aspectsList" class="aspects-list"></div>
                     </section>
 
-                    <!-- Interpretation Section -->
+                   
+
+                </div>
+
+            </div>
+                        <!-- Astrological Chart -->
+            <section class="chart-section">
+                <h2 data-en="Astrological Chart" data-fr="Carte Astrologique">Carte Astrologique</h2>
+                <div class="legend">
+                    <span data-en="Planets positioned in zodiac wheel with aspects" data-fr="Planètes positionnées dans la roue du zodiaque avec aspects">Planètes positionnées dans la roue du zodiaque avec aspects</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="astroChart" width="600" height="600"></canvas>
+                </div>
+            </section>
+
+             <!-- Interpretation Section -->
                     <section class="data-section">
                         <h2 data-en="AI Interpretation" data-fr="Interprétation IA">Interprétation IA</h2>
                         <div class="legend">
@@ -129,11 +138,6 @@
                         <button class="btn-primary" id="interpretBtn" onclick="getInterpretation()" data-en="Generate Interpretation" data-fr="Générer l'interprétation">Générer l'interprétation</button>
                         <div id="interpretation" class="interpretation-display"></div>
                     </section>
-
-                </div>
-
-            </div>
-
         </div>
 
     </main>
