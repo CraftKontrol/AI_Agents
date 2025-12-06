@@ -441,11 +441,14 @@ body {
     border: 1px solid var(--border-color);
     padding: 20px;
     margin-bottom: 15px;
-    transition: border-color 0.3s ease;
+    transition: all 0.3s ease;
+    cursor: pointer;
 }
 
 .producer-card:hover {
     border-color: var(--primary-color);
+    background-color: var(--surface-color);
+    transform: translateX(5px);
 }
 
 .producer-header {
