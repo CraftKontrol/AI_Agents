@@ -51,7 +51,13 @@ const translations = {
         eggs: 'Œufs',
         cheese: 'Fromage',
         wine: 'Vin',
-        organic: 'Bio'
+        organic: 'Bio',
+        sendToGPS: 'Envoyer au GPS',
+        openInMaps: 'Ouvrir dans',
+        googleMaps: 'Google Maps',
+        waze: 'Waze',
+        appleMaps: 'Apple Maps',
+        openStreetMap: 'OpenStreetMap'
     },
     en: {
         appTitle: 'Local Food Producers',
@@ -91,7 +97,13 @@ const translations = {
         eggs: 'Eggs',
         cheese: 'Cheese',
         wine: 'Wine',
-        organic: 'Organic'
+        organic: 'Organic',
+        sendToGPS: 'Send to GPS',
+        openInMaps: 'Open in',
+        googleMaps: 'Google Maps',
+        waze: 'Waze',
+        appleMaps: 'Apple Maps',
+        openStreetMap: 'OpenStreetMap'
     }
 };
 
@@ -462,7 +474,7 @@ async function searchOverpassAPI(maxDistance, selectedTypes) {
     // Convert km to degrees (approximate)
     const radius = maxDistance * 1000; // meters
     
-    // Build Overpass query for various food-related nodes
+    // Build Overpass query for various food-related nodes with tags
     const query = `
         [out:json][timeout:25];
         (
@@ -477,7 +489,7 @@ async function searchOverpassAPI(maxDistance, selectedTypes) {
           way["shop"="farm"](around:${radius},${userLocation.lat},${userLocation.lng});
           way["shop"="bakery"](around:${radius},${userLocation.lat},${userLocation.lng});
         );
-        out center;
+        out body center tags;
     `;
     
     const response = await fetch('https://overpass-api.de/api/interpreter', {
@@ -489,7 +501,15 @@ async function searchOverpassAPI(maxDistance, selectedTypes) {
     
     log(`Overpass API returned ${data.elements.length} elements`, 'INFO');
     
-    // Process results
+    // Log some tags to debug
+    if (data.elements.length > 0) {
+        log(`Sample tags from first element: ${JSON.stringify(data.elements[0].tags)}`, 'INFO');
+    }
+    
+    // Process results - use batched reverse geocoding for items without addresses
+    const elementsWithoutAddress = [];
+    const elementsWithAddress = [];
+    
     producers = data.elements.map(element => {
         const lat = element.lat || (element.center && element.center.lat);
         const lon = element.lon || (element.center && element.center.lon);
@@ -497,19 +517,46 @@ async function searchOverpassAPI(maxDistance, selectedTypes) {
         // Determine food types based on tags
         const foodTypesDetected = detectFoodTypes(element.tags);
         
-        return {
+        const address = formatAddress(element.tags);
+        
+        const producer = {
             id: element.id,
             name: element.tags.name || element.tags.shop || element.tags.craft || 'Sans nom',
             lat: lat,
             lng: lon,
-            address: formatAddress(element.tags),
+            address: address,
             phone: element.tags.phone || element.tags['contact:phone'] || '',
             website: element.tags.website || element.tags['contact:website'] || '',
             foodTypes: foodTypesDetected,
             distance: calculateDistance(userLocation.lat, userLocation.lng, lat, lon),
             tags: element.tags
         };
+        
+        if (address === (currentLanguage === 'fr' ? 'Adresse non disponible' : 'Address not available')) {
+            elementsWithoutAddress.push(producer);
+        } else {
+            elementsWithAddress.push(producer);
+        }
+        
+        return producer;
     });
+    
+    // Batch reverse geocode missing addresses (max 10 to respect API limits)
+    if (elementsWithoutAddress.length > 0) {
+        log(`${elementsWithoutAddress.length} producers without address, attempting reverse geocoding...`, 'INFO');
+        
+        const maxReverse = Math.min(elementsWithoutAddress.length, 10);
+        for (let i = 0; i < maxReverse; i++) {
+            const producer = elementsWithoutAddress[i];
+            try {
+                await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
+                const address = await reverseGeocode(producer.lat, producer.lng);
+                producer.address = address;
+            } catch (error) {
+                log(`Failed to reverse geocode ${producer.name}: ${error.message}`, 'WARN');
+            }
+        }
+    }
     
     // Filter by selected food types
     if (!selectedTypes.includes('all')) {
@@ -541,27 +588,79 @@ function detectFoodTypes(tags) {
 }
 
 function formatAddress(tags) {
+    if (!tags) return currentLanguage === 'fr' ? 'Adresse non disponible' : 'Address not available';
+    
     const parts = [];
     
-    // Street address
-    if (tags['addr:housenumber'] && tags['addr:street']) {
-        parts.push(`${tags['addr:housenumber']} ${tags['addr:street']}`);
-    } else if (tags['addr:street']) {
-        parts.push(tags['addr:street']);
-    } else if (tags['addr:housenumber']) {
-        parts.push(tags['addr:housenumber']);
+    // Try multiple address formats
+    // Format 1: addr:* tags (standard OSM format)
+    if (tags['addr:housenumber'] || tags['addr:street'] || tags['addr:city']) {
+        if (tags['addr:housenumber'] && tags['addr:street']) {
+            parts.push(`${tags['addr:housenumber']} ${tags['addr:street']}`);
+        } else if (tags['addr:street']) {
+            parts.push(tags['addr:street']);
+        }
+        
+        const cityParts = [];
+        if (tags['addr:postcode']) cityParts.push(tags['addr:postcode']);
+        if (tags['addr:city']) cityParts.push(tags['addr:city']);
+        if (cityParts.length > 0) parts.push(cityParts.join(' '));
     }
     
-    // City and postal code
-    const cityParts = [];
-    if (tags['addr:postcode']) cityParts.push(tags['addr:postcode']);
-    if (tags['addr:city']) cityParts.push(tags['addr:city']);
-    if (cityParts.length > 0) parts.push(cityParts.join(' '));
+    // Format 2: Try contact:* tags
+    if (parts.length === 0 && tags['contact:street']) {
+        parts.push(tags['contact:street']);
+        if (tags['contact:city']) parts.push(tags['contact:city']);
+    }
     
-    // Country
-    if (tags['addr:country']) parts.push(tags['addr:country']);
+    // Format 3: Try simple address tag
+    if (parts.length === 0 && tags['address']) {
+        parts.push(tags['address']);
+    }
     
-    return parts.length > 0 ? parts.join(', ') : (currentLanguage === 'fr' ? 'Adresse non disponible' : 'Address not available');
+    // If we found something, return it
+    if (parts.length > 0) {
+        return parts.join(', ');
+    }
+    
+    return currentLanguage === 'fr' ? 'Adresse non disponible' : 'Address not available';
+}
+
+async function reverseGeocode(lat, lon) {
+    try {
+        // Use Nominatim reverse geocoding to get address from coordinates
+        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`);
+        const data = await response.json();
+        
+        if (data && data.address) {
+            const addr = data.address;
+            const parts = [];
+            
+            // Build address string
+            if (addr.house_number && addr.road) {
+                parts.push(`${addr.house_number} ${addr.road}`);
+            } else if (addr.road) {
+                parts.push(addr.road);
+            }
+            
+            const cityParts = [];
+            if (addr.postcode) cityParts.push(addr.postcode);
+            if (addr.city || addr.town || addr.village) {
+                cityParts.push(addr.city || addr.town || addr.village);
+            }
+            if (cityParts.length > 0) parts.push(cityParts.join(' '));
+            
+            if (parts.length > 0) {
+                log(`Reverse geocoding successful for ${lat}, ${lon}`, 'INFO');
+                return parts.join(', ');
+            }
+        }
+        
+        return currentLanguage === 'fr' ? 'Adresse non disponible' : 'Address not available';
+    } catch (error) {
+        log(`Reverse geocoding failed: ${error.message}`, 'WARN');
+        return currentLanguage === 'fr' ? 'Adresse non disponible' : 'Address not available';
+    }
 }
 
 async function searchDemoData(maxDistance, selectedTypes) {
@@ -696,15 +795,18 @@ function displayOnMap() {
         }
         
         const popupContent = `
-            <div style="color: #e0e0e0; min-width: 200px;">
+            <div style="color: #e0e0e0; min-width: 200px; cursor: pointer;" onclick="scrollToProducerInList(${index})">
                 <strong style="color: #ffffff; font-size: 16px;">${producer.name}</strong><br>
                 <div style="margin: 8px 0;">
                     <span style="color: #4a9eff; font-weight: 500;">📍 ${producer.distance.toFixed(2)} km</span>
                 </div>
                 ${producer.address ? '<div style="margin: 5px 0;">📍 ' + producer.address + '</div>' : ''}
-                ${producer.phone ? '<div style="margin: 5px 0;">📞 <a href="tel:' + producer.phone + '" style="color: #4a9eff; text-decoration: none;">' + producer.phone + '</a></div>' : ''}
-                ${producer.website ? '<div style="margin: 5px 0;">🌐 <a href="' + producer.website + '" target="_blank" style="color: #4a9eff; text-decoration: none;">Website</a></div>' : ''}
+                ${producer.phone ? '<div style="margin: 5px 0;">📞 <a href="tel:' + producer.phone + '" style="color: #4a9eff; text-decoration: none;" onclick="event.stopPropagation();">' + producer.phone + '</a></div>' : ''}
+                ${producer.website ? '<div style="margin: 5px 0;">🌐 <a href="' + producer.website + '" target="_blank" style="color: #4a9eff; text-decoration: none;" onclick="event.stopPropagation();">Website</a></div>' : ''}
                 ${foodTypesHTML}
+                <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid #3a3a3a; color: #888; font-size: 12px; text-align: center;">
+                    <span style="color: #4a9eff;">▼ ${currentLanguage === 'fr' ? 'Cliquez pour voir dans la liste' : 'Click to see in list'}</span>
+                </div>
             </div>
         `;
         
@@ -780,6 +882,19 @@ function createProducerCard(producer) {
     
     card.appendChild(info);
     
+    // GPS Navigation button
+    const gpsButton = document.createElement('button');
+    gpsButton.className = 'btn-gps';
+    gpsButton.innerHTML = `
+        <span class="material-symbols-outlined">navigation</span>
+        ${translations[currentLanguage].sendToGPS}
+    `;
+    gpsButton.onclick = function(e) {
+        e.stopPropagation();
+        showGPSOptions(producer);
+    };
+    card.appendChild(gpsButton);
+    
     // Food types tags
     if (producer.foodTypes && producer.foodTypes.length > 0) {
         const tagsContainer = document.createElement('div');
@@ -853,6 +968,116 @@ function zoomToProducer(producer) {
         mapContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         
         log(`Zoomed to producer: ${producer.name}`, 'INFO');
+    }
+}
+
+function scrollToProducerInList(index) {
+    const producer = producers[index];
+    if (!producer) return;
+    
+    // Open list section if collapsed
+    const producersList = document.getElementById('producersList');
+    if (producersList && producersList.classList.contains('collapsed')) {
+        producersList.classList.remove('collapsed');
+        const listToggleBtn = producersList.previousElementSibling.querySelector('.toggle-btn');
+        if (listToggleBtn) listToggleBtn.classList.remove('collapsed');
+    }
+    
+    // Find the corresponding card in the list
+    const cards = document.querySelectorAll('.producer-card');
+    if (cards[index]) {
+        // Highlight the card temporarily
+        cards[index].style.backgroundColor = 'var(--primary-dark)';
+        cards[index].style.borderColor = 'var(--primary-color)';
+        
+        // Scroll to the card
+        cards[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        // Remove highlight after animation
+        setTimeout(() => {
+            cards[index].style.backgroundColor = '';
+            cards[index].style.borderColor = '';
+        }, 2000);
+        
+        log(`Scrolled to producer in list: ${producer.name}`, 'INFO');
+    }
+}
+
+function showGPSOptions(producer) {
+    const options = [
+        { name: translations[currentLanguage].googleMaps, value: 'google' },
+        { name: translations[currentLanguage].waze, value: 'waze' },
+        { name: translations[currentLanguage].appleMaps, value: 'apple' },
+        { name: translations[currentLanguage].openStreetMap, value: 'osm' }
+    ];
+    
+    // Create modal overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'gps-modal-overlay';
+    overlay.onclick = function() {
+        document.body.removeChild(overlay);
+    };
+    
+    const modal = document.createElement('div');
+    modal.className = 'gps-modal';
+    modal.onclick = function(e) {
+        e.stopPropagation();
+    };
+    
+    const title = document.createElement('h3');
+    title.textContent = `${translations[currentLanguage].openInMaps}:`;
+    modal.appendChild(title);
+    
+    const buttonContainer = document.createElement('div');
+    buttonContainer.className = 'gps-options';
+    
+    options.forEach(option => {
+        const btn = document.createElement('button');
+        btn.className = 'gps-option-btn';
+        btn.innerHTML = `
+            <span class="material-symbols-outlined">map</span>
+            ${option.name}
+        `;
+        btn.onclick = function() {
+            openInGPS(producer, option.value);
+            document.body.removeChild(overlay);
+        };
+        buttonContainer.appendChild(btn);
+    });
+    
+    modal.appendChild(buttonContainer);
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    
+    log(`GPS options shown for: ${producer.name}`, 'INFO');
+}
+
+function openInGPS(producer, app) {
+    const lat = producer.lat;
+    const lng = producer.lng;
+    const name = encodeURIComponent(producer.name);
+    const address = encodeURIComponent(producer.address);
+    
+    let url = '';
+    
+    switch(app) {
+        case 'google':
+            url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&destination_place_id=${name}`;
+            break;
+        case 'waze':
+            url = `https://waze.com/ul?ll=${lat},${lng}&navigate=yes&q=${name}`;
+            break;
+        case 'apple':
+            url = `http://maps.apple.com/?daddr=${lat},${lng}&q=${name}`;
+            break;
+        case 'osm':
+            url = `https://www.openstreetmap.org/directions?from=&to=${lat},${lng}#map=16/${lat}/${lng}`;
+            break;
+    }
+    
+    if (url) {
+        window.open(url, '_blank');
+        log(`Opened ${app} navigation to: ${producer.name}`, 'SUCCESS');
     }
 }
 

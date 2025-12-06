@@ -419,12 +419,18 @@ body {
 }
 
 .leaflet-popup-content-wrapper {
-    background-color: var(--surface-color);
-    color: var(--text-color);
+    background-color: var(--surface-color) !important;
+    color: var(--text-color) !important;
+    padding: 10px !important;
+
 }
 
 .leaflet-popup-tip {
-    background-color: var(--surface-color);
+    background-color: var(--surface-color) !important;
+}
+
+.leaflet-popup-content {
+    margin: 0 !important;
 }
 
 /* Producers List */
@@ -534,6 +540,117 @@ body {
 
 .food-tag .material-symbols-outlined {
     font-size: 16px;
+}
+
+/* GPS Navigation Button */
+.btn-gps {
+    width: 100%;
+    padding: 12px 20px;
+    background-color: var(--success-color);
+    color: var(--background-color);
+    border: none;
+    border-radius: 0;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 15px;
+    transition: all 0.3s ease;
+}
+
+.btn-gps:hover {
+    background-color: #55ffaa;
+    transform: translateY(-2px);
+}
+
+.btn-gps .material-symbols-outlined {
+    font-size: 20px;
+}
+
+/* GPS Modal */
+.gps-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.gps-modal {
+    background-color: var(--surface-color);
+    padding: 30px;
+    max-width: 400px;
+    width: 90%;
+    border: 1px solid var(--border-color);
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.gps-modal h3 {
+    color: var(--text-color);
+    margin-bottom: 20px;
+    font-size: 18px;
+    text-align: center;
+}
+
+.gps-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.gps-option-btn {
+    padding: 15px 20px;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 0;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.3s ease;
+}
+
+.gps-option-btn:hover {
+    background-color: var(--primary-color);
+    color: #ffffff;
+    border-color: var(--primary-color);
+    transform: translateX(5px);
+}
+
+.gps-option-btn .material-symbols-outlined {
+    font-size: 24px;
 }
 
 .empty-state {
