@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AstralCompute - Éphémérides Astrologiques</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-title">
+            <h1 data-en="AstralCompute - Astrological Ephemeris" data-fr="AstralCompute - Éphémérides Astrologiques">AstralCompute - Éphémérides Astrologiques</h1>
+            <p data-en="Calculate planetary positions and astrological aspects" data-fr="Calculez les positions planétaires et aspects astrologiques">Calculez les positions planétaires et aspects astrologiques</p>
+        </div>
+        <div class="credits">
+            <span>CraftKontrol © Artcraft Visuals 2025</span>
+            <div class="last-modified">
+                <span id="lastModified">Loading...</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Mistral API Key Section -->
+    <section class="api-key-section" id="apiKeySection">
+        <label for="apiKey" data-en="Mistral API Key (for interpretation):" data-fr="Clé API Mistral (pour l'interprétation) :">Clé API Mistral (pour l'interprétation) :</label>
+        <input type="password" id="apiKey" placeholder="Entrez votre clé API Mistral..." data-placeholder-en="Enter your Mistral API key..." data-placeholder-fr="Entrez votre clé API Mistral..." />
+        <div class="api-key-controls">
+            <label class="remember-key-label">
+                <input type="checkbox" id="rememberKey" />
+                <span data-en="Remember API Key" data-fr="Mémoriser la clé API">Mémoriser la clé API</span>
+            </label>
+            <button class="clear-key-button" id="clearKeyBtn" onclick="clearSavedApiKey()" data-en="Clear Saved Key" data-fr="Effacer la clé">Effacer la clé</button>
+        </div>
+        <span class="saved-key-indicator" id="savedKeyIndicator" data-en="✓ Using saved key" data-fr="✓ Clé sauvegardée utilisée">✓ Clé sauvegardée utilisée</span>
+        <span class="hint" data-en="Get your API key from " data-fr="Obtenez votre clé API sur ">Obtenez votre clé API sur <a href="https://console.mistral.ai/" target="_blank">Mistral AI Console</a></span>
+    </section>
+
+    <div class="security-notice" id="securityNotice">
+        <p><strong>🔒 <span data-en="Security Notice:" data-fr="Notice de sécurité :">Notice de sécurité :</span></strong> <span data-en="Your API key is stored locally in your browser's localStorage." data-fr="Votre clé API est stockée localement dans le localStorage de votre navigateur.">Votre clé API est stockée localement dans le localStorage de votre navigateur.</span></p>
+    </div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div id="errorMessage" class="error-message" style="display: none;"></div>
+        
+        <div id="loadingIndicator" class="loading-indicator" style="display: none;">
+            <div class="spinner"></div>
+            <p data-en="Loading..." data-fr="Chargement...">Chargement...</p>
+        </div>
+
+        <!-- Controls Section -->
+        <section class="controls-section">
+            <div class="control-group">
+                <div class="input-group">
+                    <label for="dateInput" data-en="Date:" data-fr="Date :">Date :</label>
+                    <input type="date" id="dateInput" />
+                </div>
+                <div class="input-group">
+                    <label for="timeInput" data-en="Time (UTC):" data-fr="Heure (UTC) :">Heure (UTC) :</label>
+                    <input type="time" id="timeInput" value="12:00" />
+                </div>
+            </div>
+            <div class="button-group">
+                <button class="btn-primary" onclick="calculateEphemeris()" data-en="Calculate Positions" data-fr="Calculer les positions">Calculer les positions</button>
+                <button class="btn-secondary" id="langToggle" onclick="toggleLanguage()">EN</button>
+            </div>
+        </section>
+
+        <!-- Results Container -->
+        <div id="resultsContainer" style="display: none;">
+            
+            <!-- Astrological Chart -->
+            <section class="chart-section">
+                <h2 data-en="Astrological Chart" data-fr="Carte Astrologique">Carte Astrologique</h2>
+                <div class="legend">
+                    <span data-en="Planets positioned in zodiac wheel with aspects" data-fr="Planètes positionnées dans la roue du zodiaque avec aspects">Planètes positionnées dans la roue du zodiaque avec aspects</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="astroChart" width="600" height="600"></canvas>
+                </div>
+            </section>
+
+            <!-- Two Column Layout -->
+            <div class="data-grid">
+                
+                <!-- Left Column -->
+                <div class="data-column">
+                    
+                    <!-- Planetary Positions -->
+                    <section class="data-section">
+                        <h2 data-en="Planetary Positions" data-fr="Positions Planétaires">Positions Planétaires</h2>
+                        <div class="legend">
+                            <span data-en="Position in zodiac sign with degrees and minutes" data-fr="Position dans le signe du zodiaque avec degrés et minutes">Position dans le signe du zodiaque avec degrés et minutes</span>
+                            <span class="retrograde-legend">Ⓡ = <span data-en="Retrograde" data-fr="Rétrograde">Rétrograde</span></span>
+                        </div>
+                        <div id="planetaryPositions" class="positions-list"></div>
+                    </section>
+
+                    <!-- Moon Phase -->
+                    <section class="data-section">
+                        <h2 data-en="Moon Phase" data-fr="Phase Lunaire">Phase Lunaire</h2>
+                        <div class="legend">
+                            <span data-en="Current lunar phase and illumination" data-fr="Phase lunaire actuelle et illumination">Phase lunaire actuelle et illumination</span>
+                        </div>
+                        <div id="moonPhase" class="moon-phase-display"></div>
+                    </section>
+
+                </div>
+
+                <!-- Right Column -->
+                <div class="data-column">
+                    
+                    <!-- Aspects -->
+                    <section class="data-section">
+                        <h2 data-en="Planetary Aspects" data-fr="Aspects Planétaires">Aspects Planétaires</h2>
+                        <div class="legend">
+                            <span data-en="Major aspects between planets (±8° orb)" data-fr="Aspects majeurs entre planètes (±8° d'orbe)">Aspects majeurs entre planètes (±8° d'orbe)</span>
+                        </div>
+                        <div id="aspectsList" class="aspects-list"></div>
+                    </section>
+
+                    <!-- Interpretation Section -->
+                    <section class="data-section">
+                        <h2 data-en="AI Interpretation" data-fr="Interprétation IA">Interprétation IA</h2>
+                        <div class="legend">
+                            <span data-en="Astrological interpretation powered by Mistral AI" data-fr="Interprétation astrologique propulsée par Mistral IA">Interprétation astrologique propulsée par Mistral IA</span>
+                        </div>
+                        <button class="btn-primary" id="interpretBtn" onclick="getInterpretation()" data-en="Generate Interpretation" data-fr="Générer l'interprétation">Générer l'interprétation</button>
+                        <div id="interpretation" class="interpretation-display"></div>
+                    </section>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>CraftKontrol © Artcraft Visuals 2025</p>
+        <a href="https://www.artcraft-zone.com" target="_blank">www.artcraft-zone.com</a>
+    </footer>
+
+    <!-- Swiss Ephemeris Library (using CDN or local copy) -->
+    <script src="https://cdn.jsdelivr.net/npm/swisseph@1.80.1/dist/swisseph.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
