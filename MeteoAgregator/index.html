@@ -4,130 +4,154 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Meteo Aggregator</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <!-- Header -->
     <header class="header">
         <div class="header-title">
-            <h1>Meteo Aggregator</h1>
-            <p>Compare weather forecasts from multiple sources</p>
+            <h1 data-lang="title">Meteo Aggregator</h1>
+            <p data-lang="subtitle">Compare weather forecasts from multiple sources</p>
         </div>
-        <div class="credits">
-            <span>CraftKontrol © 2025</span>
-            <div class="last-modified">
-                <span id="lastModified">Loading...</span>
+        <div class="header-controls">
+            <div class="language-selector">
+                <select id="languageSelect" onchange="changeLanguage()">
+                    <option value="en">English</option>
+                    <option value="fr">Français</option>
+                </select>
+            </div>
+            <div class="credits">
+                <span>CraftKontrol © 2025</span>
+                <div class="last-modified">
+                    <span id="lastModified">Loading...</span>
+                </div>
             </div>
         </div>
     </header>
 
     <!-- API Keys Management Section -->
     <section class="api-management-section">
-        <h2>API Keys Management</h2>
+        <h2>
+            <span data-lang="apiKeysManagement">API Keys Management</span>
+            <button class="section-toggle" onclick="toggleSection('apiKeysContent')" data-lang="hide">Hide</button>
+        </h2>
         
+        <div id="apiKeysContent" class="section-content">
         <div class="api-keys-grid">
             <div class="api-key-card">
                 <h3>OpenWeatherMap</h3>
                 <div class="api-input-wrapper">
-                    <input type="password" id="apiKeyMain" placeholder="Enter API key..." />
-                    <button class="btn-delete" onclick="deleteApiKey('openweather')" title="Delete key">×</button>
+                    <input type="password" id="apiKeyMain" data-lang-placeholder="enterApiKey" placeholder="Enter API key..." />
+                    <button class="btn-delete" onclick="deleteApiKey('openweather')" data-lang-title="deleteKey" title="Delete key">×</button>
                 </div>
-                <a href="https://openweathermap.org/api" target="_blank" class="api-link">Get free API key →</a>
+                <a href="https://openweathermap.org/api" target="_blank" class="api-link" data-lang="getFreeApiKey">Get free API key →</a>
             </div>
 
             <div class="api-key-card">
                 <h3>WeatherAPI.com</h3>
                 <div class="api-input-wrapper">
-                    <input type="password" id="weatherApiKeyMain" placeholder="Enter API key..." />
-                    <button class="btn-delete" onclick="deleteApiKey('weatherapi')" title="Delete key">×</button>
+                    <input type="password" id="weatherApiKeyMain" data-lang-placeholder="enterApiKey" placeholder="Enter API key..." />
+                    <button class="btn-delete" onclick="deleteApiKey('weatherapi')" data-lang-title="deleteKey" title="Delete key">×</button>
                 </div>
-                <a href="https://www.weatherapi.com/" target="_blank" class="api-link">Get free API key →</a>
+                <a href="https://www.weatherapi.com/" target="_blank" class="api-link" data-lang="getFreeApiKey">Get free API key →</a>
             </div>
 
             <div class="api-key-card no-key-required">
                 <h3>Open-Meteo</h3>
                 <div class="no-key-notice">
-                    <span>✓ No API key required</span>
+                    <span data-lang="noApiKeyRequired">✓ No API key required</span>
                 </div>
-                <a href="https://open-meteo.com/" target="_blank" class="api-link">Learn more →</a>
-            </div>
-
-            <div class="api-key-card no-key-required">
-                <h3>Météociel (France)</h3>
-                <div class="no-key-notice">
-                    <span>✓ No API key required</span>
-                </div>
-                <a href="https://www.meteociel.fr/" target="_blank" class="api-link">Learn more →</a>
+                <a href="https://open-meteo.com/" target="_blank" class="api-link" data-lang="learnMore">Learn more →</a>
             </div>
         </div>
 
         <div class="api-actions">
             <label class="remember-key-label">
                 <input type="checkbox" id="rememberKeyMain" />
-                Remember API Keys
+                <span data-lang="rememberApiKeys">Remember API Keys</span>
             </label>
-            <button class="btn-save" onclick="saveApiKeys()">Save API Keys</button>
+            <button class="btn-save" onclick="saveApiKeys()" data-lang="saveApiKeys">Save API Keys</button>
+        </div>
         </div>
     </section>
 
     <!-- API Key Section -->
     <section class="api-key-section" id="apiKeySection">
-        <h2>API Keys Configuration</h2>
+        <h2 data-lang="apiKeysConfiguration">API Keys Configuration</h2>
         
         <div class="api-key-group">
             <h3>OpenWeatherMap</h3>
-            <label for="apiKey">API Key:</label>
-            <input type="password" id="apiKey" placeholder="Enter your OpenWeatherMap API key..." />
-            <span class="hint">Get your API key from <a href="https://openweathermap.org/api" target="_blank">OpenWeatherMap</a></span>
+            <label for="apiKey" data-lang="apiKeyLabel">API Key:</label>
+            <input type="password" id="apiKey" data-lang-placeholder="enterOpenWeatherMapKey" placeholder="Enter your OpenWeatherMap API key..." />
+            <span class="hint" data-lang="getApiKeyFromOpenWeatherMap">Get your API key from <a href="https://openweathermap.org/api" target="_blank">OpenWeatherMap</a></span>
         </div>
 
         <div class="api-key-group">
             <h3>WeatherAPI.com</h3>
-            <label for="weatherApiKey">API Key:</label>
-            <input type="password" id="weatherApiKey" placeholder="Enter your WeatherAPI.com API key..." />
-            <span class="hint">Get your free API key from <a href="https://www.weatherapi.com/" target="_blank">WeatherAPI.com</a></span>
+            <label for="weatherApiKey" data-lang="apiKeyLabel">API Key:</label>
+            <input type="password" id="weatherApiKey" data-lang-placeholder="enterWeatherApiKey" placeholder="Enter your WeatherAPI.com API key..." />
+            <span class="hint" data-lang="getFreeApiKeyFromWeatherApi">Get your free API key from <a href="https://www.weatherapi.com/" target="_blank">WeatherAPI.com</a></span>
         </div>
 
         <div class="api-key-controls">
             <label class="remember-key-label">
                 <input type="checkbox" id="rememberKey" />
-                Remember API Keys
+                <span data-lang="rememberApiKeys">Remember API Keys</span>
             </label>
-            <button class="clear-key-button" id="clearKeyBtn" onclick="clearSavedApiKey()">Clear Saved Keys</button>
+            <button class="clear-key-button" id="clearKeyBtn" onclick="clearSavedApiKey()" data-lang="clearSavedKeys">Clear Saved Keys</button>
         </div>
-        <span class="saved-key-indicator" id="savedKeyIndicator">✓ Using saved keys</span>
-        <span class="hint">Note: Open-Meteo doesn't require an API key</span>
-        <button class="btn-primary" onclick="saveApiKey()">Continue</button>
+        <span class="saved-key-indicator" id="savedKeyIndicator" data-lang="usingSavedKeys">✓ Using saved keys</span>
+        <span class="hint" data-lang="openMeteoNoApiKey">Note: Open-Meteo doesn't require an API key</span>
+        <button class="btn-primary" onclick="saveApiKey()" data-lang="continue">Continue</button>
     </section>
 
     <div class="security-notice" id="securityNotice" style="display: none;">
-        <p><strong>🔒 Security Notice:</strong> Your API key is stored locally in your browser's localStorage.</p>
+        <p data-lang="securityNotice"><strong>🔒 Security Notice:</strong> Your API key is stored locally in your browser's localStorage.</p>
     </div>
 
     <!-- Main Content -->
     <main class="main-content" id="mainContent" style="display: none;">
         <div id="errorMessage" class="error-message" style="display: none;"></div>
         
-        <!-- Location and Time Settings -->
+        <!-- Search Section -->
         <section class="settings-section">
-            <h2>Weather Settings</h2>
+            <h2>
+                <span data-lang="search">Search</span>
+                <button class="section-toggle" onclick="toggleSection('searchContent')" data-lang="hide">Hide</button>
+            </h2>
             
+            <div id="searchContent" class="section-content">
             <div class="input-group">
-                <label for="location">Location:</label>
-                <input type="text" id="location" placeholder="Enter city name (e.g., Paris, London, New York)" value="Paris" />
+                <label for="location" data-lang="locationLabel">Location:</label>
+                <input type="text" id="location" data-lang-placeholder="locationPlaceholder" placeholder="Enter city name (e.g., Paris, London, New York)" value="Paris" />
             </div>
 
             <div class="input-group">
-                <label for="timeRange">Forecast Range:</label>
+                <label for="timeRange" data-lang="forecastRangeLabel">Forecast Range:</label>
                 <select id="timeRange">
-                    <option value="current">Current Weather</option>
-                    <option value="3days" selected>3 Days Forecast</option>
-                    <option value="5days">5 Days Forecast</option>
+                    <option value="current" data-lang="currentWeather">Current Weather</option>
+                    <option value="4hours" data-lang="4HoursForecast">4 Hours Forecast</option>
+                    <option value="8hours" data-lang="8HoursForecast">8 Hours Forecast</option>
+                    <option value="3days" selected data-lang="3DaysForecast">3 Days Forecast</option>
+                    <option value="5days" data-lang="5DaysForecast">5 Days Forecast</option>
                 </select>
             </div>
 
+            <button class="btn-primary" id="fetchBtn" onclick="fetchWeatherData()" data-lang="getWeatherForecast">Get Weather Forecast</button>
+            </div>
+        </section>
+
+        <!-- Weather Settings Section -->
+        <section class="settings-section">
+            <h2>
+                <span data-lang="weatherSettings">Weather Settings</span>
+                <button class="section-toggle" onclick="toggleSection('settingsContent')" data-lang="hide">Hide</button>
+            </h2>
+            
+            <div id="settingsContent" class="section-content">
             <div class="input-group">
-                <label>Weather Sources:</label>
+                <label data-lang="weatherSourcesLabel">Weather Sources:</label>
                 <div class="source-checkboxes">
                     <label class="checkbox-label">
                         <input type="checkbox" id="sourceOpenWeather" checked />
@@ -135,38 +159,45 @@
                     </label>
                     <label class="checkbox-label">
                         <input type="checkbox" id="sourceWeatherAPI" checked />
-                        WeatherAPI.com (Free)
+                        <span data-lang="weatherApiLabel">WeatherAPI.com (Free)</span>
                     </label>
                     <label class="checkbox-label">
                         <input type="checkbox" id="sourceOpenMeteo" checked />
-                        Open-Meteo (No API Key)
-                    </label>
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="sourceMeteociel" checked />
-                        Météociel - France (No API Key)
+                        <span data-lang="openMeteoLabel">Open-Meteo (No API Key)</span>
                     </label>
                 </div>
             </div>
-
-            <button class="btn-primary" id="fetchBtn" onclick="fetchWeatherData()">Get Weather Forecast</button>
+            </div>
         </section>
 
         <div id="loadingIndicator" class="loading-indicator" style="display: none;">
             <div class="spinner"></div>
-            <p>Fetching weather data...</p>
+            <p data-lang="fetchingWeatherData">Fetching weather data...</p>
         </div>
+
+        <!-- Statistics Section -->
+        <section class="statistics-section" id="statisticsSection" style="display: none;">
+            <h2>
+                <span data-lang="weatherStatistics">Weather Statistics</span>
+                <button class="section-toggle" onclick="toggleSection('weatherStats')" data-lang="hide">Hide</button>
+            </h2>
+            <div id="weatherStats" class="weather-stats section-content"></div>
+        </section>
 
         <!-- Results Section -->
         <section class="results-section" id="resultsSection" style="display: none;">
-            <h2>Weather Comparison</h2>
-            <div id="weatherResults" class="weather-results"></div>
+            <h2>
+                <span data-lang="weatherComparison">Weather Comparison</span>
+                <button class="section-toggle" onclick="toggleSection('weatherResults')" data-lang="hide">Hide</button>
+            </h2>
+            <div id="weatherResults" class="weather-results section-content"></div>
         </section>
     </main>
 
     <!-- Footer -->
     <footer class="footer">
-        <p>CraftKontrol © 2025</p>
-        <a href="https://craftkontrol.com" target="_blank" rel="noopener noreferrer">craftkontrol.com</a>
+        <p>Arnaud Cassone © Artcraft Visuals 2025</p>
+        <a href="https://www.artcraft-zone.com" target="_blank" rel="noopener noreferrer">www.artcraft-zone.com</a>
     </footer>
 
     <script src="script.js"></script>
