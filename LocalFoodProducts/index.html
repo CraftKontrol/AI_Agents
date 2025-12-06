@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Producteurs Locaux - Local Food Producers</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-title">
+            <h1 id="appTitle">Producteurs Locaux</h1>
+            <p id="appDescription">Trouvez des producteurs alimentaires locaux près de chez vous</p>
+        </div>
+        <div class="header-controls">
+            <div class="language-selector">
+                <label for="languageSelect">
+                    <span class="material-symbols-outlined">language</span>
+                </label>
+                <select id="languageSelect">
+                    <option value="fr" selected>Français</option>
+                    <option value="en">English</option>
+                </select>
+            </div>
+        </div>
+        <div class="credits">
+            <span>Arnaud Cassone © CraftKontrol 2025</span>
+            <div class="last-modified">
+                <span id="lastModified">Chargement...</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div id="errorMessage" class="error-message" style="display: none;"></div>
+
+        <!-- API Source Selector -->
+        <section class="control-section">
+            <div class="section-header">
+                <h2 id="apiSourceTitle">
+                    <span class="material-symbols-outlined">database</span>
+                    Source de données
+                </h2>
+                <button class="toggle-btn" onclick="toggleSection('apiSourceSection')">
+                    <span class="material-symbols-outlined">expand_more</span>
+                </button>
+            </div>
+            <div id="apiSourceSection" class="section-content">
+                <div class="input-group">
+                    <label for="apiSource" id="apiSourceLabel">Source API:</label>
+                    <select id="apiSource">
+                        <option value="overpass" selected>OpenStreetMap (Overpass API)</option>
+                        <option value="demo">Données de démonstration</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <!-- Location Section -->
+        <section class="control-section">
+            <div class="section-header">
+                <h2 id="locationTitle">
+                    <span class="material-symbols-outlined">location_on</span>
+                    Localisation
+                </h2>
+                <button class="toggle-btn" onclick="toggleSection('locationSection')">
+                    <span class="material-symbols-outlined">expand_more</span>
+                </button>
+            </div>
+            <div id="locationSection" class="section-content">
+                <div class="location-controls">
+                    <button class="btn-primary" onclick="getCurrentLocation()" id="geolocateBtn">
+                        <span class="material-symbols-outlined">my_location</span>
+                        <span id="geolocateText">Utiliser ma position</span>
+                    </button>
+                    <div class="input-group">
+                        <label for="addressInput" id="addressLabel">Ou entrer une adresse:</label>
+                        <div class="address-input-group">
+                            <input type="text" id="addressInput" placeholder="Ex: Paris, France">
+                            <button class="btn-secondary" onclick="geocodeAddress()" id="geocodeBtn">
+                                <span class="material-symbols-outlined">search</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="currentLocation" class="current-location" style="display: none;">
+                        <span class="material-symbols-outlined">place</span>
+                        <span id="locationText"></span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Filters Section -->
+        <section class="control-section">
+            <div class="section-header">
+                <h2 id="filtersTitle">
+                    <span class="material-symbols-outlined">filter_list</span>
+                    Filtres
+                </h2>
+                <button class="toggle-btn" onclick="toggleSection('filtersSection')">
+                    <span class="material-symbols-outlined">expand_more</span>
+                </button>
+            </div>
+            <div id="filtersSection" class="section-content">
+                <div class="input-group">
+                    <label for="distanceRange" id="distanceLabel">Distance maximale: <span id="distanceValue">50</span> km</label>
+                    <input type="range" id="distanceRange" min="1" max="100" value="50" step="1">
+                </div>
+                <div class="input-group">
+                    <label id="foodTypeLabel">Type d'aliments:</label>
+                    <div id="foodTypeFilters" class="food-type-filters">
+                        <!-- Dynamically populated -->
+                    </div>
+                </div>
+                <button class="btn-primary" onclick="searchProducers()" id="searchBtn">
+                    <span class="material-symbols-outlined">search</span>
+                    <span id="searchText">Rechercher</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Loading Indicator -->
+        <div id="loadingIndicator" class="loading-indicator" style="display: none;">
+            <div class="spinner"></div>
+            <p id="loadingText">Recherche en cours...</p>
+        </div>
+
+        <!-- Results Count -->
+        <div id="resultsCount" class="results-count" style="display: none;">
+            <span id="resultsText"></span>
+        </div>
+
+        <!-- Map Section -->
+        <section class="results-section">
+            <div class="section-header">
+                <h2 id="mapTitle">
+                    <span class="material-symbols-outlined">map</span>
+                    Carte
+                </h2>
+                <button class="toggle-btn" onclick="toggleSection('mapContainer')">
+                    <span class="material-symbols-outlined">expand_more</span>
+                </button>
+            </div>
+            <div id="mapContainer" class="map-container"></div>
+        </section>
+
+        <!-- List Section -->
+        <section class="results-section">
+            <div class="section-header">
+                <h2 id="listTitle">
+                    <span class="material-symbols-outlined">list</span>
+                    Liste des producteurs
+                </h2>
+                <button class="toggle-btn" onclick="toggleSection('producersList')">
+                    <span class="material-symbols-outlined">expand_more</span>
+                </button>
+            </div>
+            <div id="producersList" class="producers-list">
+                <!-- Dynamically populated -->
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>Arnaud Cassone © Artcraft Visuals 2025</p>
+        <a href="https://www.artcraft-zone.com" target="_blank" rel="noopener noreferrer">www.artcraft-zone.com</a>
+    </footer>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
