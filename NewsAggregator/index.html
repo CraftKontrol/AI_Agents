@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>News Aggregator - CraftKontrol</title>
+    
+    <!--
+    ╔═══════════════════════════════════════════════════════════════════════════╗
+    ║                      NEWS AGGREGATOR - CRAFTKONTROL                       ║
+    ╚═══════════════════════════════════════════════════════════════════════════╝
+    
+    Application d'agrégation de flux RSS multi-catégories
+    
+    📅 Date de création : Décembre 2025
+    👤 Créé par : Arnaud Cassone - Artcraft Visuals
+    🌐 Site web : https://www.artcraft-zone.com
+    📝 Licence : CraftKontrol © 2025
+    
+    ═══════════════════════════════════════════════════════════════════════════
+    ✨ FONCTIONNALITÉS PRINCIPALES
+    ═══════════════════════════════════════════════════════════════════════════
+    
+    📰 AGRÉGATION DE NEWS
+       • Collecte automatique de flux RSS depuis plusieurs sources
+       • Support RSS 2.0 et Atom
+       • Tri automatique par date (plus récents en premier)
+       • Rafraîchissement manuel via bouton
+       • Utilisation de proxies CORS multiples pour la fiabilité
+    
+    📂 ORGANISATION PAR CATÉGORIES
+       • 5 catégories : Politique, Science, Cuisine, Technologie, Culture
+       • Affichage en colonnes séparées (desktop)
+       • Compteurs d'articles par catégorie
+       • Filtrage dynamique des catégories à afficher
+    
+    📱 INTERFACE MOBILE OPTIMISÉE
+       • Swipe latéral pour naviguer entre catégories
+       • Boutons de navigation gauche/droite
+       • Indicateur de position (ex: "Politique 1/5")
+       • Une seule catégorie visible à la fois (≤768px)
+       • Design responsive adaptatif
+    
+    📚 SYSTÈME D'HISTORIQUE
+       • Marquage automatique des articles lus au clic
+       • Stockage de jusqu'à 100 articles dans l'historique
+       • Panneau d'historique dédié avec liste complète
+       • Retrait automatique des articles lus des colonnes
+       • Possibilité de vider l'historique
+       • Animation fluide lors de la suppression
+    
+    🔧 GESTION DES SOURCES RSS
+       • Interface visuelle pour ajouter/supprimer des sources
+       • 15+ sources pré-configurées par défaut
+       • Affichage de toutes les sources actives
+       • Association source → catégorie
+       • Validation des URLs RSS
+    
+    🌍 MULTILINGUE (FR/EN)
+       • Sélecteur de langue dans le header
+       • Traduction complète de l'interface
+       • Format de dates localisé
+       • Catégories traduites
+    
+    💾 STOCKAGE LOCAL
+       • Sauvegarde des sources personnalisées (localStorage)
+       • Mémorisation des catégories actives
+       • Historique des articles lus (jusqu'à 100)
+       • Aucune connexion serveur requise
+       • Données 100% locales
+    
+    🎨 DESIGN CRAFTKONTROL
+       • Thème sombre professionnel
+       • Variables CSS personnalisables
+       • Material Symbols (Google Icons)
+       • Animations et transitions fluides
+       • Aucun border-radius (design signature)
+       • Cards avec images, extraits et liens
+    
+    🔒 SÉCURITÉ & CONFIDENTIALITÉ
+       • Aucune collecte de données
+       • Aucun tracking ou analytics
+       • Stockage 100% local (navigateur)
+       • Code source transparent
+       • Pas de connexion requise
+    
+    ═══════════════════════════════════════════════════════════════════════════
+    🛠️ TECHNOLOGIES UTILISÉES
+    ═══════════════════════════════════════════════════════════════════════════
+    
+       • HTML5 - Structure sémantique
+       • CSS3 - Variables CSS, Grid, Flexbox
+       • JavaScript ES6+ - Fetch API, DOMParser, localStorage
+       • Material Symbols - Iconographie Google
+       • CORS Proxies - AllOrigins, CorsProxy.io
+    
+    ═══════════════════════════════════════════════════════════════════════════
+    📋 STRUCTURE DES SECTIONS
+    ═══════════════════════════════════════════════════════════════════════════
+    
+       1. Header - Titre, boutons (Historique, Actualiser), sélecteur langue
+       2. Panneau Historique - Liste des articles lus (collapsible)
+       3. Gestion Sources - Ajout/suppression de flux RSS (collapsible)
+       4. Filtres Catégories - Cases à cocher pour activer/désactiver
+       5. Navigation Mobile - Swipe et boutons pour changer de catégorie
+       6. Grille Articles - Colonnes par catégorie avec cards
+       7. État Vide - Message si aucun article disponible
+       8. Footer - Crédits Artcraft Visuals
+    
+    ═══════════════════════════════════════════════════════════════════════════
+    -->
+    
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-title">
+            <h1 data-lang="title">Agrégateur de News</h1>
+            <p data-lang="subtitle">Vos actualités organisées par catégorie</p>
+        </div>
+        <div class="header-controls">
+            <button class="btn-history" onclick="toggleHistory()" id="historyBtn">
+                <span class="material-symbols-outlined">history</span>
+                <span data-lang="history">Historique</span>
+            </button>
+            <button class="btn-refresh" onclick="refreshAllFeeds()" id="refreshBtn">
+                <span class="material-symbols-outlined">refresh</span>
+                <span data-lang="refresh">Actualiser</span>
+            </button>
+            <div class="language-selector">
+                <label for="languageSelect">
+                    <span class="material-symbols-outlined">language</span>
+                </label>
+                <select id="languageSelect" onchange="changeLanguage()">
+                    <option value="fr" selected>Français</option>
+                    <option value="en">English</option>
+                </select>
+            </div>
+        </div>
+        <div class="credits">
+            <span>CraftKontrol © 2025</span>
+            <div class="last-modified">
+                <span id="lastModified">Chargement...</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div id="errorMessage" class="error-message" style="display: none;"></div>
+
+        <!-- History Panel -->
+        <section class="history-panel" id="historyPanel" style="display: none;">
+            <div class="history-header">
+                <h2>
+                    <span class="material-symbols-outlined">history</span>
+                    <span data-lang="readArticles">Articles lus</span>
+                </h2>
+                <div class="history-actions">
+                    <button class="btn-clear-history" onclick="clearHistory()">
+                        <span class="material-symbols-outlined">delete_sweep</span>
+                        <span data-lang="clearHistory">Vider l'historique</span>
+                    </button>
+                    <button class="btn-close" onclick="toggleHistory()">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+            </div>
+            <div class="history-content" id="historyContent">
+                <!-- History items will be populated by JavaScript -->
+            </div>
+        </section>
+
+        <!-- Source Management Section -->
+        <section class="control-section">
+            <div class="section-header" onclick="toggleSection('sourcesContent')">
+                <h2>
+                    <span class="material-symbols-outlined">rss_feed</span>
+                    <span data-lang="manageSources">Gérer les sources</span>
+                </h2>
+                <button class="toggle-btn">
+                    <span class="material-symbols-outlined">expand_more</span>
+                </button>
+            </div>
+            <div id="sourcesContent" class="section-content" style="display: none;">
+                <div class="sources-grid" id="sourcesList">
+                    <!-- Sources will be populated by JavaScript -->
+                </div>
+                
+                <div class="add-source-form">
+                    <h3 data-lang="addNewSource">Ajouter une nouvelle source</h3>
+                    <div class="input-group">
+                        <label for="sourceName" data-lang="sourceName">Nom de la source:</label>
+                        <input type="text" id="sourceName" placeholder="Ex: Le Monde" />
+                    </div>
+                    <div class="input-group">
+                        <label for="sourceUrl" data-lang="sourceUrl">URL du flux RSS:</label>
+                        <input type="url" id="sourceUrl" placeholder="https://..." />
+                    </div>
+                    <div class="input-group">
+                        <label for="sourceCategory" data-lang="sourceCategory">Catégorie:</label>
+                        <select id="sourceCategory">
+                            <option value="politique">Politique</option>
+                            <option value="science">Science</option>
+                            <option value="cuisine">Cuisine</option>
+                            <option value="technologie">Technologie</option>
+                            <option value="culture">Culture</option>
+                        </select>
+                    </div>
+                    <button class="btn-primary" onclick="addNewSource()">
+                        <span class="material-symbols-outlined">add</span>
+                        <span data-lang="addSource">Ajouter la source</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Category Filter Section -->
+        <section class="filter-section">
+            <h2>
+                <span class="material-symbols-outlined">filter_list</span>
+                <span data-lang="filterCategories">Filtrer les catégories</span>
+            </h2>
+            <div class="category-filters" id="categoryFilters">
+                <!-- Category checkboxes will be populated by JavaScript -->
+            </div>
+        </section>
+
+        <!-- Loading Indicator -->
+        <div id="loadingIndicator" class="loading-indicator" style="display: none;">
+            <div class="spinner"></div>
+            <p data-lang="loading">Chargement des actualités...</p>
+        </div>
+
+
+         <!-- Mobile Category Navigation -->
+        <div class="mobile-category-nav" id="mobileCategoryNav" style="display: none;">
+            <button class="nav-btn nav-prev" onclick="navigateCategory(-1)">
+                <span class="material-symbols-outlined">chevron_left</span>
+            </button>
+            <div class="category-indicator" id="categoryIndicator"></div>
+            <button class="nav-btn nav-next" onclick="navigateCategory(1)">
+                <span class="material-symbols-outlined">chevron_right</span>
+            </button>
+        </div>
+
+
+        <!-- News Grid (columns by category) -->
+        <div class="news-container-wrapper">
+            <div class="news-container" id="newsContainer">
+                <!-- News columns will be populated by JavaScript -->
+            </div>
+        </div>
+        
+       
+
+        <!-- Empty State -->
+        <div id="emptyState" class="empty-state" style="display: none;">
+            <span class="material-symbols-outlined">article</span>
+            <p data-lang="noArticles">Aucun article à afficher</p>
+            <p data-lang="noArticlesHint">Ajoutez des sources RSS ou actualisez le flux</p>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>Arnaud Cassone © Artcraft Visuals 2025</p>
+        <a href="https://www.artcraft-zone.com" target="_blank" rel="noopener noreferrer">www.artcraft-zone.com</a>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
