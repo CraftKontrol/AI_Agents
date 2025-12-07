@@ -810,21 +810,21 @@ body {
     /* Mobile swipe view - single column at a time */
     .news-container {
         grid-template-columns: 100%;
-        gap: 0;
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
+        gap: 20px;
     }
     
     .news-column {
         width: 100%;
         max-width: 100%;
-        scroll-snap-align: start;
-        overflow-y: visible;
     }
     
     .news-container-wrapper {
-        touch-action: pan-y;
         overflow: visible;
+    }
+    
+    body {
+        overflow-x: hidden;
+        overflow-y: auto;
     }
     
     .mobile-category-nav {

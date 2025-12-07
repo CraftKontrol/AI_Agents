@@ -628,26 +628,44 @@ function showSuccess(message) {
 
 // Mobile swipe navigation
 function initSwipeGestures() {
+    // Only enable swipe on mobile
+    if (window.innerWidth > 768) return;
+    
     const container = document.getElementById('newsContainer');
     let startY = 0;
     let startX = 0;
+    let isSwiping = false;
     
     container.addEventListener('touchstart', (e) => {
         touchStartX = e.changedTouches[0].screenX;
         startX = e.changedTouches[0].screenX;
         startY = e.changedTouches[0].screenY;
+        isSwiping = false;
+    }, { passive: true });
+    
+    container.addEventListener('touchmove', (e) => {
+        if (isSwiping) return;
+        
+        const currentX = e.changedTouches[0].screenX;
+        const currentY = e.changedTouches[0].screenY;
+        const diffX = Math.abs(currentX - startX);
+        const diffY = Math.abs(currentY - startY);
+        
+        // Determine direction on first significant movement
+        if (diffX > 10 || diffY > 10) {
+            isSwiping = diffX > diffY;
+        }
     }, { passive: true });
     
     container.addEventListener('touchend', (e) => {
         touchEndX = e.changedTouches[0].screenX;
         const endY = e.changedTouches[0].screenY;
         
-        // Only handle horizontal swipes (ignore vertical scrolling)
         const diffX = Math.abs(touchStartX - touchEndX);
         const diffY = Math.abs(startY - endY);
         
-        // If horizontal movement is greater than vertical, treat as swipe
-        if (diffX > diffY && diffX > 50) {
+        // Only handle if it was a horizontal swipe and sufficient distance
+        if (isSwiping && diffX > diffY && diffX > 50) {
             handleSwipe();
         }
     }, { passive: true });
