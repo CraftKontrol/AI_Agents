@@ -441,7 +441,7 @@ body {
 /* News Container */
 .news-container-wrapper {
     position: relative;
-    overflow: hidden;
+    overflow: visible;
     margin-bottom: 30px;
 }
 
@@ -811,16 +811,20 @@ body {
     .news-container {
         grid-template-columns: 100%;
         gap: 0;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
     }
     
     .news-column {
-        width: 100vw;
-        max-width: calc(100vw - 40px);
+        width: 100%;
+        max-width: 100%;
         scroll-snap-align: start;
+        overflow-y: visible;
     }
     
     .news-container-wrapper {
-        touch-action: pan-x;
+        touch-action: pan-y;
+        overflow: visible;
     }
     
     .mobile-category-nav {

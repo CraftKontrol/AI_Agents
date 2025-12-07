@@ -629,14 +629,27 @@ function showSuccess(message) {
 // Mobile swipe navigation
 function initSwipeGestures() {
     const container = document.getElementById('newsContainer');
+    let startY = 0;
+    let startX = 0;
     
     container.addEventListener('touchstart', (e) => {
         touchStartX = e.changedTouches[0].screenX;
+        startX = e.changedTouches[0].screenX;
+        startY = e.changedTouches[0].screenY;
     }, { passive: true });
     
     container.addEventListener('touchend', (e) => {
         touchEndX = e.changedTouches[0].screenX;
-        handleSwipe();
+        const endY = e.changedTouches[0].screenY;
+        
+        // Only handle horizontal swipes (ignore vertical scrolling)
+        const diffX = Math.abs(touchStartX - touchEndX);
+        const diffY = Math.abs(startY - endY);
+        
+        // If horizontal movement is greater than vertical, treat as swipe
+        if (diffX > diffY && diffX > 50) {
+            handleSwipe();
+        }
     }, { passive: true });
 }
 
