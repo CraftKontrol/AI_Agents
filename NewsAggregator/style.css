@@ -457,6 +457,9 @@ body {
     padding: 15px;
     border-radius: 0;
     min-height: 200px;
+    max-height: calc(100vh - 400px);
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .news-column h3 {
@@ -816,6 +819,10 @@ body {
     .news-column {
         width: 100%;
         max-width: 100%;
+        max-height: calc(100vh - 300px);
+        overflow-y: auto;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
     }
     
     .news-container-wrapper {
