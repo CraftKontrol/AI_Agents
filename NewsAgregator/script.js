@@ -499,13 +499,19 @@ function parseArticle(item, source, isAtom = false) {
             const linkEl = item.querySelector('link');
             link = linkEl?.getAttribute('href') || linkEl?.textContent || '';
             description = item.querySelector('summary')?.textContent || item.querySelector('content')?.textContent || '';
-            pubDate = item.querySelector('published')?.textContent || item.querySelector('updated')?.textContent;
+            pubDate = item.querySelector('published')?.textContent || 
+                      item.querySelector('updated')?.textContent || 
+                      item.querySelector('date')?.textContent;
         } else {
             // RSS 2.0 format
             title = item.querySelector('title')?.textContent || '';
             link = item.querySelector('link')?.textContent || '';
             description = item.querySelector('description')?.textContent || item.querySelector('content\\:encoded')?.textContent || '';
-            pubDate = item.querySelector('pubDate')?.textContent || item.querySelector('dc\\:date')?.textContent;
+            pubDate = item.querySelector('pubDate')?.textContent || 
+                      item.querySelector('dc\\:date')?.textContent || 
+                      item.querySelector('date')?.textContent ||
+                      item.querySelector('updated')?.textContent ||
+                      item.querySelector('published')?.textContent;
         }
         
         // Try to get image from multiple sources
@@ -542,8 +548,19 @@ function parseArticle(item, source, isAtom = false) {
         // Clean description (remove HTML tags)
         description = description.replace(/<[^>]*>/g, '').trim();
         
-        // Parse date
-        const date = pubDate ? new Date(pubDate) : new Date();
+        // Parse date with better error handling
+        let date;
+        if (pubDate) {
+            date = new Date(pubDate);
+            // Check if date is valid
+            if (isNaN(date.getTime())) {
+                console.warn(`Invalid date for article "${title.substring(0, 50)}...": ${pubDate}`);
+                date = new Date(); // Fallback to current date
+            }
+        } else {
+            console.warn(`No date found for article "${title.substring(0, 50)}..."`);
+            date = new Date(); // Fallback to current date
+        }
         
         // Validate we have minimum required fields
         if (!title || !link) {
