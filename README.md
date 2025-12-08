@@ -30,7 +30,7 @@ Each Agent/
 ### 🌟 [AstralCompute](./AstralCompute/)
 **Astrological ephemeris calculator with AI**
 - Planetary positions and aspects calculation
-- Lunar phases with visualization
+- Lunar phases with visualization 
 - Automatic astrological interpretations (Mistral AI)
 - Astronomical data export
 
@@ -98,13 +98,6 @@ Each Agent/
 2. Configure the necessary API keys
 3. Use the application
 
-### Method 2: Local Server
-```bash
-# From the agent folder
-python -m http.server 8000
-# or
-npx serve
-```
 
 ## API Keys Configuration
 
