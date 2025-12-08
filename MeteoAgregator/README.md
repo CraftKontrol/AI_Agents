@@ -1,69 +1,69 @@
 # MeteoAgregator
 ## Version 1.0
 ### Author: Arnaud Cassone © CraftKontrol
-Agrégateur de prévisions météo multi-sources avec comparaison.
+Multi-source weather forecast aggregator with comparison.
 
 ## Features
-- Agrégation 3+ sources (OpenWeather, WeatherAPI, Météo-France)
-- Prévisions horaires et quotidiennes (7 jours)
-- Comparaison visuelle et consensus agrégé
-- Interface bilingue (EN/FR)
-- Géolocalisation et recherche ville
-- Export JSON
+- 3+ source aggregation (OpenWeather, WeatherAPI, Météo-France)
+- Hourly and daily forecasts (7 days)
+- Visual comparison and aggregated consensus
+- Bilingual interface (EN/FR)
+- Geolocation and city search
+- JSON export
 
-## Stack Technique
+## Tech Stack
 - **HTML5/CSS3/JavaScript ES6+** - Frontend
-- **OpenWeatherMap, WeatherAPI, Météo-France** - APIs météo
-- Promise.all() pour requêtes parallèles
-- Normalisation et agrégation de données
+- **OpenWeatherMap, WeatherAPI, Météo-France** - Weather APIs
+- Promise.all() for parallel requests
+- Data normalization and aggregation
 
-## Structure des Fichiers
+## File Structure
 ```
 MeteoAgregator/
 ├── index.html       # Interface
-├── script.js        # Agrégation
-├── style.css        # Design CraftKontrol
-└── backend/         # Proxy CORS (optionnel)
+├── script.js        # Aggregation
+├── style.css        # CraftKontrol design
+└── backend/         # CORS proxy (optional)
 ```
 
-## Guide d'Utilisation
+## Usage Guide
 
 **Configuration**
-1. Obtenir clés API (au moins 1 requise)
-   - [OpenWeatherMap](https://openweathermap.org/api) : 1000 calls/jour gratuit
-   - [WeatherAPI](https://www.weatherapi.com/) : 1M calls/mois gratuit
-   - Météo-France (optionnel)
+1. Get API keys (at least 1 required)
+   - [OpenWeatherMap](https://openweathermap.org/api): 1000 calls/day free
+   - [WeatherAPI](https://www.weatherapi.com/): 1M calls/month free
+   - Météo-France (optional)
 
-2. Entrer clés dans interface et cocher "Remember"
+2. Enter keys in interface and check "Remember"
 
-**Recherche**
-- Géolocalisation auto ou saisie ville/coords
-- Sélectionner période (horaire 24-48h / journalier 7j)
-- Consulter comparaison multi-sources
+**Search**
+- Auto geolocation or city/coords input
+- Select period (hourly 24-48h / daily 7d)
+- View multi-source comparison
 
-**Résultats**
-- Tableau comparatif par source
-- Consensus agrégé avec fiabilité
-- Alertes si écarts importants entre sources
-- Export JSON disponible
+**Results**
+- Comparative table by source
+- Aggregated consensus with reliability
+- Alerts if significant discrepancies between sources
+- JSON export available
 
-## Standards Design CraftKontrol
+## CraftKontrol Design Standards
 ```css
-/* Météo colors */
+/* Weather colors */
 --sunny: #FFD700
 --cloudy: #B0BEC5
 --rainy: #4FC3F7
 --primary-color: #6C63FF
 --background-dark: #1a1a2e
 ```
-- Weather cards grid 3 colonnes (desktop)
-- Comparison table avec sticky header
-- Graphiques Canvas API
+- Weather cards grid 3 columns (desktop)
+- Comparison table with sticky header
+- Canvas API charts
 - Responsive breakpoints: 768px, 1024px
 
 ## License
 MIT License - Copyright (c) 2025 Arnaud Cassone - CraftKontrol
 
-## Liens
+## Links
 - [OpenWeatherMap](https://openweathermap.org/api) | [WeatherAPI](https://www.weatherapi.com/)
 - [CraftKontrol GitHub](https://github.com/CraftKontrol)

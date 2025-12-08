@@ -1,54 +1,54 @@
 # NewsAgregator
 ## Version 1.0
 ### Author: Arnaud Cassone © CraftKontrol
-Agrégateur de flux RSS organisé par catégories personnalisables.
+RSS feed aggregator organized by customizable categories.
 
 ## Features
-- Agrégation flux RSS multiples
-- Catégories personnalisables
-- Actualisation auto/manuelle
-- Historique de lecture
-- Interface bilingue (FR/EN)
-- Filtrage et marquage lu/non lu
-- Export JSON
+- Multiple RSS feed aggregation
+- Customizable categories
+- Auto/manual refresh
+- Reading history
+- Bilingual interface (FR/EN)
+- Filtering and read/unread marking
+- JSON export
 
-## Stack Technique
+## Tech Stack
 - **HTML5/CSS3/JavaScript ES6+** - Frontend
-- **RSS/Atom Parser** - Parsing de flux
-- **Fetch API** - Récupération asynchrone
-- **localStorage** - Persistance préférences
-- **Material Symbols** - Icônes
+- **RSS/Atom Parser** - Feed parsing
+- **Fetch API** - Asynchronous fetching
+- **localStorage** - Preferences persistence
+- **Material Symbols** - Icons
 
-## Structure des Fichiers
+## File Structure
 ```
 NewsAgregator/
 ├── index.html       # Interface
-├── script.js        # Agrégation RSS
-└── style.css        # Design CraftKontrol
+├── script.js        # RSS aggregation
+└── style.css        # CraftKontrol design
 ```
 
-## Guide d'Utilisation
+## Usage Guide
 
 **Configuration**
-1. Ajouter sources RSS
-   - Sources prédéfinies ou URL personnalisée
-   - Créer catégories (📰 News, 💼 Tech, 🎨 Culture, etc.)
+1. Add RSS sources
+   - Predefined sources or custom URL
+   - Create categories (📰 News, 💼 Tech, 🎨 Culture, etc.)
 
-2. Actualisation
-   - Auto : Configurable 5-60 min
-   - Manuel : Bouton "Actualiser"
-   - Par catégorie : Clic sur catégorie
+2. Refresh
+   - Auto: Configurable 5-60 min
+   - Manual: "Refresh" button
+   - By category: Click on category
 
-3. Lecture
-   - Cards avec image, titre, extrait
-   - Clic → Modal ou lien externe
-   - Marqué lu automatiquement
+3. Reading
+   - Cards with image, title, excerpt
+   - Click → Modal or external link
+   - Automatically marked as read
 
-4. Filtres
-   - Par catégorie, source, état (lu/non lu)
-   - Historique dans panneau latéral
+4. Filters
+   - By category, source, state (read/unread)
+   - History in sidebar panel
 
-## Standards Design CraftKontrol
+## CraftKontrol Design Standards
 ```css
 --primary-color: #6C63FF
 --secondary-color: #FF6584
@@ -56,7 +56,7 @@ NewsAgregator/
 --category-culture: #4ECDC4
 --background-dark: #1a1a2e
 ```
-- Article cards grid avec image 16:9
+- Article cards grid with 16:9 image
 - Category badges pill shape (border-radius 20px)
 - Read state opacity 0.6
 - Material Symbols 24px
@@ -65,6 +65,6 @@ NewsAgregator/
 ## License
 MIT License - Copyright (c) 2025 Arnaud Cassone - CraftKontrol
 
-## Liens
+## Links
 - [RSS Specification](https://www.rssboard.org/rss-specification)
 - [CraftKontrol GitHub](https://github.com/CraftKontrol)

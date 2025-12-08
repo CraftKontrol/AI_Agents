@@ -19,28 +19,28 @@ Calculateur d'éphémérides astrologiques avec interprétation IA via Mistral.
 ## Structure des Fichiers
 ```
 AstralCompute/
-├── index.html       # Interface principale
-├── script.js        # Logique calcul + API
-├── style.css        # Design CraftKontrol
+├── index.html       # Main interface
+├── script.js        # Calculation logic + API
+├── style.css        # CraftKontrol design
 └── README.md
 ```
 
-## Guide d'Utilisation
+## Usage Guide
 
 1. **Configuration**
-   - Obtenir clé API sur [Mistral AI Console](https://console.mistral.ai/)
-   - Entrer la clé dans l'interface
+   - Get API key from [Mistral AI Console](https://console.mistral.ai/)
+   - Enter the key in the interface
 
-2. **Calcul**
-   - Saisir date/heure et coordonnées GPS
-   - Cliquer "Calculer les Éphémérides"
-   - Consulter positions planétaires, aspects et phases lunaires
+2. **Calculation**
+   - Enter date/time and GPS coordinates
+   - Click "Calculate Ephemeris"
+   - View planetary positions, aspects and lunar phases
 
-3. **Interprétation**
-   - Générer analyse astrologique via IA
-   - Exporter les données si besoin
+3. **Interpretation**
+   - Generate astrological analysis via AI
+   - Export data if needed
 
-## Standards Design CraftKontrol
+## CraftKontrol Design Standards
 ```css
 --primary-color: #6C63FF
 --secondary-color: #FF6584
@@ -54,5 +54,5 @@ AstralCompute/
 ## License
 MIT License - Copyright (c) 2025 Arnaud Cassone - CraftKontrol
 
-## Liens
+## Links
 - [Mistral AI](https://console.mistral.ai/) | [CraftKontrol GitHub](https://github.com/CraftKontrol)

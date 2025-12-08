@@ -1,61 +1,61 @@
 # LocalFoodProducts
 ## Version 1.0
 ### Author: Arnaud Cassone © CraftKontrol
-Localisateur de producteurs alimentaires locaux avec carte interactive Leaflet.
+Local food producers locator with interactive Leaflet map.
 
 ## Features
-- Carte interactive avec marqueurs producteurs
-- Sources multiples (OpenFoodFacts, OpenStreetMap)
-- Interface bilingue (FR/EN)
-- Géolocalisation et recherche par adresse
-- Filtres par type et rayon
+- Interactive map with producer markers
+- Multiple sources (OpenFoodFacts, OpenStreetMap)
+- Bilingual interface (FR/EN)
+- Geolocation and address search
+- Filters by type and radius
 
-## Stack Technique
+## Tech Stack
 - **HTML5/CSS3/JavaScript ES6+** - Frontend
-- **Leaflet.js** - Cartographie interactive
-- **OpenStreetMap** - Tiles + données
-- **OpenFoodFacts API** - Base produits alimentaires
-- **Nominatim** - Géocodage
-- **Material Symbols** - Icônes
+- **Leaflet.js** - Interactive mapping
+- **OpenStreetMap** - Tiles + data
+- **OpenFoodFacts API** - Food products database
+- **Nominatim** - Geocoding
+- **Material Symbols** - Icons
 
-## Structure des Fichiers
+## File Structure
 ```
 LocalFoodProducts/
-├── index.html       # Interface + carte
-├── script.js        # Recherche + carto
-└── style.css        # Design CraftKontrol
+├── index.html       # Interface + map
+├── script.js        # Search + mapping
+└── style.css        # CraftKontrol design
 ```
 
-## Guide d'Utilisation
+## Usage Guide
 
-1. **Sélectionner Source**
-   - OpenFoodFacts : Produits référencés
-   - OpenStreetMap : Commerces locaux
+1. **Select Source**
+   - OpenFoodFacts: Referenced products
+   - OpenStreetMap: Local businesses
 
-2. **Définir Zone**
-   - Géolocalisation auto ou saisie adresse
-   - Ajuster rayon (1-50 km)
+2. **Define Area**
+   - Auto geolocation or address input
+   - Adjust radius (1-50 km)
 
-3. **Consulter Résultats**
-   - Marqueurs sur carte
-   - Popups avec détails
-   - Fiches producteurs
+3. **View Results**
+   - Markers on map
+   - Popups with details
+   - Producer profiles
 
-## Standards Design CraftKontrol
+## CraftKontrol Design Standards
 ```css
 --primary-color: #6C63FF
 --secondary-color: #FF6584
 --map-accent: #4ECDC4
 --background-dark: #1a1a2e
 ```
-- Leaflet popups style CraftKontrol
-- Producer cards grid responsive
+- Leaflet popups CraftKontrol style
+- Producer cards responsive grid
 - Material Symbols 24px
 - Responsive: Mobile stack, Desktop map 70%/sidebar 30%
 
 ## License
 MIT License - Copyright (c) 2025 Arnaud Cassone - CraftKontrol
 
-## Liens
+## Links
 - [Leaflet.js](https://leafletjs.com/) | [OpenFoodFacts](https://world.openfoodfacts.org/)
 - [OpenStreetMap](https://wiki.openstreetmap.org/) | [CraftKontrol GitHub](https://github.com/CraftKontrol)

@@ -84,14 +84,6 @@ Each Agent/
 
 ## CraftKontrol Standards
 
-### Design System
-```css
---primary-color: #6C63FF      /* Primary violet */
---secondary-color: #FF6584    /* Accent pink */
---background-dark: #1a1a2e    /* Dark background */
---surface: #16213e            /* Card surface */
-```
-
 ### Principles
 - 🎯 **Standalone** - Each agent works autonomously
 - 🔒 **Privacy-first** - API keys stored locally only
@@ -102,7 +94,7 @@ Each Agent/
 ## Installation & Usage
 
 ### Method 1: Direct Use
-1. Open the `index.html` file of the desired agent in a browser
+1. Open the https://craftkontrol.github.io/AI_Agents/[AgentFolder]/index.html in a modern browser
 2. Configure the necessary API keys
 3. Use the application
 
