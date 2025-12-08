@@ -226,11 +226,23 @@ async function fetchLastModified() {
 }
 
 // Section toggle
-function toggleSection(sectionId) {
+function toggleSection(sectionId, evt) {
     // Handle special case for sources content wrapper
     const actualId = sectionId === 'sourcesContent' ? 'sourcesContentWrapper' : sectionId;
     const section = document.getElementById(actualId);
-    const toggleBtn = event.currentTarget.querySelector('.toggle-btn .material-symbols-outlined');
+    
+    // Get the toggle button - use evt if provided, otherwise try to find it from the section header
+    let toggleBtn;
+    if (evt) {
+        const header = evt.currentTarget;
+        toggleBtn = header.querySelector('.toggle-btn .material-symbols-outlined');
+    } else {
+        // Fallback: find the section's header
+        const header = section.previousElementSibling;
+        if (header && header.classList.contains('section-header')) {
+            toggleBtn = header.querySelector('.toggle-btn .material-symbols-outlined');
+        }
+    }
     
     if (section.style.display === 'none') {
         section.style.display = 'block';
