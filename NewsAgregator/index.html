@@ -184,35 +184,17 @@
                     <span class="material-symbols-outlined">expand_more</span>
                 </button>
             </div>
-            <div id="sourcesContent" class="section-content" style="display: none;">
-                <div class="sources-grid" id="sourcesList">
-                    <!-- Sources will be populated by JavaScript -->
-                </div>
-                
-                <div class="add-source-form">
-                    <h3 data-lang="addNewSource">Ajouter une nouvelle source</h3>
-                    <div class="input-group">
-                        <label for="sourceName" data-lang="sourceName">Nom de la source:</label>
-                        <input type="text" id="sourceName" placeholder="Ex: Le Monde" />
-                    </div>
-                    <div class="input-group">
-                        <label for="sourceUrl" data-lang="sourceUrl">URL du flux RSS:</label>
-                        <input type="url" id="sourceUrl" placeholder="https://..." />
-                    </div>
-                    <div class="input-group">
-                        <label for="sourceCategory" data-lang="sourceCategory">Catégorie:</label>
-                        <select id="sourceCategory">
-                            <option value="politique">Politique</option>
-                            <option value="science">Science</option>
-                            <option value="cuisine">Cuisine</option>
-                            <option value="technologie">Technologie</option>
-                            <option value="culture">Culture</option>
-                        </select>
-                    </div>
-                    <button class="btn-primary" onclick="addNewSource()">
-                        <span class="material-symbols-outlined">add</span>
-                        <span data-lang="addSource">Ajouter la source</span>
+            <div id="sourcesContentWrapper" class="section-content" style="display: none;">
+                <div class="sources-tabs">
+                    <button class="sources-tab-btn active" data-tab="default" onclick="switchSourcesTab('default')">
+                        <span data-lang="defaultSources">Sources par Défaut</span>
                     </button>
+                    <button class="sources-tab-btn" data-tab="alternative" onclick="switchSourcesTab('alternative')">
+                        <span data-lang="alternativeSources">Sources Alternatives</span>
+                    </button>
+                </div>
+                <div id="sourcesContent">
+                    <!-- Content will be populated by JavaScript -->
                 </div>
             </div>
         </section>

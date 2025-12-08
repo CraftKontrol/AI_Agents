@@ -11,6 +11,9 @@ let touchStartX = 0;
 let touchEndX = 0;
 let readArticles = new Set();
 let articleHistory = [];
+let longPressTimer = null;
+let contextMenuVisible = false;
+let currentContextMenuArticle = null;
 
 // Translations
 const translations = {
@@ -44,7 +47,13 @@ const translations = {
         noHistory: 'No read articles yet',
         clearHistory: 'Clear History',
         historyCleared: 'History cleared',
-        markAsRead: 'Mark as read'
+        markAsRead: 'Mark as read',
+        alternativeSources: 'Alternative Sources',
+        defaultSources: 'Default Sources',
+        addToMySources: 'Add to my sources',
+        removeSource: 'Remove source',
+        deleteThisSource: 'Delete this source',
+        sourceDeleted: 'Source deleted successfully'
     },
     fr: {
         title: 'Agrégateur de News',
@@ -76,7 +85,13 @@ const translations = {
         noHistory: 'Aucun article lu pour le moment',
         clearHistory: 'Vider l\'historique',
         historyCleared: 'Historique vidé',
-        markAsRead: 'Marquer comme lu'
+        markAsRead: 'Marquer comme lu',
+        alternativeSources: 'Sources Alternatives',
+        defaultSources: 'Sources par Défaut',
+        addToMySources: 'Ajouter à mes sources',
+        removeSource: 'Retirer la source',
+        deleteThisSource: 'Supprimer cette source',
+        sourceDeleted: 'Source supprimée avec succès'
     }
 };
 
@@ -107,6 +122,50 @@ const defaultSources = [
     { name: 'The Guardian Culture', url: 'https://www.theguardian.com/culture/rss', category: 'culture' }
 ];
 
+// Alternative media RSS sources from atlasflux.saynete.net
+const alternativeSources = {
+    politique: [
+        { name: 'Mediapart', url: 'https://www.mediapart.fr/articles/feed', category: 'politique' },
+        { name: 'Le Canard Enchaîné - Politique', url: 'https://www.lecanardenchaine.fr/rss/categories/politique.xml', category: 'politique' },
+        { name: 'Les Jours', url: 'https://lesjours.fr/rss.xml', category: 'politique' },
+        { name: 'Rapports de force', url: 'https://rapportsdeforce.fr/feed', category: 'politique' },
+        { name: 'Basta : médias libres', url: 'https://portail.basta.media/spip.php?page=backend', category: 'politique' },
+        { name: 'Blast', url: 'https://api.blast-info.fr/rss.xml', category: 'politique' },
+        { name: 'Disclose', url: 'https://disclose.ngo/feed/', category: 'politique' },
+        { name: 'Fakir', url: 'https://feeds.feedburner.com/fakirpresse/y6gdBREdCll', category: 'politique' },
+        { name: 'Reflets', url: 'https://reflets.info/feeds/public', category: 'politique' },
+        { name: 'Regards', url: 'https://regards.fr/feed/', category: 'politique' },
+        { name: 'Revue Ballast', url: 'https://www.revue-ballast.fr/feed/', category: 'politique' },
+        { name: 'AgoraVox', url: 'http://feeds.feedburner.com/agoravox/gEOF', category: 'politique' },
+        { name: 'Attac France', url: 'https://france.attac.org/spip.php?page=backend', category: 'politique' },
+        { name: 'LVSL - Le Vent Se Lève', url: 'https://lvsl.fr/feed/', category: 'politique' },
+        { name: 'Le Monde Diplomatique', url: 'https://www.monde-diplomatique.fr/rss.xml', category: 'politique' },
+        { name: 'Lundi matin', url: 'https://lundi.am/spip.php?page=backend', category: 'politique' },
+        { name: 'Frustration magazine', url: 'https://frustrationmagazine.fr/feed.xml', category: 'politique' },
+        { name: 'StreetPress', url: 'https://www.streetpress.com/rss.xml', category: 'politique' },
+        { name: 'La Horde', url: 'https://lahorde.info/spip.php?page=backend', category: 'politique' },
+        { name: 'Bondy Blog', url: 'https://www.bondyblog.fr/feed/', category: 'politique' }
+    ],
+    science: [
+        { name: 'Bon Pote', url: 'https://bonpote.com/feed/', category: 'science' },
+        { name: 'Le Monde Diplomatique - Agriculture', url: 'https://www.monde-diplomatique.fr/spip.php?page=backend&id_mot=141', category: 'science' },
+        { name: 'Futura Sciences', url: 'https://www.futura-sciences.com/rss/actualites.xml', category: 'science' }
+    ],
+    culture: [
+        { name: 'Revue XXI', url: 'https://revue21.fr/feed/', category: 'culture' },
+        { name: 'Le Monde Diplomatique - Audiovisuel', url: 'https://www.monde-diplomatique.fr/spip.php?page=backend&id_mot=154', category: 'culture' },
+        { name: 'AOC - Analyse Opinion Critique', url: 'https://aoc.media/feed/', category: 'culture' },
+        { name: 'Les nouvelles news', url: 'https://www.lesnouvellesnews.fr/feed/', category: 'culture' }
+    ],
+    technologie: [
+        { name: 'ACRIMED', url: 'https://www.acrimed.org/spip.php?page=backend', category: 'technologie' },
+        { name: 'Reflets', url: 'https://reflets.info/feeds/public', category: 'technologie' }
+    ],
+    cuisine: [
+        { name: 'Le Monde Diplomatique - Alimentation', url: 'https://www.monde-diplomatique.fr/spip.php?page=backend&id_mot=146', category: 'cuisine' }
+    ]
+};
+
 // Initialize application
 document.addEventListener('DOMContentLoaded', function() {
     loadSources();
@@ -119,6 +178,7 @@ document.addEventListener('DOMContentLoaded', function() {
     refreshAllFeeds();
     initSwipeGestures();
     initArticleClickHandlers();
+    initContextMenu();
 });
 
 // Language management
@@ -167,12 +227,19 @@ async function fetchLastModified() {
 
 // Section toggle
 function toggleSection(sectionId) {
-    const section = document.getElementById(sectionId);
+    // Handle special case for sources content wrapper
+    const actualId = sectionId === 'sourcesContent' ? 'sourcesContentWrapper' : sectionId;
+    const section = document.getElementById(actualId);
     const toggleBtn = event.currentTarget.querySelector('.toggle-btn .material-symbols-outlined');
     
     if (section.style.display === 'none') {
         section.style.display = 'block';
         if (toggleBtn) toggleBtn.textContent = 'expand_less';
+        
+        // Initialize content if it's the sources section
+        if (actualId === 'sourcesContentWrapper') {
+            renderSourcesContent();
+        }
     } else {
         section.style.display = 'none';
         if (toggleBtn) toggleBtn.textContent = 'expand_more';
@@ -870,5 +937,228 @@ function clearHistory() {
         renderHistory();
         renderNewsGrid();
         showSuccess(translations[currentLanguage].historyCleared);
+    }
+}
+
+// Context menu for articles (long press)
+function initContextMenu() {
+    // Create context menu element
+    const contextMenu = document.createElement('div');
+    contextMenu.id = 'contextMenu';
+    contextMenu.className = 'context-menu';
+    contextMenu.style.display = 'none';
+    contextMenu.innerHTML = `
+        <div class="context-menu-item" onclick="deleteArticleSource()">
+            <span class="material-symbols-outlined">delete</span>
+            <span data-lang="deleteThisSource">Supprimer cette source</span>
+        </div>
+    `;
+    document.body.appendChild(contextMenu);
+    
+    // Close context menu when clicking outside
+    document.addEventListener('click', (e) => {
+        if (contextMenuVisible && !e.target.closest('.context-menu') && !e.target.closest('.news-card')) {
+            hideContextMenu();
+        }
+    });
+    
+    // Delegate events for news cards
+    document.addEventListener('mousedown', handleLongPressStart);
+    document.addEventListener('touchstart', handleLongPressStart);
+    document.addEventListener('mouseup', handleLongPressEnd);
+    document.addEventListener('touchend', handleLongPressEnd);
+    document.addEventListener('mouseleave', handleLongPressEnd);
+}
+
+function handleLongPressStart(e) {
+    const newsCard = e.target.closest('.news-card');
+    if (!newsCard) return;
+    
+    const link = newsCard.querySelector('.news-link');
+    if (!link) return;
+    
+    longPressTimer = setTimeout(() => {
+        const data = JSON.parse(link.dataset.articleData);
+        // Find source for this article
+        const articleSource = sources.find(s => s.name === data.source);
+        if (!articleSource) return;
+        
+        currentContextMenuArticle = {
+            ...data,
+            sourceUrl: articleSource.url,
+            sourceIndex: sources.indexOf(articleSource)
+        };
+        
+        showContextMenu(e);
+    }, 1000); // 1 second
+}
+
+function handleLongPressEnd(e) {
+    if (longPressTimer) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+    }
+}
+
+function showContextMenu(e) {
+    e.preventDefault();
+    const contextMenu = document.getElementById('contextMenu');
+    
+    let x, y;
+    if (e.touches && e.touches.length > 0) {
+        x = e.touches[0].pageX;
+        y = e.touches[0].pageY;
+    } else {
+        x = e.pageX;
+        y = e.pageY;
+    }
+    
+    contextMenu.style.left = x + 'px';
+    contextMenu.style.top = y + 'px';
+    contextMenu.style.display = 'block';
+    contextMenuVisible = true;
+    
+    // Update language
+    contextMenu.querySelectorAll('[data-lang]').forEach(element => {
+        const key = element.getAttribute('data-lang');
+        if (translations[currentLanguage][key]) {
+            element.textContent = translations[currentLanguage][key];
+        }
+    });
+}
+
+function hideContextMenu() {
+    const contextMenu = document.getElementById('contextMenu');
+    if (contextMenu) {
+        contextMenu.style.display = 'none';
+    }
+    contextMenuVisible = false;
+    currentContextMenuArticle = null;
+}
+
+function deleteArticleSource() {
+    if (!currentContextMenuArticle) return;
+    
+    if (confirm(`${translations[currentLanguage].deleteThisSource}: "${currentContextMenuArticle.source}"?`)) {
+        sources.splice(currentContextMenuArticle.sourceIndex, 1);
+        saveSources();
+        renderSourcesList();
+        refreshAllFeeds();
+        showSuccess(translations[currentLanguage].sourceDeleted);
+    }
+    
+    hideContextMenu();
+}
+
+// Alternative sources management
+let currentSourcesTab = 'default'; // 'default' or 'alternative'
+
+function switchSourcesTab(tab) {
+    currentSourcesTab = tab;
+    
+    // Update tab buttons
+    document.querySelectorAll('.sources-tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+    
+    renderSourcesContent();
+}
+
+function renderSourcesContent() {
+    const container = document.getElementById('sourcesContent');
+    
+    if (currentSourcesTab === 'default') {
+        container.innerHTML = `
+            <div class="sources-grid" id="sourcesList">
+                <!-- Sources will be populated -->
+            </div>
+            
+            <div class="add-source-form">
+                <h3 data-lang="addNewSource">Ajouter une nouvelle source</h3>
+                <div class="input-group">
+                    <label for="sourceName" data-lang="sourceName">Nom de la source:</label>
+                    <input type="text" id="sourceName" placeholder="Ex: Le Monde" />
+                </div>
+                <div class="input-group">
+                    <label for="sourceUrl" data-lang="sourceUrl">URL du flux RSS:</label>
+                    <input type="url" id="sourceUrl" placeholder="https://..." />
+                </div>
+                <div class="input-group">
+                    <label for="sourceCategory" data-lang="sourceCategory">Catégorie:</label>
+                    <select id="sourceCategory">
+                        <option value="politique">Politique</option>
+                        <option value="science">Science</option>
+                        <option value="cuisine">Cuisine</option>
+                        <option value="technologie">Technologie</option>
+                        <option value="culture">Culture</option>
+                    </select>
+                </div>
+                <button class="btn-primary" onclick="addNewSource()">
+                    <span class="material-symbols-outlined">add</span>
+                    <span data-lang="addSource">Ajouter la source</span>
+                </button>
+            </div>
+        `;
+        renderSourcesList();
+    } else {
+        // Alternative sources
+        container.innerHTML = `
+            <div class="alternative-sources-container">
+                ${['politique', 'science', 'cuisine', 'technologie', 'culture'].map(category => `
+                    <div class="alt-category-section">
+                        <h3 class="alt-category-title">
+                            <span data-lang="${category}">${translations[currentLanguage][category]}</span>
+                            <span class="alt-count">(${alternativeSources[category]?.length || 0})</span>
+                        </h3>
+                        <div class="alt-sources-grid">
+                            ${(alternativeSources[category] || []).map(source => {
+                                const isAdded = sources.some(s => s.url === source.url);
+                                return `
+                                    <div class="alt-source-card ${isAdded ? 'added' : ''}">
+                                        <div class="alt-source-info">
+                                            <h4>${source.name}</h4>
+                                            <div class="alt-source-url">${source.url}</div>
+                                        </div>
+                                        <button class="btn-alt-action ${isAdded ? 'btn-remove' : 'btn-add'}" 
+                                                onclick="${isAdded ? `removeAlternativeSource('${source.url.replace(/'/g, "\\'")}')` : `addAlternativeSource('${source.name.replace(/'/g, "\\'")}', '${source.url.replace(/'/g, "\\'")}', '${source.category}')`}">
+                                            <span class="material-symbols-outlined">${isAdded ? 'remove' : 'add'}</span>
+                                            <span data-lang="${isAdded ? 'removeSource' : 'addToMySources'}">${translations[currentLanguage][isAdded ? 'removeSource' : 'addToMySources']}</span>
+                                        </button>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+    
+    updateLanguage();
+}
+
+function addAlternativeSource(name, url, category) {
+    // Check if already exists
+    if (sources.some(s => s.url === url)) {
+        showError('Cette source est déjà ajoutée');
+        return;
+    }
+    
+    sources.push({ name, url, category });
+    saveSources();
+    renderSourcesContent();
+    showSuccess(translations[currentLanguage].sourceAdded);
+    refreshAllFeeds();
+}
+
+function removeAlternativeSource(url) {
+    const index = sources.findIndex(s => s.url === url);
+    if (index !== -1) {
+        sources.splice(index, 1);
+        saveSources();
+        renderSourcesContent();
+        showSuccess(translations[currentLanguage].sourceDeleted);
+        refreshAllFeeds();
     }
 }
