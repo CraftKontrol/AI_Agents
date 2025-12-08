@@ -2,162 +2,157 @@
 ## Version 1.0
 ### Author: Arnaud Cassone © CraftKontrol
 
-Suite d'applications web intelligentes combinant APIs externes et intelligence artificielle pour diverses tâches du quotidien.
+Suite of intelligent web applications combining external APIs and artificial intelligence for everyday tasks.
+All theses agents are completely realized by Copilot AI with human review and adjustments.
 
-## Concept Général
+## General Concept
 
-Cette collection regroupe des **agents web autonomes** conçus pour agréger, analyser et présenter des données provenant de multiples sources. Chaque agent est une application standalone HTML/CSS/JavaScript qui utilise :
+This collection brings together **AI Generated Autonomous Web Agents** designed to aggregate, analyze and present data from multiple sources. Each agent is a standalone HTML/CSS/JavaScript application that uses:
 
-- 🤖 **Intelligence Artificielle** - Génération, analyse et interprétation via Mistral AI
-- 🌐 **APIs Multiples** - Agrégation de sources de données variées
-- 🎨 **Design System Unifié** - Interface cohérente CraftKontrol
-- 💾 **Stockage Local** - Persistance des préférences et clés API
-- 🌍 **Multilingue** - Support FR/EN avec switch dynamique
+- 🤖 **Artificial Intelligence** - Generation, analysis and interpretation via Mistral AI
+- 🌐 **Multiple APIs** - Aggregation of varied data sources
+- 🎨 **Unified Design System** - Consistent CraftKontrol interface
+- 💾 **Local Storage** - Persistence of preferences and API keys
+- 🌍 **Multilingual** - FR/EN support with dynamic switch
 
-### Architecture Commune
+### Common Architecture
 
 ```
-Chaque Agent/
-├── index.html       # Interface utilisateur standalone
-├── script.js        # Logique métier et API calls
-├── style.css        # Design system CraftKontrol
-└── README.md        # Documentation complète
+Each Agent/
+├── index.html       # Standalone user interface
+├── script.js        # Business logic and API calls
+├── style.css        # CraftKontrol design system
+└── README.md        # Complete documentation
 ```
 
-## Agents Disponibles
+## Available Agents
 
 ### 🌟 [AstralCompute](./AstralCompute/)
-**Calculateur d'éphémérides astrologiques avec IA**
-- Calcul positions planétaires et aspects
-- Phases lunaires avec visualisation
-- Interprétations astrologiques automatiques (Mistral AI)
-- Export de données astronomiques
+**Astrological ephemeris calculator with AI**
+- Planetary positions and aspects calculation
+- Lunar phases with visualization
+- Automatic astrological interpretations (Mistral AI)
+- Astronomical data export
 
-**Stack** : astronomy-engine, Mistral AI
+**Stack**: astronomy-engine, Mistral AI
 
 ---
 
 ### 🔍 [KeyWordFinder](./KeyWordFinder/)
-**Générateur de mots-clés et agrégateur de recherche**
-- Génération intelligente de termes de recherche (IA)
-- Recherche multi-sources (Tavily, ScrapingBee, ScraperAPI, etc.)
-- Deep scraping avec extraction de contenu
-- Statistiques et export JSON
+**Keyword generator and search aggregator**
+- Intelligent search term generation (AI)
+- Multi-source search (Tavily, ScrapingBee, ScraperAPI, etc.)
+- Deep scraping with content extraction
+- Statistics and JSON export
 
-**Stack** : Mistral AI, Tavily, ScrapingBee, ScraperAPI, Bright Data, ScrapFly
+**Stack**: Mistral AI, Tavily, ScrapingBee, ScraperAPI, Bright Data, ScrapFly
 
 ---
 
 ### 🥬 [LocalFoodProducts](./LocalFoodProducts/)
-**Localisateur de producteurs alimentaires locaux**
-- Carte interactive Leaflet
-- Sources multiples (OpenFoodFacts, OpenStreetMap)
-- Géolocalisation et recherche par adresse
-- Filtres par type de produit et rayon
+**Local food producers locator**
+- Interactive Leaflet map
+- Multiple sources (OpenFoodFacts, OpenStreetMap)
+- Geolocation and address search
+- Filters by product type and radius
 
-**Stack** : Leaflet.js, OpenStreetMap, OpenFoodFacts, Nominatim
+**Stack**: Leaflet.js, OpenStreetMap, OpenFoodFacts, Nominatim
 
 ---
 
 ### 🌤️ [MeteoAgregator](./MeteoAgregator/)
-**Comparateur de prévisions météo multi-sources**
-- Agrégation OpenWeather, WeatherAPI, Météo-France
-- Prévisions horaires et quotidiennes (7 jours)
-- Comparaison visuelle et consensus agrégé
-- Détection de discordances entre sources
+**Multi-source weather forecast comparator**
+- OpenWeather, WeatherAPI, Météo-France aggregation
+- Hourly and daily forecasts (7 days)
+- Visual comparison and aggregated consensus
+- Detection of discrepancies between sources
 
-**Stack** : OpenWeatherMap, WeatherAPI, Météo-France API
+**Stack**: OpenWeatherMap, WeatherAPI, Météo-France API
 
 ---
 
 ### 📰 [NewsAgregator](./NewsAgregator/)
-**Agrégateur de flux RSS par catégories**
-- Organisation par catégories personnalisables
-- Actualisation automatique ou manuelle
-- Historique de lecture
-- Filtrage et export de configuration
+**RSS feed aggregator by categories**
+- Organization by customizable categories
+- Automatic or manual refresh
+- Reading history
+- Filtering and configuration export
 
-**Stack** : RSS/Atom Parser, Material Symbols
+**Stack**: RSS/Atom Parser, Material Symbols
 
 ---
 
-## Standards CraftKontrol
+## CraftKontrol Standards
 
 ### Design System
 ```css
---primary-color: #6C63FF      /* Violet principal */
---secondary-color: #FF6584    /* Rose accent */
---background-dark: #1a1a2e    /* Fond sombre */
---surface: #16213e            /* Surface cards */
+--primary-color: #6C63FF      /* Primary violet */
+--secondary-color: #FF6584    /* Accent pink */
+--background-dark: #1a1a2e    /* Dark background */
+--surface: #16213e            /* Card surface */
 ```
 
-### Principes
-- 🎯 **Standalone** - Chaque agent fonctionne de manière autonome
-- 🔒 **Privacy-first** - Clés API stockées localement uniquement
-- 📱 **Responsive** - Mobile, tablet et desktop
-- ⚡ **Performance** - Optimisé pour le web moderne
-- 🌐 **Open Source** - Code accessible et modifiable
+### Principles
+- 🎯 **Standalone** - Each agent works autonomously
+- 🔒 **Privacy-first** - API keys stored locally only
+- 📱 **Responsive** - Mobile, tablet and desktop
+- ⚡ **Performance** - Optimized for modern web
+- 🌐 **Open Source** - Accessible and modifiable code
 
-## Installation & Utilisation
+## Installation & Usage
 
-### Méthode 1 : Utilisation Directe
-1. Ouvrir le fichier `index.html` de l'agent souhaité dans un navigateur
-2. Configurer les clés API nécessaires
-3. Utiliser l'application
+### Method 1: Direct Use
+1. Open the `index.html` file of the desired agent in a browser
+2. Configure the necessary API keys
+3. Use the application
 
-### Méthode 2 : Serveur Local
+### Method 2: Local Server
 ```bash
-# Depuis le dossier de l'agent
+# From the agent folder
 python -m http.server 8000
-# ou
+# or
 npx serve
 ```
 
-## Configuration des Clés API
+## API Keys Configuration
 
-Chaque agent nécessite des clés API spécifiques :
+Each agent requires specific API keys:
 
-| Agent | APIs Requises | Où obtenir |
+| Agent | Required APIs | Where to get |
 |-------|---------------|------------|
 | AstralCompute | Mistral AI | [console.mistral.ai](https://console.mistral.ai/) |
-| KeyWordFinder | Mistral AI + Scraper (optionnel) | [console.mistral.ai](https://console.mistral.ai/), [tavily.com](https://tavily.com/) |
-| LocalFoodProducts | Aucune | APIs publiques |
-| MeteoAgregator | OpenWeather/WeatherAPI (au moins 1) | [openweathermap.org](https://openweathermap.org/api) |
-| NewsAgregator | Aucune | RSS public |
+| KeyWordFinder | Mistral AI + Scraper (optional) | [console.mistral.ai](https://console.mistral.ai/), [tavily.com](https://tavily.com/) |
+| LocalFoodProducts | None | Public APIs |
+| MeteoAgregator | OpenWeather/WeatherAPI (at least 1) | [openweathermap.org](https://openweathermap.org/api) |
+| NewsAgregator | None | Public RSS |
 
-## Développement
+## Development
 
-### Ajouter un Nouvel Agent
+### Adding a New Agent
 
-1. Créer un dossier avec le nom de l'agent
-2. Structure minimale :
-   ```
-   NouvelAgent/
-   ├── index.html
-   ├── script.js
-   ├── style.css
-   └── README.md
-   ```
-3. Appliquer le design system CraftKontrol
-4. Documenter selon le template des autres agents
+1. Create a new folder under `AI_Agents/`
+2. Implement `index.html`, `script.js`, `style.css` following CraftKontrol standards
+3. Call to Claude Sonnet 4.5 for app generation
+4. review and adjust the generated code
+5. Document the agent in `README.md`
 
 ### Guidelines
-- Code vanilla JavaScript (pas de framework requis)
-- CSS avec variables pour thème cohérent
-- localStorage pour persistance
-- Gestion d'erreurs robuste
-- Interface bilingue FR/EN
+- Vanilla JavaScript code (no framework required)
+- CSS with variables for consistent theme
+- localStorage for persistence
+- Robust error handling
+- Bilingual interface FR/EN
 
 ## License
 
 MIT License - Copyright (c) 2025 Arnaud Cassone - CraftKontrol
 
-## Liens
+## Links
 
 - [CraftKontrol GitHub](https://github.com/CraftKontrol)
 - [Mistral AI](https://console.mistral.ai/)
-- [Documentation Design System](../CKUI/)
+- [Design System Documentation](../CKUI/)
 
 ---
 
-**Note** : Tous les agents sont des projets indépendants et peuvent être utilisés séparément ou ensemble selon vos besoins.
+
