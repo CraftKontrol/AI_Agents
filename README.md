@@ -25,6 +25,27 @@ Each Agent/
 └── README.md        # Complete documentation
 ```
 
+## Installation & Usage
+
+### Method 1: Direct Use
+1. Open the `https://craftkontrol.github.io/AI_Agents/[AgentFolder]/index.html` in a modern browser
+2. Configure the necessary API keys
+3. Use the application
+
+
+## API Keys Configuration
+
+Each agent requires specific API keys:
+
+| Agent | Required APIs | Where to get |
+|-------|---------------|------------|
+| AstralCompute | Mistral AI | [console.mistral.ai](https://console.mistral.ai/) |
+| KeyWordFinder | Mistral AI + Scraper (optional) | [console.mistral.ai](https://console.mistral.ai/), [tavily.com](https://tavily.com/) |
+| LocalFoodProducts | None | Public APIs |
+| MeteoAgregator | OpenWeather/WeatherAPI (at least 1) | [openweathermap.org](https://openweathermap.org/api) |
+| NewsAgregator | None | Public RSS |
+
+
 ## Available Agents
 
 ### 🌟 [AstralCompute](./AstralCompute/)
@@ -91,25 +112,6 @@ Each Agent/
 - ⚡ **Performance** - Optimized for modern web
 - 🌐 **Open Source** - Accessible and modifiable code
 
-## Installation & Usage
-
-### Method 1: Direct Use
-1. Open the `https://craftkontrol.github.io/AI_Agents/[AgentFolder]/index.html` in a modern browser
-2. Configure the necessary API keys
-3. Use the application
-
-
-## API Keys Configuration
-
-Each agent requires specific API keys:
-
-| Agent | Required APIs | Where to get |
-|-------|---------------|------------|
-| AstralCompute | Mistral AI | [console.mistral.ai](https://console.mistral.ai/) |
-| KeyWordFinder | Mistral AI + Scraper (optional) | [console.mistral.ai](https://console.mistral.ai/), [tavily.com](https://tavily.com/) |
-| LocalFoodProducts | None | Public APIs |
-| MeteoAgregator | OpenWeather/WeatherAPI (at least 1) | [openweathermap.org](https://openweathermap.org/api) |
-| NewsAgregator | None | Public RSS |
 
 ## Development
 
