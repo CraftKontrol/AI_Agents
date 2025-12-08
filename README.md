@@ -94,7 +94,7 @@ Each Agent/
 ## Installation & Usage
 
 ### Method 1: Direct Use
-1. Open the https://craftkontrol.github.io/AI_Agents/[AgentFolder]/index.html in a modern browser
+1. Open the `https://craftkontrol.github.io/AI_Agents/[AgentFolder]/index.html` in a modern browser
 2. Configure the necessary API keys
 3. Use the application
 
