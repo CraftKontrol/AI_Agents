@@ -47,8 +47,7 @@ Each agent requires specific API keys:
 
 
 ## Available Agents
-
-### 🌟 [AstralCompute](./AstralCompute/)
+### 🌟 [AstralCompute](https://craftkontrol.github.io/AI_Agents/AstralCompute/)
 **Astrological ephemeris calculator with AI**
 - Planetary positions and aspects calculation
 - Lunar phases with visualization 
@@ -59,7 +58,7 @@ Each agent requires specific API keys:
 
 ---
 
-### 🔍 [KeyWordFinder](./KeyWordFinder/)
+### 🔍 [KeyWordFinder](https://craftkontrol.github.io/AI_Agents/KeyWordFinder/)
 **Keyword generator and search aggregator**
 - Intelligent search term generation (AI)
 - Multi-source search (Tavily, ScrapingBee, ScraperAPI, etc.)
@@ -70,7 +69,7 @@ Each agent requires specific API keys:
 
 ---
 
-### 🥬 [LocalFoodProducts](./LocalFoodProducts/)
+### 🥬 [LocalFoodProducts](https://craftkontrol.github.io/AI_Agents/LocalFoodProducts/)
 **Local food producers locator**
 - Interactive Leaflet map
 - Multiple sources (OpenFoodFacts, OpenStreetMap)
@@ -81,7 +80,7 @@ Each agent requires specific API keys:
 
 ---
 
-### 🌤️ [MeteoAgregator](./MeteoAgregator/)
+### 🌤️ [MeteoAgregator](https://craftkontrol.github.io/AI_Agents/MeteoAgregator/)
 **Multi-source weather forecast comparator**
 - OpenWeather, WeatherAPI, Météo-France aggregation
 - Hourly and daily forecasts (7 days)
@@ -92,7 +91,7 @@ Each agent requires specific API keys:
 
 ---
 
-### 📰 [NewsAgregator](./NewsAgregator/)
+### 📰 [NewsAgregator](https://craftkontrol.github.io/AI_Agents/NewsAgregator/)
 **RSS feed aggregator by categories**
 - Organization by customizable categories
 - Automatic or manual refresh
