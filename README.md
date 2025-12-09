@@ -69,11 +69,11 @@ Each agent requires specific API keys:
 ---
 
 ### 🔍 [AiSearchAgregator](https://craftkontrol.github.io/AI_Agents/AiSearchAgregator/)
-**AI-powered search aggregator**
-- Intelligent search term generation (AI)
-- Multi-source search (Tavily, ScrapingBee, ScraperAPI, etc.)
-- Deep scraping with content extraction
-- Statistics and JSON export
+**Intelligent multi-source search with AI extraction**
+- Text and voice search with AI query optimization
+- Multi-source aggregation (Tavily, ScrapingBee, ScraperAPI, Bright Data, ScrapFly)
+- AI-powered content extraction and summarization (Mistral AI)
+- Advanced filtering, sorting, and JSON export
 
 **Stack**: Mistral AI, Tavily, ScrapingBee, ScraperAPI, Bright Data, ScrapFly
 
