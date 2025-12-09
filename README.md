@@ -31,7 +31,7 @@ Each Agent/
 [NewsAgregator](https://craftkontrol.github.io/AI_Agents/NewsAgregator/)
 [LocalFoodProducts](https://craftkontrol.github.io/AI_Agents/LocalFoodProducts/)
 [AstralCompute](https://craftkontrol.github.io/AI_Agents/AstralCompute/)
-[KeyWordFinder](https://craftkontrol.github.io/AI_Agents/KeyWordFinder/)
+[AiSearchAgregator](https://craftkontrol.github.io/AI_Agents/AiSearchAgregator/)
 
 
 
@@ -50,7 +50,7 @@ Each agent requires specific API keys:
 | Agent | Required APIs | Where to get |
 |-------|---------------|------------|
 | AstralCompute | Mistral AI | [console.mistral.ai](https://console.mistral.ai/) |
-| KeyWordFinder | Mistral AI + Scraper (optional) | [console.mistral.ai](https://console.mistral.ai/), [tavily.com](https://tavily.com/) |
+| AiSearchAgregator | Mistral AI + Scraper (optional) | [console.mistral.ai](https://console.mistral.ai/), [tavily.com](https://tavily.com/) |
 | LocalFoodProducts | None | Public APIs |
 | MeteoAgregator | OpenWeather/WeatherAPI (at least 1) | [openweathermap.org](https://openweathermap.org/api) |
 | NewsAgregator | None | Public RSS |
@@ -68,8 +68,8 @@ Each agent requires specific API keys:
 
 ---
 
-### 🔍 [KeyWordFinder](https://craftkontrol.github.io/AI_Agents/KeyWordFinder/)
-**Keyword generator and search aggregator**
+### 🔍 [AiSearchAgregator](https://craftkontrol.github.io/AI_Agents/AiSearchAgregator/)
+**AI-powered search aggregator**
 - Intelligent search term generation (AI)
 - Multi-source search (Tavily, ScrapingBee, ScraperAPI, etc.)
 - Deep scraping with content extraction
