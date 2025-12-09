@@ -25,6 +25,16 @@ Each Agent/
 └── README.md        # Complete documentation
 ```
 
+## Available Agents
+
+[MeteoAgregator](https://craftkontrol.github.io/AI_Agents/MeteoAgregator/)
+[NewsAgregator](https://craftkontrol.github.io/AI_Agents/NewsAgregator/)
+[LocalFoodProducts](https://craftkontrol.github.io/AI_Agents/LocalFoodProducts/)
+[AstralCompute](https://craftkontrol.github.io/AI_Agents/AstralCompute/)
+[KeyWordFinder](https://craftkontrol.github.io/AI_Agents/KeyWordFinder/)
+
+
+
 ## Installation & Usage
 
 ### Method 1: Direct Use

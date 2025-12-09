@@ -674,7 +674,7 @@ function renderNewsCard(article) {
                    target="_blank" 
                    rel="noopener noreferrer" 
                    class="news-link" 
-                   data-article-data='${JSON.stringify({id: articleId, title: article.title, link: article.link, source: article.source, category: article.category, date: formattedDate}).replace(/'/g, "&apos;")}'>
+                   data-article-data='${JSON.stringify({id: articleId, title: article.title, link: article.link, source: article.source, category: article.category, date: formattedDate}).replace(/'/g, "&#39;")}'>
                     ${translations[currentLanguage].readMore}
                     <span class="material-symbols-outlined">arrow_forward</span>
                 </a>
@@ -844,11 +844,13 @@ function loadReadArticles() {
     const saved = localStorage.getItem('readArticles');
     if (saved) {
         readArticles = new Set(JSON.parse(saved));
+        console.log('📖 Loaded read articles:', readArticles.size);
     }
     
     const savedHistory = localStorage.getItem('articleHistory');
     if (savedHistory) {
         articleHistory = JSON.parse(savedHistory);
+        console.log('📚 Loaded article history:', articleHistory.length);
     }
 }
 
@@ -862,13 +864,22 @@ function initArticleClickHandlers() {
     document.addEventListener('click', function(e) {
         const link = e.target.closest('.news-link');
         if (link && link.dataset.articleData) {
-            const data = JSON.parse(link.dataset.articleData);
-            markArticleAsRead(data);
+            try {
+                const data = JSON.parse(link.dataset.articleData);
+                console.log('📌 Click detected on article:', data.title);
+                markArticleAsRead(data);
+            } catch (error) {
+                console.error('❌ Error parsing article data:', error);
+                console.log('Raw data:', link.dataset.articleData);
+            }
         }
     });
 }
 
 function markArticleAsRead(data) {
+    console.log('📰 Marking article as read:', data.title);
+    console.log('📝 Article ID:', data.id);
+    
     if (!readArticles.has(data.id)) {
         readArticles.add(data.id);
         
@@ -882,6 +893,8 @@ function markArticleAsRead(data) {
             date: data.date,
             readAt: new Date().toISOString()
         });
+        
+        console.log('✅ Article added to history. Total history:', articleHistory.length);
         
         // Keep only last 100 articles
         if (articleHistory.length > 100) {
@@ -909,20 +922,35 @@ function markArticleAsRead(data) {
 
 function toggleHistory() {
     const historyPanel = document.getElementById('historyPanel');
+    
+    if (!historyPanel) {
+        console.error('❌ History panel element not found!');
+        return;
+    }
+    
     const isVisible = historyPanel.style.display === 'block';
+    
+    console.log('🔄 Toggle history - Currently visible:', isVisible);
+    console.log('📚 Article history count:', articleHistory.length);
+    console.log('📖 Read articles count:', readArticles.size);
     
     if (isVisible) {
         historyPanel.style.display = 'none';
+        console.log('✅ History panel hidden');
     } else {
         renderHistory();
         historyPanel.style.display = 'block';
+        console.log('✅ History panel shown');
     }
 }
 
 function renderHistory() {
     const container = document.getElementById('historyContent');
     
+    console.log('🎨 Rendering history. Items:', articleHistory.length);
+    
     if (articleHistory.length === 0) {
+        console.log('📭 No history to display');
         container.innerHTML = `
             <div class="empty-history">
                 <span class="material-symbols-outlined">history</span>
@@ -931,6 +959,8 @@ function renderHistory() {
         `;
         return;
     }
+    
+    console.log('📋 First history item:', articleHistory[0]);
     
     container.innerHTML = articleHistory.map(article => {
         const readDate = new Date(article.readAt).toLocaleDateString(currentLanguage === 'fr' ? 'fr-FR' : 'en-US', {
