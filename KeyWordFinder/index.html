@@ -1,108 +1,402 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Keyword Find and Search</title>
+    <title>AI Search Aggregator - CraftKontrol</title>
+    
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- API Key Section -->
-    <div id="apiKeySection" class="api-key-section">
-        <h2>API Key Required</h2>
-        <p class="security-notice">Your API key is stored locally and never sent to any server except Mistral AI for generating search terms.</p>
-        <div class="api-key-input-group">
-            <input type="password" id="apiKeyInput" placeholder="Enter your Mistral AI API key">
-            <button onclick="saveApiKey()" class="btn-primary">Save Key</button>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-title">
+            <h1 data-lang="title">AI Search Aggregator</h1>
+            <p data-lang="subtitle">Recherche intelligente multi-sources avec IA</p>
         </div>
-        <div class="checkbox-group">
-            <input type="checkbox" id="rememberKey" checked>
-            <label for="rememberKey">Remember API key</label>
+        <div class="header-controls">
+            <button class="btn-export" onclick="exportResults()" id="exportBtn">
+                <span class="material-symbols-outlined">download</span>
+                <span data-lang="export">Exporter JSON</span>
+            </button>
+            <div class="language-selector">
+                <label for="languageSelect">
+                    <span class="material-symbols-outlined">language</span>
+                </label>
+                <select id="languageSelect" onchange="changeLanguage()">
+                    <option value="fr" selected>Français</option>
+                    <option value="en">English</option>
+                </select>
+            </div>
         </div>
-    </div>
-
-    <!-- Main Application -->
-    <div id="mainApp" class="main-app" style="display: none;">
-        <!-- Header -->
-        <header class="header">
-            <div class="header-left">
-                <h1>Keyword Find and Search</h1>
-                <p class="credits">Created by Craft Kontrol</p>
-                <p id="lastModified" class="last-modified">Last updated: Loading...</p>
-                <button onclick="clearSavedApiKey()" class="btn-secondary">Clear API Key</button>
-
-                <!-- Statistics Section -->
-                <div id="statisticsSection" class="statistics-section" style="display: none;">
-                    <div id="statisticsContainer" class="statistics-container"></div>
-                </div>
-
-                <div id="errorMessage" class="error-message" style="display: none;"></div>
+        <div class="credits">
+            <span>CraftKontrol © 2025</span>
+            <div class="last-modified">
+                <span id="lastModified">Chargement...</span>
             </div>
-            <div class="header-right">
-                <h2>Search Configuration</h2>
-                <div class="input-group">
-                    <label for="keywordsInput">Enter Keywords (comma-separated):</label>
-                    <textarea id="keywordsInput" placeholder="e.g., javascript, react, remote" rows="3"></textarea>
-                </div>
-                <div class="input-group">
-                    <label for="termCountInput">Number of Search Terms:</label>
-                    <input type="number" id="termCountInput" min="3" max="10" value="5">
-                </div>
-                <button onclick="generateSearchTerms()" class="btn-primary" id="generateBtn">Generate Search Terms</button>
-                
-                
-                
-                <div id="searchTermsDisplay" class="search-terms-display" style="display: none;">
-                    <h3>Generated Search Terms:</h3>
-                    <div id="searchTermsList" class="search-terms-list"></div>
-                    <div id="apiSelectorGroup" class="input-group" style="display: none;">
-                    <label for="apiSelector">Scraper API:</label>
-                    <select id="apiSelector">
-                        <option value="scrapingbee">ScrapingBee</option>
-                        <option value="scraperapi">ScraperAPI</option>
-                        <option value="brightdata">Bright Data</option>
-                        <option value="scrapfly">ScrapFly</option>
-                        <option value="tavily" selected>Tavily</option>
-                    </select>
-                    <div id="scraperKeyStatus" class="scraper-key-status" style="display: none;">
-                        <span class="key-indicator">✓</span>
-                        <span class="key-text">API key saved</span>
-                    </div>
-                </div>
-                
-                <div id="scraperKeyManagement" class="input-group" style="display: none;">
-                    <div class="checkbox-group">
-                        <input type="checkbox" id="rememberScraperKey" checked>
-                        <label for="rememberScraperKey">Remember Scraper API key</label>
-                    </div>
-                    <button onclick="clearScraperApiKey()" class="btn-secondary">Clear Scraper API Key</button>
-                </div>
-                    <button onclick="runDeepParse()" class="btn-primary" id="searchBtn">Execute Search</button>
-                   
-            </div>
-        </header>
+        </div>
+    </header>
 
-        <!-- Results Section -->
-        <main class="main-content">
-            <div id="loadingIndicator" class="loading-indicator" style="display: none;">
-                <div class="spinner"></div>
-                <p>Loading...</p>
-            </div>
+    <!-- Main Content -->
+    <main class="main-content">
+        <div id="errorMessage" class="error-message" style="display: none;"></div>
 
-            <div id="resultsSection" class="results-section" style="display: none;">
-                <div class="results-header">
-                    <h2>Search Results (<span id="resultCount">0</span>)</h2>
-                    <div class="sort-buttons">
-                        <button onclick="sortResults('relevance')" class="btn-sort active" id="sortRelevance">Sort by Relevance</button>
-                        <button onclick="sortResults('date')" class="btn-sort" id="sortDate">Sort by Date</button>
-                    </div>
-                </div>
-                <div id="resultsContainer" class="results-container"></div>
-            </div>
-
+        <!-- API Keys Management Section -->
+        <section class="api-management-section">
+            <h2>
+                <span class="material-symbols-outlined">key</span>
+                <span data-lang="apiKeysManagement">Gestion des clés API</span>
+                <button class="section-toggle" onclick="toggleSection('apiKeysContent')" id="apiToggleBtn">
+                    <span data-lang="hide">Masquer</span>
+                </button>
+            </h2>
             
-        </main>
-    </div>
+            <div id="apiKeysContent" class="section-content">
+                <div class="api-keys-grid">
+                    <!-- Mistral AI (Required) -->
+                    <div class="api-key-card required">
+                        <h3>
+                            <span class="material-symbols-outlined">smart_toy</span>
+                            Mistral AI
+                            <span class="required-badge">Requis</span>
+                        </h3>
+                        <div class="api-input-wrapper">
+                            <input type="password" id="apiKeyMistral" placeholder="Entrez la clé API..." data-lang-placeholder="enterApiKey" />
+                            <button class="btn-delete" onclick="deleteApiKey('mistral')" title="Supprimer la clé">×</button>
+                        </div>
+                        <a href="https://console.mistral.ai/" target="_blank" class="api-link" data-lang="getApiKey">Obtenir une clé API gratuite →</a>
+                        <p class="api-description" data-lang="mistralDesc">Détection de langue et extraction de contenu IA</p>
+                    </div>
+
+                    <!-- Tavily (Optional) -->
+                    <div class="api-key-card">
+                        <h3>
+                            <span class="material-symbols-outlined">search</span>
+                            Tavily Search
+                        </h3>
+                        <div class="api-input-wrapper">
+                            <input type="password" id="apiKeyTavily" placeholder="Entrez la clé API..." data-lang-placeholder="enterApiKey" />
+                            <button class="btn-delete" onclick="deleteApiKey('tavily')" title="Supprimer la clé">×</button>
+                        </div>
+                        <a href="https://tavily.com/" target="_blank" class="api-link" data-lang="getApiKey">Obtenir une clé API →</a>
+                    </div>
+
+                    <!-- ScrapingBee (Optional) -->
+                    <div class="api-key-card">
+                        <h3>
+                            <span class="material-symbols-outlined">precision_manufacturing</span>
+                            ScrapingBee
+                        </h3>
+                        <div class="api-input-wrapper">
+                            <input type="password" id="apiKeyScrapingBee" placeholder="Entrez la clé API..." data-lang-placeholder="enterApiKey" />
+                            <button class="btn-delete" onclick="deleteApiKey('scrapingbee')" title="Supprimer la clé">×</button>
+                        </div>
+                        <a href="https://www.scrapingbee.com/" target="_blank" class="api-link" data-lang="getApiKey">Obtenir une clé API →</a>
+                    </div>
+
+                    <!-- ScraperAPI (Optional) -->
+                    <div class="api-key-card">
+                        <h3>
+                            <span class="material-symbols-outlined">data_array</span>
+                            ScraperAPI
+                        </h3>
+                        <div class="api-input-wrapper">
+                            <input type="password" id="apiKeyScraperAPI" placeholder="Entrez la clé API..." data-lang-placeholder="enterApiKey" />
+                            <button class="btn-delete" onclick="deleteApiKey('scraperapi')" title="Supprimer la clé">×</button>
+                        </div>
+                        <a href="https://www.scraperapi.com/" target="_blank" class="api-link" data-lang="getApiKey">Obtenir une clé API →</a>
+                    </div>
+
+                    <!-- Bright Data (Optional) -->
+                    <div class="api-key-card">
+                        <h3>
+                            <span class="material-symbols-outlined">cloud</span>
+                            Bright Data
+                        </h3>
+                        <div class="api-input-wrapper">
+                            <input type="password" id="apiKeyBrightData" placeholder="Entrez la clé API..." data-lang-placeholder="enterApiKey" />
+                            <button class="btn-delete" onclick="deleteApiKey('brightdata')" title="Supprimer la clé">×</button>
+                        </div>
+                        <a href="https://brightdata.com/" target="_blank" class="api-link" data-lang="getApiKey">Obtenir une clé API →</a>
+                    </div>
+
+                    <!-- ScrapFly (Optional) -->
+                    <div class="api-key-card">
+                        <h3>
+                            <span class="material-symbols-outlined">flight_takeoff</span>
+                            ScrapFly
+                        </h3>
+                        <div class="api-input-wrapper">
+                            <input type="password" id="apiKeyScrapFly" placeholder="Entrez la clé API..." data-lang-placeholder="enterApiKey" />
+                            <button class="btn-delete" onclick="deleteApiKey('scrapfly')" title="Supprimer la clé">×</button>
+                        </div>
+                        <a href="https://scrapfly.io/" target="_blank" class="api-link" data-lang="getApiKey">Obtenir une clé API →</a>
+                    </div>
+                </div>
+
+                <div class="api-actions">
+                    <label class="remember-key-label">
+                        <input type="checkbox" id="rememberKeys" checked />
+                        <span data-lang="rememberKeys">Mémoriser les clés API</span>
+                    </label>
+                    <button class="btn-save" onclick="saveApiKeys()">
+                        <span class="material-symbols-outlined">save</span>
+                        <span data-lang="saveKeys">Enregistrer les clés</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Rate Limiting Configuration -->
+        <section class="rate-limit-section">
+            <h2>
+                <span class="material-symbols-outlined">speed</span>
+                <span data-lang="rateLimiting">Configuration des limites de taux</span>
+                <button class="section-toggle" onclick="toggleSection('rateLimitContent')" id="rateLimitToggleBtn">
+                    <span data-lang="show">Afficher</span>
+                </button>
+            </h2>
+            
+            <div id="rateLimitContent" class="section-content" style="display: none;">
+                <div class="rate-limit-grid">
+                    <div class="rate-limit-card">
+                        <label for="requestsPerMinute">
+                            <span data-lang="requestsPerMin">Requêtes par minute</span>
+                        </label>
+                        <input type="number" id="requestsPerMinute" value="10" min="1" max="60" />
+                        <p class="rate-hint" data-lang="requestsPerMinHint">Nombre max de requêtes par minute (toutes sources)</p>
+                    </div>
+                    
+                    <div class="rate-limit-card">
+                        <label for="delayBetweenRequests">
+                            <span data-lang="delayBetween">Délai entre requêtes (ms)</span>
+                        </label>
+                        <input type="number" id="delayBetweenRequests" value="1000" min="100" max="5000" step="100" />
+                        <p class="rate-hint" data-lang="delayBetweenHint">Pause minimale entre chaque requête</p>
+                    </div>
+                    
+                    <div class="rate-limit-card">
+                        <label for="maxConcurrent">
+                            <span data-lang="maxConcurrent">Requêtes simultanées</span>
+                        </label>
+                        <input type="number" id="maxConcurrent" value="3" min="1" max="10" />
+                        <p class="rate-hint" data-lang="maxConcurrentHint">Nombre de sources interrogées en parallèle</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Search Section -->
+        <section class="search-section">
+            <h2>
+                <span class="material-symbols-outlined">manage_search</span>
+                <span data-lang="searchTitle">Recherche intelligente</span>
+            </h2>
+            
+            <div class="search-container">
+                <div class="search-input-group">
+                    <input type="text" 
+                           id="searchInput" 
+                           placeholder="Entrez votre recherche..." 
+                           data-lang-placeholder="searchPlaceholder"
+                           onkeypress="handleSearchKeypress(event)" />
+                    <button class="btn-voice" id="voiceBtn" onclick="startVoiceSearch()" title="Recherche vocale">
+                        <span class="material-symbols-outlined">mic</span>
+                    </button>
+                    <button class="btn-search" onclick="performSearch()">
+                        <span class="material-symbols-outlined">search</span>
+                        <span data-lang="search">Rechercher</span>
+                    </button>
+                </div>
+                
+                <div class="search-status" id="searchStatus" style="display: none;">
+                    <div class="status-item">
+                        <span class="material-symbols-outlined">language</span>
+                        <span data-lang="detectedLang">Langue détectée:</span>
+                        <strong id="detectedLanguage">-</strong>
+                    </div>
+                    <div class="status-item">
+                        <span class="material-symbols-outlined">query_stats</span>
+                        <span data-lang="queryOptimized">Requête optimisée:</span>
+                        <strong id="optimizedQuery">-</strong>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- AI Summary Section -->
+        <section class="summary-section" id="summarySection" style="display: none;">
+            <h2>
+                <span class="material-symbols-outlined">auto_awesome</span>
+                <span data-lang="aiSummary">Résumé IA de la recherche</span>
+            </h2>
+            <div class="summary-content" id="summaryContent">
+                <div class="summary-loading">
+                    <div class="spinner-small"></div>
+                    <p data-lang="generatingSummary">Génération du résumé...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Statistics Section -->
+        <section class="stats-section" id="statsSection" style="display: none;">
+            <h2>
+                <span class="material-symbols-outlined">analytics</span>
+                <span data-lang="statistics">Statistiques</span>
+            </h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <span class="material-symbols-outlined">article</span>
+                    </div>
+                    <div class="stat-content">
+                        <span class="stat-value" id="statTotal">0</span>
+                        <span class="stat-label" data-lang="totalResults">Résultats totaux</span>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <span class="material-symbols-outlined">hub</span>
+                    </div>
+                    <div class="stat-content">
+                        <span class="stat-value" id="statSources">0</span>
+                        <span class="stat-label" data-lang="sourcesUsed">Sources utilisées</span>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <span class="material-symbols-outlined">content_copy</span>
+                    </div>
+                    <div class="stat-content">
+                        <span class="stat-value" id="statDuplicates">0</span>
+                        <span class="stat-label" data-lang="duplicatesRemoved">Doublons retirés</span>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <span class="material-symbols-outlined">timer</span>
+                    </div>
+                    <div class="stat-content">
+                        <span class="stat-value" id="statTime">0s</span>
+                        <span class="stat-label" data-lang="searchTime">Temps de recherche</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Filter Section -->
+        <section class="filter-section" id="filterSection" style="display: none;">
+            <h2>
+                <span class="material-symbols-outlined">filter_list</span>
+                <span data-lang="filters">Filtres</span>
+            </h2>
+            
+            <div class="filters-container">
+                <div class="view-toggle">
+                    <button class="view-btn" id="cardViewBtn" onclick="switchView('card')">
+                        <span class="material-symbols-outlined">grid_view</span>
+                    </button>
+                    <button class="view-btn active" id="listViewBtn" onclick="switchView('list')">
+                        <span class="material-symbols-outlined">view_list</span>
+                    </button>
+                </div>
+                <div class="filter-group">
+                    <label for="filterDate">
+                        <span class="material-symbols-outlined">calendar_today</span>
+                        <span data-lang="filterByDate">Filtrer par date</span>
+                    </label>
+                    <select id="filterDate" onchange="applyFilters()">
+                        <option value="all" data-lang="allDates">Toutes les dates</option>
+                        <option value="today" data-lang="today">Aujourd'hui</option>
+                        <option value="week" data-lang="thisWeek">Cette semaine</option>
+                        <option value="month" data-lang="thisMonth">Ce mois-ci</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="filterSource">
+                        <span class="material-symbols-outlined">source</span>
+                        <span data-lang="filterBySource">Filtrer par source</span>
+                    </label>
+                    <select id="filterSource" onchange="applyFilters()">
+                        <option value="all" data-lang="allSources">Toutes les sources</option>
+                        <!-- Populated dynamically -->
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="filterDomain">
+                        <span class="material-symbols-outlined">public</span>
+                        <span data-lang="filterByDomain">Filtrer par domaine</span>
+                    </label>
+                    <select id="filterDomain" onchange="applyFilters()">
+                        <option value="all" data-lang="allDomains">Tous les domaines</option>
+                        <!-- Populated dynamically -->
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="filterLanguage">
+                        <span class="material-symbols-outlined">translate</span>
+                        <span data-lang="filterByLanguage">Filtrer par langue</span>
+                    </label>
+                    <select id="filterLanguage" onchange="applyFilters()">
+                        <option value="all" data-lang="allLanguages">Toutes les langues</option>
+                        <!-- Populated dynamically -->
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="sortBy">
+                        <span class="material-symbols-outlined">sort</span>
+                        <span data-lang="sortBy">Trier par</span>
+                    </label>
+                    <select id="sortBy" onchange="applyFilters()">
+                        <option value="score" data-lang="sortScore">Score (pertinence)</option>
+                        <option value="date" data-lang="sortDate">Date (récent d'abord)</option>
+                        <option value="source" data-lang="sortSource">Source</option>
+                        <option value="domain" data-lang="sortDomain">Domaine</option>
+                    </select>
+                </div>
+                
+                <button class="btn-reset-filters" onclick="resetFilters()">
+                    <span class="material-symbols-outlined">filter_alt_off</span>
+                    <span data-lang="resetFilters">Réinitialiser les filtres</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Loading Indicator -->
+        <div id="loadingIndicator" class="loading-indicator" style="display: none;">
+            <div class="spinner"></div>
+            <p data-lang="loading">Recherche en cours...</p>
+            <div class="progress-container" id="progressContainer">
+                <!-- Progress items will be populated dynamically -->
+            </div>
+        </div>
+
+        <!-- Results Container -->
+        <div class="results-container" id="resultsContainer" style="display: none;">
+            <!-- Results will be populated by JavaScript -->
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="empty-state">
+            <span class="material-symbols-outlined">search</span>
+            <p data-lang="emptyTitle">Commencez une recherche</p>
+            <p data-lang="emptyDesc">Entrez votre requête ou utilisez la recherche vocale pour découvrir des contenus pertinents de plusieurs sources</p>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>Arnaud Cassone © Artcraft Visuals 2025</p>
+        <a href="https://www.artcraft-zone.com" target="_blank" rel="noopener noreferrer">www.artcraft-zone.com</a>
+    </footer>
 
     <script src="script.js"></script>
 </body>
