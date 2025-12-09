@@ -311,18 +311,23 @@ function toggleSection(sectionId) {
 function setupSpeechRecognition() {
     if (!recognition) {
         console.log('[Speech Recognition] Not available in this browser');
+        console.log('[Speech Recognition] webkitSpeechRecognition:', 'webkitSpeechRecognition' in window);
+        console.log('[Speech Recognition] SpeechRecognition:', 'SpeechRecognition' in window);
         return;
     }
     
     console.log('[Speech Recognition] Setting up browser-based recognition');
     recognition.lang = currentLanguage === 'fr' ? 'fr-FR' : 'en-US';
     recognition.maxAlternatives = 1;
+    recognition.continuous = false;
+    recognition.interimResults = false;
     
     recognition.onstart = function() {
-        console.log('[Speech Recognition] Started listening');
+        console.log('[Speech Recognition] ✓ Started listening');
         const voiceBtn = document.getElementById('voiceBtn');
         if (voiceBtn) {
             voiceBtn.classList.add('listening');
+            voiceBtn.style.backgroundColor = '#ff4444';
         }
         showInfo(translations[currentLanguage].listeningVoice);
     };
@@ -383,6 +388,7 @@ function setupSpeechRecognition() {
         const voiceBtn = document.getElementById('voiceBtn');
         if (voiceBtn) {
             voiceBtn.classList.remove('listening');
+            voiceBtn.style.backgroundColor = '';
         }
         hideInfo();
     };
@@ -551,58 +557,97 @@ function audioBufferToWav(buffer) {
 
 async function startVoiceSearch() {
     console.log('[Voice Search] Function called');
+    console.log('[Voice Search] User agent:', navigator.userAgent);
+    console.log('[Voice Search] Recognition available:', !!recognition);
+    console.log('[Voice Search] Current method:', sttMethod);
+    
     const voiceBtn = document.getElementById('voiceBtn');
+    
+    // Show immediate feedback
+    if (voiceBtn) {
+        voiceBtn.classList.add('listening');
+    }
     
     // If already recording with MediaRecorder, stop it
     if (isRecording && mediaRecorder && mediaRecorder.state === 'recording') {
         console.log('[Voice Search] Stopping active recording');
         mediaRecorder.stop();
+        if (voiceBtn) voiceBtn.classList.remove('listening');
         return;
     }
     
     if (isSearching) {
         showError(translations[currentLanguage].searchInProgress);
+        if (voiceBtn) voiceBtn.classList.remove('listening');
         return;
     }
     
-    // Request microphone permission first (especially important for mobile)
-    try {
-        console.log('[Voice Search] Requesting microphone permission...');
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        // Stop the stream immediately as we just needed permission
-        stream.getTracks().forEach(track => track.stop());
-        console.log('[Voice Search] Microphone permission granted');
-    } catch (error) {
-        console.error('[Voice Search] Microphone permission denied:', error);
-        showError(currentLanguage === 'fr' 
-            ? 'Accès au microphone refusé. Veuillez autoriser l\'accès au microphone dans les paramètres de votre navigateur.'
-            : 'Microphone access denied. Please allow microphone access in your browser settings.');
-        return;
-    }
+    // Check if we're on mobile
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    console.log('[Voice Search] Mobile device:', isMobile);
     
     // Try browser-based speech recognition first
     if (recognition && sttMethod === 'browser') {
         console.log('[Voice Search] Attempting browser-based recognition');
+        showInfo(currentLanguage === 'fr' ? 'Initialisation...' : 'Initializing...');
+        
         try {
             // Update language before starting
             recognition.lang = currentLanguage === 'fr' ? 'fr-FR' : 'en-US';
+            console.log('[Voice Search] Language set to:', recognition.lang);
+            
+            // On mobile, we may need to request permission first
+            if (isMobile && !navigator.permissions) {
+                console.log('[Voice Search] Mobile detected, requesting microphone access...');
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    stream.getTracks().forEach(track => track.stop());
+                    console.log('[Voice Search] Microphone permission granted');
+                } catch (permError) {
+                    console.error('[Voice Search] Microphone permission denied:', permError);
+                    if (voiceBtn) voiceBtn.classList.remove('listening');
+                    hideInfo();
+                    showError(currentLanguage === 'fr' 
+                        ? 'Accès au microphone refusé. Veuillez autoriser l\'accès au microphone.'
+                        : 'Microphone access denied. Please allow microphone access.');
+                    return;
+                }
+            }
+            
             recognition.start();
-            console.log('[Voice Search] Browser recognition started');
+            console.log('[Voice Search] Browser recognition started successfully');
             return;
         } catch (error) {
             console.error('[Voice Search] Browser STT failed:', error);
+            console.error('[Voice Search] Error name:', error.name);
+            console.error('[Voice Search] Error message:', error.message);
+            
+            if (voiceBtn) voiceBtn.classList.remove('listening');
+            hideInfo();
+            
             if (error.name === 'InvalidStateError') {
                 // Recognition is already started, try to stop and restart
+                console.log('[Voice Search] Invalid state, attempting to restart...');
                 try {
                     recognition.stop();
                     setTimeout(() => {
+                        if (voiceBtn) voiceBtn.classList.add('listening');
+                        showInfo(currentLanguage === 'fr' ? 'Redémarrage...' : 'Restarting...');
                         recognition.start();
-                    }, 100);
+                    }, 200);
                     return;
                 } catch (e) {
                     console.error('[Voice Search] Failed to restart:', e);
                 }
+            } else if (error.name === 'NotAllowedError') {
+                showError(currentLanguage === 'fr' 
+                    ? 'Accès au microphone refusé. Veuillez autoriser l\'accès au microphone.'
+                    : 'Microphone access denied. Please allow microphone access.');
+                return;
             }
+            
+            // Fallback to API method
+            console.log('[Voice Search] Falling back to API method');
             sttMethod = 'huggingface';
         }
     } else {

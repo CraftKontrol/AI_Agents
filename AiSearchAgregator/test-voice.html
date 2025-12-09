@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Reconnaissance Vocale</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #e0e0e0;
+        }
+        #status {
+            margin: 20px 0;
+            padding: 15px;
+            background: #2a2a2a;
+            border: 1px solid #3a3a3a;
+        }
+        button {
+            padding: 15px 30px;
+            font-size: 18px;
+            margin: 10px;
+            cursor: pointer;
+            background: #4a9eff;
+            color: white;
+            border: none;
+        }
+        button.listening {
+            background: #ff4444;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #2a2a2a;
+            border: 2px solid #44ff88;
+            min-height: 50px;
+        }
+        .log {
+            background: #0a0a0a;
+            padding: 10px;
+            margin-top: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .log div {
+            margin: 2px 0;
+        }
+        .error { color: #ff4444; }
+        .success { color: #44ff88; }
+        .info { color: #4a9eff; }
+    </style>
+</head>
+<body>
+    <h1>🎤 Test Reconnaissance Vocale Mobile</h1>
+    
+    <div id="status">
+        <h3>État du navigateur:</h3>
+        <p>User Agent: <span id="userAgent"></span></p>
+        <p>SpeechRecognition disponible: <span id="speechAvailable"></span></p>
+        <p>MediaDevices disponible: <span id="mediaAvailable"></span></p>
+        <p>Est mobile: <span id="isMobile"></span></p>
+    </div>
+    
+    <button id="startBtn" onclick="startTest()">🎤 Démarrer le test</button>
+    <button onclick="clearLogs()">🗑️ Effacer les logs</button>
+    
+    <div id="result">
+        <strong>Résultat:</strong> <span id="transcript">En attente...</span>
+    </div>
+    
+    <div class="log" id="logContainer"></div>
+    
+    <script>
+        let recognition = null;
+        let logs = [];
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            logs.push({ time: timestamp, message, type });
+            updateLogs();
+            console.log(`[${timestamp}] ${message}`);
+        }
+        
+        function updateLogs() {
+            const container = document.getElementById('logContainer');
+            container.innerHTML = logs.map(l => 
+                `<div class="${l.type}">[${l.time}] ${l.message}</div>`
+            ).join('');
+            container.scrollTop = container.scrollHeight;
+        }
+        
+        function clearLogs() {
+            logs = [];
+            updateLogs();
+        }
+        
+        // Diagnostic au chargement
+        document.addEventListener('DOMContentLoaded', function() {
+            log('Page chargée', 'success');
+            
+            // User agent
+            document.getElementById('userAgent').textContent = navigator.userAgent;
+            log('User Agent: ' + navigator.userAgent);
+            
+            // Check SpeechRecognition
+            const hasSpeech = 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
+            document.getElementById('speechAvailable').textContent = hasSpeech ? '✅ OUI' : '❌ NON';
+            document.getElementById('speechAvailable').style.color = hasSpeech ? '#44ff88' : '#ff4444';
+            log('SpeechRecognition disponible: ' + hasSpeech, hasSpeech ? 'success' : 'error');
+            
+            // Check MediaDevices
+            const hasMedia = 'mediaDevices' in navigator && 'getUserMedia' in navigator.mediaDevices;
+            document.getElementById('mediaAvailable').textContent = hasMedia ? '✅ OUI' : '❌ NON';
+            document.getElementById('mediaAvailable').style.color = hasMedia ? '#44ff88' : '#ff4444';
+            log('MediaDevices disponible: ' + hasMedia, hasMedia ? 'success' : 'error');
+            
+            // Is mobile
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            document.getElementById('isMobile').textContent = isMobile ? '✅ OUI' : '❌ NON';
+            document.getElementById('isMobile').style.color = isMobile ? '#4a9eff' : '#888';
+            log('Appareil mobile: ' + isMobile);
+            
+            // Initialize recognition
+            if (hasSpeech) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                recognition.lang = 'fr-FR';
+                recognition.continuous = false;
+                recognition.interimResults = false;
+                recognition.maxAlternatives = 1;
+                
+                recognition.onstart = function() {
+                    log('✅ Reconnaissance vocale démarrée', 'success');
+                    document.getElementById('startBtn').classList.add('listening');
+                    document.getElementById('startBtn').textContent = '🎤 Écoute en cours...';
+                };
+                
+                recognition.onresult = function(event) {
+                    log('✅ Résultat reçu', 'success');
+                    if (event.results && event.results[0] && event.results[0][0]) {
+                        const transcript = event.results[0][0].transcript;
+                        const confidence = event.results[0][0].confidence;
+                        document.getElementById('transcript').textContent = transcript;
+                        log(`Transcription: "${transcript}" (confiance: ${(confidence * 100).toFixed(1)}%)`, 'success');
+                    }
+                };
+                
+                recognition.onerror = function(event) {
+                    log('❌ ERREUR: ' + event.error + ' - ' + event.message, 'error');
+                    document.getElementById('startBtn').classList.remove('listening');
+                    document.getElementById('startBtn').textContent = '🎤 Démarrer le test';
+                };
+                
+                recognition.onend = function() {
+                    log('Reconnaissance vocale terminée', 'info');
+                    document.getElementById('startBtn').classList.remove('listening');
+                    document.getElementById('startBtn').textContent = '🎤 Démarrer le test';
+                };
+                
+                log('Reconnaissance vocale initialisée', 'success');
+            }
+        });
+        
+        async function startTest() {
+            log('=== DÉBUT DU TEST ===', 'info');
+            
+            if (!recognition) {
+                log('❌ Reconnaissance vocale non disponible', 'error');
+                alert('Reconnaissance vocale non disponible sur ce navigateur');
+                return;
+            }
+            
+            // Test permission microphone
+            log('Demande d\'autorisation microphone...', 'info');
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                log('✅ Autorisation microphone accordée', 'success');
+                stream.getTracks().forEach(track => {
+                    log('Track: ' + track.kind + ' - ' + track.label);
+                    track.stop();
+                });
+            } catch (error) {
+                log('❌ Erreur permission microphone: ' + error.name + ' - ' + error.message, 'error');
+                alert('Veuillez autoriser l\'accès au microphone');
+                return;
+            }
+            
+            // Démarrer la reconnaissance
+            log('Démarrage de la reconnaissance vocale...', 'info');
+            try {
+                recognition.start();
+                log('✅ start() appelé avec succès', 'success');
+            } catch (error) {
+                log('❌ Erreur au démarrage: ' + error.name + ' - ' + error.message, 'error');
+                
+                // Try to stop and restart
+                if (error.name === 'InvalidStateError') {
+                    log('Tentative de redémarrage...', 'info');
+                    try {
+                        recognition.stop();
+                        setTimeout(() => {
+                            recognition.start();
+                        }, 200);
+                    } catch (e) {
+                        log('❌ Échec du redémarrage: ' + e.message, 'error');
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>
