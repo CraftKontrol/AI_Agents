@@ -5,6 +5,7 @@ Intelligent multi-source search aggregator with AI-powered content extraction an
 ## Features
 
 - **AI-Powered Search**: Mistral AI query optimization, language detection, voice search (FR/EN)
+- **Text-to-Speech**: Google Cloud TTS for AI summary narration with voice selection and audio controls
 - **Multi-Source Aggregation**: Tavily, ScrapingBee, ScraperAPI, Bright Data, ScrapFly
 - **Smart Extraction**: Deep scraping, AI summarization, metadata extraction
 - **Advanced Filtering**: Date, source, domain, language filters with dual view modes
@@ -15,20 +16,61 @@ Intelligent multi-source search aggregator with AI-powered content extraction an
 
 1. Open `index.html` in a modern browser (Chrome/Edge recommended)
 2. Add your **Mistral AI** key (required): [Get free key](https://console.mistral.ai/)
-3. Optionally add search source keys: [Tavily](https://tavily.com/), [ScrapingBee](https://www.scrapingbee.com/), [ScraperAPI](https://www.scraperapi.com/)
-4. Enter search query or use voice search
-5. Filter, sort, and export results as needed
+3. Optionally add **Google Cloud TTS** key for voice synthesis: [Get key](https://console.cloud.google.com/)
+4. Optionally add search source keys: [Tavily](https://tavily.com/), [ScrapingBee](https://www.scrapingbee.com/), [ScraperAPI](https://www.scraperapi.com/)
+5. Enter search query or use voice search
+6. Listen to AI summary narration or use manual controls
+7. Filter, sort, and export results as needed
 
 ## API Keys
 
 | Service | Required | Free Tier | Purpose |
 |---------|----------|-----------|---------|
 | **Mistral AI** | ✅ Yes | $5 credit (~1.5K-5K searches) | Language detection & AI extraction |
+| **Google Cloud TTS** | 🎤 Optional | 1M chars/month (~500-1K summaries) | Voice synthesis of AI summaries |
 | Tavily | Optional | 1K/month | Advanced search with scoring |
 | ScrapingBee | Optional | 1K credits | Deep scraping with JS rendering |
 | ScraperAPI | Optional | 5K/month | Scalable web scraping |
 | Bright Data | Optional | Enterprise | Professional scraping |
 | ScrapFly | Optional | 1K/month | Modern scraping API |
+
+## 🎤 Text-to-Speech (NEW!)
+
+### Features
+- **10 high-quality voices** (5 French, 5 English) powered by Google Cloud
+- **Auto-play option**: Automatically read AI summaries when generated
+- **Adjustable parameters**:
+  - Speaking rate: 0.5x to 2.0x
+  - Pitch: -20 to +20
+  - Volume: -16 dB to +16 dB
+- **Audio controls**: Play, Pause, Stop buttons with status indicator
+- **Smart language detection**: Automatically selects appropriate voice language
+
+### Voice Options
+**French Voices**:
+- Chirp HD D (Male)
+- Chirp HD F (Female) - Default
+- Chirp HD O (Female)
+- Chirp3 HD Achernar (Female)
+- Chirp3 HD Achird (Male)
+
+**English Voices**:
+- Achernar (Female)
+- Achird (Male)
+- Algenib (Male)
+- Algieba (Male)
+- Alnilam (Male)
+
+### Setup
+1. Get a Google Cloud API key from [Google Cloud Console](https://console.cloud.google.com/)
+2. Enable "Cloud Text-to-Speech API" for your project
+3. Add the API key in "API Keys Management" section
+4. Configure voice and audio settings in "Text-to-Speech Settings"
+5. Enable/disable auto-play as desired
+
+**Test key provided**: `AIzaSyBGpgFptdEJb1j7XANMn6yjxzT2gm5LXPk` (for testing only)
+
+See `TTS_README.md` for complete TTS documentation.
 
 ## Configuration
 
@@ -37,10 +79,19 @@ Intelligent multi-source search aggregator with AI-powered content extraction an
 - Delay between requests: 1000-2000ms (default: 1000ms)
 - Concurrent requests: 2-3 (default: 3)
 
+**TTS Settings** (optional):
+- Voice: Choose from 10 high-quality voices
+- Speed: Adjust reading speed (0.5x - 2.0x)
+- Pitch: Modify voice pitch (-20 to +20)
+- Volume: Control audio level (-16 to +16 dB)
+- Auto-play: Enable/disable automatic reading
+
 ## Usage
 
 **Search**: Text input or voice (microphone icon)  
 **Results**: Shows source, date, language, score (0-100%), title, AI summary, domain  
+**Audio**: AI summary can be narrated with adjustable voice settings  
+**Controls**: Play/Pause/Stop buttons for audio playback  
 **Filters**: Date (today/week/month), source, domain, language  
 **Views**: List or card layout  
 **Export**: Download results as JSON
@@ -94,11 +145,29 @@ AiSearchAgregator/
 ├── style.css               # CraftKontrol design system
 ├── script.js               # Logic & API integrations
 ├── AiSearchAgregator_Logo.png
-└── README.md
+├── README.md               # This file
+├── CHANGELOG.md            # Version history
+├── TTS_README.md           # Complete TTS documentation
+└── test_tts.html           # TTS testing page
 ```
+
+## Version
+
+**Current Version**: 2.0.0 (2025-12-10)  
+**Previous Version**: 1.0.0 (2025-12-09)
+
+**What's New in 2.0**:
+- 🎤 Google Cloud Text-to-Speech integration
+- 🎵 10 high-quality voices (French & English)
+- 🎛️ Adjustable audio parameters (speed, pitch, volume)
+- ▶️ Audio playback controls (Play/Pause/Stop)
+- 🔊 Auto-play option for AI summaries
+- 📱 Full mobile support for TTS features
+
+See `CHANGELOG.md` for complete version history.
 
 ## Credits
 
 **Developer**: Arnaud Cassone | **Organization**: Artcraft Visuals  
 **Website**: [artcraft-zone.com](https://www.artcraft-zone.com) | **GitHub**: [CraftKontrol/AI_Agents](https://github.com/CraftKontrol/AI_Agents)  
-**Design**: CraftKontrol © 2025 | **Version**: 1.0.0 (2025-12-09)
+**Design**: CraftKontrol © 2025 | **Version**: 2.0.0 (2025-12-10)

@@ -16,6 +16,12 @@ let audioChunks = [];
 let isRecording = false;
 let sttMethod = 'browser'; // 'browser', 'huggingface', 'whisper'
 
+// Text-to-Speech variables
+let currentAudio = null;
+let isPlaying = false;
+let currentSummaryText = '';
+let audioStartTime = 0;
+
 // Initialize browser-based speech recognition
 if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -97,7 +103,27 @@ const translations = {
         apiKeyDeleted: 'Clé API supprimée',
         searching: 'Recherche...',
         completed: 'Terminé',
-        failed: 'Échoué'
+        failed: 'Échoué',
+        googleTTSDesc: 'Synthèse vocale du résumé IA',
+        ttsSettings: 'Paramètres de synthèse vocale',
+        selectVoice: 'Sélectionner une voix',
+        frenchVoices: 'Français (French)',
+        englishVoices: 'Anglais (English)',
+        voiceHint: 'Choisissez la voix pour la lecture du résumé',
+        speakingRate: 'Vitesse de lecture',
+        speakingRateHint: 'Contrôle la rapidité de la voix',
+        pitch: 'Tonalité (Pitch)',
+        pitchHint: 'Ajuste la hauteur de la voix',
+        volumeGain: 'Volume',
+        volumeHint: 'Ajuste le niveau sonore',
+        autoPlaySummary: 'Options',
+        autoPlayLabel: 'Lire automatiquement le résumé IA',
+        autoPlayHint: 'Active la lecture automatique quand le résumé est généré',
+        ttsPlaying: 'Lecture en cours...',
+        ttsPaused: 'En pause',
+        ttsGenerating: 'Génération audio...',
+        ttsError: 'Erreur lors de la synthèse vocale',
+        noTTSKey: 'Clé API Google Cloud TTS requise'
     },
     en: {
         title: 'AI Search Aggregator',
@@ -164,7 +190,27 @@ const translations = {
         apiKeyDeleted: 'API key deleted',
         searching: 'Searching...',
         completed: 'Completed',
-        failed: 'Failed'
+        failed: 'Failed',
+        googleTTSDesc: 'AI summary voice synthesis',
+        ttsSettings: 'Text-to-Speech Settings',
+        selectVoice: 'Select a voice',
+        frenchVoices: 'French',
+        englishVoices: 'English',
+        voiceHint: 'Choose the voice for summary reading',
+        speakingRate: 'Speaking rate',
+        speakingRateHint: 'Controls voice speed',
+        pitch: 'Pitch',
+        pitchHint: 'Adjusts voice pitch',
+        volumeGain: 'Volume',
+        volumeHint: 'Adjusts sound level',
+        autoPlaySummary: 'Options',
+        autoPlayLabel: 'Automatically read AI summary',
+        autoPlayHint: 'Enable automatic reading when summary is generated',
+        ttsPlaying: 'Playing...',
+        ttsPaused: 'Paused',
+        ttsGenerating: 'Generating audio...',
+        ttsError: 'Error during voice synthesis',
+        noTTSKey: 'Google Cloud TTS API key required'
     }
 };
 
@@ -219,11 +265,11 @@ function updateLanguage() {
 
 // API Key Management
 function loadSavedApiKeys() {
-    const keys = ['mistral', 'tavily', 'scrapingbee', 'scraperapi', 'brightdata', 'scrapfly'];
+    const keys = ['mistral', 'tavily', 'scrapingbee', 'scraperapi', 'brightdata', 'scrapfly', 'googletts'];
     keys.forEach(key => {
         const savedKey = localStorage.getItem(`apiKey_${key}`);
         if (savedKey) {
-            const inputId = `apiKey${key.charAt(0).toUpperCase() + key.slice(1).replace('api', 'API')}`;
+            const inputId = key === 'googletts' ? 'apiKeyGoogleTTS' : `apiKey${key.charAt(0).toUpperCase() + key.slice(1).replace('api', 'API')}`;
             const input = document.getElementById(inputId);
             if (input) {
                 input.value = savedKey;
@@ -235,6 +281,9 @@ function loadSavedApiKeys() {
     if (rememberKeys) {
         document.getElementById('rememberKeys').checked = rememberKeys === 'true';
     }
+    
+    // Load TTS settings
+    loadTTSSettings();
 }
 
 function saveApiKeys() {
@@ -247,7 +296,8 @@ function saveApiKeys() {
             scrapingbee: document.getElementById('apiKeyScrapingBee').value.trim(),
             scraperapi: document.getElementById('apiKeyScraperAPI').value.trim(),
             brightdata: document.getElementById('apiKeyBrightData').value.trim(),
-            scrapfly: document.getElementById('apiKeyScrapFly').value.trim()
+            scrapfly: document.getElementById('apiKeyScrapFly').value.trim(),
+            googletts: document.getElementById('apiKeyGoogleTTS').value.trim()
         };
         
         Object.entries(keys).forEach(([name, value]) => {
@@ -261,12 +311,18 @@ function saveApiKeys() {
         localStorage.removeItem('rememberApiKeys');
     }
     
+    saveTTSSettings();
     showSuccess(translations[currentLanguage].apiKeysSaved);
 }
 
 function deleteApiKey(keyName) {
     localStorage.removeItem(`apiKey_${keyName}`);
-    const inputId = `apiKey${keyName.charAt(0).toUpperCase() + keyName.slice(1).replace('api', 'API')}`;
+    let inputId;
+    if (keyName === 'googletts') {
+        inputId = 'apiKeyGoogleTTS';
+    } else {
+        inputId = `apiKey${keyName.charAt(0).toUpperCase() + keyName.slice(1).replace('api', 'API')}`;
+    }
     const input = document.getElementById(inputId);
     if (input) {
         input.value = '';
@@ -295,6 +351,250 @@ function getRateLimitSettings() {
     localStorage.setItem('maxConcurrent', maxConcurrent);
     
     return { requestsPerMinute, delayBetweenRequests, maxConcurrent };
+}
+
+// Text-to-Speech Functions
+function loadTTSSettings() {
+    const voice = localStorage.getItem('tts_voice') || 'fr-FR-Chirp-HD-F';
+    const speakingRate = localStorage.getItem('tts_speakingRate') || '1.0';
+    const pitch = localStorage.getItem('tts_pitch') || '0';
+    const volume = localStorage.getItem('tts_volume') || '0';
+    const autoPlay = localStorage.getItem('tts_autoPlay') || 'true';
+    
+    const voiceSelect = document.getElementById('ttsVoice');
+    const speakingRateInput = document.getElementById('ttsSpeakingRate');
+    const pitchInput = document.getElementById('ttsPitch');
+    const volumeInput = document.getElementById('ttsVolume');
+    const autoPlayInput = document.getElementById('autoPlayTTS');
+    
+    if (voiceSelect) voiceSelect.value = voice;
+    if (speakingRateInput) {
+        speakingRateInput.value = speakingRate;
+        document.getElementById('speakingRateValue').textContent = speakingRate + 'x';
+    }
+    if (pitchInput) {
+        pitchInput.value = pitch;
+        document.getElementById('pitchValue').textContent = pitch;
+    }
+    if (volumeInput) {
+        volumeInput.value = volume;
+        document.getElementById('volumeValue').textContent = volume + ' dB';
+    }
+    if (autoPlayInput) autoPlayInput.checked = autoPlay === 'true';
+}
+
+function saveTTSSettings() {
+    const voice = document.getElementById('ttsVoice').value;
+    const speakingRate = document.getElementById('ttsSpeakingRate').value;
+    const pitch = document.getElementById('ttsPitch').value;
+    const volume = document.getElementById('ttsVolume').value;
+    const autoPlay = document.getElementById('autoPlayTTS').checked;
+    
+    localStorage.setItem('tts_voice', voice);
+    localStorage.setItem('tts_speakingRate', speakingRate);
+    localStorage.setItem('tts_pitch', pitch);
+    localStorage.setItem('tts_volume', volume);
+    localStorage.setItem('tts_autoPlay', autoPlay.toString());
+}
+
+function updateTTSValue(setting, value) {
+    if (setting === 'speakingRate') {
+        document.getElementById('speakingRateValue').textContent = value + 'x';
+    } else if (setting === 'pitch') {
+        document.getElementById('pitchValue').textContent = value;
+    } else if (setting === 'volume') {
+        document.getElementById('volumeValue').textContent = value + ' dB';
+    }
+}
+
+async function synthesizeSpeech(text) {
+    const apiKey = document.getElementById('apiKeyGoogleTTS').value.trim() || localStorage.getItem('apiKey_googletts');
+    
+    if (!apiKey) {
+        console.warn('[TTS] No Google Cloud TTS API key found');
+        return null;
+    }
+    
+    const voice = document.getElementById('ttsVoice').value;
+    const speakingRate = parseFloat(document.getElementById('ttsSpeakingRate').value);
+    const pitch = parseFloat(document.getElementById('ttsPitch').value);
+    const volumeGainDb = parseFloat(document.getElementById('ttsVolume').value);
+    
+    // Determine language code based on voice
+    let languageCode = 'fr-FR';
+    if (voice.startsWith('fr-FR')) {
+        languageCode = 'fr-FR';
+    } else {
+        languageCode = 'en-US';
+    }
+    
+    const audioStatus = document.getElementById('audioStatus');
+    if (audioStatus) {
+        audioStatus.textContent = translations[currentLanguage].ttsGenerating;
+    }
+    
+    try {
+        const response = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                input: { text: text },
+                voice: {
+                    languageCode: languageCode,
+                    name: voice
+                },
+                audioConfig: {
+                    audioEncoding: 'MP3',
+                    speakingRate: speakingRate,
+                    pitch: pitch,
+                    volumeGainDb: volumeGainDb
+                }
+            })
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            console.error('[TTS] API Error:', error);
+            throw new Error(`TTS API error: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (!data.audioContent) {
+            throw new Error('No audio content received');
+        }
+        
+        // Convert base64 to blob
+        const audioBlob = base64ToBlob(data.audioContent, 'audio/mp3');
+        const audioUrl = URL.createObjectURL(audioBlob);
+        
+        return audioUrl;
+        
+    } catch (error) {
+        console.error('[TTS] Synthesis error:', error);
+        if (audioStatus) {
+            audioStatus.textContent = translations[currentLanguage].ttsError;
+        }
+        return null;
+    }
+}
+
+function base64ToBlob(base64, mimeType) {
+    const byteCharacters = atob(base64);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    return new Blob([byteArray], { type: mimeType });
+}
+
+async function playAISummary(summaryText) {
+    currentSummaryText = summaryText;
+    
+    // Stop any current playback
+    if (currentAudio) {
+        currentAudio.pause();
+        currentAudio = null;
+    }
+    
+    const audioUrl = await synthesizeSpeech(summaryText);
+    
+    if (!audioUrl) {
+        return;
+    }
+    
+    currentAudio = new Audio(audioUrl);
+    
+    const playPauseBtn = document.getElementById('playPauseBtn');
+    const audioStatus = document.getElementById('audioStatus');
+    const audioControls = document.getElementById('audioControls');
+    
+    if (audioControls) {
+        audioControls.style.display = 'flex';
+    }
+    
+    currentAudio.addEventListener('play', () => {
+        isPlaying = true;
+        if (playPauseBtn) {
+            playPauseBtn.querySelector('.material-symbols-outlined').textContent = 'pause';
+        }
+        if (audioStatus) {
+            audioStatus.textContent = translations[currentLanguage].ttsPlaying;
+        }
+    });
+    
+    currentAudio.addEventListener('pause', () => {
+        isPlaying = false;
+        if (playPauseBtn) {
+            playPauseBtn.querySelector('.material-symbols-outlined').textContent = 'play_arrow';
+        }
+        if (audioStatus) {
+            audioStatus.textContent = translations[currentLanguage].ttsPaused;
+        }
+    });
+    
+    currentAudio.addEventListener('ended', () => {
+        isPlaying = false;
+        if (playPauseBtn) {
+            playPauseBtn.querySelector('.material-symbols-outlined').textContent = 'play_arrow';
+        }
+        if (audioStatus) {
+            audioStatus.textContent = '';
+        }
+    });
+    
+    currentAudio.addEventListener('error', (e) => {
+        console.error('[TTS] Audio playback error:', e);
+        if (audioStatus) {
+            audioStatus.textContent = translations[currentLanguage].ttsError;
+        }
+    });
+    
+    // Auto play
+    try {
+        await currentAudio.play();
+    } catch (error) {
+        console.error('[TTS] Play error:', error);
+        if (audioStatus) {
+            audioStatus.textContent = translations[currentLanguage].ttsError;
+        }
+    }
+}
+
+function togglePlayPause() {
+    if (!currentAudio) {
+        if (currentSummaryText) {
+            playAISummary(currentSummaryText);
+        }
+        return;
+    }
+    
+    if (isPlaying) {
+        currentAudio.pause();
+    } else {
+        currentAudio.play();
+    }
+}
+
+function stopAudio() {
+    if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+        isPlaying = false;
+        
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const audioStatus = document.getElementById('audioStatus');
+        
+        if (playPauseBtn) {
+            playPauseBtn.querySelector('.material-symbols-outlined').textContent = 'play_arrow';
+        }
+        if (audioStatus) {
+            audioStatus.textContent = '';
+        }
+    }
 }
 
 // Section Toggle
@@ -1241,6 +1541,20 @@ Write in a natural, flowing style. Respond ONLY with the summary text, no additi
         
         // Display summary
         summaryContent.innerHTML = `<p class="summary-text">${escapeHtml(summary)}</p>`;
+        
+        // Store the summary text for TTS
+        currentSummaryText = summary;
+        
+        // Auto-play TTS if enabled
+        const autoPlayTTS = document.getElementById('autoPlayTTS');
+        const ttsApiKey = document.getElementById('apiKeyGoogleTTS').value.trim() || localStorage.getItem('apiKey_googletts');
+        
+        if (autoPlayTTS && autoPlayTTS.checked && ttsApiKey) {
+            console.log('[TTS] Auto-playing summary');
+            await playAISummary(summary);
+        } else if (!ttsApiKey) {
+            console.log('[TTS] No API key configured, skipping auto-play');
+        }
         
     } catch (error) {
         console.error('Summary generation error:', error);

@@ -69,6 +69,20 @@
                         <p class="api-description" data-lang="mistralDesc">Détection de langue et extraction de contenu IA</p>
                     </div>
 
+                    <!-- Google Cloud TTS (Optional) -->
+                    <div class="api-key-card">
+                        <h3>
+                            <span class="material-symbols-outlined">record_voice_over</span>
+                            Google Cloud TTS
+                        </h3>
+                        <div class="api-input-wrapper">
+                            <input type="password" id="apiKeyGoogleTTS" placeholder="Entrez la clé API..." data-lang-placeholder="enterApiKey" />
+                            <button class="btn-delete" onclick="deleteApiKey('googletts')" title="Supprimer la clé">×</button>
+                        </div>
+                        <a href="https://console.cloud.google.com/apis/credentials" target="_blank" class="api-link" data-lang="getApiKey">Obtenir une clé API →</a>
+                        <p class="api-description" data-lang="googleTTSDesc">Synthèse vocale du résumé IA</p>
+                    </div>
+
                     <!-- Tavily (Optional) -->
                     <div class="api-key-card">
                         <h3>
@@ -187,6 +201,102 @@
             </div>
         </section>
 
+        <!-- Text-to-Speech Configuration -->
+        <section class="tts-section">
+            <h2>
+                <span class="material-symbols-outlined">speaker</span>
+                <span data-lang="ttsSettings">Paramètres de synthèse vocale</span>
+                <button class="section-toggle" onclick="toggleSection('ttsContent')" id="ttsToggleBtn">
+                    <span data-lang="show">Afficher</span>
+                </button>
+            </h2>
+            
+            <div id="ttsContent" class="section-content" style="display: none;">
+                <div class="tts-grid">
+                    <div class="tts-card">
+                        <label for="ttsVoice">
+                            <span class="material-symbols-outlined">voice_selection</span>
+                            <span data-lang="selectVoice">Sélectionner une voix</span>
+                        </label>
+                        <select id="ttsVoice">
+                            <optgroup label="Français (French)" data-lang-label="frenchVoices">
+                                <option value="fr-FR-Chirp-HD-D" data-gender="male">Chirp HD D (Homme)</option>
+                                <option value="fr-FR-Chirp-HD-F" data-gender="female" selected>Chirp HD F (Femme)</option>
+                                <option value="fr-FR-Chirp-HD-O" data-gender="female">Chirp HD O (Femme)</option>
+                                <option value="fr-FR-Chirp3-HD-Achernar" data-gender="female">Chirp3 HD Achernar (Femme)</option>
+                                <option value="fr-FR-Chirp3-HD-Achird" data-gender="male">Chirp3 HD Achird (Homme)</option>
+                            </optgroup>
+                            <optgroup label="English" data-lang-label="englishVoices">
+                                <option value="Achernar" data-gender="female">Achernar (Female)</option>
+                                <option value="Achird" data-gender="male">Achird (Male)</option>
+                                <option value="Algenib" data-gender="male">Algenib (Male)</option>
+                                <option value="Algieba" data-gender="male">Algieba (Male)</option>
+                                <option value="Alnilam" data-gender="male">Alnilam (Male)</option>
+                            </optgroup>
+                        </select>
+                        <p class="tts-hint" data-lang="voiceHint">Choisissez la voix pour la lecture du résumé</p>
+                    </div>
+                    
+                    <div class="tts-card">
+                        <label for="ttsSpeakingRate">
+                            <span class="material-symbols-outlined">speed</span>
+                            <span data-lang="speakingRate">Vitesse de lecture</span>
+                            <span class="tts-value" id="speakingRateValue">1.0x</span>
+                        </label>
+                        <input type="range" id="ttsSpeakingRate" min="0.5" max="2.0" step="0.1" value="1.0" oninput="updateTTSValue('speakingRate', this.value)" />
+                        <div class="range-labels">
+                            <span>0.5x</span>
+                            <span>1.0x</span>
+                            <span>2.0x</span>
+                        </div>
+                        <p class="tts-hint" data-lang="speakingRateHint">Contrôle la rapidité de la voix</p>
+                    </div>
+                    
+                    <div class="tts-card">
+                        <label for="ttsPitch">
+                            <span class="material-symbols-outlined">graphic_eq</span>
+                            <span data-lang="pitch">Tonalité (Pitch)</span>
+                            <span class="tts-value" id="pitchValue">0</span>
+                        </label>
+                        <input type="range" id="ttsPitch" min="-20" max="20" step="1" value="0" oninput="updateTTSValue('pitch', this.value)" />
+                        <div class="range-labels">
+                            <span>-20</span>
+                            <span>0</span>
+                            <span>+20</span>
+                        </div>
+                        <p class="tts-hint" data-lang="pitchHint">Ajuste la hauteur de la voix</p>
+                    </div>
+                    
+                    <div class="tts-card">
+                        <label for="ttsVolume">
+                            <span class="material-symbols-outlined">volume_up</span>
+                            <span data-lang="volumeGain">Volume</span>
+                            <span class="tts-value" id="volumeValue">0 dB</span>
+                        </label>
+                        <input type="range" id="ttsVolume" min="-16" max="16" step="1" value="0" oninput="updateTTSValue('volume', this.value)" />
+                        <div class="range-labels">
+                            <span>-16 dB</span>
+                            <span>0 dB</span>
+                            <span>+16 dB</span>
+                        </div>
+                        <p class="tts-hint" data-lang="volumeHint">Ajuste le niveau sonore</p>
+                    </div>
+
+                    <div class="tts-card">
+                        <label>
+                            <span class="material-symbols-outlined">settings</span>
+                            <span data-lang="autoPlaySummary">Options</span>
+                        </label>
+                        <label class="tts-checkbox-label">
+                            <input type="checkbox" id="autoPlayTTS" checked />
+                            <span data-lang="autoPlayLabel">Lire automatiquement le résumé IA</span>
+                        </label>
+                        <p class="tts-hint" data-lang="autoPlayHint">Active la lecture automatique quand le résumé est généré</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- Search Section -->
         <section class="search-section">
             <h2>
@@ -231,6 +341,18 @@
                 <span class="material-symbols-outlined">auto_awesome</span>
                 <span data-lang="aiSummary">Résumé IA de la recherche</span>
             </h2>
+            <div class="audio-controls" id="audioControls" style="display: none;">
+                <button class="btn-audio" id="playPauseBtn" onclick="togglePlayPause()" title="Lecture/Pause">
+                    <span class="material-symbols-outlined">play_arrow</span>
+                </button>
+                <button class="btn-audio" id="stopBtn" onclick="stopAudio()" title="Arrêter">
+                    <span class="material-symbols-outlined">stop</span>
+                </button>
+                <div class="audio-progress" id="audioProgressContainer" style="display: none;">
+                    <div class="progress-bar" id="audioProgressBar"></div>
+                </div>
+                <span class="audio-status" id="audioStatus"></span>
+            </div>
             <div class="summary-content" id="summaryContent">
                 <div class="summary-loading">
                     <div class="spinner-small"></div>
