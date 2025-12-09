@@ -9,12 +9,25 @@ let searchStartTime = 0;
 let isSearching = false;
 let detectedSearchLanguage = 'fr';
 
-// Speech Recognition
+// Speech Recognition - Multiple STT approaches for robustness
 let recognition = null;
-if ('webkitSpeechRecognition' in window) {
-    recognition = new webkitSpeechRecognition();
+let mediaRecorder = null;
+let audioChunks = [];
+let isRecording = false;
+let sttMethod = 'browser'; // 'browser', 'huggingface', 'whisper'
+
+// Initialize browser-based speech recognition
+if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SpeechRecognition();
     recognition.continuous = false;
     recognition.interimResults = false;
+    sttMethod = 'browser';
+    console.log('[Init] Browser speech recognition available');
+} else {
+    // Fallback to API-based STT
+    sttMethod = 'huggingface';
+    console.log('[Init] Browser speech recognition NOT available, will use API');
 }
 
 // Translations
@@ -74,6 +87,9 @@ const translations = {
         readMore: 'Lire la suite',
         listeningVoice: 'Écoute en cours...',
         voiceNotSupported: 'La reconnaissance vocale n\'est pas supportée par votre navigateur',
+        voiceRecording: 'Enregistrement en cours... Cliquez pour arrêter',
+        voiceProcessing: 'Traitement audio...',
+        voiceError: 'Erreur lors de l\'enregistrement vocal',
         searchInProgress: 'Recherche déjà en cours',
         noMistralKey: 'Clé API Mistral AI requise',
         noSearchQuery: 'Veuillez entrer une requête de recherche',
@@ -138,6 +154,9 @@ const translations = {
         readMore: 'Read more',
         listeningVoice: 'Listening...',
         voiceNotSupported: 'Voice recognition is not supported by your browser',
+        voiceRecording: 'Recording... Click to stop',
+        voiceProcessing: 'Processing audio...',
+        voiceError: 'Error during voice recording',
         searchInProgress: 'Search already in progress',
         noMistralKey: 'Mistral AI API key required',
         noSearchQuery: 'Please enter a search query',
@@ -288,41 +307,226 @@ function toggleSection(sectionId) {
     toggleBtn.textContent = isVisible ? translations[currentLanguage].show : translations[currentLanguage].hide;
 }
 
-// Voice Search
+// Voice Search - Robust STT Implementation
 function setupSpeechRecognition() {
-    if (!recognition) return;
+    if (!recognition) {
+        console.log('[Speech Recognition] Not available in this browser');
+        return;
+    }
     
+    console.log('[Speech Recognition] Setting up browser-based recognition');
     recognition.lang = currentLanguage === 'fr' ? 'fr-FR' : 'en-US';
     
     recognition.onstart = function() {
+        console.log('[Speech Recognition] Started listening');
         const voiceBtn = document.getElementById('voiceBtn');
         voiceBtn.classList.add('listening');
         showInfo(translations[currentLanguage].listeningVoice);
     };
     
     recognition.onresult = function(event) {
+        console.log('[Speech Recognition] Result received');
         const transcript = event.results[0][0].transcript;
+        console.log('[Speech Recognition] Transcript:', transcript);
         document.getElementById('searchInput').value = transcript;
+        const voiceBtn = document.getElementById('voiceBtn');
+        voiceBtn.classList.remove('listening');
+        hideInfo();
         performSearch();
     };
     
     recognition.onerror = function(event) {
-        console.error('Speech recognition error:', event.error);
+        console.error('[Speech Recognition] Error:', event.error);
+        const voiceBtn = document.getElementById('voiceBtn');
+        voiceBtn.classList.remove('listening');
+        hideInfo();
+        
+        // Fallback to API-based STT on error
+        if (event.error === 'no-speech' || event.error === 'network') {
+            console.log('[Speech Recognition] Falling back to API-based STT');
+            sttMethod = 'huggingface';
+        } else if (event.error === 'not-allowed') {
+            showError('Microphone access denied. Please allow microphone access in your browser settings.');
+        }
+    };
+    
+    recognition.onend = function() {
+        console.log('[Speech Recognition] Ended');
         const voiceBtn = document.getElementById('voiceBtn');
         voiceBtn.classList.remove('listening');
         hideInfo();
     };
     
-    recognition.onend = function() {
-        const voiceBtn = document.getElementById('voiceBtn');
-        voiceBtn.classList.remove('listening');
-        hideInfo();
-    };
+    console.log('[Speech Recognition] Setup complete');
 }
 
-function startVoiceSearch() {
-    if (!recognition) {
+// Initialize MediaRecorder for API-based STT
+async function initMediaRecorder() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream, {
+            mimeType: 'audio/webm;codecs=opus'
+        });
+        
+        mediaRecorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+                audioChunks.push(event.data);
+            }
+        };
+        
+        mediaRecorder.onstop = async () => {
+            const voiceBtn = document.getElementById('voiceBtn');
+            voiceBtn.classList.remove('listening', 'recording');
+            showInfo(translations[currentLanguage].voiceProcessing);
+            
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            audioChunks = [];
+            isRecording = false;
+            
+            // Send to STT API
+            await processAudioWithAPI(audioBlob);
+            
+            // Stop all tracks
+            stream.getTracks().forEach(track => track.stop());
+        };
+        
+        return true;
+    } catch (error) {
+        console.error('Failed to initialize MediaRecorder:', error);
         showError(translations[currentLanguage].voiceNotSupported);
+        return false;
+    }
+}
+
+// Process audio with Hugging Face Whisper API
+async function processAudioWithAPI(audioBlob) {
+    try {
+        // Convert webm to wav for better compatibility
+        const wavBlob = await convertToWav(audioBlob);
+        
+        // Try Hugging Face Whisper API (free)
+        const response = await fetch('https://api-inference.huggingface.co/models/openai/whisper-large-v3', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'audio/wav'
+            },
+            body: wavBlob
+        });
+        
+        if (!response.ok) {
+            throw new Error('STT API request failed');
+        }
+        
+        const result = await response.json();
+        const transcript = result.text || '';
+        
+        if (transcript) {
+            document.getElementById('searchInput').value = transcript;
+            hideInfo();
+            performSearch();
+        } else {
+            throw new Error('No transcript received');
+        }
+    } catch (error) {
+        console.error('STT API error:', error);
+        hideInfo();
+        showError(translations[currentLanguage].voiceError);
+    }
+}
+
+// Convert audio blob to WAV format
+async function convertToWav(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const audioBuffer = await audioContext.decodeAudioData(e.target.result);
+                
+                // Convert to WAV
+                const wavBuffer = audioBufferToWav(audioBuffer);
+                const wavBlob = new Blob([wavBuffer], { type: 'audio/wav' });
+                resolve(wavBlob);
+            } catch (error) {
+                reject(error);
+            }
+        };
+        reader.onerror = reject;
+        reader.readAsArrayBuffer(blob);
+    });
+}
+
+// Convert AudioBuffer to WAV format
+function audioBufferToWav(buffer) {
+    const length = buffer.length * buffer.numberOfChannels * 2 + 44;
+    const arrayBuffer = new ArrayBuffer(length);
+    const view = new DataView(arrayBuffer);
+    const channels = [];
+    let offset = 0;
+    let pos = 0;
+    
+    // Write WAV header
+    const setUint16 = (data) => {
+        view.setUint16(pos, data, true);
+        pos += 2;
+    };
+    const setUint32 = (data) => {
+        view.setUint32(pos, data, true);
+        pos += 4;
+    };
+    
+    // RIFF identifier
+    setUint32(0x46464952);
+    // File length
+    setUint32(length - 8);
+    // RIFF type
+    setUint32(0x45564157);
+    // Format chunk identifier
+    setUint32(0x20746d66);
+    // Format chunk length
+    setUint32(16);
+    // Sample format (PCM)
+    setUint16(1);
+    // Channel count
+    setUint16(buffer.numberOfChannels);
+    // Sample rate
+    setUint32(buffer.sampleRate);
+    // Byte rate
+    setUint32(buffer.sampleRate * 2 * buffer.numberOfChannels);
+    // Block align
+    setUint16(buffer.numberOfChannels * 2);
+    // Bits per sample
+    setUint16(16);
+    // Data chunk identifier
+    setUint32(0x61746164);
+    // Data chunk length
+    setUint32(length - pos - 4);
+    
+    // Write interleaved data
+    for (let i = 0; i < buffer.numberOfChannels; i++) {
+        channels.push(buffer.getChannelData(i));
+    }
+    
+    while (pos < length) {
+        for (let i = 0; i < buffer.numberOfChannels; i++) {
+            const sample = Math.max(-1, Math.min(1, channels[i][offset]));
+            view.setInt16(pos, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+            pos += 2;
+        }
+        offset++;
+    }
+    
+    return arrayBuffer;
+}
+
+async function startVoiceSearch() {
+    console.log('[Voice Search] Function called');
+    const voiceBtn = document.getElementById('voiceBtn');
+    
+    // If already recording with MediaRecorder, stop it
+    if (isRecording && mediaRecorder && mediaRecorder.state === 'recording') {
+        console.log('[Voice Search] Stopping active recording');
+        mediaRecorder.stop();
         return;
     }
     
@@ -331,7 +535,64 @@ function startVoiceSearch() {
         return;
     }
     
-    recognition.start();
+    // Try browser-based speech recognition first
+    if (recognition && sttMethod === 'browser') {
+        console.log('[Voice Search] Attempting browser-based recognition');
+        try {
+            // Update language before starting
+            recognition.lang = currentLanguage === 'fr' ? 'fr-FR' : 'en-US';
+            recognition.start();
+            console.log('[Voice Search] Browser recognition started');
+            return;
+        } catch (error) {
+            console.error('[Voice Search] Browser STT failed:', error);
+            if (error.name === 'InvalidStateError') {
+                // Recognition is already started, try to stop and restart
+                try {
+                    recognition.stop();
+                    setTimeout(() => {
+                        recognition.start();
+                    }, 100);
+                    return;
+                } catch (e) {
+                    console.error('[Voice Search] Failed to restart:', e);
+                }
+            }
+            sttMethod = 'huggingface';
+        }
+    } else {
+        console.log('[Voice Search] No browser recognition available, using API method');
+    }
+    
+    // Fallback to API-based STT using MediaRecorder
+    console.log('[Voice Search] Initializing MediaRecorder');
+    const initialized = await initMediaRecorder();
+    if (!initialized) {
+        console.error('[Voice Search] MediaRecorder initialization failed');
+        return;
+    }
+    
+    try {
+        voiceBtn.classList.add('listening', 'recording');
+        showInfo(translations[currentLanguage].voiceRecording);
+        isRecording = true;
+        
+        mediaRecorder.start();
+        console.log('[Voice Search] MediaRecorder started');
+        
+        // Auto-stop after 10 seconds
+        setTimeout(() => {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                console.log('[Voice Search] Auto-stopping after 10s');
+                mediaRecorder.stop();
+            }
+        }, 10000);
+    } catch (error) {
+        console.error('Failed to start recording:', error);
+        voiceBtn.classList.remove('listening', 'recording');
+        hideInfo();
+        showError(translations[currentLanguage].voiceError);
+    }
 }
 
 // Search

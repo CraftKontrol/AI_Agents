@@ -47,7 +47,35 @@ Intelligent multi-source search aggregator with AI-powered content extraction an
 
 ## Troubleshooting
 
-- **Voice search not working**: Use Chrome/Edge, allow microphone, requires HTTPS/localhost
+### Voice Search
+The application implements a **robust multi-layered STT (Speech-to-Text) system**:
+
+**Primary Method - Browser Speech Recognition**:
+- Uses native Web Speech API (Chrome, Edge, Safari)
+- Fast, real-time transcription
+- No external API required
+- Works offline in some browsers
+
+**Fallback Method - Hugging Face Whisper API**:
+- Automatically activated if browser STT fails or unavailable
+- Uses OpenAI's Whisper model (large-v3) via Hugging Face Inference API
+- Free tier available (no API key required for basic usage)
+- Records audio using MediaRecorder API
+- Converts audio to WAV format for compatibility
+- Maximum 10-second recordings
+
+**Supported Browsers**:
+- ✅ Chrome/Edge: Full support (both methods)
+- ✅ Firefox: API-based STT (Hugging Face)
+- ✅ Safari: Browser STT on iOS/macOS
+- ⚠️ Requires HTTPS or localhost for microphone access
+
+**Troubleshooting Voice Search**:
+- Allow microphone permissions when prompted
+- Orange button = recording (click to stop)
+- Red button = browser listening
+- If browser STT fails, will automatically switch to API-based method
+- Check console for detailed error messages
 - **No results**: Check Mistral AI key is configured, add at least one search source (Tavily recommended)
 - **Slow performance**: Increase delay between requests, reduce concurrent requests
 - **Browser compatibility**: Chrome 90+, Edge 90+, Firefox 88+ (Safari limited, IE not supported)
