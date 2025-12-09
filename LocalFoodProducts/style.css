@@ -36,7 +36,11 @@ body {
 
 /* Header */
 .header {
-    background-color: var(--surface-color);
+    background-color: #5ae4de;
+    background-image: url(LocalFoodProducts_Logo.png);
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
     padding: 20px;
     margin-bottom: 30px;
     border-radius: 0;

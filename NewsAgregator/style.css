@@ -38,11 +38,16 @@ body {
 
 /* Header */
 .header {
-    background-color: var(--surface-color);
+    background-color: #fb1b1c;
+    background-image: url(NewsAgregator_Logo.png);
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
     padding: 20px;
     margin-bottom: 30px;
     border-radius: 0;
     display: flex;
+        flex-direction: column;
     justify-content: space-between;
     align-items: flex-start;
     flex-wrap: wrap;

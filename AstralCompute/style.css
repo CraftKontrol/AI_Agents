@@ -29,7 +29,11 @@ body {
 
 /* Header */
 .header {
-    background-color: var(--surface-color);
+    background-color: #9c65c8;
+    background-image: url(AstralCompute_Logo.png);
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
     padding: 20px;
     margin-bottom: 30px;
     border-radius: 0;

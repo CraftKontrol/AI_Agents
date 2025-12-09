@@ -40,7 +40,11 @@ body {
 
 /* Header Styles */
 .header {
-    background-color: var(--surface-color);
+    background-color: #1788e0;
+    background-image: url(MeteoAgregator_Logo.png);
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
     padding: 20px;
     margin-bottom: 30px;
     border-radius: 0;
