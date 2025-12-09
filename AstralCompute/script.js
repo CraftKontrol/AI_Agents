@@ -483,6 +483,9 @@ function displayResults() {
     
     // Draw chart
     drawAstrologicalChart();
+    
+    // Trigger particle effects
+    createFairyParticles();
 }
 
 function displayPlanetaryPositions() {
@@ -779,4 +782,198 @@ function prepareDataSummary() {
     }
     
     return summary;
+}
+
+// ============================
+// PARTICLE EFFECTS SYSTEM
+// ============================
+
+// Fairy Particles - floating, glowing particles that drift across screen (continuous)
+let fairyAnimationId = null;
+let fairyParticles = [];
+
+function createFairyParticles() {
+    const canvas = document.getElementById('particleCanvas');
+    if (!canvas) return;
+    
+    // Stop any existing animation
+    if (fairyAnimationId) {
+        cancelAnimationFrame(fairyAnimationId);
+    }
+    
+    const ctx = canvas.getContext('2d');
+    const maxParticles = 250;
+    fairyParticles = [];
+    
+    // Create initial particles at random positions
+    for (let i = 0; i < maxParticles; i++) {
+        fairyParticles.push(createFairyParticle(canvas));
+    }
+    
+    // Animate fairy particles with continuous spawning
+    function animateFairies() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Update and draw existing particles
+        for (let i = fairyParticles.length - 1; i >= 0; i--) {
+            const particle = fairyParticles[i];
+            
+            // Update position
+            particle.x += particle.vx;
+            particle.y += particle.vy;
+            particle.life -= particle.decay;
+            particle.twinkle += particle.twinkleSpeed;
+            
+            // Wrap around screen horizontally
+            if (particle.x < -20) particle.x = canvas.width + 20;
+            if (particle.x > canvas.width + 20) particle.x = -20;
+            
+            // Remove particle if it goes too far up or fades out
+            if (particle.y < -20 || particle.life <= 0) {
+                fairyParticles.splice(i, 1);
+                continue;
+            }
+            
+            // Calculate twinkle effect
+            const twinkleAlpha = 0.3 + Math.sin(particle.twinkle) * 0.7;
+            
+            // Draw particle
+            ctx.save();
+            ctx.globalAlpha = particle.life * twinkleAlpha;
+            
+            // Outer glow
+            const gradient = ctx.createRadialGradient(
+                particle.x, particle.y, 0,
+                particle.x, particle.y, particle.size * 3
+            );
+            gradient.addColorStop(0, particle.color);
+            gradient.addColorStop(1, 'transparent');
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(
+                particle.x - particle.size * 3,
+                particle.y - particle.size * 3,
+                particle.size * 6,
+                particle.size * 6
+            );
+            
+            // Inner bright core
+            ctx.fillStyle = particle.color;
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = particle.color;
+            ctx.beginPath();
+            ctx.arc(particle.x, particle.y, particle.size / 2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.restore();
+        }
+        
+        // Spawn new particles to maintain count
+        while (fairyParticles.length < maxParticles) {
+            fairyParticles.push(createFairyParticle(canvas));
+        }
+        
+        fairyAnimationId = requestAnimationFrame(animateFairies);
+    }
+    
+    // Delay fairy particles slightly after starburst
+    setTimeout(() => {
+        animateFairies();
+    }, 300);
+}
+
+// Helper to create a single fairy particle
+function createFairyParticle(canvas) {
+    // Spawn from random edges or anywhere on screen
+    const spawnLocation = Math.random();
+    let x, y, vx, vy;
+    
+    if (spawnLocation < 0.25) {
+        // Spawn from bottom
+        x = Math.random() * canvas.width;
+        y = canvas.height + Math.random() * 50;
+        vx = (Math.random() - 0.5) * 1.5;
+        vy = -0.5 - Math.random() * 1.5;
+    } else if (spawnLocation < 0.5) {
+        // Spawn from left
+        x = -50;
+        y = Math.random() * canvas.height;
+        vx = 0.5 + Math.random() * 1;
+        vy = (Math.random() - 0.5) * 1.5;
+    } else if (spawnLocation < 0.75) {
+        // Spawn from right
+        x = canvas.width + 50;
+        y = Math.random() * canvas.height;
+        vx = -0.5 - Math.random() * 1;
+        vy = (Math.random() - 0.5) * 1.5;
+    } else {
+        // Spawn from top
+        x = Math.random() * canvas.width;
+        y = -50;
+        vx = (Math.random() - 0.5) * 1.5;
+        vy = 0.5 + Math.random() * 1.5;
+    }
+    
+    return {
+        x: x,
+        y: y,
+        vx: vx,
+        vy: vy,
+        size: 0.5 + Math.random() * 1, // Much smaller particles
+        life: 1.0,
+        decay: 0.003 + Math.random() * 0.003, // Slower decay for longer life
+        color: getFairyColor(),
+        twinkle: Math.random() * Math.PI * 2,
+        twinkleSpeed: 0.05 + Math.random() * 0.1
+    };
+}
+
+// Get random fairy color (magical, mystical tones based on header purple)
+function getFairyColor() {
+    const colors = [
+        '#9c65c8', // Header purple (base color)
+        '#b885d8', // Lighter purple
+        '#8055b8', // Darker purple
+        '#c89fe8', // Very light purple
+        '#7045a8', // Deep purple
+        '#d8b5f8', // Pastel purple
+        '#a875d8', // Medium purple
+        '#9060c0'  // Purple variant
+    ];
+    return colors[Math.floor(Math.random() * colors.length)];
+}
+
+// Initialize particle canvas on page load
+function initParticleCanvas() {
+    // Check if canvas already exists
+    let canvas = document.getElementById('particleCanvas');
+    if (!canvas) {
+        canvas = document.createElement('canvas');
+        canvas.id = 'particleCanvas';
+        canvas.style.position = 'fixed';
+        canvas.style.top = '0';
+        canvas.style.left = '0';
+        canvas.style.width = '100%';
+        canvas.style.height = '100%';
+        canvas.style.pointerEvents = 'none';
+        canvas.style.zIndex = '9999';
+        document.body.appendChild(canvas);
+    }
+    
+    // Set canvas size
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    
+    // Update canvas size on window resize
+    window.addEventListener('resize', () => {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    });
+}
+
+// Initialize particle canvas when DOM is loaded
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initParticleCanvas);
+} else {
+    initParticleCanvas();
 }
