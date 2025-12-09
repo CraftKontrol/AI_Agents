@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>News Aggregator - CraftKontrol</title>
+    
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-title">
+            <h1 data-lang="title">Agrégateur de News</h1>
+            <p data-lang="subtitle">Vos actualités organisées par catégorie</p>
+        </div>
+        <div class="header-controls">
+            <button class="btn-history" onclick="toggleHistory()" id="historyBtn">
+                <span class="material-symbols-outlined">history</span>
+                <span data-lang="history">Historique</span>
+            </button>
+            <button class="btn-refresh" onclick="refreshAllFeeds()" id="refreshBtn">
+                <span class="material-symbols-outlined">refresh</span>
+                <span data-lang="refresh">Actualiser</span>
+            </button>
+            <div class="language-selector">
+                <label for="languageSelect">
+                    <span class="material-symbols-outlined">language</span>
+                </label>
+                <select id="languageSelect" onchange="changeLanguage()">
+                    <option value="fr" selected>Français</option>
+                    <option value="en">English</option>
+                </select>
+            </div>
+        </div>
+        <div class="credits">
+            <span>CraftKontrol © 2025</span>
+            <div class="last-modified">
+                <span id="lastModified">Chargement...</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div id="errorMessage" class="error-message" style="display: none;"></div>
+
+        <!-- History Panel -->
+        <section class="history-panel" id="historyPanel" style="display: none;">
+            <div class="history-header">
+                <h2>
+                    <span class="material-symbols-outlined">history</span>
+                    <span data-lang="readArticles">Articles lus</span>
+                </h2>
+                <div class="history-actions">
+                    <button class="btn-clear-history" onclick="clearHistory()">
+                        <span class="material-symbols-outlined">delete_sweep</span>
+                        <span data-lang="clearHistory">Vider l'historique</span>
+                    </button>
+                    <button class="btn-close" onclick="toggleHistory()">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+            </div>
+            <div class="history-content" id="historyContent">
+                <!-- History items will be populated by JavaScript -->
+            </div>
+        </section>
+
+        <!-- Source Management Section -->
+        <section class="control-section">
+            <div class="section-header" onclick="toggleSection('sourcesContent', event)">
+                <h2>
+                    <span class="material-symbols-outlined">rss_feed</span>
+                    <span data-lang="manageSources">Gérer les sources</span>
+                </h2>
+                <button class="toggle-btn">
+                    <span class="material-symbols-outlined">expand_more</span>
+                </button>
+            </div>
+            <div id="sourcesContentWrapper" class="section-content" style="display: none;">
+                <div class="sources-tabs">
+                    <button class="sources-tab-btn active" data-tab="default" onclick="switchSourcesTab('default')">
+                        <span data-lang="defaultSources">Sources par Défaut</span>
+                    </button>
+                    <button class="sources-tab-btn" data-tab="alternative" onclick="switchSourcesTab('alternative')">
+                        <span data-lang="alternativeSources">Sources Alternatives</span>
+                    </button>
+                </div>
+                <div id="sourcesContent">
+                    <!-- Content will be populated by JavaScript -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Category Filter Section -->
+        <section class="filter-section">
+            <h2>
+                <span class="material-symbols-outlined">filter_list</span>
+                <span data-lang="filterCategories">Filtrer les catégories</span>
+            </h2>
+            <div class="category-filters" id="categoryFilters">
+                <!-- Category checkboxes will be populated by JavaScript -->
+            </div>
+        </section>
+
+        <!-- Loading Indicator -->
+        <div id="loadingIndicator" class="loading-indicator" style="display: none;">
+            <div class="spinner"></div>
+            <p data-lang="loading">Chargement des actualités...</p>
+        </div>
+
+
+         <!-- Mobile Category Navigation -->
+        <div class="mobile-category-nav" id="mobileCategoryNav" style="display: none;">
+            <button class="nav-btn nav-prev" onclick="navigateCategory(-1)">
+                <span class="material-symbols-outlined">chevron_left</span>
+            </button>
+            <div class="category-indicator" id="categoryIndicator"></div>
+            <button class="nav-btn nav-next" onclick="navigateCategory(1)">
+                <span class="material-symbols-outlined">chevron_right</span>
+            </button>
+        </div>
+
+
+        <!-- News Grid (columns by category) -->
+        <div class="news-container-wrapper">
+            <div class="news-container" id="newsContainer">
+                <!-- News columns will be populated by JavaScript -->
+            </div>
+        </div>
+        
+       
+
+        <!-- Empty State -->
+        <div id="emptyState" class="empty-state" style="display: none;">
+            <span class="material-symbols-outlined">article</span>
+            <p data-lang="noArticles">Aucun article à afficher</p>
+            <p data-lang="noArticlesHint">Ajoutez des sources RSS ou actualisez le flux</p>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>Arnaud Cassone © Artcraft Visuals 2025</p>
+        <a href="https://www.artcraft-zone.com" target="_blank" rel="noopener noreferrer">www.artcraft-zone.com</a>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
