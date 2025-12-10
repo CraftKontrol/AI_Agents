@@ -162,6 +162,118 @@
             </div>
         </section>
 
+        <!-- Mistral Conversation Settings -->
+        <section class="mistral-settings-section">
+            <h2>
+                <span class="material-symbols-outlined">psychology</span>
+                <span data-lang="mistralSettings">Paramètres de conversation Mistral</span>
+                <button class="section-toggle" onclick="toggleSection('mistralSettingsContent')" id="mistralToggleBtn">
+                    <span data-lang="show">Afficher</span>
+                </button>
+            </h2>
+            
+            <div id="mistralSettingsContent" class="section-content" style="display: none;">
+                <div class="mistral-settings-grid">
+                    <div class="setting-card full-width">
+                        <label for="systemPrompt">
+                            <span class="material-symbols-outlined">description</span>
+                            <span data-lang="systemPrompt">Prompt système</span>
+                        </label>
+                        <textarea id="systemPrompt" rows="6" placeholder="Entrez le prompt système pour guider le comportement de l'IA..." data-lang-placeholder="systemPromptPlaceholder">Vous êtes un assistant de recherche IA expert. Votre rôle est d'analyser les résultats de recherche provenant de multiples sources et de créer un résumé concis, informatif et bien structuré. Présentez les informations de manière claire et objective, en citant les sources pertinentes. Mettez en évidence les points clés et les tendances importantes.</textarea>
+                        <p class="setting-hint" data-lang="systemPromptHint">Définit le comportement et le style de réponse de l'IA</p>
+                    </div>
+
+                    <div class="setting-card">
+                        <label for="mistralModel">
+                            <span class="material-symbols-outlined">model_training</span>
+                            <span data-lang="model">Modèle</span>
+                        </label>
+                        <select id="mistralModel">
+                            <option value="mistral-small-latest">Mistral Small (Rapide)</option>
+                            <option value="mistral-medium-latest" selected>Mistral Medium (Équilibré)</option>
+                            <option value="mistral-large-latest">Mistral Large (Puissant)</option>
+                            <option value="open-mistral-7b">Open Mistral 7B</option>
+                            <option value="open-mixtral-8x7b">Open Mixtral 8x7B</option>
+                            <option value="open-mixtral-8x22b">Open Mixtral 8x22B</option>
+                        </select>
+                        <p class="setting-hint" data-lang="modelHint">Choisissez le modèle selon vos besoins de performance/qualité</p>
+                    </div>
+
+                    <div class="setting-card">
+                        <label for="mistralTemperature">
+                            <span class="material-symbols-outlined">thermostat</span>
+                            <span data-lang="temperature">Température</span>
+                            <span class="setting-value" id="temperatureValue">0.7</span>
+                        </label>
+                        <input type="range" id="mistralTemperature" min="0" max="1" step="0.1" value="0.7" oninput="updateMistralValue('temperature', this.value)" />
+                        <div class="range-labels">
+                            <span>0 (Précis)</span>
+                            <span>0.5</span>
+                            <span>1 (Créatif)</span>
+                        </div>
+                        <p class="setting-hint" data-lang="temperatureHint">Contrôle la créativité des réponses (0 = déterministe, 1 = créatif)</p>
+                    </div>
+
+                    <div class="setting-card">
+                        <label for="mistralMaxTokens">
+                            <span class="material-symbols-outlined">text_fields</span>
+                            <span data-lang="maxTokens">Tokens maximum</span>
+                            <span class="setting-value" id="maxTokensValue">2000</span>
+                        </label>
+                        <input type="range" id="mistralMaxTokens" min="100" max="4000" step="100" value="2000" oninput="updateMistralValue('maxTokens', this.value)" />
+                        <div class="range-labels">
+                            <span>100</span>
+                            <span>2000</span>
+                            <span>4000</span>
+                        </div>
+                        <p class="setting-hint" data-lang="maxTokensHint">Longueur maximale de la réponse générée</p>
+                    </div>
+
+                    <div class="setting-card">
+                        <label for="mistralTopP">
+                            <span class="material-symbols-outlined">filter_alt</span>
+                            <span data-lang="topP">Top P (nucleus sampling)</span>
+                            <span class="setting-value" id="topPValue">0.9</span>
+                        </label>
+                        <input type="range" id="mistralTopP" min="0" max="1" step="0.05" value="0.9" oninput="updateMistralValue('topP', this.value)" />
+                        <div class="range-labels">
+                            <span>0</span>
+                            <span>0.5</span>
+                            <span>1</span>
+                        </div>
+                        <p class="setting-hint" data-lang="topPHint">Contrôle la diversité en filtrant les tokens peu probables</p>
+                    </div>
+
+                    <div class="setting-card">
+                        <label>
+                            <span class="material-symbols-outlined">settings_suggest</span>
+                            <span data-lang="advancedOptions">Options avancées</span>
+                        </label>
+                        <label class="setting-checkbox-label">
+                            <input type="checkbox" id="mistralSafeMode" />
+                            <span data-lang="safeMode">Mode sécurisé (Safe Mode)</span>
+                        </label>
+                        <label class="setting-checkbox-label">
+                            <input type="checkbox" id="mistralRandomSeed" />
+                            <span data-lang="useRandomSeed">Utiliser une graine aléatoire (reproductibilité)</span>
+                        </label>
+                        <p class="setting-hint" data-lang="advancedHint">Options de sécurité et de reproductibilité</p>
+                    </div>
+                </div>
+
+                <div class="mistral-actions">
+                    <button class="btn-reset" onclick="resetMistralSettings()">
+                        <span class="material-symbols-outlined">restart_alt</span>
+                        <span data-lang="resetToDefault">Réinitialiser par défaut</span>
+                    </button>
+                    <button class="btn-save" onclick="saveMistralSettings()">
+                        <span class="material-symbols-outlined">save</span>
+                        <span data-lang="saveSettings">Enregistrer les paramètres</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
         <!-- Rate Limiting Configuration -->
         <section class="rate-limit-section">
             <h2>
@@ -218,7 +330,7 @@
                             <span class="material-symbols-outlined">voice_selection</span>
                             <span data-lang="selectVoice">Sélectionner une voix</span>
                         </label>
-                        <select id="ttsVoice">
+                        <select id="ttsVoice" onchange="updateTTSVoice(this.value)">
                             <optgroup label="Français (French)" data-lang-label="frenchVoices">
                                 <option value="fr-FR-Chirp-HD-D" data-gender="male">Chirp HD D (Homme)</option>
                                 <option value="fr-FR-Chirp-HD-F" data-gender="female" selected>Chirp HD F (Femme)</option>

@@ -49,6 +49,25 @@ const translations = {
         mistralDesc: 'Détection de langue et extraction de contenu IA',
         rememberKeys: 'Mémoriser les clés API',
         saveKeys: 'Enregistrer les clés',
+        mistralSettings: 'Paramètres de conversation Mistral',
+        systemPrompt: 'Prompt système',
+        systemPromptPlaceholder: 'Entrez le prompt système pour guider le comportement de l\'IA...',
+        systemPromptHint: 'Définit le comportement et le style de réponse de l\'IA',
+        model: 'Modèle',
+        modelHint: 'Choisissez le modèle selon vos besoins de performance/qualité',
+        temperature: 'Température',
+        temperatureHint: 'Contrôle la créativité des réponses (0 = déterministe, 1 = créatif)',
+        maxTokens: 'Tokens maximum',
+        maxTokensHint: 'Longueur maximale de la réponse générée',
+        topP: 'Top P (nucleus sampling)',
+        topPHint: 'Contrôle la diversité en filtrant les tokens peu probables',
+        advancedOptions: 'Options avancées',
+        safeMode: 'Mode sécurisé (Safe Mode)',
+        useRandomSeed: 'Utiliser une graine aléatoire (reproductibilité)',
+        advancedHint: 'Options de sécurité et de reproductibilité',
+        resetToDefault: 'Réinitialiser par défaut',
+        saveSettings: 'Enregistrer les paramètres',
+        settingsReset: 'Paramètres réinitialisés',
         rateLimiting: 'Configuration des limites de taux',
         requestsPerMin: 'Requêtes par minute',
         requestsPerMinHint: 'Nombre max de requêtes par minute (toutes sources)',
@@ -145,6 +164,25 @@ const translations = {
         mistralDesc: 'Language detection and AI content extraction',
         rememberKeys: 'Remember API Keys',
         saveKeys: 'Save Keys',
+        mistralSettings: 'Mistral Conversation Settings',
+        systemPrompt: 'System Prompt',
+        systemPromptPlaceholder: 'Enter the system prompt to guide AI behavior...',
+        systemPromptHint: 'Defines AI behavior and response style',
+        model: 'Model',
+        modelHint: 'Choose the model according to your performance/quality needs',
+        temperature: 'Temperature',
+        temperatureHint: 'Controls response creativity (0 = deterministic, 1 = creative)',
+        maxTokens: 'Max Tokens',
+        maxTokensHint: 'Maximum length of generated response',
+        topP: 'Top P (nucleus sampling)',
+        topPHint: 'Controls diversity by filtering low-probability tokens',
+        advancedOptions: 'Advanced Options',
+        safeMode: 'Safe Mode',
+        useRandomSeed: 'Use random seed (reproducibility)',
+        advancedHint: 'Security and reproducibility options',
+        resetToDefault: 'Reset to Default',
+        saveSettings: 'Save Settings',
+        settingsReset: 'Settings reset',
         rateLimiting: 'Rate Limiting Configuration',
         requestsPerMin: 'Requests per minute',
         requestsPerMinHint: 'Max number of requests per minute (all sources)',
@@ -303,6 +341,9 @@ function loadSavedApiKeys() {
     
     // Load TTS settings
     loadTTSSettings();
+    
+    // Load Mistral settings
+    loadMistralSettings();
 }
 
 function saveApiKeys() {
@@ -331,6 +372,7 @@ function saveApiKeys() {
     }
     
     saveTTSSettings();
+    saveMistralSettings();
     showSuccess(translations[currentLanguage].apiKeysSaved);
 }
 
@@ -416,14 +458,119 @@ function saveTTSSettings() {
     localStorage.setItem('tts_autoPlay', autoPlay.toString());
 }
 
+// Mistral Settings Management
+function loadMistralSettings() {
+    // Load system prompt
+    const systemPrompt = localStorage.getItem('mistral_systemPrompt');
+    if (systemPrompt) {
+        document.getElementById('systemPrompt').value = systemPrompt;
+    }
+    
+    // Load model
+    const model = localStorage.getItem('mistral_model');
+    if (model) {
+        document.getElementById('mistralModel').value = model;
+    }
+    
+    // Load temperature
+    const temperature = localStorage.getItem('mistral_temperature');
+    if (temperature) {
+        document.getElementById('mistralTemperature').value = temperature;
+        updateMistralValue('temperature', temperature);
+    }
+    
+    // Load max tokens
+    const maxTokens = localStorage.getItem('mistral_maxTokens');
+    if (maxTokens) {
+        document.getElementById('mistralMaxTokens').value = maxTokens;
+        updateMistralValue('maxTokens', maxTokens);
+    }
+    
+    // Load top P
+    const topP = localStorage.getItem('mistral_topP');
+    if (topP) {
+        document.getElementById('mistralTopP').value = topP;
+        updateMistralValue('topP', topP);
+    }
+    
+    // Load safe mode
+    const safeMode = localStorage.getItem('mistral_safeMode');
+    if (safeMode) {
+        document.getElementById('mistralSafeMode').checked = safeMode === 'true';
+    }
+    
+    // Load random seed
+    const randomSeed = localStorage.getItem('mistral_randomSeed');
+    if (randomSeed) {
+        document.getElementById('mistralRandomSeed').checked = randomSeed === 'true';
+    }
+}
+
+function saveMistralSettings() {
+    const systemPrompt = document.getElementById('systemPrompt').value.trim();
+    const model = document.getElementById('mistralModel').value;
+    const temperature = document.getElementById('mistralTemperature').value;
+    const maxTokens = document.getElementById('mistralMaxTokens').value;
+    const topP = document.getElementById('mistralTopP').value;
+    const safeMode = document.getElementById('mistralSafeMode').checked;
+    const randomSeed = document.getElementById('mistralRandomSeed').checked;
+    
+    localStorage.setItem('mistral_systemPrompt', systemPrompt);
+    localStorage.setItem('mistral_model', model);
+    localStorage.setItem('mistral_temperature', temperature);
+    localStorage.setItem('mistral_maxTokens', maxTokens);
+    localStorage.setItem('mistral_topP', topP);
+    localStorage.setItem('mistral_safeMode', safeMode.toString());
+    localStorage.setItem('mistral_randomSeed', randomSeed.toString());
+}
+
+function updateMistralValue(setting, value) {
+    if (setting === 'temperature') {
+        document.getElementById('temperatureValue').textContent = value;
+    } else if (setting === 'maxTokens') {
+        document.getElementById('maxTokensValue').textContent = value;
+    } else if (setting === 'topP') {
+        document.getElementById('topPValue').textContent = value;
+    }
+}
+
+function resetMistralSettings() {
+    // Reset to default values
+    document.getElementById('systemPrompt').value = "Vous êtes un assistant de recherche IA expert. Votre rôle est d'analyser les résultats de recherche provenant de multiples sources et de créer un résumé concis, informatif et bien structuré. Présentez les informations de manière claire et objective, en citant les sources pertinentes. Mettez en évidence les points clés et les tendances importantes.";
+    document.getElementById('mistralModel').value = 'mistral-medium-latest';
+    document.getElementById('mistralTemperature').value = '0.7';
+    document.getElementById('mistralMaxTokens').value = '2000';
+    document.getElementById('mistralTopP').value = '0.9';
+    document.getElementById('mistralSafeMode').checked = false;
+    document.getElementById('mistralRandomSeed').checked = false;
+    
+    // Update displays
+    updateMistralValue('temperature', '0.7');
+    updateMistralValue('maxTokens', '2000');
+    updateMistralValue('topP', '0.9');
+    
+    // Save the reset values
+    saveMistralSettings();
+    
+    showSuccess(translations[currentLanguage].settingsReset || 'Paramètres réinitialisés');
+}
+
 function updateTTSValue(setting, value) {
     if (setting === 'speakingRate') {
         document.getElementById('speakingRateValue').textContent = value + 'x';
+        localStorage.setItem('tts_speakingRate', value);
     } else if (setting === 'pitch') {
         document.getElementById('pitchValue').textContent = value;
+        localStorage.setItem('tts_pitch', value);
     } else if (setting === 'volume') {
         document.getElementById('volumeValue').textContent = value + ' dB';
+        localStorage.setItem('tts_volume', value);
     }
+}
+
+function updateTTSVoice(voice) {
+    localStorage.setItem('tts_voice', voice);
+    console.log('[TTS] Voice saved:', voice);
 }
 
 async function synthesizeSpeech(text) {
@@ -1046,7 +1193,24 @@ async function performSearch() {
     
     try {
         // Step 1: Detect language and optimize query with Mistral
-        const { detectedLanguage, optimizedQuery } = await detectLanguageAndOptimize(query, mistralKey);
+        let detectedLanguage, optimizedQuery;
+        try {
+            const result = await detectLanguageAndOptimize(query, mistralKey);
+            detectedLanguage = result.detectedLanguage;
+            optimizedQuery = result.optimizedQuery;
+        } catch (langError) {
+            if (langError.message === 'RATE_LIMIT') {
+                // Show warning but continue with defaults
+                const warningMsg = currentLanguage === 'fr' 
+                    ? '⚠️ Limite de taux atteinte pour la détection de langue. Utilisation des paramètres par défaut.'
+                    : '⚠️ Rate limit reached for language detection. Using default parameters.';
+                showError(warningMsg);
+                detectedLanguage = 'fr';
+                optimizedQuery = query;
+            } else {
+                throw langError;
+            }
+        }
         
         // Store detected language globally
         detectedSearchLanguage = detectedLanguage;
@@ -1122,6 +1286,7 @@ async function performSearch() {
 // Detect Language and Optimize Query with Mistral AI
 async function detectLanguageAndOptimize(query, apiKey) {
     try {
+        // Use fast model for language detection
         const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
             method: 'POST',
             headers: {
@@ -1151,6 +1316,11 @@ Do not include any markdown formatting, just the raw JSON.`
         });
         
         if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            if (response.status === 429) {
+                console.warn('[Mistral] Rate limit for language detection, using defaults');
+                throw new Error('RATE_LIMIT');
+            }
             throw new Error(`Mistral API error: ${response.status}`);
         }
         
@@ -1439,6 +1609,7 @@ async function extractContentWithAI(title, snippet, fullContent, url, apiKey, la
     try {
         const content = fullContent || snippet;
         
+        // Use fast model for extraction
         const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
             method: 'POST',
             headers: {
@@ -1525,18 +1696,26 @@ async function generateAISummary(originalQuery, optimizedQuery, results, languag
         
         const promptLanguage = language === 'fr' ? 'en français' : 'in English';
         
-        const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-                model: 'mistral-small-latest',
-                messages: [
-                    {
-                        role: 'user',
-                        content: `Create a comprehensive summary ${promptLanguage} of this search query and results.
+        // Get Mistral settings
+        const systemPrompt = localStorage.getItem('mistral_systemPrompt') || 
+            "Vous êtes un assistant de recherche IA expert. Votre rôle est d'analyser les résultats de recherche provenant de multiples sources et de créer un résumé concis, informatif et bien structuré. Présentez les informations de manière claire et objective, en citant les sources pertinentes. Mettez en évidence les points clés et les tendances importantes.";
+        const model = localStorage.getItem('mistral_model') || 'mistral-medium-latest';
+        const temperature = parseFloat(localStorage.getItem('mistral_temperature') || '0.7');
+        const maxTokens = parseInt(localStorage.getItem('mistral_maxTokens') || '2000');
+        const topP = parseFloat(localStorage.getItem('mistral_topP') || '0.9');
+        const safeMode = localStorage.getItem('mistral_safeMode') === 'true';
+        const useRandomSeed = localStorage.getItem('mistral_randomSeed') === 'true';
+        
+        const requestBody = {
+            model: model,
+            messages: [
+                {
+                    role: 'system',
+                    content: systemPrompt
+                },
+                {
+                    role: 'user',
+                    content: `Create a comprehensive summary ${promptLanguage} of this search query and results.
 
 Original Query: "${originalQuery}"
 Optimized Query: "${optimizedQuery}"
@@ -1553,15 +1732,43 @@ Provide a clear, informative summary (3-5 sentences) that:
 4. Notes any interesting patterns or insights
 
 Write in a natural, flowing style. Respond ONLY with the summary text, no additional formatting.`
-                    }
-                ],
-                temperature: 0.7,
-                max_tokens: 300
-            })
+                }
+            ],
+            temperature: temperature,
+            max_tokens: maxTokens,
+            top_p: topP
+        };
+        
+        // Add optional parameters
+        if (safeMode) {
+            requestBody.safe_mode = true;
+        }
+        if (useRandomSeed) {
+            requestBody.random_seed = Math.floor(Math.random() * 1000000);
+        }
+        
+        const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify(requestBody)
         });
         
         if (!response.ok) {
-            throw new Error(`Mistral API error: ${response.status}`);
+            const errorData = await response.json().catch(() => ({}));
+            const errorMessage = errorData.message || errorData.error || `HTTP ${response.status}`;
+            
+            if (response.status === 429) {
+                throw new Error(`Rate limit exceeded. Please wait a moment before trying again. (${errorMessage})`);
+            } else if (response.status === 401) {
+                throw new Error('Invalid API key. Please check your Mistral API key.');
+            } else if (response.status === 402) {
+                throw new Error('Insufficient credits. Please check your Mistral account.');
+            } else {
+                throw new Error(`Mistral API error: ${response.status} - ${errorMessage}`);
+            }
         }
         
         const data = await response.json();
@@ -1589,11 +1796,38 @@ Write in a natural, flowing style. Respond ONLY with the summary text, no additi
         
     } catch (error) {
         console.error('Summary generation error:', error);
+        
+        let errorMessage = '';
+        if (language === 'fr') {
+            if (error.message.includes('Rate limit')) {
+                errorMessage = '⚠️ Limite de requêtes atteinte. Veuillez patienter quelques secondes avant de relancer une recherche.';
+            } else if (error.message.includes('Invalid API key')) {
+                errorMessage = '🔑 Clé API Mistral invalide. Veuillez vérifier votre clé dans les paramètres.';
+            } else if (error.message.includes('Insufficient credits')) {
+                errorMessage = '💳 Crédits insuffisants sur votre compte Mistral. Veuillez recharger votre compte.';
+            } else {
+                errorMessage = `❌ Impossible de générer le résumé: ${error.message}`;
+            }
+        } else {
+            if (error.message.includes('Rate limit')) {
+                errorMessage = '⚠️ Rate limit exceeded. Please wait a few seconds before starting a new search.';
+            } else if (error.message.includes('Invalid API key')) {
+                errorMessage = '🔑 Invalid Mistral API key. Please check your key in settings.';
+            } else if (error.message.includes('Insufficient credits')) {
+                errorMessage = '💳 Insufficient credits on your Mistral account. Please top up your account.';
+            } else {
+                errorMessage = `❌ Unable to generate summary: ${error.message}`;
+            }
+        }
+        
         summaryContent.innerHTML = `
-            <p class="summary-text" style="color: var(--text-muted);">
+            <div class="error-message" style="display: block; margin: 0;">
+                <p>${errorMessage}</p>
+            </div>
+            <p class="summary-text" style="color: var(--text-muted); margin-top: 15px;">
                 ${language === 'fr' 
-                    ? 'Impossible de générer le résumé. Les résultats sont affichés ci-dessous.' 
-                    : 'Unable to generate summary. Results are displayed below.'}
+                    ? 'Les résultats de recherche sont affichés ci-dessous.' 
+                    : 'Search results are displayed below.'}
             </p>
         `;
         return null; // Return null if summary generation failed
@@ -1959,6 +2193,9 @@ function loadSearchHistory() {
                             <span class="material-symbols-outlined">refresh</span>
                             <span data-lang="loadHistory">${translations[currentLanguage].loadHistory}</span>
                         </button>
+                        <button class="btn-history-action" onclick="toggleHistoryDetails(${index})" title="Afficher/Masquer détails">
+                            <span class="material-symbols-outlined">expand_more</span>
+                        </button>
                         <button class="btn-history-action delete" onclick="deleteHistoryItem(${index})" title="${translations[currentLanguage].deleteHistory}">
                             <span class="material-symbols-outlined">delete</span>
                         </button>
@@ -1967,6 +2204,38 @@ function loadSearchHistory() {
                 ${item.summary ? `
                     <div class="history-item-summary">${escapeHtml(item.summary)}</div>
                 ` : ''}
+                
+                <div class="history-item-details" id="historyDetails${index}" style="display: none;">
+                    ${item.fullAISummary ? `
+                        <div class="history-item-full-summary">
+                            <strong>Résumé IA complet:</strong>
+                            <p>${escapeHtml(item.fullAISummary)}</p>
+                        </div>
+                    ` : ''}
+                    ${item.top10Results && item.top10Results.length > 0 ? `
+                        <div class="history-item-results">
+                            <strong>Top ${item.top10Results.length} résultats:</strong>
+                            <div class="history-results-list">
+                                ${item.top10Results.map((result, idx) => `
+                                    <div class="history-result-item">
+                                        <span class="history-result-number">${idx + 1}.</span>
+                                        <div class="history-result-content">
+                                            <a href="${result.url}" target="_blank" rel="noopener noreferrer" class="history-result-title">
+                                                ${escapeHtml(result.title)}
+                                            </a>
+                                            <div class="history-result-meta">
+                                                <span class="history-result-domain">${result.domain}</span>
+                                                <span class="history-result-source">${result.source}</span>
+                                                <span class="history-result-score">${(result.score * 100).toFixed(0)}%</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+                
                 ${item.stats ? `
                     <div class="history-item-stats">
                         <span class="history-stat">
@@ -2004,49 +2273,64 @@ function loadSearchHistory() {
 async function saveSearchToHistory(query, results, stats, aiSummary) {
     try {
         const mistralKey = document.getElementById('apiKeyMistral').value.trim();
-        if (!mistralKey) {
-            console.warn('[History] No Mistral API key, saving without summary');
-            await saveHistoryWithoutSummary(query, results, stats, aiSummary);
-            return;
-        }
         
-        // Generate concise summary using Mistral to save tokens
-        const summaryPrompt = `Résume cette recherche en une seule phrase courte (max 100 caractères):
+        // Extract top 10 results with essential data
+        const top10Results = results.slice(0, 10).map(r => ({
+            title: r.title,
+            url: r.url,
+            description: r.description,
+            source: r.source,
+            domain: r.domain,
+            score: r.score,
+            publishedDate: r.publishedDate,
+            detectedLanguage: r.detectedLanguage
+        }));
+        
+        let conciseSummary = '';
+        
+        if (mistralKey) {
+            // Generate concise summary using Mistral to save tokens
+            const summaryPrompt = `Résume cette recherche en une seule phrase courte (max 100 caractères):
 Query: "${query}"
 Nombre de résultats: ${stats.totalResults}
 Sources: ${stats.sourcesUsed}
 Résumé IA: ${aiSummary ? aiSummary.substring(0, 500) : 'Non disponible'}`;
-        
-        console.log('[History] Generating summary with Mistral...');
-        
-        const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${mistralKey}`
-            },
-            body: JSON.stringify({
-                model: 'mistral-small-latest',
-                messages: [{ role: 'user', content: summaryPrompt }],
-                max_tokens: 100,
-                temperature: 0.3
-            })
-        });
-        
-        if (!response.ok) {
-            console.warn('[History] Mistral API error, saving without summary');
-            await saveHistoryWithoutSummary(query, results, stats, aiSummary);
-            return;
+            
+            console.log('[History] Generating summary with Mistral...');
+            
+            try {
+                const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${mistralKey}`
+                    },
+                    body: JSON.stringify({
+                        model: 'mistral-small-latest',
+                        messages: [{ role: 'user', content: summaryPrompt }],
+                        max_tokens: 100,
+                        temperature: 0.3
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    conciseSummary = data.choices[0]?.message?.content?.trim() || '';
+                } else {
+                    console.warn('[History] Mistral API error, using truncated summary');
+                }
+            } catch (error) {
+                console.warn('[History] Error calling Mistral API:', error);
+            }
         }
-        
-        const data = await response.json();
-        const conciseSummary = data.choices[0]?.message?.content?.trim() || '';
         
         const historyItem = {
             query: query,
             timestamp: new Date().toISOString(),
             language: detectedSearchLanguage,
             summary: conciseSummary,
+            fullAISummary: aiSummary || '', // Save complete Mistral response
+            top10Results: top10Results, // Save top 10 search results
             stats: {
                 totalResults: stats.totalResults,
                 sourcesUsed: stats.sourcesUsed,
@@ -2066,20 +2350,33 @@ Résumé IA: ${aiSummary ? aiSummary.substring(0, 500) : 'Non disponible'}`;
         localStorage.setItem('searchHistory', JSON.stringify(history));
         loadSearchHistory();
         
-        console.log('[History] Search saved with Mistral summary');
+        console.log('[History] Search saved with full data (AI summary + top 10 results)');
         
     } catch (error) {
         console.error('[History] Error saving to history:', error);
-        await saveHistoryWithoutSummary(query, results, stats, aiSummary);
     }
 }
 
 async function saveHistoryWithoutSummary(query, results, stats, aiSummary) {
+    // Extract top 10 results
+    const top10Results = results.slice(0, 10).map(r => ({
+        title: r.title,
+        url: r.url,
+        description: r.description,
+        source: r.source,
+        domain: r.domain,
+        score: r.score,
+        publishedDate: r.publishedDate,
+        detectedLanguage: r.detectedLanguage
+    }));
+    
     const historyItem = {
         query: query,
         timestamp: new Date().toISOString(),
         language: detectedSearchLanguage,
         summary: aiSummary ? aiSummary.substring(0, 200) + '...' : '',
+        fullAISummary: aiSummary || '', // Save complete Mistral response
+        top10Results: top10Results, // Save top 10 search results
         stats: {
             totalResults: stats.totalResults,
             sourcesUsed: stats.sourcesUsed,
@@ -2100,20 +2397,91 @@ async function saveHistoryWithoutSummary(query, results, stats, aiSummary) {
 }
 
 function loadHistoryItem(index) {
+    console.log('[History] Loading item at index:', index);
     try {
         const history = JSON.parse(localStorage.getItem('searchHistory') || '[]');
         const item = history[index];
+        
+        console.log('[History] Item found:', item);
         
         if (!item) {
             showError('History item not found');
             return;
         }
         
+        // Hide empty state and loading
+        document.getElementById('emptyState').style.display = 'none';
+        document.getElementById('loadingIndicator').style.display = 'none';
+        
         // Load the query into search box
-        document.getElementById('searchInput').value = item.query;
+        const searchInput = document.getElementById('searchInput');
+        if (!searchInput) {
+            console.error('[History] Search input not found!');
+            showError('Search input not found');
+            return;
+        }
+        
+        searchInput.value = item.query;
+        console.log('[History] Query loaded into search box:', item.query);
+        
+        // Show search status with detected language
+        document.getElementById('detectedLanguage').textContent = item.language || 'fr';
+        document.getElementById('optimizedQuery').textContent = item.query;
+        document.getElementById('searchStatus').style.display = 'flex';
+        
+        // Restore AI Summary if available
+        if (item.fullAISummary) {
+            const summarySection = document.getElementById('summarySection');
+            const summaryContent = document.getElementById('summaryContent');
+            
+            if (summarySection && summaryContent) {
+                summaryContent.innerHTML = `<p class="summary-text">${escapeHtml(item.fullAISummary)}</p>`;
+                summarySection.style.display = 'block';
+                console.log('[History] AI Summary restored');
+            }
+        }
+        
+        // Restore top 10 results if available
+        if (item.top10Results && item.top10Results.length > 0) {
+            // Set global variables
+            allResults = item.top10Results;
+            filteredResults = [...item.top10Results];
+            detectedSearchLanguage = item.language || 'fr';
+            
+            // Display results
+            displayResults();
+            
+            // Show results container
+            document.getElementById('resultsContainer').style.display = 'block';
+            console.log('[History] Restored', item.top10Results.length, 'results');
+        }
+        
+        // Restore statistics
+        if (item.stats) {
+            updateStatistics(
+                item.stats.totalResults || 0,
+                item.stats.sourcesUsed || 0,
+                0, // duplicates not stored
+                item.stats.searchTime || '0s'
+            );
+            document.getElementById('statsSection').style.display = 'block';
+        }
+        
+        // Show filter section and populate filters
+        populateFilters();
+        document.getElementById('filterSection').style.display = 'block';
+        
+        // Auto-filter by detected language
+        if (item.language) {
+            document.getElementById('filterLanguage').value = item.language;
+            applyFilters();
+        }
         
         // Scroll to search section
-        document.querySelector('.search-section').scrollIntoView({ behavior: 'smooth' });
+        const searchSection = document.querySelector('.search-section');
+        if (searchSection) {
+            searchSection.scrollIntoView({ behavior: 'smooth' });
+        }
         
         showSuccess(translations[currentLanguage].historyLoaded);
         
@@ -2123,7 +2491,30 @@ function loadHistoryItem(index) {
     }
 }
 
+// Make functions globally accessible
+window.loadHistoryItem = loadHistoryItem;
+window.deleteHistoryItem = deleteHistoryItem;
+window.clearAllHistory = clearAllHistory;
+window.toggleHistoryDetails = toggleHistoryDetails;
+
+function toggleHistoryDetails(index) {
+    const detailsDiv = document.getElementById(`historyDetails${index}`);
+    const button = event.currentTarget;
+    const icon = button.querySelector('.material-symbols-outlined');
+    
+    if (detailsDiv) {
+        if (detailsDiv.style.display === 'none') {
+            detailsDiv.style.display = 'block';
+            if (icon) icon.textContent = 'expand_less';
+        } else {
+            detailsDiv.style.display = 'none';
+            if (icon) icon.textContent = 'expand_more';
+        }
+    }
+}
+
 function deleteHistoryItem(index) {
+    console.log('[History] Deleting item at index:', index);
     try {
         const history = JSON.parse(localStorage.getItem('searchHistory') || '[]');
         history.splice(index, 1);
@@ -2138,6 +2529,7 @@ function deleteHistoryItem(index) {
 }
 
 function clearAllHistory() {
+    console.log('[History] Clearing all history');
     if (confirm(currentLanguage === 'fr' ? 'Êtes-vous sûr de vouloir effacer tout l\'historique ?' : 'Are you sure you want to clear all history?')) {
         localStorage.removeItem('searchHistory');
         loadSearchHistory();
