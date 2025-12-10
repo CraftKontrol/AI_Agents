@@ -6,6 +6,7 @@ Intelligent multi-source search aggregator with AI-powered content extraction an
 
 - **AI-Powered Search**: Mistral AI query optimization, language detection, voice search (FR/EN)
 - **Text-to-Speech**: Google Cloud TTS for AI summary narration with voice selection and audio controls
+- **Search History**: Local storage of search history with Mistral AI summaries for token efficiency
 - **Multi-Source Aggregation**: Tavily, ScrapingBee, ScraperAPI, Bright Data, ScrapFly
 - **Smart Extraction**: Deep scraping, AI summarization, metadata extraction
 - **Advanced Filtering**: Date, source, domain, language filters with dual view modes
@@ -20,7 +21,8 @@ Intelligent multi-source search aggregator with AI-powered content extraction an
 4. Optionally add search source keys: [Tavily](https://tavily.com/), [ScrapingBee](https://www.scrapingbee.com/), [ScraperAPI](https://www.scraperapi.com/)
 5. Enter search query or use voice search
 6. Listen to AI summary narration or use manual controls
-7. Filter, sort, and export results as needed
+7. Access previous searches in "Search History" section
+8. Filter, sort, and export results as needed
 
 ## API Keys
 
@@ -86,9 +88,17 @@ See `TTS_README.md` for complete TTS documentation.
 - Volume: Control audio level (-16 to +16 dB)
 - Auto-play: Enable/disable automatic reading
 
+**Search History**:
+- Automatic storage of searches with Mistral AI-generated summaries
+- Token-efficient: Summaries compressed to ~100 characters
+- Keeps last 50 searches in localStorage
+- Individual deletion or bulk clear
+- One-click reload of previous searches
+
 ## Usage
 
 **Search**: Text input or voice (microphone icon)  
+**History**: Access previous searches, reload queries, delete entries  
 **Results**: Shows source, date, language, score (0-100%), title, AI summary, domain  
 **Audio**: AI summary can be narrated with adjustable voice settings  
 **Controls**: Play/Pause/Stop buttons for audio playback  
@@ -153,8 +163,16 @@ AiSearchAgregator/
 
 ## Version
 
-**Current Version**: 2.0.0 (2025-12-10)  
-**Previous Version**: 1.0.0 (2025-12-09)
+**Current Version**: 2.1.0 (2025-12-10)  
+**Previous Version**: 2.0.0 (2025-12-10)
+
+**What's New in 2.1**:
+- 📜 **Search History**: Automatic storage of searches in localStorage
+- 🤖 **Smart Summaries**: Mistral AI generates concise summaries (~100 chars) to save tokens
+- 🔄 **Quick Reload**: One-click reload of previous searches
+- 🗑️ **Flexible Management**: Delete individual entries or clear all history
+- 📊 **Search Stats**: View results count, sources used, and search time for each entry
+- 💾 **Persistent Storage**: Keeps up to 50 most recent searches
 
 **What's New in 2.0**:
 - 🎤 Google Cloud Text-to-Speech integration

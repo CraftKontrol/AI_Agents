@@ -123,7 +123,16 @@ const translations = {
         ttsPaused: 'En pause',
         ttsGenerating: 'Génération audio...',
         ttsError: 'Erreur lors de la synthèse vocale',
-        noTTSKey: 'Clé API Google Cloud TTS requise'
+        noTTSKey: 'Clé API Google Cloud TTS requise',
+        searchHistory: 'Historique des recherches',
+        clearAllHistory: 'Effacer tout l\'historique',
+        historyCount: 'recherches',
+        noHistory: 'Aucune recherche dans l\'historique',
+        loadHistory: 'Charger cette recherche',
+        deleteHistory: 'Supprimer',
+        historyDeleted: 'Recherche supprimée de l\'historique',
+        historyCleared: 'Historique effacé',
+        historyLoaded: 'Recherche chargée'
     },
     en: {
         title: 'AI Search Aggregator',
@@ -210,7 +219,16 @@ const translations = {
         ttsPaused: 'Paused',
         ttsGenerating: 'Generating audio...',
         ttsError: 'Error during voice synthesis',
-        noTTSKey: 'Google Cloud TTS API key required'
+        noTTSKey: 'Google Cloud TTS API key required',
+        searchHistory: 'Search History',
+        clearAllHistory: 'Clear all history',
+        historyCount: 'searches',
+        noHistory: 'No searches in history',
+        loadHistory: 'Load this search',
+        deleteHistory: 'Delete',
+        historyDeleted: 'Search deleted from history',
+        historyCleared: 'History cleared',
+        historyLoaded: 'Search loaded'
     }
 };
 
@@ -220,6 +238,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loadRateLimitSettings();
     fetchLastModified();
     setupSpeechRecognition();
+    loadSearchHistory();
     
     // Hide API section if keys are saved
     const mistralKey = localStorage.getItem('apiKey_mistral');
@@ -1058,7 +1077,7 @@ async function performSearch() {
         
         // Step 7: Generate AI Summary
         document.getElementById('summarySection').style.display = 'block';
-        await generateAISummary(query, optimizedQuery, results, detectedLanguage, mistralKey);
+        const aiSummary = await generateAISummary(query, optimizedQuery, results, detectedLanguage, mistralKey);
         
         // Step 8: Display results
         displayResults();
@@ -1067,7 +1086,16 @@ async function performSearch() {
         const searchTime = ((Date.now() - searchStartTime) / 1000).toFixed(1);
         updateStatistics(results.length, sources.length, duplicatesCount, searchTime);
         
-        // Step 10: Populate filters
+        // Step 10: Save to history with Mistral summary
+        const stats = {
+            totalResults: results.length,
+            sourcesUsed: sources.length,
+            duplicatesRemoved: duplicatesCount,
+            searchTime: `${searchTime}s`
+        };
+        await saveSearchToHistory(query, results, stats, aiSummary);
+        
+        // Step 11: Populate filters
         populateFilters();
         
         // Step 11: Auto-filter by detected language
@@ -1556,6 +1584,9 @@ Write in a natural, flowing style. Respond ONLY with the summary text, no additi
             console.log('[TTS] No API key configured, skipping auto-play');
         }
         
+        // Return the summary for history storage
+        return summary;
+        
     } catch (error) {
         console.error('Summary generation error:', error);
         summaryContent.innerHTML = `
@@ -1565,6 +1596,7 @@ Write in a natural, flowing style. Respond ONLY with the summary text, no additi
                     : 'Unable to generate summary. Results are displayed below.'}
             </p>
         `;
+        return null; // Return null if summary generation failed
     }
 }
 
@@ -1883,6 +1915,234 @@ function hideInfo() {
     errorDiv.style.background = 'rgba(255, 68, 68, 0.1)';
     errorDiv.style.borderColor = 'var(--error-color)';
     errorDiv.style.color = 'var(--error-color)';
+}
+
+// Search History Management
+function loadSearchHistory() {
+    const historyList = document.getElementById('historyList');
+    const historyCount = document.getElementById('historyCount');
+    
+    try {
+        const history = JSON.parse(localStorage.getItem('searchHistory') || '[]');
+        
+        if (history.length === 0) {
+            historyList.innerHTML = `
+                <div class="history-empty">
+                    <span class="material-symbols-outlined">search_off</span>
+                    <p data-lang="noHistory">${translations[currentLanguage].noHistory}</p>
+                </div>
+            `;
+            historyCount.textContent = `0 ${translations[currentLanguage].historyCount}`;
+            return;
+        }
+        
+        historyCount.textContent = `${history.length} ${translations[currentLanguage].historyCount}`;
+        
+        historyList.innerHTML = history.map((item, index) => `
+            <div class="history-item" data-index="${index}">
+                <div class="history-item-header">
+                    <div class="history-item-title">
+                        <div class="history-item-query">${escapeHtml(item.query)}</div>
+                        <div class="history-item-meta">
+                            <span>
+                                <span class="material-symbols-outlined">schedule</span>
+                                ${formatDate(item.timestamp)}
+                            </span>
+                            <span>
+                                <span class="material-symbols-outlined">translate</span>
+                                ${item.language || 'fr'}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="history-item-actions">
+                        <button class="btn-history-action" onclick="loadHistoryItem(${index})" title="${translations[currentLanguage].loadHistory}">
+                            <span class="material-symbols-outlined">refresh</span>
+                            <span data-lang="loadHistory">${translations[currentLanguage].loadHistory}</span>
+                        </button>
+                        <button class="btn-history-action delete" onclick="deleteHistoryItem(${index})" title="${translations[currentLanguage].deleteHistory}">
+                            <span class="material-symbols-outlined">delete</span>
+                        </button>
+                    </div>
+                </div>
+                ${item.summary ? `
+                    <div class="history-item-summary">${escapeHtml(item.summary)}</div>
+                ` : ''}
+                ${item.stats ? `
+                    <div class="history-item-stats">
+                        <span class="history-stat">
+                            <span class="material-symbols-outlined">article</span>
+                            <span class="history-stat-value">${item.stats.totalResults || 0}</span>
+                            résultats
+                        </span>
+                        <span class="history-stat">
+                            <span class="material-symbols-outlined">source</span>
+                            <span class="history-stat-value">${item.stats.sourcesUsed || 0}</span>
+                            sources
+                        </span>
+                        ${item.stats.searchTime ? `
+                            <span class="history-stat">
+                                <span class="material-symbols-outlined">timer</span>
+                                <span class="history-stat-value">${item.stats.searchTime}</span>
+                            </span>
+                        ` : ''}
+                    </div>
+                ` : ''}
+            </div>
+        `).join('');
+        
+    } catch (error) {
+        console.error('[History] Error loading history:', error);
+        historyList.innerHTML = `
+            <div class="history-empty">
+                <span class="material-symbols-outlined">error</span>
+                <p>Error loading history</p>
+            </div>
+        `;
+    }
+}
+
+async function saveSearchToHistory(query, results, stats, aiSummary) {
+    try {
+        const mistralKey = document.getElementById('apiKeyMistral').value.trim();
+        if (!mistralKey) {
+            console.warn('[History] No Mistral API key, saving without summary');
+            await saveHistoryWithoutSummary(query, results, stats, aiSummary);
+            return;
+        }
+        
+        // Generate concise summary using Mistral to save tokens
+        const summaryPrompt = `Résume cette recherche en une seule phrase courte (max 100 caractères):
+Query: "${query}"
+Nombre de résultats: ${stats.totalResults}
+Sources: ${stats.sourcesUsed}
+Résumé IA: ${aiSummary ? aiSummary.substring(0, 500) : 'Non disponible'}`;
+        
+        console.log('[History] Generating summary with Mistral...');
+        
+        const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${mistralKey}`
+            },
+            body: JSON.stringify({
+                model: 'mistral-small-latest',
+                messages: [{ role: 'user', content: summaryPrompt }],
+                max_tokens: 100,
+                temperature: 0.3
+            })
+        });
+        
+        if (!response.ok) {
+            console.warn('[History] Mistral API error, saving without summary');
+            await saveHistoryWithoutSummary(query, results, stats, aiSummary);
+            return;
+        }
+        
+        const data = await response.json();
+        const conciseSummary = data.choices[0]?.message?.content?.trim() || '';
+        
+        const historyItem = {
+            query: query,
+            timestamp: new Date().toISOString(),
+            language: detectedSearchLanguage,
+            summary: conciseSummary,
+            stats: {
+                totalResults: stats.totalResults,
+                sourcesUsed: stats.sourcesUsed,
+                searchTime: stats.searchTime
+            },
+            resultsCount: results.length
+        };
+        
+        const history = JSON.parse(localStorage.getItem('searchHistory') || '[]');
+        history.unshift(historyItem); // Add at the beginning
+        
+        // Keep only last 50 searches
+        if (history.length > 50) {
+            history.splice(50);
+        }
+        
+        localStorage.setItem('searchHistory', JSON.stringify(history));
+        loadSearchHistory();
+        
+        console.log('[History] Search saved with Mistral summary');
+        
+    } catch (error) {
+        console.error('[History] Error saving to history:', error);
+        await saveHistoryWithoutSummary(query, results, stats, aiSummary);
+    }
+}
+
+async function saveHistoryWithoutSummary(query, results, stats, aiSummary) {
+    const historyItem = {
+        query: query,
+        timestamp: new Date().toISOString(),
+        language: detectedSearchLanguage,
+        summary: aiSummary ? aiSummary.substring(0, 200) + '...' : '',
+        stats: {
+            totalResults: stats.totalResults,
+            sourcesUsed: stats.sourcesUsed,
+            searchTime: stats.searchTime
+        },
+        resultsCount: results.length
+    };
+    
+    const history = JSON.parse(localStorage.getItem('searchHistory') || '[]');
+    history.unshift(historyItem);
+    
+    if (history.length > 50) {
+        history.splice(50);
+    }
+    
+    localStorage.setItem('searchHistory', JSON.stringify(history));
+    loadSearchHistory();
+}
+
+function loadHistoryItem(index) {
+    try {
+        const history = JSON.parse(localStorage.getItem('searchHistory') || '[]');
+        const item = history[index];
+        
+        if (!item) {
+            showError('History item not found');
+            return;
+        }
+        
+        // Load the query into search box
+        document.getElementById('searchInput').value = item.query;
+        
+        // Scroll to search section
+        document.querySelector('.search-section').scrollIntoView({ behavior: 'smooth' });
+        
+        showSuccess(translations[currentLanguage].historyLoaded);
+        
+    } catch (error) {
+        console.error('[History] Error loading history item:', error);
+        showError('Error loading search from history');
+    }
+}
+
+function deleteHistoryItem(index) {
+    try {
+        const history = JSON.parse(localStorage.getItem('searchHistory') || '[]');
+        history.splice(index, 1);
+        localStorage.setItem('searchHistory', JSON.stringify(history));
+        loadSearchHistory();
+        showSuccess(translations[currentLanguage].historyDeleted);
+        
+    } catch (error) {
+        console.error('[History] Error deleting history item:', error);
+        showError('Error deleting history item');
+    }
+}
+
+function clearAllHistory() {
+    if (confirm(currentLanguage === 'fr' ? 'Êtes-vous sûr de vouloir effacer tout l\'historique ?' : 'Are you sure you want to clear all history?')) {
+        localStorage.removeItem('searchHistory');
+        loadSearchHistory();
+        showSuccess(translations[currentLanguage].historyCleared);
+    }
 }
 
 // Fetch Last Modified

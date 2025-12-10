@@ -297,6 +297,34 @@
             </div>
         </section>
 
+        <!-- Search History Section -->
+        <section class="history-section">
+            <h2>
+                <span class="material-symbols-outlined">history</span>
+                <span data-lang="searchHistory">Historique des recherches</span>
+                <button class="section-toggle" onclick="toggleSection('historyContent')" id="historyToggleBtn">
+                    <span data-lang="show">Afficher</span>
+                </button>
+            </h2>
+            
+            <div id="historyContent" class="section-content" style="display: none;">
+                <div class="history-controls">
+                    <button class="btn-clear-history" onclick="clearAllHistory()">
+                        <span class="material-symbols-outlined">delete_sweep</span>
+                        <span data-lang="clearAllHistory">Effacer tout l'historique</span>
+                    </button>
+                    <span class="history-count" id="historyCount" data-lang="historyCount">0 recherches</span>
+                </div>
+                
+                <div id="historyList" class="history-list">
+                    <div class="history-empty">
+                        <span class="material-symbols-outlined">search_off</span>
+                        <p data-lang="noHistory">Aucune recherche dans l'historique</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- Search Section -->
         <section class="search-section">
             <h2>
