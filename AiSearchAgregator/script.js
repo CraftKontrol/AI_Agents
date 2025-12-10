@@ -655,6 +655,9 @@ async function synthesizeSpeech(text) {
         return null;
     }
     
+    // Remove all asterisks from the text before synthesis
+    const cleanText = text.replace(/\*/g, '');
+    
     const voice = document.getElementById('ttsVoice').value;
     const speakingRate = parseFloat(document.getElementById('ttsSpeakingRate').value);
     const pitch = parseFloat(document.getElementById('ttsPitch').value);
@@ -680,7 +683,7 @@ async function synthesizeSpeech(text) {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                input: { text: text },
+                input: { text: cleanText },
                 voice: {
                     languageCode: languageCode,
                     name: voice
