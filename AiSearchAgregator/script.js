@@ -460,16 +460,49 @@ function saveTTSSettings() {
 
 // Mistral Settings Management
 function loadMistralSettings() {
+    console.log('[Load Mistral Settings] Loading from localStorage...');
+    
     // Load system prompt
     const systemPrompt = localStorage.getItem('mistral_systemPrompt');
     if (systemPrompt) {
         document.getElementById('systemPrompt').value = systemPrompt;
+        console.log('[Load Mistral Settings] System prompt loaded:', systemPrompt.substring(0, 100) + '...');
+    } else {
+        // Set default prompt with example
+        document.getElementById('systemPrompt').value = `Tu es Robota, une assistante de recherche IA experte et bienveillante.
+Ton interlocuteur est un chercheur professionnel qui apprécie les réponses précises et structurées.
+Ton rôle est d'analyser les résultats de recherche provenant de multiples sources et de créer un résumé concis, informatif et bien structuré.
+Style de réponse :
+- Commence par saluer brièvement en utilisant ton nom
+- Utilise un ton professionnel mais chaleureux
+- Structure tes réponses avec des sections claires
+- Si possible, fais un guide pas à pas des informations du résultat le plus pertinent
+- Présente les informations de manière claire et objective
+- Cite les sources pertinentes
+- Mets en évidence les points clés et les tendances importantes
+- Termine par une suggestion d'approfondissement si pertinent
+
+Exemple de structure :
+"Salut c'est [bot name], comment ça va [user name] ? Voici ce que j'ai trouvé sur [sujet]...
+
+📋 Points clés :
+- [point 1]
+- [point 2]
+
+📖 Guide détaillé :
+[étapes si applicable]
+
+💡 Suggestion : [recommandation]
+
+Si necessaire, relance avec 3 propositions courtes`;
+        console.log('[Load Mistral Settings] Using default system prompt with example');
     }
     
     // Load model
     const model = localStorage.getItem('mistral_model');
     if (model) {
         document.getElementById('mistralModel').value = model;
+        console.log('[Load Mistral Settings] Model loaded:', model);
     }
     
     // Load temperature
@@ -484,6 +517,7 @@ function loadMistralSettings() {
     if (maxTokens) {
         document.getElementById('mistralMaxTokens').value = maxTokens;
         updateMistralValue('maxTokens', maxTokens);
+        console.log('[Load Mistral Settings] Max tokens loaded:', maxTokens);
     }
     
     // Load top P
@@ -504,6 +538,8 @@ function loadMistralSettings() {
     if (randomSeed) {
         document.getElementById('mistralRandomSeed').checked = randomSeed === 'true';
     }
+    
+    console.log('[Load Mistral Settings] All settings loaded');
 }
 
 function saveMistralSettings() {
@@ -515,6 +551,17 @@ function saveMistralSettings() {
     const safeMode = document.getElementById('mistralSafeMode').checked;
     const randomSeed = document.getElementById('mistralRandomSeed').checked;
     
+    // Debug log
+    console.log('[Save Mistral Settings]', {
+        systemPrompt: systemPrompt.substring(0, 100) + '...',
+        model,
+        temperature,
+        maxTokens,
+        topP,
+        safeMode,
+        randomSeed
+    });
+    
     localStorage.setItem('mistral_systemPrompt', systemPrompt);
     localStorage.setItem('mistral_model', model);
     localStorage.setItem('mistral_temperature', temperature);
@@ -522,6 +569,8 @@ function saveMistralSettings() {
     localStorage.setItem('mistral_topP', topP);
     localStorage.setItem('mistral_safeMode', safeMode.toString());
     localStorage.setItem('mistral_randomSeed', randomSeed.toString());
+    
+    console.log('[Save Mistral Settings] Saved to localStorage');
 }
 
 function updateMistralValue(setting, value) {
@@ -535,18 +584,43 @@ function updateMistralValue(setting, value) {
 }
 
 function resetMistralSettings() {
-    // Reset to default values
-    document.getElementById('systemPrompt').value = "Vous êtes un assistant de recherche IA expert. Votre rôle est d'analyser les résultats de recherche provenant de multiples sources et de créer un résumé concis, informatif et bien structuré. Présentez les informations de manière claire et objective, en citant les sources pertinentes. Mettez en évidence les points clés et les tendances importantes.";
-    document.getElementById('mistralModel').value = 'mistral-medium-latest';
+    // Reset to default values with example showing how to customize AI name, user role, and response style
+    document.getElementById('systemPrompt').value = `Tu es Robota, une assistante de recherche IA experte et bienveillante.
+Ton interlocuteur est un chercheur professionnel qui apprécie les réponses précises et structurées.
+Ton rôle est d'analyser les résultats de recherche provenant de multiples sources et de créer un résumé concis, informatif et bien structuré.
+Style de réponse :
+- Commence par saluer brièvement en utilisant ton nom
+- Utilise un ton professionnel mais chaleureux
+- Structure tes réponses avec des sections claires
+- Si possible, fais un guide pas à pas des informations du résultat le plus pertinent
+- Présente les informations de manière claire et objective
+- Cite les sources pertinentes
+- Mets en évidence les points clés et les tendances importantes
+- Termine par une suggestion d'approfondissement si pertinent
+
+Exemple de structure :
+"Salut c'est [bot name], comment ça va [user name] ? Voici ce que j'ai trouvé sur [sujet]...
+
+📋 Points clés :
+- [point 1]
+- [point 2]
+
+📖 Guide détaillé :
+[étapes si applicable]
+
+💡 Suggestion : [recommandation]
+
+Si necessaire, relance avec 3 propositions courtes`;
+    document.getElementById('mistralModel').value = 'mistral-small-latest';
     document.getElementById('mistralTemperature').value = '0.7';
-    document.getElementById('mistralMaxTokens').value = '2000';
+    document.getElementById('mistralMaxTokens').value = '1000';
     document.getElementById('mistralTopP').value = '0.9';
     document.getElementById('mistralSafeMode').checked = false;
     document.getElementById('mistralRandomSeed').checked = false;
     
     // Update displays
     updateMistralValue('temperature', '0.7');
-    updateMistralValue('maxTokens', '2000');
+    updateMistralValue('maxTokens', '1000');
     updateMistralValue('topP', '0.9');
     
     // Save the reset values
@@ -1287,18 +1361,12 @@ async function performSearch() {
 async function detectLanguageAndOptimize(query, apiKey) {
     try {
         // Use fast model for language detection
-        const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-                model: 'mistral-small-latest',
-                messages: [
-                    {
-                        role: 'user',
-                        content: `Analyze this search query and provide:
+        const requestBody = {
+            model: 'mistral-small-latest',
+            messages: [
+                {
+                    role: 'user',
+                    content: `Analyze this search query and provide:
 1. The detected language (ISO code: fr, en, es, de, etc.)
 2. An optimized version of the query for better search results
 
@@ -1308,11 +1376,21 @@ Respond ONLY with a JSON object in this exact format:
 {"language": "language_code", "optimized": "optimized query here"}
 
 Do not include any markdown formatting, just the raw JSON.`
-                    }
-                ],
-                temperature: 0.3,
-                max_tokens: 150
-            })
+                }
+            ],
+            temperature: 0.3,
+            max_tokens: 150
+        };
+        
+        console.log('[Mistral Debug] Requête de détection de langue:', JSON.stringify(requestBody, null, 2));
+        
+        const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify(requestBody)
         });
         
         if (!response.ok) {
@@ -1566,13 +1644,24 @@ async function generateAISummary(originalQuery, optimizedQuery, results, languag
         
         // Get Mistral settings
         const systemPrompt = localStorage.getItem('mistral_systemPrompt') || 
-            "Vous êtes un assistant de recherche IA expert. Votre rôle est d'analyser les résultats de recherche provenant de multiples sources et de créer un résumé concis, informatif et bien structuré. Présentez les informations de manière claire et objective, en citant les sources pertinentes. Mettez en évidence les points clés et les tendances importantes.";
-        const model = localStorage.getItem('mistral_model') || 'mistral-medium-latest';
+            "Vous êtes un assistant de recherche IA expert. Votre rôle est d'analyser les résultats de recherche provenant de multiples sources et de créer un résumé concis, informatif et bien structuré. Si possible, faites un guide un pas à pas des informations du resultat le plus pertinent.  Présentez les informations de manière claire et objective, en citant les sources pertinentes. Mettez en évidence les points clés et les tendances importantes.";
+        const model = localStorage.getItem('mistral_model') || 'mistral-small-latest';
         const temperature = parseFloat(localStorage.getItem('mistral_temperature') || '0.7');
-        const maxTokens = parseInt(localStorage.getItem('mistral_maxTokens') || '2000');
+        const maxTokens = parseInt(localStorage.getItem('mistral_maxTokens') || '1000');
         const topP = parseFloat(localStorage.getItem('mistral_topP') || '0.9');
         const safeMode = localStorage.getItem('mistral_safeMode') === 'true';
         const useRandomSeed = localStorage.getItem('mistral_randomSeed') === 'true';
+        
+        // Debug log
+        console.log('[Mistral Settings]', {
+            systemPrompt: systemPrompt.substring(0, 100) + '...',
+            model,
+            temperature,
+            maxTokens,
+            topP,
+            safeMode,
+            useRandomSeed
+        });
         
         const requestBody = {
             model: model,
@@ -1614,6 +1703,8 @@ Write in a natural, flowing style. Respond ONLY with the summary text, no additi
         if (useRandomSeed) {
             requestBody.random_seed = Math.floor(Math.random() * 1000000);
         }
+        
+        console.log('[Mistral Debug] Requête de génération de résumé IA:', JSON.stringify(requestBody, null, 2));
         
         const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
             method: 'POST',
@@ -2238,18 +2329,22 @@ Résumé IA: ${aiSummary ? aiSummary.substring(0, 500) : 'Non disponible'}`;
             console.log('[History] Generating summary with Mistral...');
             
             try {
+                const historyRequestBody = {
+                    model: 'mistral-small-latest',
+                    messages: [{ role: 'user', content: summaryPrompt }],
+                    max_tokens: 100,
+                    temperature: 0.3
+                };
+                
+                console.log('[Mistral Debug] Requête de résumé pour historique:', JSON.stringify(historyRequestBody, null, 2));
+                
                 const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${mistralKey}`
                     },
-                    body: JSON.stringify({
-                        model: 'mistral-small-latest',
-                        messages: [{ role: 'user', content: summaryPrompt }],
-                        max_tokens: 100,
-                        temperature: 0.3
-                    })
+                    body: JSON.stringify(historyRequestBody)
                 });
                 
                 if (response.ok) {
