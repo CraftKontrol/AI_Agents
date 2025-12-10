@@ -918,6 +918,199 @@ body {
     color: var(--error-color);
 }
 
+/* Alternative Sources - Category Tabs */
+.alternative-sources-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.alt-category-tabs {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 10px;
+}
+
+.alt-tab-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 15px;
+    background-color: transparent;
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 0;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.alt-tab-btn:hover {
+    background-color: var(--surface-elevated);
+    border-color: var(--primary-color);
+}
+
+.alt-tab-btn.active {
+    background-color: var(--primary-color);
+    color: #ffffff;
+    border-color: var(--primary-color);
+}
+
+.alt-tab-count {
+    background-color: rgba(255, 255, 255, 0.1);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.alt-tab-btn.active .alt-tab-count {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Alternative Sources - Search Filter */
+.alt-search-filter {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background-color: var(--background-color);
+    border: 1px solid var(--border-color);
+    padding: 10px 15px;
+    border-radius: 0;
+}
+
+.alt-search-filter .material-symbols-outlined {
+    color: var(--text-muted);
+}
+
+.alt-search-filter input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-color);
+    font-size: 14px;
+    outline: none;
+}
+
+.alt-search-filter input::placeholder {
+    color: var(--text-muted);
+}
+
+.clear-search-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.clear-search-btn:hover {
+    color: var(--text-color);
+}
+
+/* Alternative Sources - Grid */
+.alt-sources-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 15px;
+}
+
+.alt-source-card {
+    background-color: var(--background-color);
+    border: 1px solid var(--border-color);
+    padding: 15px;
+    border-radius: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: border-color 0.2s ease;
+}
+
+.alt-source-card:hover {
+    border-color: var(--primary-color);
+}
+
+.alt-source-card.added {
+    border-color: var(--success-color);
+    background-color: rgba(68, 255, 136, 0.05);
+}
+
+.alt-source-info h4 {
+    color: var(--text-color);
+    font-size: 15px;
+    margin-bottom: 5px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.alt-source-url {
+    font-size: 12px;
+    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.btn-alt-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px;
+    background-color: var(--primary-color);
+    color: #ffffff;
+    border: none;
+    border-radius: 0;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: background-color 0.2s ease;
+}
+
+.btn-alt-action:hover {
+    background-color: var(--primary-dark);
+}
+
+.btn-alt-action.btn-remove {
+    background-color: transparent;
+    color: var(--error-color);
+    border: 1px solid var(--error-color);
+}
+
+.btn-alt-action.btn-remove:hover {
+    background-color: rgba(255, 68, 68, 0.1);
+}
+
+.no-sources {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+/* Responsive - Alternative Sources */
+@media (max-width: 768px) {
+    .alt-category-tabs {
+        gap: 8px;
+    }
+
+    .alt-tab-btn {
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+
+    .alt-sources-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 /* Sources Tabs */
 .sources-tabs {
     display: flex;

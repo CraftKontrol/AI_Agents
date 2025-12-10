@@ -14,6 +14,9 @@ let articleHistory = [];
 let longPressTimer = null;
 let contextMenuVisible = false;
 let currentContextMenuArticle = null;
+let alternativeSourcesData = null;
+let currentAlternativeCategory = 'presse_standard';
+let alternativeSourcesFilter = '';
 
 // Translations
 const translations = {
@@ -49,11 +52,16 @@ const translations = {
         historyCleared: 'History cleared',
         markAsRead: 'Mark as read',
         alternativeSources: 'Alternative Sources',
-        defaultSources: 'Default Sources',
+        defaultSources: 'Sources',
         addToMySources: 'Add to my sources',
         removeSource: 'Remove source',
         deleteThisSource: 'Delete this source',
-        sourceDeleted: 'Source deleted successfully'
+        sourceDeleted: 'Source deleted successfully',
+        searchSources: 'Search sources...',
+        presse_standard: 'Standard Press',
+        alternatif: 'Alternative Press',
+        presse_region: 'Regional Press',
+        spiritualite: 'Spirituality & Religions'
     },
     fr: {
         title: 'Agrégateur de News',
@@ -87,11 +95,16 @@ const translations = {
         historyCleared: 'Historique vidé',
         markAsRead: 'Marquer comme lu',
         alternativeSources: 'Sources Alternatives',
-        defaultSources: 'Sources par Défaut',
+        defaultSources: 'Sources',
         addToMySources: 'Ajouter à mes sources',
         removeSource: 'Retirer la source',
         deleteThisSource: 'Supprimer cette source',
-        sourceDeleted: 'Source supprimée avec succès'
+        sourceDeleted: 'Source supprimée avec succès',
+        searchSources: 'Rechercher des sources...',
+        presse_standard: 'Presse Standard',
+        alternatif: 'Presse Alternative',
+        presse_region: 'Presse Régionale',
+        spiritualite: 'Spiritualité & Religions'
     }
 };
 
@@ -167,19 +180,38 @@ const alternativeSources = {
 };
 
 // Initialize application
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
+    await loadAlternativeSources();
     loadSources();
     loadActiveCategories();
     loadReadArticles();
     fetchLastModified();
     updateLanguage();
     renderCategoryFilters();
-    renderSourcesList();
     refreshAllFeeds();
     initSwipeGestures();
     initArticleClickHandlers();
     initContextMenu();
 });
+
+// Load alternative sources from JSON file
+async function loadAlternativeSources() {
+    try {
+        const response = await fetch('rss-sources-complete.json');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        alternativeSourcesData = await response.json();
+        console.log('Alternative sources loaded:', Object.keys(alternativeSourcesData.categories).length, 'categories');
+    } catch (error) {
+        console.warn('Could not load alternative sources:', error.message);
+        // Create empty structure so the app still works
+        alternativeSourcesData = {
+            metadata: { title: 'Sources alternatives', description: 'Non disponibles' },
+            categories: {}
+        };
+    }
+}
 
 // Language management
 function changeLanguage() {
@@ -264,7 +296,7 @@ function loadSources() {
     if (savedSources) {
         sources = JSON.parse(savedSources);
     } else {
-        sources = [...defaultSources];
+        sources = [];
         saveSources();
     }
 }
@@ -306,6 +338,10 @@ function deleteSource(index) {
 
 function renderSourcesList() {
     const container = document.getElementById('sourcesList');
+    
+    if (!container) {
+        return; // Element not in DOM yet
+    }
     
     if (sources.length === 0) {
         container.innerHTML = `<p style="color: var(--text-muted); text-align: center; padding: 20px;">No sources configured</p>`;
@@ -1161,40 +1197,138 @@ function renderSourcesContent() {
         `;
         renderSourcesList();
     } else {
-        // Alternative sources
+        // Alternative sources with category tabs
+        if (!alternativeSourcesData || !alternativeSourcesData.categories) {
+            container.innerHTML = `
+                <div class="loading-indicator">
+                    <p>Chargement des sources alternatives...</p>
+                </div>
+            `;
+            return;
+        }
+
+        const categories = Object.keys(alternativeSourcesData.categories);
+        const currentCat = alternativeSourcesData.categories[currentAlternativeCategory];
+        
         container.innerHTML = `
-            <div class="alternative-sources-container">
-                ${['politique', 'science', 'cuisine', 'technologie', 'culture'].map(category => `
-                    <div class="alt-category-section">
-                        <h3 class="alt-category-title">
-                            <span data-lang="${category}">${translations[currentLanguage][category]}</span>
-                            <span class="alt-count">(${alternativeSources[category]?.length || 0})</span>
-                        </h3>
-                        <div class="alt-sources-grid">
-                            ${(alternativeSources[category] || []).map(source => {
-                                const isAdded = sources.some(s => s.url === source.url);
-                                return `
-                                    <div class="alt-source-card ${isAdded ? 'added' : ''}">
-                                        <div class="alt-source-info">
-                                            <h4>${source.name}</h4>
-                                            <div class="alt-source-url">${source.url}</div>
-                                        </div>
-                                        <button class="btn-alt-action ${isAdded ? 'btn-remove' : 'btn-add'}" 
-                                                onclick="${isAdded ? `removeAlternativeSource('${source.url.replace(/'/g, "\\'")}')` : `addAlternativeSource('${source.name.replace(/'/g, "\\'")}', '${source.url.replace(/'/g, "\\'")}', '${source.category}')`}">
-                                            <span class="material-symbols-outlined">${isAdded ? 'remove' : 'add'}</span>
-                                            <span data-lang="${isAdded ? 'removeSource' : 'addToMySources'}">${translations[currentLanguage][isAdded ? 'removeSource' : 'addToMySources']}</span>
-                                        </button>
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
-                    </div>
-                `).join('')}
+            <div class="alternative-sources-wrapper">
+                <!-- Category tabs -->
+                <div class="alt-category-tabs">
+                    ${categories.map(catKey => {
+                        const cat = alternativeSourcesData.categories[catKey];
+                        const count = cat.sources ? cat.sources.length : 0;
+                        return `
+                            <button class="alt-tab-btn ${catKey === currentAlternativeCategory ? 'active' : ''}" 
+                                    onclick="switchAlternativeCategory('${catKey}')">
+                                <span data-lang="${catKey}">${translations[currentLanguage][catKey] || cat.name}</span>
+                                <span class="alt-tab-count">${count}</span>
+                            </button>
+                        `;
+                    }).join('')}
+                </div>
+
+                <!-- Search filter -->
+                <div class="alt-search-filter">
+                    <span class="material-symbols-outlined">search</span>
+                    <input type="text" 
+                           id="altSourcesSearch" 
+                           placeholder="${translations[currentLanguage].searchSources}"
+                           value="${alternativeSourcesFilter}"
+                           oninput="filterAlternativeSources(this.value)" />
+                    ${alternativeSourcesFilter ? `
+                        <button class="clear-search-btn" onclick="clearAlternativeFilter()">
+                            <span class="material-symbols-outlined">close</span>
+                        </button>
+                    ` : ''}
+                </div>
+
+                <!-- Sources grid -->
+                <div class="alt-sources-grid">
+                    ${renderAlternativeSourcesGrid()}
+                </div>
             </div>
         `;
     }
     
     updateLanguage();
+}
+
+function renderAlternativeSourcesGrid() {
+    if (!alternativeSourcesData || !alternativeSourcesData.categories[currentAlternativeCategory]) {
+        return '<p class="no-sources">Aucune source disponible</p>';
+    }
+
+    const currentCat = alternativeSourcesData.categories[currentAlternativeCategory];
+    let sourcesToShow = currentCat.sources || [];
+
+    // Apply filter
+    if (alternativeSourcesFilter) {
+        const filterLower = alternativeSourcesFilter.toLowerCase();
+        sourcesToShow = sourcesToShow.filter(source => 
+            source.name.toLowerCase().includes(filterLower) ||
+            source.url.toLowerCase().includes(filterLower)
+        );
+    }
+
+    if (sourcesToShow.length === 0) {
+        return `<p class="no-sources">Aucune source trouvée pour "${alternativeSourcesFilter}"</p>`;
+    }
+
+    return sourcesToShow.map(source => {
+        const isAdded = sources.some(s => s.url === source.url);
+        const safeName = (source.name || 'Sans nom').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        const safeUrl = (source.url || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        
+        return `
+            <div class="alt-source-card ${isAdded ? 'added' : ''}">
+                <div class="alt-source-info">
+                    <h4>${source.name || 'Sans nom'}</h4>
+                    <div class="alt-source-url" title="${source.url}">${source.url || 'URL manquante'}</div>
+                </div>
+                <button class="btn-alt-action ${isAdded ? 'btn-remove' : 'btn-add'}" 
+                        onclick="${isAdded ? `removeAlternativeSource('${safeUrl}')` : `addAlternativeSource('${safeName}', '${safeUrl}', '${currentAlternativeCategory}')`}">
+                    <span class="material-symbols-outlined">${isAdded ? 'remove' : 'add'}</span>
+                    <span data-lang="${isAdded ? 'removeSource' : 'addToMySources'}">${translations[currentLanguage][isAdded ? 'removeSource' : 'addToMySources']}</span>
+                </button>
+            </div>
+        `;
+    }).join('');
+}
+
+function switchAlternativeCategory(categoryKey) {
+    currentAlternativeCategory = categoryKey;
+    alternativeSourcesFilter = '';
+    renderSourcesContent();
+}
+
+function filterAlternativeSources(filterText) {
+    alternativeSourcesFilter = filterText;
+    const grid = document.querySelector('.alt-sources-grid');
+    if (grid) {
+        grid.innerHTML = renderAlternativeSourcesGrid();
+    }
+    
+    // Update clear button visibility
+    const wrapper = document.querySelector('.alt-search-filter');
+    const existingClearBtn = wrapper.querySelector('.clear-search-btn');
+    if (filterText && !existingClearBtn) {
+        wrapper.innerHTML += `
+            <button class="clear-search-btn" onclick="clearAlternativeFilter()">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        `;
+    } else if (!filterText && existingClearBtn) {
+        existingClearBtn.remove();
+    }
+}
+
+function clearAlternativeFilter() {
+    alternativeSourcesFilter = '';
+    const searchInput = document.getElementById('altSourcesSearch');
+    if (searchInput) {
+        searchInput.value = '';
+    }
+    renderSourcesContent();
 }
 
 function addAlternativeSource(name, url, category) {
