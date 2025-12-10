@@ -161,8 +161,13 @@ AiSearchAgregator/
 
 ## Version
 
-**Current Version**: 2.1.0 (2025-12-10)  
-**Previous Version**: 2.0.0 (2025-12-10)
+**Current Version**: 2.1.1 (2025-12-10)  
+**Previous Version**: 2.1.0 (2025-12-10)
+
+**What's New in 2.1.1**:
+- 🔧 **Character Encoding Fix**: Corrected display of accented characters (é, è, à, ç, etc.) and special characters in search results
+- 📝 **Text Rendering**: Improved text rendering using DOM manipulation with `textContent` instead of HTML escaping
+- 🌍 **Better i18n Support**: Full Unicode support for all languages and special characters
 
 **What's New in 2.1**:
 - 📜 **Search History**: Automatic storage of searches in localStorage
@@ -186,4 +191,4 @@ See `CHANGELOG.md` for complete version history.
 
 **Developer**: Arnaud Cassone | **Organization**: Artcraft Visuals  
 **Website**: [artcraft-zone.com](https://www.artcraft-zone.com) | **GitHub**: [CraftKontrol/AI_Agents](https://github.com/CraftKontrol/AI_Agents)  
-**Design**: CraftKontrol © 2025 | **Version**: 2.0.0 (2025-12-10)
+**Design**: CraftKontrol © 2025 | **Version**: 2.1.1 (2025-12-10)

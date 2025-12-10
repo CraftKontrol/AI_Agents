@@ -1499,42 +1499,42 @@ async function deepScrapeAndExtract(searchResults, mistralKey, language, rateLim
     const { delayBetweenRequests } = rateLimits;
     const extractedResults = [];
     
-    // Get available scraping services
-    const scrapingServices = getScrapingServices();
-    
+    // Process results without using Mistral for description extraction
+    // This saves tokens - we use the original snippet from the search source
     for (const result of searchResults) {
         try {
             await delay(delayBetweenRequests);
             
-            // Try to scrape full content
-            let fullContent = result.rawContent;
+            // Use original snippet as description (no AI call needed)
+            const description = result.snippet ? cleanText(result.snippet).substring(0, 300) : '';
             
-            if (!fullContent && scrapingServices.length > 0) {
-                fullContent = await scrapeUrl(result.url, scrapingServices[0]);
-            }
+            // Extract domain from URL
+            const domain = extractDomain(result.url);
             
-            // Extract structured data with Mistral AI
-            const extracted = await extractContentWithAI(
-                result.title,
-                result.snippet,
-                fullContent,
-                result.url,
-                mistralKey,
-                language
-            );
+            // Try to parse date from result or use current date
+            const publishedDate = result.publishedDate || new Date().toISOString().split('T')[0];
             
             extractedResults.push({
-                ...result,
-                ...extracted
+                title: result.title,
+                url: result.url,
+                description: description,
+                source: result.source,
+                score: result.score || 0.5,
+                publishedDate: publishedDate,
+                detectedLanguage: language,
+                domain: domain
             });
             
         } catch (error) {
-            console.error(`Error extracting content from ${result.url}:`, error);
-            // Use original result if extraction fails
+            console.error(`Error processing result from ${result.url}:`, error);
+            // Use basic result if processing fails
             extractedResults.push({
-                ...result,
-                description: truncateText(result.snippet, 300),
-                publishedDate: new Date().toISOString(),
+                title: result.title,
+                url: result.url,
+                description: result.snippet ? cleanText(result.snippet).substring(0, 300) : '',
+                source: result.source,
+                score: result.score || 0.5,
+                publishedDate: new Date().toISOString().split('T')[0],
                 detectedLanguage: language,
                 domain: extractDomain(result.url)
             });
@@ -1542,138 +1542,6 @@ async function deepScrapeAndExtract(searchResults, mistralKey, language, rateLim
     }
     
     return extractedResults;
-}
-
-// Get Scraping Services
-function getScrapingServices() {
-    const services = [];
-    
-    const scrapingBeeKey = document.getElementById('apiKeyScrapingBee').value.trim();
-    if (scrapingBeeKey) services.push({ type: 'scrapingbee', key: scrapingBeeKey });
-    
-    const scraperAPIKey = document.getElementById('apiKeyScraperAPI').value.trim();
-    if (scraperAPIKey) services.push({ type: 'scraperapi', key: scraperAPIKey });
-    
-    const brightDataKey = document.getElementById('apiKeyBrightData').value.trim();
-    if (brightDataKey) services.push({ type: 'brightdata', key: brightDataKey });
-    
-    const scrapFlyKey = document.getElementById('apiKeyScrapFly').value.trim();
-    if (scrapFlyKey) services.push({ type: 'scrapfly', key: scrapFlyKey });
-    
-    return services;
-}
-
-// Scrape URL
-async function scrapeUrl(url, service) {
-    try {
-        switch (service.type) {
-            case 'scrapingbee':
-                return await scrapeWithScrapingBee(url, service.key);
-            case 'scraperapi':
-                return await scrapeWithScraperAPI(url, service.key);
-            case 'scrapfly':
-                return await scrapeWithScrapFly(url, service.key);
-            default:
-                return null;
-        }
-    } catch (error) {
-        console.error(`Error scraping ${url} with ${service.type}:`, error);
-        return null;
-    }
-}
-
-// ScrapingBee
-async function scrapeWithScrapingBee(url, apiKey) {
-    const response = await fetch(`https://app.scrapingbee.com/api/v1/?api_key=${apiKey}&url=${encodeURIComponent(url)}&render_js=false`);
-    if (!response.ok) throw new Error(`ScrapingBee error: ${response.status}`);
-    return await response.text();
-}
-
-// ScraperAPI
-async function scrapeWithScraperAPI(url, apiKey) {
-    const response = await fetch(`https://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(url)}`);
-    if (!response.ok) throw new Error(`ScraperAPI error: ${response.status}`);
-    return await response.text();
-}
-
-// ScrapFly
-async function scrapeWithScrapFly(url, apiKey) {
-    const response = await fetch(`https://api.scrapfly.io/scrape?key=${apiKey}&url=${encodeURIComponent(url)}`);
-    if (!response.ok) throw new Error(`ScrapFly error: ${response.status}`);
-    const data = await response.json();
-    return data.result?.content || null;
-}
-
-// Extract Content with Mistral AI
-async function extractContentWithAI(title, snippet, fullContent, url, apiKey, language) {
-    try {
-        const content = fullContent || snippet;
-        
-        // Use fast model for extraction
-        const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-                model: 'mistral-small-latest',
-                messages: [
-                    {
-                        role: 'user',
-                        content: `Extract structured information from this article. Ensure all text is clean and readable (no HTML, no special characters).
-
-Title: ${title}
-URL: ${url}
-Content: ${content.substring(0, 3000)}
-
-Extract and return ONLY a JSON object with:
-- description: A clean, readable summary (max 300 characters, text only)
-- publishedDate: Publication date in ISO format (YYYY-MM-DD) or null if not found
-- detectedLanguage: Language code (${language}, fr, en, es, etc.)
-- domain: Domain name from URL
-
-Respond ONLY with the JSON object, no markdown formatting:
-{"description": "text here", "publishedDate": "2025-12-09 or null", "detectedLanguage": "fr", "domain": "example.com"}`
-                    }
-                ],
-                temperature: 0.3,
-                max_tokens: 500
-            })
-        });
-        
-        if (!response.ok) {
-            throw new Error(`Mistral API error: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        const resultContent = data.choices[0].message.content.trim();
-        
-        // Remove markdown code blocks if present
-        const jsonMatch = resultContent.match(/\{[\s\S]*\}/);
-        const jsonStr = jsonMatch ? jsonMatch[0] : resultContent;
-        
-        const extracted = JSON.parse(jsonStr);
-        
-        // Ensure description is clean text only (max 300 chars)
-        extracted.description = cleanText(extracted.description).substring(0, 300);
-        
-        return {
-            description: extracted.description || truncateText(snippet, 300),
-            publishedDate: extracted.publishedDate || new Date().toISOString().split('T')[0],
-            detectedLanguage: extracted.detectedLanguage || language,
-            domain: extracted.domain || extractDomain(url)
-        };
-        
-    } catch (error) {
-        console.error('AI extraction error:', error);
-        return {
-            description: truncateText(cleanText(snippet), 300),
-            publishedDate: new Date().toISOString().split('T')[0],
-            detectedLanguage: language,
-            domain: extractDomain(url)
-        };
-    }
 }
 
 // Generate AI Summary
@@ -1774,8 +1642,12 @@ Write in a natural, flowing style. Respond ONLY with the summary text, no additi
         const data = await response.json();
         const summary = data.choices[0].message.content.trim();
         
-        // Display summary
-        summaryContent.innerHTML = `<p class="summary-text">${escapeHtml(summary)}</p>`;
+        // Display summary - use textContent to preserve accents
+        const summaryParagraph = document.createElement('p');
+        summaryParagraph.className = 'summary-text';
+        summaryParagraph.textContent = summary;
+        summaryContent.innerHTML = '';
+        summaryContent.appendChild(summaryParagraph);
         
         // Store the summary text for TTS
         currentSummaryText = summary;
@@ -1869,34 +1741,70 @@ function displayResults() {
         const resultItem = document.createElement('div');
         resultItem.className = 'result-item';
         
-        resultItem.innerHTML = `
-            <div class="result-header">
-                <div class="result-meta">
-                    <span class="result-source">
-                        <span class="material-symbols-outlined">source</span>
-                        ${result.source}
-                    </span>
-                    <span class="result-date">${formatDate(result.publishedDate)}</span>
-                    <span class="result-language">${result.detectedLanguage || 'fr'}</span>
-                </div>
-                <div class="result-score">
-                    <span class="material-symbols-outlined">star</span>
-                    <span class="score-value">${(result.score * 100).toFixed(0)}%</span>
-                </div>
-            </div>
-            <h3 class="result-title">${escapeHtml(result.title)}</h3>
-            <p class="result-description">${escapeHtml(result.description)}</p>
-            <div class="result-footer">
-                <span class="result-domain">
-                    <span class="material-symbols-outlined">public</span>
-                    ${result.domain}
-                </span>
-                <a href="${result.url}" target="_blank" rel="noopener noreferrer" class="result-link">
-                    ${translations[currentLanguage].readMore}
-                    <span class="material-symbols-outlined">arrow_outward</span>
-                </a>
-            </div>
+        // Create result header
+        const resultHeader = document.createElement('div');
+        resultHeader.className = 'result-header';
+        
+        const resultMeta = document.createElement('div');
+        resultMeta.className = 'result-meta';
+        resultMeta.innerHTML = `
+            <span class="result-source">
+                <span class="material-symbols-outlined">source</span>
+                ${result.source}
+            </span>
+            <span class="result-date">${formatDate(result.publishedDate)}</span>
+            <span class="result-language">${result.detectedLanguage || 'fr'}</span>
         `;
+        
+        const resultScore = document.createElement('div');
+        resultScore.className = 'result-score';
+        resultScore.innerHTML = `
+            <span class="material-symbols-outlined">star</span>
+            <span class="score-value">${(result.score * 100).toFixed(0)}%</span>
+        `;
+        
+        resultHeader.appendChild(resultMeta);
+        resultHeader.appendChild(resultScore);
+        
+        // Create title - use textContent to preserve accents
+        const resultTitle = document.createElement('h3');
+        resultTitle.className = 'result-title';
+        resultTitle.textContent = result.title || '';
+        
+        // Create description - use textContent to preserve accents
+        const resultDescription = document.createElement('p');
+        resultDescription.className = 'result-description';
+        resultDescription.textContent = result.description || '';
+        
+        // Create footer
+        const resultFooter = document.createElement('div');
+        resultFooter.className = 'result-footer';
+        
+        const resultDomain = document.createElement('span');
+        resultDomain.className = 'result-domain';
+        resultDomain.innerHTML = `
+            <span class="material-symbols-outlined">public</span>
+            ${result.domain}
+        `;
+        
+        const resultLink = document.createElement('a');
+        resultLink.className = 'result-link';
+        resultLink.href = result.url;
+        resultLink.target = '_blank';
+        resultLink.rel = 'noopener noreferrer';
+        resultLink.innerHTML = `
+            ${translations[currentLanguage].readMore}
+            <span class="material-symbols-outlined">arrow_outward</span>
+        `;
+        
+        resultFooter.appendChild(resultDomain);
+        resultFooter.appendChild(resultLink);
+        
+        // Assemble result item
+        resultItem.appendChild(resultHeader);
+        resultItem.appendChild(resultTitle);
+        resultItem.appendChild(resultDescription);
+        resultItem.appendChild(resultFooter);
         
         container.appendChild(resultItem);
     });
@@ -2101,56 +2009,6 @@ function formatDate(dateString) {
     }
 }
 
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-// Error/Success Messages
-function showError(message) {
-    const errorDiv = document.getElementById('errorMessage');
-    errorDiv.textContent = message;
-    errorDiv.style.display = 'block';
-    
-    setTimeout(() => {
-        errorDiv.style.display = 'none';
-    }, 5000);
-}
-
-function showSuccess(message) {
-    const errorDiv = document.getElementById('errorMessage');
-    errorDiv.style.background = 'rgba(68, 255, 136, 0.1)';
-    errorDiv.style.borderColor = 'var(--success-color)';
-    errorDiv.style.color = 'var(--success-color)';
-    errorDiv.textContent = message;
-    errorDiv.style.display = 'block';
-    
-    setTimeout(() => {
-        errorDiv.style.display = 'none';
-        errorDiv.style.background = 'rgba(255, 68, 68, 0.1)';
-        errorDiv.style.borderColor = 'var(--error-color)';
-        errorDiv.style.color = 'var(--error-color)';
-    }, 3000);
-}
-
-function showInfo(message) {
-    const errorDiv = document.getElementById('errorMessage');
-    errorDiv.style.background = 'rgba(74, 158, 255, 0.1)';
-    errorDiv.style.borderColor = 'var(--primary-color)';
-    errorDiv.style.color = 'var(--primary-color)';
-    errorDiv.textContent = message;
-    errorDiv.style.display = 'block';
-}
-
-function hideInfo() {
-    const errorDiv = document.getElementById('errorMessage');
-    errorDiv.style.display = 'none';
-    errorDiv.style.background = 'rgba(255, 68, 68, 0.1)';
-    errorDiv.style.borderColor = 'var(--error-color)';
-    errorDiv.style.color = 'var(--error-color)';
-}
-
 // Search History Management
 function loadSearchHistory() {
     const historyList = document.getElementById('historyList');
@@ -2172,92 +2030,173 @@ function loadSearchHistory() {
         
         historyCount.textContent = `${history.length} ${translations[currentLanguage].historyCount}`;
         
-        historyList.innerHTML = history.map((item, index) => `
-            <div class="history-item" data-index="${index}">
-                <div class="history-item-header">
-                    <div class="history-item-title">
-                        <div class="history-item-query">${escapeHtml(item.query)}</div>
-                        <div class="history-item-meta">
-                            <span>
-                                <span class="material-symbols-outlined">schedule</span>
-                                ${formatDate(item.timestamp)}
-                            </span>
-                            <span>
-                                <span class="material-symbols-outlined">translate</span>
-                                ${item.language || 'fr'}
-                            </span>
-                        </div>
-                    </div>
-                    <div class="history-item-actions">
-                        <button class="btn-history-action" onclick="loadHistoryItem(${index})" title="${translations[currentLanguage].loadHistory}">
-                            <span class="material-symbols-outlined">refresh</span>
-                            <span data-lang="loadHistory">${translations[currentLanguage].loadHistory}</span>
-                        </button>
-                        <button class="btn-history-action" onclick="toggleHistoryDetails(${index})" title="Afficher/Masquer détails">
-                            <span class="material-symbols-outlined">expand_more</span>
-                        </button>
-                        <button class="btn-history-action delete" onclick="deleteHistoryItem(${index})" title="${translations[currentLanguage].deleteHistory}">
-                            <span class="material-symbols-outlined">delete</span>
-                        </button>
-                    </div>
-                </div>
-                ${item.summary ? `
-                    <div class="history-item-summary">${escapeHtml(item.summary)}</div>
-                ` : ''}
+        // Clear history list
+        historyList.innerHTML = '';
+        
+        // Create history items using DOM manipulation to preserve accents
+        history.forEach((item, index) => {
+            const historyItem = document.createElement('div');
+            historyItem.className = 'history-item';
+            historyItem.dataset.index = index;
+            
+            // Create header
+            const header = document.createElement('div');
+            header.className = 'history-item-header';
+            
+            // Create title section
+            const titleSection = document.createElement('div');
+            titleSection.className = 'history-item-title';
+            
+            const queryDiv = document.createElement('div');
+            queryDiv.className = 'history-item-query';
+            queryDiv.textContent = item.query; // Preserve accents
+            
+            const metaDiv = document.createElement('div');
+            metaDiv.className = 'history-item-meta';
+            metaDiv.innerHTML = `
+                <span>
+                    <span class="material-symbols-outlined">schedule</span>
+                    ${formatDate(item.timestamp)}
+                </span>
+                <span>
+                    <span class="material-symbols-outlined">translate</span>
+                    ${item.language || 'fr'}
+                </span>
+            `;
+            
+            titleSection.appendChild(queryDiv);
+            titleSection.appendChild(metaDiv);
+            
+            // Create actions section
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'history-item-actions';
+            actionsDiv.innerHTML = `
+                <button class="btn-history-action" onclick="loadHistoryItem(${index})" title="${translations[currentLanguage].loadHistory}">
+                    <span class="material-symbols-outlined">refresh</span>
+                    <span data-lang="loadHistory">${translations[currentLanguage].loadHistory}</span>
+                </button>
+                <button class="btn-history-action" onclick="toggleHistoryDetails(${index})" title="Afficher/Masquer détails">
+                    <span class="material-symbols-outlined">expand_more</span>
+                </button>
+                <button class="btn-history-action delete" onclick="deleteHistoryItem(${index})" title="${translations[currentLanguage].deleteHistory}">
+                    <span class="material-symbols-outlined">delete</span>
+                </button>
+            `;
+            
+            header.appendChild(titleSection);
+            header.appendChild(actionsDiv);
+            historyItem.appendChild(header);
+            
+            // Add summary if available
+            if (item.summary) {
+                const summaryDiv = document.createElement('div');
+                summaryDiv.className = 'history-item-summary';
+                summaryDiv.textContent = item.summary; // Preserve accents
+                historyItem.appendChild(summaryDiv);
+            }
+            
+            // Create details section
+            const detailsDiv = document.createElement('div');
+            detailsDiv.className = 'history-item-details';
+            detailsDiv.id = `historyDetails${index}`;
+            detailsDiv.style.display = 'none';
+            
+            // Add full AI summary if available
+            if (item.fullAISummary) {
+                const fullSummaryDiv = document.createElement('div');
+                fullSummaryDiv.className = 'history-item-full-summary';
+                fullSummaryDiv.innerHTML = '<strong>Résumé IA complet:</strong>';
                 
-                <div class="history-item-details" id="historyDetails${index}" style="display: none;">
-                    ${item.fullAISummary ? `
-                        <div class="history-item-full-summary">
-                            <strong>Résumé IA complet:</strong>
-                            <p>${escapeHtml(item.fullAISummary)}</p>
-                        </div>
-                    ` : ''}
-                    ${item.top10Results && item.top10Results.length > 0 ? `
-                        <div class="history-item-results">
-                            <strong>Top ${item.top10Results.length} résultats:</strong>
-                            <div class="history-results-list">
-                                ${item.top10Results.map((result, idx) => `
-                                    <div class="history-result-item">
-                                        <span class="history-result-number">${idx + 1}.</span>
-                                        <div class="history-result-content">
-                                            <a href="${result.url}" target="_blank" rel="noopener noreferrer" class="history-result-title">
-                                                ${escapeHtml(result.title)}
-                                            </a>
-                                            <div class="history-result-meta">
-                                                <span class="history-result-domain">${result.domain}</span>
-                                                <span class="history-result-source">${result.source}</span>
-                                                <span class="history-result-score">${(result.score * 100).toFixed(0)}%</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                    ` : ''}
-                </div>
+                const summaryP = document.createElement('p');
+                summaryP.textContent = item.fullAISummary; // Preserve accents
+                fullSummaryDiv.appendChild(summaryP);
                 
-                ${item.stats ? `
-                    <div class="history-item-stats">
+                detailsDiv.appendChild(fullSummaryDiv);
+            }
+            
+            // Add top 10 results if available
+            if (item.top10Results && item.top10Results.length > 0) {
+                const resultsDiv = document.createElement('div');
+                resultsDiv.className = 'history-item-results';
+                resultsDiv.innerHTML = `<strong>Top ${item.top10Results.length} résultats:</strong>`;
+                
+                const resultsList = document.createElement('div');
+                resultsList.className = 'history-results-list';
+                
+                item.top10Results.forEach((result, idx) => {
+                    const resultItem = document.createElement('div');
+                    resultItem.className = 'history-result-item';
+                    
+                    const numberSpan = document.createElement('span');
+                    numberSpan.className = 'history-result-number';
+                    numberSpan.textContent = `${idx + 1}.`;
+                    
+                    const contentDiv = document.createElement('div');
+                    contentDiv.className = 'history-result-content';
+                    
+                    const titleLink = document.createElement('a');
+                    titleLink.className = 'history-result-title';
+                    titleLink.href = result.url;
+                    titleLink.target = '_blank';
+                    titleLink.rel = 'noopener noreferrer';
+                    titleLink.textContent = result.title; // Preserve accents
+                    
+                    const metaDiv = document.createElement('div');
+                    metaDiv.className = 'history-result-meta';
+                    metaDiv.innerHTML = `
+                        <span class="history-result-domain">${result.domain}</span>
+                        <span class="history-result-source">${result.source}</span>
+                        <span class="history-result-score">${(result.score * 100).toFixed(0)}%</span>
+                    `;
+                    
+                    contentDiv.appendChild(titleLink);
+                    contentDiv.appendChild(metaDiv);
+                    
+                    resultItem.appendChild(numberSpan);
+                    resultItem.appendChild(contentDiv);
+                    
+                    resultsList.appendChild(resultItem);
+                });
+                
+                resultsDiv.appendChild(resultsList);
+                detailsDiv.appendChild(resultsDiv);
+            }
+            
+            historyItem.appendChild(detailsDiv);
+            
+            // Add stats if available
+            if (item.stats) {
+                const statsDiv = document.createElement('div');
+                statsDiv.className = 'history-item-stats';
+                
+                let statsHTML = `
+                    <span class="history-stat">
+                        <span class="material-symbols-outlined">article</span>
+                        <span class="history-stat-value">${item.stats.totalResults || 0}</span>
+                        résultats
+                    </span>
+                    <span class="history-stat">
+                        <span class="material-symbols-outlined">source</span>
+                        <span class="history-stat-value">${item.stats.sourcesUsed || 0}</span>
+                        sources
+                    </span>
+                `;
+                
+                if (item.stats.searchTime) {
+                    statsHTML += `
                         <span class="history-stat">
-                            <span class="material-symbols-outlined">article</span>
-                            <span class="history-stat-value">${item.stats.totalResults || 0}</span>
-                            résultats
+                            <span class="material-symbols-outlined">timer</span>
+                            <span class="history-stat-value">${item.stats.searchTime}</span>
                         </span>
-                        <span class="history-stat">
-                            <span class="material-symbols-outlined">source</span>
-                            <span class="history-stat-value">${item.stats.sourcesUsed || 0}</span>
-                            sources
-                        </span>
-                        ${item.stats.searchTime ? `
-                            <span class="history-stat">
-                                <span class="material-symbols-outlined">timer</span>
-                                <span class="history-stat-value">${item.stats.searchTime}</span>
-                            </span>
-                        ` : ''}
-                    </div>
-                ` : ''}
-            </div>
-        `).join('');
+                    `;
+                }
+                
+                statsDiv.innerHTML = statsHTML;
+                historyItem.appendChild(statsDiv);
+            }
+            
+            historyList.appendChild(historyItem);
+        });
         
     } catch (error) {
         console.error('[History] Error loading history:', error);
@@ -2435,7 +2374,11 @@ function loadHistoryItem(index) {
             const summaryContent = document.getElementById('summaryContent');
             
             if (summarySection && summaryContent) {
-                summaryContent.innerHTML = `<p class="summary-text">${escapeHtml(item.fullAISummary)}</p>`;
+                const summaryParagraph = document.createElement('p');
+                summaryParagraph.className = 'summary-text';
+                summaryParagraph.textContent = item.fullAISummary;
+                summaryContent.innerHTML = '';
+                summaryContent.appendChild(summaryParagraph);
                 summarySection.style.display = 'block';
                 console.log('[History] AI Summary restored');
             }
@@ -2559,5 +2502,186 @@ async function fetchLastModified() {
     } catch (error) {
         const docDate = new Date(document.lastModified);
         document.getElementById('lastModified').textContent = formatDateFull(docDate);
+    }
+}
+
+// ===== UTILITY FUNCTIONS =====
+
+/**
+ * Escape HTML special characters to prevent XSS attacks
+ * Preserves all text including accents and special characters
+ */
+function escapeHtml(text) {
+    if (!text) return '';
+    
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+/**
+ * Normalize URL for deduplication
+ */
+function normalizeUrl(url) {
+    if (!url) return '';
+    
+    try {
+        const urlObj = new URL(url);
+        // Remove trailing slash, www, and query parameters for comparison
+        let normalized = urlObj.hostname.replace(/^www\./, '') + urlObj.pathname.replace(/\/$/, '');
+        return normalized.toLowerCase();
+    } catch (error) {
+        console.error('[URL] Error normalizing URL:', url, error);
+        return url.toLowerCase();
+    }
+}
+
+/**
+ * Format date for display
+ */
+function formatDate(dateString) {
+    if (!dateString) return currentLanguage === 'fr' ? 'Date inconnue' : 'Unknown date';
+    
+    try {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) {
+            return currentLanguage === 'fr' ? 'Date invalide' : 'Invalid date';
+        }
+        
+        const options = { 
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric' 
+        };
+        
+        return currentLanguage === 'fr' 
+            ? date.toLocaleDateString('fr-FR', options)
+            : date.toLocaleDateString('en-US', options);
+    } catch (error) {
+        console.error('[Date] Error formatting date:', dateString, error);
+        return currentLanguage === 'fr' ? 'Date invalide' : 'Invalid date';
+    }
+}
+
+/**
+ * Delay helper function for rate limiting
+ */
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Show error message
+ */
+function showError(message) {
+    const errorDiv = document.getElementById('errorMessage');
+    if (!errorDiv) {
+        console.error('[Error] Error message div not found');
+        return;
+    }
+    
+    errorDiv.textContent = message;
+    errorDiv.style.display = 'block';
+    
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+        errorDiv.style.display = 'none';
+    }, 5000);
+}
+
+/**
+ * Show success message
+ */
+function showSuccess(message) {
+    const errorDiv = document.getElementById('errorMessage');
+    if (!errorDiv) return;
+    
+    errorDiv.textContent = `✓ ${message}`;
+    errorDiv.style.display = 'block';
+    errorDiv.style.backgroundColor = 'rgba(68, 255, 136, 0.1)';
+    errorDiv.style.borderColor = 'var(--success-color)';
+    errorDiv.style.color = 'var(--success-color)';
+    
+    // Auto-hide after 3 seconds
+    setTimeout(() => {
+        errorDiv.style.display = 'none';
+        errorDiv.style.backgroundColor = '';
+        errorDiv.style.borderColor = '';
+        errorDiv.style.color = '';
+    }, 3000);
+}
+
+/**
+ * Show info message
+ */
+function showInfo(message) {
+    const errorDiv = document.getElementById('errorMessage');
+    if (!errorDiv) return;
+    
+    errorDiv.textContent = message;
+    errorDiv.style.display = 'block';
+    errorDiv.style.backgroundColor = 'rgba(74, 158, 255, 0.1)';
+    errorDiv.style.borderColor = 'var(--primary-color)';
+    errorDiv.style.color = 'var(--primary-color)';
+}
+
+/**
+ * Hide info message
+ */
+function hideInfo() {
+    const errorDiv = document.getElementById('errorMessage');
+    if (!errorDiv) return;
+    
+    errorDiv.style.display = 'none';
+    errorDiv.style.backgroundColor = '';
+    errorDiv.style.borderColor = '';
+    errorDiv.style.color = '';
+}
+
+/**
+ * Clean text - remove HTML tags and excessive whitespace
+ */
+function cleanText(text) {
+    if (!text) return '';
+    
+    // Remove HTML tags
+    let cleaned = text.replace(/<[^>]*>/g, ' ');
+    
+    // Replace multiple spaces with single space
+    cleaned = cleaned.replace(/\s+/g, ' ');
+    
+    // Trim
+    cleaned = cleaned.trim();
+    
+    return cleaned;
+}
+
+/**
+ * Truncate text to specified length
+ */
+function truncateText(text, maxLength) {
+    if (!text) return '';
+    
+    const cleaned = cleanText(text);
+    
+    if (cleaned.length <= maxLength) {
+        return cleaned;
+    }
+    
+    return cleaned.substring(0, maxLength).trim() + '...';
+}
+
+/**
+ * Extract domain from URL
+ */
+function extractDomain(url) {
+    if (!url) return '';
+    
+    try {
+        const urlObj = new URL(url);
+        return urlObj.hostname.replace(/^www\./, '');
+    } catch (error) {
+        console.error('[Domain] Error extracting domain from URL:', url, error);
+        return '';
     }
 }
