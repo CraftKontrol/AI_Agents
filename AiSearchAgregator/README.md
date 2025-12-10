@@ -70,8 +70,6 @@ Intelligent multi-source search aggregator with AI-powered content extraction an
 4. Configure voice and audio settings in "Text-to-Speech Settings"
 5. Enable/disable auto-play as desired
 
-**Test key provided**: `AIzaSyBGpgFptdEJb1j7XANMn6yjxzT2gm5LXPk` (for testing only)
-
 See `TTS_README.md` for complete TTS documentation.
 
 ## Configuration
