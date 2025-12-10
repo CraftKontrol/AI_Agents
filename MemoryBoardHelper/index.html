@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Board Helper - CraftKontrol</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1a1a1a">
+</head>
+<body>
+    <header class="header">
+        <div class="header-title">
+            <h1 id="appTitle">Memory Board Helper</h1>
+            <p id="appSubtitle">Votre assistant mémoire intelligent</p>
+        </div>
+        <div class="header-controls">
+            <div class="mode-toggle">
+                <button id="modeToggleBtn" class="mode-btn" onclick="toggleListeningMode()">
+                    <span class="material-symbols-outlined" id="modeIcon">mic_off</span>
+                    <span id="modeText">Mode Manuel</span>
+                </button>
+            </div>
+            <div class="emergency-quick-access">
+                <button class="emergency-btn" onclick="toggleEmergencyPanel()">
+                    <span class="material-symbols-outlined">local_hospital</span>
+                    <span id="emergencyBtnText">Urgence</span>
+                </button>
+            </div>
+        </div>
+        <div class="credits">
+            <span>CraftKontrol © 2025</span>
+            <div class="last-modified">
+                <span id="lastModified">Chargement...</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div id="errorMessage" class="error-message" style="display: none;"></div>
+        <div id="successMessage" class="success-message" style="display: none;"></div>
+
+        <section class="api-management-section">
+            <h2>
+                <span id="apiKeysTitle">Gestion des clés API</span>
+                <button class="section-toggle" onclick="toggleSection('apiKeysContent')" id="apiToggleBtn">Masquer</button>
+            </h2>
+            
+            <div id="apiKeysContent" class="section-content">
+                <div class="api-keys-grid">
+                    <div class="api-key-card">
+                        <h3>Mistral AI</h3>
+                        <div class="api-input-wrapper">
+                            <input type="password" id="mistralApiKey" placeholder="Entrez la clé API Mistral...">
+                            <button class="btn-delete" onclick="deleteApiKey('mistral')" title="Supprimer">×</button>
+                        </div>
+                        <a href="https://console.mistral.ai/" target="_blank" class="api-link">Obtenir une clé API gratuite →</a>
+                    </div>
+                    
+                    <div class="api-key-card">
+                        <h3>Google Cloud STT</h3>
+                        <div class="api-input-wrapper">
+                            <input type="password" id="googleSTTApiKey" placeholder="Entrez la clé API Google STT...">
+                            <button class="btn-delete" onclick="deleteApiKey('googleSTT')" title="Supprimer">×</button>
+                        </div>
+                        <a href="https://cloud.google.com/speech-to-text" target="_blank" class="api-link">Obtenir une clé API →</a>
+                    </div>
+
+                    <div class="api-key-card">
+                        <h3>Google Cloud TTS</h3>
+                        <div class="api-input-wrapper">
+                            <input type="password" id="googleTTSApiKey" placeholder="Entrez la clé API Google TTS...">
+                            <button class="btn-delete" onclick="deleteApiKey('googleTTS')" title="Supprimer">×</button>
+                        </div>
+                        <a href="https://cloud.google.com/text-to-speech" target="_blank" class="api-link">Obtenir une clé API →</a>
+                    </div>
+                </div>
+
+                <div class="api-actions">
+                    <label class="remember-key-label">
+                        <input type="checkbox" id="rememberKeys" checked>
+                        <span id="rememberKeysText">Mémoriser les clés API</span>
+                    </label>
+                    <button class="btn-save" onclick="saveApiKeys()" id="saveKeysBtn">Enregistrer les clés</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="emergency-panel" id="emergencyPanel" style="display: none;">
+            <div class="emergency-header">
+                <h2>
+                    <span class="material-symbols-outlined">emergency</span>
+                    <span id="emergencyTitle">Contacts d'Urgence</span>
+                </h2>
+                <button class="close-btn" onclick="toggleEmergencyPanel()">×</button>
+            </div>
+            <div class="emergency-contacts">
+                <div class="contact-card" id="contact1Card" style="display: none;">
+                    <div class="contact-info">
+                        <h3 id="contact1Name">Contact 1</h3>
+                        <p id="contact1Phone">+33 6 00 00 00 00</p>
+                        <p id="contact1Relation">Famille</p>
+                    </div>
+                    <button class="btn-call" onclick="callEmergencyContact(1)">
+                        <span class="material-symbols-outlined">call</span>
+                        <span id="callBtn1">Appeler</span>
+                    </button>
+                </div>
+                <div class="contact-card" id="contact2Card" style="display: none;">
+                    <div class="contact-info">
+                        <h3 id="contact2Name">Contact 2</h3>
+                        <p id="contact2Phone">+33 6 00 00 00 00</p>
+                        <p id="contact2Relation">Médecin</p>
+                    </div>
+                    <button class="btn-call" onclick="callEmergencyContact(2)">
+                        <span class="material-symbols-outlined">call</span>
+                        <span id="callBtn2">Appeler</span>
+                    </button>
+                </div>
+                <div class="contact-card" id="contact3Card" style="display: none;">
+                    <div class="contact-info">
+                        <h3 id="contact3Name">Contact 3</h3>
+                        <p id="contact3Phone">15</p>
+                        <p id="contact3Relation">SAMU</p>
+                    </div>
+                    <button class="btn-call" onclick="callEmergencyContact(3)">
+                        <span class="material-symbols-outlined">call</span>
+                        <span id="callBtn3">Appeler</span>
+                    </button>
+                </div>
+            </div>
+            <button class="btn-secondary" onclick="openEmergencySettings()" id="configureContactsBtn">Configurer les contacts</button>
+        </section>
+
+        <section class="time-display">
+            <div class="current-time">
+                <span class="material-symbols-outlined">schedule</span>
+                <div class="time-info">
+                    <div id="currentTime" class="time-text">00:00</div>
+                    <div id="currentDate" class="date-text">Chargement...</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="voice-interaction">
+            <div class="voice-status">
+                <div class="status-indicator" id="voiceStatus">
+                    <span class="material-symbols-outlined" id="voiceStatusIcon">mic_off</span>
+                    <span id="voiceStatusText">Mode vocal désactivé</span>
+                </div>
+                <div class="listening-indicator" id="listeningIndicator" style="display: none;">
+                    <div class="pulse"></div>
+                    <span id="listeningText">Écoute en cours...</span>
+                </div>
+            </div>
+
+            <div class="voice-controls">
+                <button class="btn-voice-large" id="voiceBtn" onclick="handleVoiceInteraction()">
+                    <span class="material-symbols-outlined">mic</span>
+                    <span id="voiceBtnText">Appuyez pour parler</span>
+                </button>
+            </div>
+
+            <div class="voice-transcript" id="voiceTranscript" style="display: none;">
+                <p id="transcriptText"></p>
+            </div>
+
+            <div class="voice-response" id="voiceResponse" style="display: none;">
+                <div class="response-header">
+                    <span class="material-symbols-outlined">smart_toy</span>
+                    <span id="assistantLabel">Assistant</span>
+                </div>
+                <p id="responseText"></p>
+            </div>
+        </section>
+
+        <section class="tasks-section">
+            <div class="tasks-header">
+                <h2>
+                    <span class="material-symbols-outlined">today</span>
+                    <span id="todayTasksTitle">Mes tâches d'aujourd'hui</span>
+                </h2>
+                <div class="task-counter">
+                    <span id="taskCount">0</span>
+                    <span id="taskCountLabel">/5 tâches</span>
+                </div>
+            </div>
+
+            <div id="loadingTasks" class="loading-indicator" style="display: none;">
+                <div class="spinner"></div>
+                <p id="loadingTasksText">Chargement...</p>
+            </div>
+
+            <div id="tasksContainer" class="tasks-list">
+                <div class="no-tasks" id="noTasksMessage">
+                    <span class="material-symbols-outlined">check_circle</span>
+                    <p id="noTasksText">Aucune tâche pour aujourd'hui</p>
+                </div>
+            </div>
+
+            <button class="btn-add-task" onclick="openAddTaskModal()" id="addTaskBtn">
+                <span class="material-symbols-outlined">add_circle</span>
+                <span id="addTaskBtnText">Ajouter une tâche</span>
+            </button>
+        </section>
+
+        <section class="quick-commands">
+            <h3 id="commandsTitle">Commandes vocales rapides</h3>
+            <div class="commands-grid">
+                <button class="command-btn" onclick="executeQuickCommand('whatToday')">
+                    <span class="material-symbols-outlined">event</span>
+                    <span id="cmdWhatToday">Qu'ai-je aujourd'hui ?</span>
+                </button>
+                <button class="command-btn" onclick="executeQuickCommand('addMedication')">
+                    <span class="material-symbols-outlined">medication</span>
+                    <span id="cmdAddMedication">Ajouter un médicament</span>
+                </button>
+                <button class="command-btn" onclick="executeQuickCommand('completeTask')">
+                    <span class="material-symbols-outlined">task_alt</span>
+                    <span id="cmdCompleteTask">Marquer comme fait</span>
+                </button>
+                <button class="command-btn" onclick="executeQuickCommand('whatTime')">
+                    <span class="material-symbols-outlined">schedule</span>
+                    <span id="cmdWhatTime">Quelle heure est-il ?</span>
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <div id="addTaskModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="addTaskModalTitle">Ajouter une tâche</h2>
+                <button class="close-btn" onclick="closeAddTaskModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group">
+                    <label for="taskDescription" id="taskDescLabel">Description de la tâche:</label>
+                    <textarea id="taskDescription" rows="3" placeholder="Exemple: Prendre mes médicaments"></textarea>
+                </div>
+                <div class="input-group">
+                    <label for="taskTime" id="taskTimeLabel">Heure:</label>
+                    <input type="time" id="taskTime">
+                </div>
+                <div class="input-group">
+                    <label for="taskType" id="taskTypeLabel">Type:</label>
+                    <select id="taskType">
+                        <option value="general">Général</option>
+                        <option value="medication">Médicament</option>
+                        <option value="appointment">Rendez-vous</option>
+                        <option value="call">Appel téléphonique</option>
+                        <option value="shopping">Courses</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label for="taskPriority" id="taskPriorityLabel">Priorité:</label>
+                    <select id="taskPriority">
+                        <option value="normal">Normal</option>
+                        <option value="urgent">Urgent</option>
+                        <option value="low">Faible</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeAddTaskModal()" id="cancelTaskBtn">Annuler</button>
+                <button class="btn-primary" onclick="saveNewTask()" id="saveTaskBtn">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="alarmNotification" class="alarm-notification" style="display: none;">
+        <div class="alarm-content">
+            <div class="alarm-icon">
+                <span class="material-symbols-outlined">notifications_active</span>
+            </div>
+            <div class="alarm-info">
+                <h3 id="alarmTitle">Rappel !</h3>
+                <p id="alarmMessage">Il est temps de...</p>
+            </div>
+            <div class="alarm-actions">
+                <button class="btn-snooze" onclick="snoozeAlarm()" id="snoozeBtn">
+                    <span class="material-symbols-outlined">snooze</span>
+                    <span id="snoozeBtnText">10 min</span>
+                </button>
+                <button class="btn-done" onclick="dismissAlarm()" id="doneBtn">
+                    <span class="material-symbols-outlined">check_circle</span>
+                    <span id="doneBtnText">Fait</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>Arnaud Cassone © Artcraft Visuals 2025</p>
+        <a href="https://www.artcraft-zone.com" target="_blank">www.artcraft-zone.com</a>
+    </footer>
+
+    <audio id="alarmSound" loop>
+        <source src="assets/alarm-sounds/gentle-alarm.mp3" type="audio/mpeg">
+    </audio>
+
+    <script src="storage.js"></script>
+    <script src="mistral-agent.js"></script>
+    <script src="task-manager.js"></script>
+    <script src="alarm-system.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
