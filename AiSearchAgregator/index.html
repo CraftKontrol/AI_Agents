@@ -42,6 +42,217 @@
     <main class="main-content">
         <div id="errorMessage" class="error-message" style="display: none;"></div>
 
+        <!-- Search Section -->
+        <section class="search-section">
+            <h2>
+                <span class="material-symbols-outlined">manage_search</span>
+                <span data-lang="searchTitle">Recherche intelligente</span>
+            </h2>
+            
+            <div class="search-container">
+                <div class="search-input-group">
+                    <input type="text" 
+                           id="searchInput" 
+                           placeholder="Entrez votre recherche..." 
+                           data-lang-placeholder="searchPlaceholder"
+                           onkeypress="handleSearchKeypress(event)" />
+                    <button class="btn-voice" id="voiceBtn" onclick="startVoiceSearch()" title="Recherche vocale">
+                        <span class="material-symbols-outlined">mic</span>
+                    </button>
+                    <button class="btn-search" onclick="performSearch()">
+                        <span class="material-symbols-outlined">search</span>
+                        <span data-lang="search">Rechercher</span>
+                    </button>
+                </div>
+                
+                <div class="search-status" id="searchStatus" style="display: none;">
+                    <div class="status-item">
+                        <span class="material-symbols-outlined">language</span>
+                        <span data-lang="detectedLang">Langue détectée:</span>
+                        <strong id="detectedLanguage">-</strong>
+                    </div>
+                    <div class="status-item">
+                        <span class="material-symbols-outlined">query_stats</span>
+                        <span data-lang="queryOptimized">Requête optimisée:</span>
+                        <strong id="optimizedQuery">-</strong>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- AI Summary Section -->
+        <section class="summary-section" id="summarySection" style="display: none;">
+            <h2>
+                <span class="material-symbols-outlined">auto_awesome</span>
+                <span data-lang="aiSummary">Résumé IA de la recherche</span>
+            </h2>
+            <div class="audio-controls" id="audioControls" style="display: none;">
+                <button class="btn-audio" id="playPauseBtn" onclick="togglePlayPause()" title="Lecture/Pause">
+                    <span class="material-symbols-outlined">play_arrow</span>
+                </button>
+                <button class="btn-audio" id="stopBtn" onclick="stopAudio()" title="Arrêter">
+                    <span class="material-symbols-outlined">stop</span>
+                </button>
+                <div class="audio-progress" id="audioProgressContainer" style="display: none;">
+                    <div class="progress-bar" id="audioProgressBar"></div>
+                </div>
+                <span class="audio-status" id="audioStatus"></span>
+            </div>
+            <div class="summary-content" id="summaryContent">
+                <div class="summary-loading">
+                    <div class="spinner-small"></div>
+                    <p data-lang="generatingSummary">Génération du résumé...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Statistics Section -->
+        <section class="stats-section" id="statsSection" style="display: none;">
+            <h2>
+                <span class="material-symbols-outlined">analytics</span>
+                <span data-lang="statistics">Statistiques</span>
+            </h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <span class="material-symbols-outlined">article</span>
+                    </div>
+                    <div class="stat-content">
+                        <span class="stat-value" id="statTotal">0</span>
+                        <span class="stat-label" data-lang="totalResults">Résultats totaux</span>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <span class="material-symbols-outlined">hub</span>
+                    </div>
+                    <div class="stat-content">
+                        <span class="stat-value" id="statSources">0</span>
+                        <span class="stat-label" data-lang="sourcesUsed">Sources utilisées</span>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <span class="material-symbols-outlined">content_copy</span>
+                    </div>
+                    <div class="stat-content">
+                        <span class="stat-value" id="statDuplicates">0</span>
+                        <span class="stat-label" data-lang="duplicatesRemoved">Doublons retirés</span>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <span class="material-symbols-outlined">timer</span>
+                    </div>
+                    <div class="stat-content">
+                        <span class="stat-value" id="statTime">0s</span>
+                        <span class="stat-label" data-lang="searchTime">Temps de recherche</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Filter Section -->
+        <section class="filter-section" id="filterSection" style="display: none;">
+            <h2>
+                <span class="material-symbols-outlined">filter_list</span>
+                <span data-lang="filters">Filtres</span>
+            </h2>
+            
+            <div class="filters-container">
+
+                <div class="filter-group">
+                    <label for="filterDate">
+                        <span class="material-symbols-outlined">calendar_today</span>
+                        <span data-lang="filterByDate">Filtrer par date</span>
+                    </label>
+                    <select id="filterDate" onchange="applyFilters()">
+                        <option value="all" data-lang="allDates">Toutes les dates</option>
+                        <option value="today" data-lang="today">Aujourd'hui</option>
+                        <option value="week" data-lang="thisWeek">Cette semaine</option>
+                        <option value="month" data-lang="thisMonth">Ce mois-ci</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="filterSource">
+                        <span class="material-symbols-outlined">source</span>
+                        <span data-lang="filterBySource">Filtrer par source</span>
+                    </label>
+                    <select id="filterSource" onchange="applyFilters()">
+                        <option value="all" data-lang="allSources">Toutes les sources</option>
+                        <!-- Populated dynamically -->
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="filterDomain">
+                        <span class="material-symbols-outlined">public</span>
+                        <span data-lang="filterByDomain">Filtrer par domaine</span>
+                    </label>
+                    <select id="filterDomain" onchange="applyFilters()">
+                        <option value="all" data-lang="allDomains">Tous les domaines</option>
+                        <!-- Populated dynamically -->
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="filterLanguage">
+                        <span class="material-symbols-outlined">translate</span>
+                        <span data-lang="filterByLanguage">Filtrer par langue</span>
+                    </label>
+                    <select id="filterLanguage" onchange="applyFilters()">
+                        <option value="all" data-lang="allLanguages">Toutes les langues</option>
+                        <!-- Populated dynamically -->
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label for="sortBy">
+                        <span class="material-symbols-outlined">sort</span>
+                        <span data-lang="sortBy">Trier par</span>
+                    </label>
+                    <select id="sortBy" onchange="applyFilters()">
+                        <option value="score" data-lang="sortScore">Score (pertinence)</option>
+                        <option value="date" data-lang="sortDate">Date (récent d'abord)</option>
+                        <option value="source" data-lang="sortSource">Source</option>
+                        <option value="domain" data-lang="sortDomain">Domaine</option>
+                    </select>
+                </div>
+                
+                <button class="btn-reset-filters" onclick="resetFilters()">
+                    <span class="material-symbols-outlined">filter_alt_off</span>
+                    <span data-lang="resetFilters">Réinitialiser les filtres</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Loading Indicator -->
+        <div id="loadingIndicator" class="loading-indicator" style="display: none;">
+            <div class="spinner"></div>
+            <p data-lang="loading">Recherche en cours...</p>
+            <div class="progress-container" id="progressContainer">
+                <!-- Progress items will be populated dynamically -->
+            </div>
+        </div>
+
+        <!-- Results Container -->
+        <div class="results-container" id="resultsContainer" style="display: none;">
+            <!-- Results will be populated by JavaScript -->
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="empty-state">
+            <span class="material-symbols-outlined">search</span>
+            <p data-lang="emptyTitle">Commencez une recherche</p>
+            <p data-lang="emptyDesc">Entrez votre requête ou utilisez la recherche vocale pour découvrir des contenus pertinents de plusieurs sources</p>
+        </div>
+        
+        <span class="section-divider" style="height: 20px; display: block;"></span>
+
         <!-- API Keys Management Section -->
         <section class="api-management-section">
             <h2>
@@ -437,221 +648,7 @@
             </div>
         </section>
 
-        <!-- Search Section -->
-        <section class="search-section">
-            <h2>
-                <span class="material-symbols-outlined">manage_search</span>
-                <span data-lang="searchTitle">Recherche intelligente</span>
-            </h2>
-            
-            <div class="search-container">
-                <div class="search-input-group">
-                    <input type="text" 
-                           id="searchInput" 
-                           placeholder="Entrez votre recherche..." 
-                           data-lang-placeholder="searchPlaceholder"
-                           onkeypress="handleSearchKeypress(event)" />
-                    <button class="btn-voice" id="voiceBtn" onclick="startVoiceSearch()" title="Recherche vocale">
-                        <span class="material-symbols-outlined">mic</span>
-                    </button>
-                    <button class="btn-search" onclick="performSearch()">
-                        <span class="material-symbols-outlined">search</span>
-                        <span data-lang="search">Rechercher</span>
-                    </button>
-                </div>
-                
-                <div class="search-status" id="searchStatus" style="display: none;">
-                    <div class="status-item">
-                        <span class="material-symbols-outlined">language</span>
-                        <span data-lang="detectedLang">Langue détectée:</span>
-                        <strong id="detectedLanguage">-</strong>
-                    </div>
-                    <div class="status-item">
-                        <span class="material-symbols-outlined">query_stats</span>
-                        <span data-lang="queryOptimized">Requête optimisée:</span>
-                        <strong id="optimizedQuery">-</strong>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- AI Summary Section -->
-        <section class="summary-section" id="summarySection" style="display: none;">
-            <h2>
-                <span class="material-symbols-outlined">auto_awesome</span>
-                <span data-lang="aiSummary">Résumé IA de la recherche</span>
-            </h2>
-            <div class="audio-controls" id="audioControls" style="display: none;">
-                <button class="btn-audio" id="playPauseBtn" onclick="togglePlayPause()" title="Lecture/Pause">
-                    <span class="material-symbols-outlined">play_arrow</span>
-                </button>
-                <button class="btn-audio" id="stopBtn" onclick="stopAudio()" title="Arrêter">
-                    <span class="material-symbols-outlined">stop</span>
-                </button>
-                <div class="audio-progress" id="audioProgressContainer" style="display: none;">
-                    <div class="progress-bar" id="audioProgressBar"></div>
-                </div>
-                <span class="audio-status" id="audioStatus"></span>
-            </div>
-            <div class="summary-content" id="summaryContent">
-                <div class="summary-loading">
-                    <div class="spinner-small"></div>
-                    <p data-lang="generatingSummary">Génération du résumé...</p>
-                </div>
-            </div>
-        </section>
-
-        <!-- Statistics Section -->
-        <section class="stats-section" id="statsSection" style="display: none;">
-            <h2>
-                <span class="material-symbols-outlined">analytics</span>
-                <span data-lang="statistics">Statistiques</span>
-            </h2>
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-icon">
-                        <span class="material-symbols-outlined">article</span>
-                    </div>
-                    <div class="stat-content">
-                        <span class="stat-value" id="statTotal">0</span>
-                        <span class="stat-label" data-lang="totalResults">Résultats totaux</span>
-                    </div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-icon">
-                        <span class="material-symbols-outlined">hub</span>
-                    </div>
-                    <div class="stat-content">
-                        <span class="stat-value" id="statSources">0</span>
-                        <span class="stat-label" data-lang="sourcesUsed">Sources utilisées</span>
-                    </div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-icon">
-                        <span class="material-symbols-outlined">content_copy</span>
-                    </div>
-                    <div class="stat-content">
-                        <span class="stat-value" id="statDuplicates">0</span>
-                        <span class="stat-label" data-lang="duplicatesRemoved">Doublons retirés</span>
-                    </div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-icon">
-                        <span class="material-symbols-outlined">timer</span>
-                    </div>
-                    <div class="stat-content">
-                        <span class="stat-value" id="statTime">0s</span>
-                        <span class="stat-label" data-lang="searchTime">Temps de recherche</span>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Filter Section -->
-        <section class="filter-section" id="filterSection" style="display: none;">
-            <h2>
-                <span class="material-symbols-outlined">filter_list</span>
-                <span data-lang="filters">Filtres</span>
-            </h2>
-            
-            <div class="filters-container">
-                <div class="view-toggle">
-                    <button class="view-btn" id="cardViewBtn" onclick="switchView('card')">
-                        <span class="material-symbols-outlined">grid_view</span>
-                    </button>
-                    <button class="view-btn active" id="listViewBtn" onclick="switchView('list')">
-                        <span class="material-symbols-outlined">view_list</span>
-                    </button>
-                </div>
-                <div class="filter-group">
-                    <label for="filterDate">
-                        <span class="material-symbols-outlined">calendar_today</span>
-                        <span data-lang="filterByDate">Filtrer par date</span>
-                    </label>
-                    <select id="filterDate" onchange="applyFilters()">
-                        <option value="all" data-lang="allDates">Toutes les dates</option>
-                        <option value="today" data-lang="today">Aujourd'hui</option>
-                        <option value="week" data-lang="thisWeek">Cette semaine</option>
-                        <option value="month" data-lang="thisMonth">Ce mois-ci</option>
-                    </select>
-                </div>
-                
-                <div class="filter-group">
-                    <label for="filterSource">
-                        <span class="material-symbols-outlined">source</span>
-                        <span data-lang="filterBySource">Filtrer par source</span>
-                    </label>
-                    <select id="filterSource" onchange="applyFilters()">
-                        <option value="all" data-lang="allSources">Toutes les sources</option>
-                        <!-- Populated dynamically -->
-                    </select>
-                </div>
-                
-                <div class="filter-group">
-                    <label for="filterDomain">
-                        <span class="material-symbols-outlined">public</span>
-                        <span data-lang="filterByDomain">Filtrer par domaine</span>
-                    </label>
-                    <select id="filterDomain" onchange="applyFilters()">
-                        <option value="all" data-lang="allDomains">Tous les domaines</option>
-                        <!-- Populated dynamically -->
-                    </select>
-                </div>
-                
-                <div class="filter-group">
-                    <label for="filterLanguage">
-                        <span class="material-symbols-outlined">translate</span>
-                        <span data-lang="filterByLanguage">Filtrer par langue</span>
-                    </label>
-                    <select id="filterLanguage" onchange="applyFilters()">
-                        <option value="all" data-lang="allLanguages">Toutes les langues</option>
-                        <!-- Populated dynamically -->
-                    </select>
-                </div>
-                
-                <div class="filter-group">
-                    <label for="sortBy">
-                        <span class="material-symbols-outlined">sort</span>
-                        <span data-lang="sortBy">Trier par</span>
-                    </label>
-                    <select id="sortBy" onchange="applyFilters()">
-                        <option value="score" data-lang="sortScore">Score (pertinence)</option>
-                        <option value="date" data-lang="sortDate">Date (récent d'abord)</option>
-                        <option value="source" data-lang="sortSource">Source</option>
-                        <option value="domain" data-lang="sortDomain">Domaine</option>
-                    </select>
-                </div>
-                
-                <button class="btn-reset-filters" onclick="resetFilters()">
-                    <span class="material-symbols-outlined">filter_alt_off</span>
-                    <span data-lang="resetFilters">Réinitialiser les filtres</span>
-                </button>
-            </div>
-        </section>
-
-        <!-- Loading Indicator -->
-        <div id="loadingIndicator" class="loading-indicator" style="display: none;">
-            <div class="spinner"></div>
-            <p data-lang="loading">Recherche en cours...</p>
-            <div class="progress-container" id="progressContainer">
-                <!-- Progress items will be populated dynamically -->
-            </div>
-        </div>
-
-        <!-- Results Container -->
-        <div class="results-container" id="resultsContainer" style="display: none;">
-            <!-- Results will be populated by JavaScript -->
-        </div>
-
-        <!-- Empty State -->
-        <div id="emptyState" class="empty-state">
-            <span class="material-symbols-outlined">search</span>
-            <p data-lang="emptyTitle">Commencez une recherche</p>
-            <p data-lang="emptyDesc">Entrez votre requête ou utilisez la recherche vocale pour découvrir des contenus pertinents de plusieurs sources</p>
-        </div>
+        
     </main>
 
     <!-- Footer -->
