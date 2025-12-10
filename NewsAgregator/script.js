@@ -17,6 +17,7 @@ let currentContextMenuArticle = null;
 let alternativeSourcesData = null;
 let currentAlternativeCategory = 'presse_standard';
 let alternativeSourcesFilter = '';
+let displayMode = 'columns'; // 'columns' or 'feed'
 
 // Translations
 const translations = {
@@ -40,6 +41,7 @@ const translations = {
         cuisine: 'Cooking',
         technologie: 'Technology',
         culture: 'Culture',
+        general: 'General',
         deleteSource: 'Delete',
         errorFetchingFeed: 'Error fetching feed',
         sourceAdded: 'Source added successfully',
@@ -61,7 +63,14 @@ const translations = {
         presse_standard: 'Standard Press',
         alternatif: 'Alternative Press',
         presse_region: 'Regional Press',
-        spiritualite: 'Spirituality & Religions'
+        spiritualite: 'Spirituality & Religions',
+        resetReadArticles: 'Reset read articles',
+        articlesReset: 'Read articles have been reset',
+        noFilter: 'No filter',
+        allCategories: 'All categories',
+        displayMode: 'Display',
+        columnsMode: 'Columns',
+        feedMode: 'Feed'
     },
     fr: {
         title: 'Agrégateur de News',
@@ -83,6 +92,7 @@ const translations = {
         cuisine: 'Cuisine',
         technologie: 'Technologie',
         culture: 'Culture',
+        general: 'Général',
         deleteSource: 'Supprimer',
         errorFetchingFeed: 'Erreur lors de la récupération du flux',
         sourceAdded: 'Source ajoutée avec succès',
@@ -104,7 +114,14 @@ const translations = {
         presse_standard: 'Presse Standard',
         alternatif: 'Presse Alternative',
         presse_region: 'Presse Régionale',
-        spiritualite: 'Spiritualité & Religions'
+        spiritualite: 'Spiritualité & Religions',
+        resetReadArticles: 'Réinitialiser les articles lus',
+        articlesReset: 'Les articles lus ont été réinitialisés',
+        noFilter: 'Aucun filtre',
+        allCategories: 'Toutes catégories',
+        displayMode: 'Affichage',
+        columnsMode: 'Colonnes',
+        feedMode: 'Fil'
     }
 };
 
@@ -185,6 +202,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     loadSources();
     loadActiveCategories();
     loadReadArticles();
+    loadDisplayMode();
     fetchLastModified();
     updateLanguage();
     renderCategoryFilters();
@@ -197,7 +215,15 @@ document.addEventListener('DOMContentLoaded', async function() {
 // Load alternative sources from JSON file
 async function loadAlternativeSources() {
     try {
-        const response = await fetch('rss-sources-complete.json');
+        // Try local file first, then fallback to GitHub
+        let response;
+        try {
+            response = await fetch('rss-sources-complete.json');
+        } catch (localError) {
+            console.log('Local file not found, loading from GitHub...');
+            response = await fetch('https://raw.githubusercontent.com/CraftKontrol/AI_Agents/main/NewsAgregator/rss-sources-complete.json');
+        }
+        
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -232,6 +258,7 @@ function updateLanguage() {
             }
         }
     });
+    updateDisplayModeUI();
 }
 
 // Fetch last modified date
@@ -308,11 +335,16 @@ function saveSources() {
 function addNewSource() {
     const name = document.getElementById('sourceName').value.trim();
     const url = document.getElementById('sourceUrl').value.trim();
-    const category = document.getElementById('sourceCategory').value;
+    let category = document.getElementById('sourceCategory').value;
     
     if (!name || !url) {
         showError(translations[currentLanguage].sourceMissing);
         return;
+    }
+    
+    // Use 'general' as default category if not specified
+    if (!category) {
+        category = 'general';
     }
     
     sources.push({ name, url, category });
@@ -322,6 +354,10 @@ function addNewSource() {
     // Clear form
     document.getElementById('sourceName').value = '';
     document.getElementById('sourceUrl').value = '';
+    
+    // Update category filters
+    ensureActiveCategoriesUpdated();
+    renderCategoryFilters();
     
     showSuccess(translations[currentLanguage].sourceAdded);
     
@@ -333,6 +369,17 @@ function deleteSource(index) {
     sources.splice(index, 1);
     saveSources();
     renderSourcesList();
+    
+    // Update category filters to reflect remaining sources
+    const availableCategories = getAvailableCategories();
+    activeCategories.forEach(cat => {
+        if (!availableCategories.includes(cat)) {
+            activeCategories.delete(cat);
+        }
+    });
+    saveActiveCategories();
+    renderCategoryFilters();
+    
     refreshAllFeeds();
 }
 
@@ -365,30 +412,125 @@ function renderSourcesList() {
 }
 
 // Category filter management
+function getAvailableCategories() {
+    // Get unique categories from current sources
+    const categories = new Set();
+    sources.forEach(source => {
+        if (source.category) {
+            categories.add(source.category);
+        }
+    });
+    return Array.from(categories).sort();
+}
+
 function loadActiveCategories() {
     const saved = localStorage.getItem('activeCategories');
     if (saved) {
         activeCategories = new Set(JSON.parse(saved));
     } else {
-        // By default, all categories are active
-        activeCategories = new Set(['politique', 'science', 'cuisine', 'technologie', 'culture']);
+        // By default, all available categories are active
+        activeCategories = new Set(getAvailableCategories());
     }
+    
+    // Clean up: remove categories that no longer exist in sources
+    const availableCategories = getAvailableCategories();
+    activeCategories.forEach(cat => {
+        if (!availableCategories.includes(cat)) {
+            activeCategories.delete(cat);
+        }
+    });
 }
 
 function saveActiveCategories() {
     localStorage.setItem('activeCategories', JSON.stringify([...activeCategories]));
 }
 
+function loadDisplayMode() {
+    const saved = localStorage.getItem('displayMode');
+    if (saved && (saved === 'columns' || saved === 'feed')) {
+        displayMode = saved;
+    }
+    updateDisplayModeUI();
+}
+
+function saveDisplayMode() {
+    localStorage.setItem('displayMode', displayMode);
+}
+
+function toggleDisplayMode() {
+    displayMode = displayMode === 'columns' ? 'feed' : 'columns';
+    saveDisplayMode();
+    updateDisplayModeUI();
+    renderNewsGrid();
+}
+
+function updateDisplayModeUI() {
+    const btn = document.getElementById('displayModeBtn');
+    if (btn) {
+        const icon = btn.querySelector('.material-symbols-outlined');
+        const text = btn.querySelector('.display-mode-text');
+        if (displayMode === 'columns') {
+            if (icon) icon.textContent = 'view_column';
+            if (text) text.textContent = translations[currentLanguage].columnsMode;
+        } else {
+            if (icon) icon.textContent = 'view_agenda';
+            if (text) text.textContent = translations[currentLanguage].feedMode;
+        }
+    }
+}
+
 function renderCategoryFilters() {
     const container = document.getElementById('categoryFilters');
-    const categories = ['politique', 'science', 'cuisine', 'technologie', 'culture'];
+    const categories = getAvailableCategories();
     
-    container.innerHTML = categories.map(category => `
-        <div class="category-filter ${activeCategories.has(category) ? 'active' : ''}" onclick="toggleCategory('${category}')">
-            <input type="checkbox" id="cat-${category}" ${activeCategories.has(category) ? 'checked' : ''} onchange="toggleCategory('${category}')">
-            <label for="cat-${category}">${translations[currentLanguage][category]}</label>
+    if (categories.length === 0) {
+        container.innerHTML = '<p style="color: var(--text-muted); font-size: 14px; text-align: center;">Aucune catégorie disponible. Ajoutez des sources RSS.</p>';
+        return;
+    }
+    
+    // Count articles per category (only recent articles, less than 1 week old)
+    const categoryCounts = {};
+    let totalUnreadRecent = 0;
+    allArticles.forEach(article => {
+        if (isArticleRecent(article)) {
+            const articleId = btoa(encodeURIComponent(article.link));
+            if (!readArticles.has(articleId)) {
+                categoryCounts[article.category] = (categoryCounts[article.category] || 0) + 1;
+                totalUnreadRecent++;
+            }
+        }
+    });
+    
+    // Check if "no filter" mode is active (all categories selected)
+    const isNoFilterActive = categories.length > 0 && categories.every(cat => activeCategories.has(cat));
+    
+    // Build the "Aucun filtre" button + category filters
+    let filtersHTML = `
+        <div class="category-filter no-filter ${isNoFilterActive ? 'active' : ''}" onclick="toggleNoFilter()">
+            <input type="checkbox" id="cat-nofilter" ${isNoFilterActive ? 'checked' : ''} onchange="toggleNoFilter()">
+            <label for="cat-nofilter">
+                ${translations[currentLanguage].noFilter}
+                ${totalUnreadRecent > 0 ? `<span class="filter-count">(${totalUnreadRecent})</span>` : ''}
+            </label>
         </div>
-    `).join('');
+    `;
+    
+    filtersHTML += categories.map(category => {
+        const count = categoryCounts[category] || 0;
+        const displayName = translations[currentLanguage][category] || category.charAt(0).toUpperCase() + category.slice(1);
+        
+        return `
+            <div class="category-filter ${activeCategories.has(category) ? 'active' : ''}" onclick="toggleCategory('${category}')">
+                <input type="checkbox" id="cat-${category}" ${activeCategories.has(category) ? 'checked' : ''} onchange="toggleCategory('${category}')">
+                <label for="cat-${category}">
+                    ${displayName}
+                    ${count > 0 ? `<span class="filter-count">(${count})</span>` : ''}
+                </label>
+            </div>
+        `;
+    }).join('');
+    
+    container.innerHTML = filtersHTML;
 }
 
 function toggleCategory(category) {
@@ -400,6 +542,42 @@ function toggleCategory(category) {
     saveActiveCategories();
     renderCategoryFilters();
     renderNewsGrid();
+}
+
+function toggleNoFilter() {
+    const categories = getAvailableCategories();
+    const isNoFilterActive = categories.length > 0 && categories.every(cat => activeCategories.has(cat));
+    
+    if (isNoFilterActive) {
+        // Deactivate all - clear active categories
+        activeCategories.clear();
+    } else {
+        // Activate all categories
+        categories.forEach(cat => activeCategories.add(cat));
+    }
+    
+    saveActiveCategories();
+    renderCategoryFilters();
+    renderNewsGrid();
+}
+
+function ensureActiveCategoriesUpdated() {
+    // Add any new categories from sources to active categories
+    const availableCategories = getAvailableCategories();
+    let updated = false;
+    
+    availableCategories.forEach(cat => {
+        if (!activeCategories.has(cat)) {
+            activeCategories.add(cat);
+            updated = true;
+            console.log(`✨ Auto-activating new category: ${cat}`);
+        }
+    });
+    
+    if (updated) {
+        saveActiveCategories();
+        console.log(`📂 Active categories updated:`, [...activeCategories]);
+    }
 }
 
 // RSS Feed fetching
@@ -421,16 +599,23 @@ async function refreshAllFeeds() {
         
         console.log(`📰 Total articles collected: ${allArticles.length}`);
         
+        // Filter recent articles (less than 1 week old)
+        const recentArticles = allArticles.filter(article => isArticleRecent(article));
+        console.log(`📅 Recent articles (< 1 week): ${recentArticles.length}/${allArticles.length}`);
+        
         // Log articles by category
         const categoryCounts = {};
-        allArticles.forEach(article => {
+        recentArticles.forEach(article => {
             categoryCounts[article.category] = (categoryCounts[article.category] || 0) + 1;
         });
-        console.log('📊 Articles by category:', categoryCounts);
+        console.log('📊 Recent articles by category:', categoryCounts);
         
         // Sort articles by date (newest first)
         allArticles.sort((a, b) => b.date - a.date);
         
+        // Update category filters to reflect available categories
+        ensureActiveCategoriesUpdated();
+        renderCategoryFilters();
         renderNewsGrid();
     } catch (error) {
         showError(`${translations[currentLanguage].errorFetchingFeed}: ${error.message}`);
@@ -507,22 +692,32 @@ function parseRSSFeed(xmlText, source) {
     
     // Log the number of items found
     console.log(`  → Found ${items.length} articles for ${source.name}`);
+    console.log(`  → Format: ${isAtom ? 'Atom' : 'RSS 2.0'}`);
+    console.log(`  → Category: ${source.category || 'UNDEFINED'}`);
     
     if (items.length === 0) {
         console.warn(`  ⚠ No articles found in feed for ${source.name}`);
+        // Log the root element to debug
+        console.warn(`  → Root element:`, xmlDoc.documentElement.tagName);
         return;
     }
     
     let parsedCount = 0;
+    let skippedCount = 0;
     items.forEach(item => {
         const article = parseArticle(item, source, isAtom);
         if (article) {
             allArticles.push(article);
             parsedCount++;
+        } else {
+            skippedCount++;
         }
     });
     
     console.log(`  → Successfully parsed ${parsedCount}/${items.length} articles`);
+    if (skippedCount > 0) {
+        console.warn(`  → Skipped ${skippedCount} articles (missing title or link)`);
+    }
 }
 
 function parseArticle(item, source, isAtom = false) {
@@ -573,12 +768,35 @@ function parseArticle(item, source, isAtom = false) {
             }
         }
         
-        // 4. Extract from description/content HTML
-        if (!imageUrl && description) {
-            const imgMatch = description.match(/<img[^>]+src=["']([^"']+)["']/i);
-            if (imgMatch) {
-                imageUrl = imgMatch[1];
+        // 4. og:image meta tag
+        if (!imageUrl) {
+            const ogImage = item.querySelector('meta[property="og:image"], meta[name="og:image"]');
+            if (ogImage) {
+                imageUrl = ogImage.getAttribute('content') || '';
             }
+        }
+        
+        // 5. Extract from description/content HTML
+        if (!imageUrl && description) {
+            // Try multiple image patterns
+            const imgPatterns = [
+                /<img[^>]+src=["']([^"']+)["']/i,
+                /<img[^>]+src=([^\s>]+)/i,
+                /url\(["']?([^"')]+\.(jpg|jpeg|png|gif|webp))["']?\)/i
+            ];
+            
+            for (const pattern of imgPatterns) {
+                const match = description.match(pattern);
+                if (match && match[1]) {
+                    imageUrl = match[1];
+                    break;
+                }
+            }
+        }
+        
+        // Clean and validate image URL
+        if (imageUrl) {
+            imageUrl = cleanImageUrl(imageUrl, link);
         }
         
         // Clean description (remove HTML tags)
@@ -600,8 +818,12 @@ function parseArticle(item, source, isAtom = false) {
         
         // Validate we have minimum required fields
         if (!title || !link) {
+            console.warn(`  → Skipping article: missing ${!title ? 'title' : 'link'}`);
             return null;
         }
+        
+        // Ensure category is defined (use 'general' as fallback)
+        const category = source.category || 'general';
         
         return {
             title: cleanText(title),
@@ -609,7 +831,7 @@ function parseArticle(item, source, isAtom = false) {
             excerpt: cleanText(description).substring(0, 200),
             date,
             source: source.name,
-            category: source.category,
+            category: category,
             imageUrl
         };
     } catch (error) {
@@ -629,16 +851,96 @@ function cleanText(text) {
         .trim();
 }
 
+function cleanImageUrl(imageUrl, articleLink) {
+    if (!imageUrl) return '';
+    
+    // Decode HTML entities
+    imageUrl = imageUrl
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .trim();
+    
+    // Remove leading/trailing quotes or whitespace
+    imageUrl = imageUrl.replace(/^["']|["']$/g, '').trim();
+    
+    // Handle relative URLs
+    if (imageUrl.startsWith('//')) {
+        // Protocol-relative URL
+        imageUrl = 'https:' + imageUrl;
+    } else if (imageUrl.startsWith('/')) {
+        // Absolute path - need to extract domain from article link
+        try {
+            const url = new URL(articleLink);
+            imageUrl = url.origin + imageUrl;
+        } catch (e) {
+            console.warn('Could not resolve relative image URL:', imageUrl);
+            return '';
+        }
+    } else if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+        // Relative path
+        try {
+            const url = new URL(articleLink);
+            const basePath = url.pathname.substring(0, url.pathname.lastIndexOf('/') + 1);
+            imageUrl = url.origin + basePath + imageUrl;
+        } catch (e) {
+            console.warn('Could not resolve relative image URL:', imageUrl);
+            return '';
+        }
+    }
+    
+    // Validate URL format
+    try {
+        new URL(imageUrl);
+        // Check if it's likely an image (has image extension or is from known CDN)
+        const hasImageExtension = /\.(jpg|jpeg|png|gif|webp|svg)(\?|$)/i.test(imageUrl);
+        const isImageCDN = /\/(image|img|media|upload|photo|picture)\//i.test(imageUrl) || 
+                          /(cdn|cloudinary|imgur|imagekit|cloudfront)/.test(imageUrl);
+        
+        if (hasImageExtension || isImageCDN || imageUrl.includes('media')) {
+            return imageUrl;
+        }
+    } catch (e) {
+        console.warn('Invalid image URL:', imageUrl);
+    }
+    
+    return '';
+}
+
+// Helper function to check if article is within the last week
+function isArticleRecent(article) {
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    return article.date >= oneWeekAgo;
+}
+
 // Render news grid
 function renderNewsGrid() {
     const container = document.getElementById('newsContainer');
     const emptyState = document.getElementById('emptyState');
     
-    // Filter articles by active categories AND exclude read articles
+    console.log('🎨 Rendering news grid...');
+    console.log('📊 Total articles:', allArticles.length);
+    console.log('📂 Active categories:', [...activeCategories]);
+    
+    // Filter articles by active categories AND exclude read articles AND only show recent articles (less than 1 week old)
     const filteredArticles = allArticles.filter(article => {
-        const articleId = btoa(encodeURIComponent(article.link)).substring(0, 32);
-        return activeCategories.has(article.category) && !readArticles.has(articleId);
+        const articleId = btoa(encodeURIComponent(article.link));
+        const hasActiveCategory = activeCategories.has(article.category);
+        const isNotRead = !readArticles.has(articleId);
+        const isRecent = isArticleRecent(article);
+        
+        return hasActiveCategory && isNotRead && isRecent;
     });
+    
+    // Debug: Log filter results
+    console.log('🔍 Filter details:');
+    console.log('   - Has active category:', allArticles.filter(a => activeCategories.has(a.category)).length);
+    console.log('   - Is not read:', allArticles.filter(a => !readArticles.has(btoa(encodeURIComponent(a.link)))).length);
+    console.log('   - Is recent:', allArticles.filter(a => isArticleRecent(a)).length);
+    console.log('   - Read articles Set size:', readArticles.size);
+    console.log('✅ Filtered articles to display:', filteredArticles.length);
     
     if (filteredArticles.length === 0) {
         container.innerHTML = '';
@@ -649,38 +951,62 @@ function renderNewsGrid() {
     
     emptyState.style.display = 'none';
     
-    // Group articles by category
-    const articlesByCategory = {};
-    filteredArticles.forEach(article => {
-        if (!articlesByCategory[article.category]) {
-            articlesByCategory[article.category] = [];
-        }
-        articlesByCategory[article.category].push(article);
-    });
-    
-    // Get active categories that have articles
-    activeCategoryList = [...activeCategories].filter(category => articlesByCategory[category]?.length > 0);
-    
-    // Reset to first category
-    currentCategoryIndex = 0;
-    
-    // Render columns for each active category
-    container.innerHTML = activeCategoryList
-        .map(category => `
-            <div class="news-column">
-                <h3>
-                    ${translations[currentLanguage][category]}
-                    <span class="category-count">(${articlesByCategory[category].length})</span>
-                </h3>
-                ${articlesByCategory[category].map(article => renderNewsCard(article)).join('')}
-            </div>
-        `).join('');
-    
-    // Update mobile view
-    updateMobileView();
+    if (displayMode === 'feed') {
+        // Single feed mode - all articles chronologically
+        container.className = 'news-container-feed';
+        
+        // Remove duplicates based on article link (URL)
+        const seenLinks = new Set();
+        const uniqueArticles = filteredArticles.filter(article => {
+            if (seenLinks.has(article.link)) {
+                console.log(`⚠️ Duplicate removed: ${article.title} (${article.source})`);
+                return false;
+            }
+            seenLinks.add(article.link);
+            return true;
+        });
+        
+        console.log(`🔍 Feed mode: ${filteredArticles.length} articles → ${uniqueArticles.length} unique articles (${filteredArticles.length - uniqueArticles.length} duplicates removed)`);
+        
+        container.innerHTML = uniqueArticles.map(article => renderNewsCard(article, true)).join('');
+        document.getElementById('mobileCategoryNav').style.display = 'none';
+    } else {
+        // Columns mode - grouped by category
+        container.className = 'news-container-columns';
+        
+        // Group articles by category
+        const articlesByCategory = {};
+        filteredArticles.forEach(article => {
+            if (!articlesByCategory[article.category]) {
+                articlesByCategory[article.category] = [];
+            }
+            articlesByCategory[article.category].push(article);
+        });
+        
+        // Get active categories that have articles
+        activeCategoryList = [...activeCategories].filter(category => articlesByCategory[category]?.length > 0);
+        
+        // Reset to first category
+        currentCategoryIndex = 0;
+        
+        // Render columns for each active category
+        container.innerHTML = activeCategoryList
+            .map(category => `
+                <div class="news-column">
+                    <h3>
+                        ${translations[currentLanguage][category]}
+                        <span class="category-count">(${articlesByCategory[category].length})</span>
+                    </h3>
+                    ${articlesByCategory[category].map(article => renderNewsCard(article)).join('')}
+                </div>
+            `).join('');
+        
+        // Update mobile view
+        updateMobileView();
+    }
 }
 
-function renderNewsCard(article) {
+function renderNewsCard(article, showCategory = false) {
     const formattedDate = article.date.toLocaleDateString(currentLanguage === 'fr' ? 'fr-FR' : 'en-US', {
         year: 'numeric',
         month: 'short',
@@ -690,18 +1016,28 @@ function renderNewsCard(article) {
     });
     
     // Generate unique ID for article based on link
-    const articleId = btoa(encodeURIComponent(article.link)).substring(0, 32);
+    const articleId = btoa(encodeURIComponent(article.link));
     const isRead = readArticles.has(articleId);
+    
+    // Escape HTML in title for alt text
+    const escapedTitle = article.title.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    
+    const categoryBadge = showCategory ? `<span class="news-category-badge">${translations[currentLanguage][article.category] || article.category}</span>` : '';
     
     return `
         <div class="news-card ${isRead ? 'read' : ''}" data-article-id="${articleId}">
             ${article.imageUrl ? 
-                `<img src="${article.imageUrl}" alt="${article.title}" class="news-image" onerror="this.style.display='none'">` :
+                `<img src="${article.imageUrl}" 
+                      alt="${escapedTitle}" 
+                      class="news-image" 
+                      loading="lazy"
+                      onerror="handleImageError(this)">` :
                 `<div class="news-image placeholder"><span class="material-symbols-outlined">image</span></div>`
             }
             <div class="news-content">
                 <div class="news-header">
                     <div class="news-source">${article.source}</div>
+                    ${categoryBadge}
                     <div class="news-date">${formattedDate}</div>
                 </div>
                 <h4 class="news-title">${article.title}</h4>
@@ -717,6 +1053,25 @@ function renderNewsCard(article) {
             </div>
         </div>
     `;
+}
+
+// Handle image loading errors
+function handleImageError(img) {
+    // Try to reload once in case it was a temporary error
+    if (!img.dataset.retried) {
+        img.dataset.retried = 'true';
+        const originalSrc = img.src;
+        img.src = '';
+        setTimeout(() => {
+            img.src = originalSrc;
+        }, 1000);
+    } else {
+        // Replace with placeholder
+        const placeholder = document.createElement('div');
+        placeholder.className = 'news-image placeholder';
+        placeholder.innerHTML = '<span class="material-symbols-outlined">image</span>';
+        img.parentNode.replaceChild(placeholder, img);
+    }
 }
 
 // UI helpers
@@ -881,6 +1236,12 @@ function loadReadArticles() {
     if (saved) {
         readArticles = new Set(JSON.parse(saved));
         console.log('📖 Loaded read articles:', readArticles.size);
+        
+        // Debug: Show first few read article IDs
+        const readArray = [...readArticles];
+        if (readArray.length > 0) {
+            console.log('📋 First 3 read article IDs:', readArray.slice(0, 3));
+        }
     }
     
     const savedHistory = localStorage.getItem('articleHistory');
@@ -939,20 +1300,8 @@ function markArticleAsRead(data) {
         
         saveReadArticles();
         
-        // Remove article from view immediately
-        setTimeout(() => {
-            const card = document.querySelector(`[data-article-id="${data.id}"]`);
-            if (card) {
-                card.style.transition = 'all 0.3s ease';
-                card.style.opacity = '0';
-                card.style.transform = 'scale(0.95)';
-                
-                setTimeout(() => {
-                    // Re-render the grid to update counts and remove the card
-                    renderNewsGrid();
-                }, 300);
-            }
-        }, 100);
+        // Re-render the grid immediately to update counts and remove the card
+        renderNewsGrid();
     }
 }
 
@@ -1033,6 +1382,17 @@ function clearHistory() {
         renderNewsGrid();
         showSuccess(translations[currentLanguage].historyCleared);
     }
+}
+
+// Quick reset for read articles (from header button)
+function quickResetReadArticles() {
+    console.log('🔄 Quick reset: Clearing read articles...');
+    readArticles.clear();
+    articleHistory = [];
+    saveReadArticles();
+    renderNewsGrid();
+    showSuccess(translations[currentLanguage].articlesReset);
+    console.log('✅ Read articles cleared. Refreshing view...');
 }
 
 // Context menu for articles (long press)
@@ -1182,6 +1542,7 @@ function renderSourcesContent() {
                 <div class="input-group">
                     <label for="sourceCategory" data-lang="sourceCategory">Catégorie:</label>
                     <select id="sourceCategory">
+                        <option value="general">Général</option>
                         <option value="politique">Politique</option>
                         <option value="science">Science</option>
                         <option value="cuisine">Cuisine</option>
@@ -1341,6 +1702,11 @@ function addAlternativeSource(name, url, category) {
     sources.push({ name, url, category });
     saveSources();
     renderSourcesContent();
+    
+    // Update category filters
+    ensureActiveCategoriesUpdated();
+    renderCategoryFilters();
+    
     showSuccess(translations[currentLanguage].sourceAdded);
     refreshAllFeeds();
 }
@@ -1351,6 +1717,17 @@ function removeAlternativeSource(url) {
         sources.splice(index, 1);
         saveSources();
         renderSourcesContent();
+        
+        // Update category filters to reflect remaining sources
+        const availableCategories = getAvailableCategories();
+        activeCategories.forEach(cat => {
+            if (!availableCategories.includes(cat)) {
+                activeCategories.delete(cat);
+            }
+        });
+        saveActiveCategories();
+        renderCategoryFilters();
+        
         showSuccess(translations[currentLanguage].sourceDeleted);
         refreshAllFeeds();
     }

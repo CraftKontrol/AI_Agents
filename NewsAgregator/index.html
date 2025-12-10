@@ -20,6 +20,9 @@
                 <span class="material-symbols-outlined">history</span>
                 <span data-lang="history">Historique</span>
             </button>
+            <button class="btn-reset" onclick="quickResetReadArticles()" id="resetBtn" title="Réinitialiser les articles lus">
+                <span class="material-symbols-outlined">restart_alt</span>
+            </button>
             <button class="btn-refresh" onclick="refreshAllFeeds()" id="refreshBtn">
                 <span class="material-symbols-outlined">refresh</span>
                 <span data-lang="refresh">Actualiser</span>
@@ -96,10 +99,16 @@
 
         <!-- Category Filter Section -->
         <section class="filter-section">
-            <h2>
-                <span class="material-symbols-outlined">filter_list</span>
-                <span data-lang="filterCategories">Filtrer les catégories</span>
-            </h2>
+            <div class="filter-header">
+                <h2>
+                    <span class="material-symbols-outlined">filter_list</span>
+                    <span data-lang="filterCategories">Filtrer les catégories</span>
+                </h2>
+                <button class="btn-display-mode" onclick="toggleDisplayMode()" id="displayModeBtn">
+                    <span class="material-symbols-outlined">view_column</span>
+                    <span class="display-mode-text" data-lang="columnsMode">Colonnes</span>
+                </button>
+            </div>
             <div class="category-filters" id="categoryFilters">
                 <!-- Category checkboxes will be populated by JavaScript -->
             </div>
