@@ -38,6 +38,29 @@
     </header>
 
     <main class="main-content">
+                <!-- Modale de sélection du son d'alarme -->
+                <div id="alarmSoundModal" class="modal" style="display: none;">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h2><span class="material-symbols-outlined">alarm</span> Choisir le son d'alarme</h2>
+                            <button class="close-btn" onclick="closeAlarmSoundModal()">×</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="input-group">
+                                <label for="alarmSoundSelect">Son d'alarme :</label>
+                                <select id="alarmSoundSelect">
+                                    <option value="gentle-alarm.mp3">Alarme douce</option>
+                                    <option value="classic-alarm.mp3">Alarme classique</option>
+                                    <option value="digital-alarm.mp3">Alarme digitale</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn-secondary" onclick="closeAlarmSoundModal()">Annuler</button>
+                            <button class="btn-primary" onclick="saveAlarmSound()">Enregistrer</button>
+                        </div>
+                    </div>
+                </div>
         <div id="errorMessage" class="error-message" style="display: none;"></div>
         <div id="successMessage" class="success-message" style="display: none;"></div>
 
@@ -177,6 +200,74 @@
             </div>
             <button class="btn-secondary" onclick="openEmergencySettings()" id="configureContactsBtn">Configurer les contacts</button>
         </section>
+
+        <!-- Modale de configuration des contacts d'urgence -->
+        <div id="emergencySettingsModal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2><span class="material-symbols-outlined">settings</span> Configurer les contacts d'urgence</h2>
+                    <button class="close-btn" onclick="closeEmergencySettings()">×</button>
+                </div>
+                <div class="modal-body">
+                    <div id="contactInputs">
+                        <div class="contact-config" id="contactConfig1">
+                            <div class="input-group">
+                                <label for="contact1NameInput">Nom du contact :</label>
+                                <input type="text" id="contact1NameInput" placeholder="Nom...">
+                            </div>
+                            <div class="input-group">
+                                <label for="contact1PhoneInput">Téléphone :</label>
+                                <input type="text" id="contact1PhoneInput" placeholder="Téléphone...">
+                            </div>
+                            <div class="input-group">
+                                <label for="contact1RelationInput">Relation :</label>
+                                <input type="text" id="contact1RelationInput" placeholder="Relation...">
+                            </div>
+                            <button class="btn-delete-contact" type="button" onclick="deleteEmergencyContact(1)">Effacer</button>
+                        </div>
+                        <div class="contact-config" id="contactConfig2" style="display:none;">
+                            <hr>
+                            <div class="input-group">
+                                <label for="contact2NameInput">Nom du contact :</label>
+                                <input type="text" id="contact2NameInput" placeholder="Nom...">
+                            </div>
+                            <div class="input-group">
+                                <label for="contact2PhoneInput">Téléphone :</label>
+                                <input type="text" id="contact2PhoneInput" placeholder="Téléphone...">
+                            </div>
+                            <div class="input-group">
+                                <label for="contact2RelationInput">Relation :</label>
+                                <input type="text" id="contact2RelationInput" placeholder="Relation...">
+                            </div>
+                            <button class="btn-delete-contact" type="button" onclick="deleteEmergencyContact(2)">Effacer</button>
+                        </div>
+                        <div class="contact-config" id="contactConfig3" style="display:none;">
+                            <hr>
+                            <div class="input-group">
+                                <label for="contact3NameInput">Nom du contact :</label>
+                                <input type="text" id="contact3NameInput" placeholder="Nom...">
+                            </div>
+                            <div class="input-group">
+                                <label for="contact3PhoneInput">Téléphone :</label>
+                                <input type="text" id="contact3PhoneInput" placeholder="Téléphone...">
+                            </div>
+                            <div class="input-group">
+                                <label for="contact3RelationInput">Relation :</label>
+                                <input type="text" id="contact3RelationInput" placeholder="Relation...">
+                            </div>
+                            <button class="btn-delete-contact" type="button" onclick="deleteEmergencyContact(3)">Effacer</button>
+                        </div>
+                    </div>
+                    <div class="contact-actions">
+                        <button class="btn-secondary" id="addContactBtn" onclick="addEmergencyContact()">Ajouter un contact</button>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-secondary" onclick="closeEmergencySettings()">Annuler</button>
+                    <button class="btn-primary" onclick="saveEmergencyContacts()">Enregistrer</button>
+                </div>
+            </div>
+        </div>
 
         <section class="time-display">
             <div class="current-time">
@@ -331,23 +422,11 @@
                     <span class="material-symbols-outlined">settings</span>
                     <span>Configurer les contacts</span>
                 </button>
-                <!-- Clés API -->
-                <button class="command-btn" onclick="quickShowApiKeys()">
-                    <span class="material-symbols-outlined">vpn_key</span>
-                    <span>Gestion des clés API</span>
-                </button>
-                <button class="command-btn" onclick="quickSaveApiKeys()">
-                    <span class="material-symbols-outlined">save</span>
-                    <span>Enregistrer les clés API</span>
-                </button>
+               
                 <!-- Mot de réveil -->
-                <button class="command-btn" onclick="quickDisableWakeWord()">
+                <button class="command-btn" onclick="quickChangeWakeWord()">
                     <span class="material-symbols-outlined">keyboard_voice</span>
-                    <span>Désactiver le mot de réveil</span>
-                </button>
-                <button class="command-btn" onclick="quickEnableWakeWord()">
-                    <span class="material-symbols-outlined">keyboard_voice</span>
-                    <span>Activer le mot de réveil</span>
+                    <span>Changer le mot de reveil</span>
                 </button>
                 <!-- Alarmes -->
                 <button class="command-btn" onclick="quickSnoozeAlarm()">
@@ -357,6 +436,15 @@
                 <button class="command-btn" onclick="quickDismissAlarm()">
                     <span class="material-symbols-outlined">notifications_off</span>
                     <span>Arrêter l'alarme</span>
+                </button>
+                <!-- Alarmes supplémentaires -->
+                <button class="command-btn" onclick="quickTestAlarm()">
+                    <span class="material-symbols-outlined">notifications_active</span>
+                    <span>Tester l'alarme</span>
+                </button>
+                <button class="command-btn" onclick="quickChangeAlarm()">
+                    <span class="material-symbols-outlined">alarm</span>
+                    <span>Changer l'alarme</span>
                 </button>
             </div>
         </section>

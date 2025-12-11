@@ -1,4 +1,11 @@
 // Commande : Ajouter une tâche
+// Désactive le mode automatique en simulant un clic sur le bouton
+function disableAutoModeByButton() {
+    const modeBtn = document.getElementById('modeToggleBtn');
+    if (modeBtn) {
+        modeBtn.click();
+    }
+}
 function quickAddTask() {
     openAddTaskModal();
     showSuccess('Ajout d\'une nouvelle tâche.');
@@ -8,6 +15,10 @@ function quickAddTask() {
 function quickShowTodayTasks() {
     switchPeriod('today');
     commandWhatToday();
+    const tasksSection = document.querySelector('.tasks-section');
+    if (tasksSection) {
+        tasksSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
 }
 // Commande : Afficher les tâches de la semaine (réponse Mistral)
 function commandWhatWeek() {
@@ -65,18 +76,30 @@ window.mistralAgentRespond = async function(period) {
 function quickShowWeekTasks() {
     switchPeriod('week');
     commandWhatWeek();
+    const tasksSection = document.querySelector('.tasks-section');
+    if (tasksSection) {
+        tasksSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
 }
 
 // Commande : Afficher les tâches du mois
 function quickShowMonthTasks() {
     switchPeriod('month');
     commandWhatMonth();
+    const tasksSection = document.querySelector('.tasks-section');
+    if (tasksSection) {
+        tasksSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
 }
 
 // Commande : Afficher les tâches de l'année
 function quickShowYearTasks() {
     switchPeriod('year');
     commandWhatYear();
+    const tasksSection = document.querySelector('.tasks-section');
+    if (tasksSection) {
+        tasksSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
 }
 
 // Commande : Ajouter un médicament
@@ -89,11 +112,20 @@ function quickAddMedication() {
 // Commande : Afficher l'heure
 function quickShowTime() {
     commandWhatTime();
+    const timeSection = document.querySelector('.time-display');
+    if (timeSection) {
+        timeSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
 }
 
 // Commande : Afficher la date
 function quickShowDate() {
-    showSuccess('Nous sommes le ' + new Date().toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }));
+    // Utilise Mistral pour répondre à la question sur la date
+    processUserMessage('Quelle est la date aujourd\'hui ?');
+    const timeSection = document.querySelector('.time-display');
+    if (timeSection) {
+        timeSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
 }
 
 // Commande : Activer le mode automatique
@@ -103,22 +135,30 @@ function quickActivateAutoMode() {
         startAlwaysListening();
         updateModeUI();
         showSuccess('Mode automatique activé.');
+        processUserMessage('Active le mode automatique.');
     }
 }
 
 // Commande : Désactiver le mode automatique
 function quickDeactivateAutoMode() {
-    if (listeningMode !== 'manual') {
-        listeningMode = 'manual';
-        stopAlwaysListening();
-        updateModeUI();
-        showSuccess('Mode automatique désactivé.');
-    }
+    // Désactive le mode automatique en simulant un clic sur le bouton
+    disableAutoModeByButton();
+    listeningMode = 'manual';
+    stopAlwaysListening();
+    updateModeUI();
+    microPermissionDenied = false;
+    if (typeof hideError === 'function') hideError();
+    showSuccess('Mode automatique désactivé.');
+    processUserMessage('Désactive le mode automatique.');
 }
 
 // Commande : Ouvrir les contacts d'urgence
 function quickShowEmergencyContacts() {
     toggleEmergencyPanel();
+    const emergencyPanel = document.getElementById('emergencyPanel');
+    if (emergencyPanel && emergencyPanel.style.display !== 'none') {
+        emergencyPanel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
     showSuccess('Affichage des contacts d\'urgence.');
 }
 
@@ -131,6 +171,10 @@ function quickConfigureEmergencyContacts() {
 // Commande : Gestion des clés API
 function quickShowApiKeys() {
     toggleSection('apiKeysContent');
+    const apiSection = document.querySelector('.api-management-section');
+    if (apiSection) {
+        apiSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
     showSuccess('Affichage de la gestion des clés API.');
 }
 
@@ -144,6 +188,10 @@ function quickDisableWakeWord() {
     document.getElementById('wakeWordEnabled').checked = false;
     wakeWordEnabled = false;
     updateWakeWordDisplay();
+    const wakeWordSection = document.querySelector('.wake-word-section');
+    if (wakeWordSection) {
+        wakeWordSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
     showSuccess('Mot de réveil désactivé.');
 }
 
@@ -152,7 +200,25 @@ function quickEnableWakeWord() {
     document.getElementById('wakeWordEnabled').checked = true;
     wakeWordEnabled = true;
     updateWakeWordDisplay();
+    const wakeWordSection = document.querySelector('.wake-word-section');
+    if (wakeWordSection) {
+        wakeWordSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
     showSuccess('Mot de réveil activé.');
+}
+
+// Commande : Changer le mot de réveil
+function quickChangeWakeWord() {
+    const wakeWordSection = document.querySelector('.wake-word-section');
+    if (wakeWordSection) {
+        wakeWordSection.style.display = 'block';
+        wakeWordSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    const wakeWordContent = document.getElementById('wakeWordContent');
+    if (wakeWordContent) {
+        wakeWordContent.style.display = 'block';
+    }
+    showSuccess('Section mot de réveil affichée.');
 }
 
 // Commande : Snooze alarme
@@ -166,13 +232,36 @@ function quickDismissAlarm() {
     dismissAlarm();
     showSuccess('Alarme arrêtée.');
 }
+
+// Commande rapide : Tester l'alarme
+function quickTestAlarm() {
+    const alarmAudio = document.getElementById('alarmSound');
+    if (alarmAudio) {
+        alarmAudio.currentTime = 0;
+        alarmAudio.play();
+        showSuccess("Alarme testée !");
+        // Affiche la notification visuelle si souhaité
+        const notif = document.getElementById('alarmNotification');
+        if (notif) notif.style.display = 'block';
+        setTimeout(() => {
+            alarmAudio.pause();
+            alarmAudio.currentTime = 0;
+            if (notif) notif.style.display = 'none';
+        }, 3000);
+    }
+}
+
+// Commande rapide : Changer l'alarme
+function quickChangeAlarm() {
+    openAlarmSoundModal();
+}
 // Script.js - Main controller for Memory Board Helper
 // --- Navigation vocale : mapping des sections et focus ---
 // Mapping des commandes vocales vers les fonctions principales
 const voiceCommands = [
     // Mode automatique
-    { phrases: ["active le mode automatique", "mets-toi en mode automatique", "écoute active"], action: () => { if (listeningMode !== 'always-listening') { listeningMode = 'always-listening'; startAlwaysListening(); updateModeUI(); showSuccess('Mode automatique activé.'); } } },
-    { phrases: ["désactive le mode automatique", "passe en mode manuel", "arrête l'écoute active", "mode manuel"], action: () => { if (listeningMode !== 'manual') { listeningMode = 'manual'; stopAlwaysListening(); updateModeUI(); showSuccess('Mode automatique désactivé.'); } } },
+    { phrases: ["active le mode automatique", "mets-toi en mode automatique", "écoute active"], action: () => quickActivateAutoMode() },
+    { phrases: ["désactive le mode automatique", "passe en mode manuel", "arrête l'écoute active", "mode manuel"], action: () => quickDeactivateAutoMode() },
     // Tâches
     { phrases: ["ajoute une tâche", "nouvelle tâche", "crée une tâche"], action: () => openAddTaskModal() },
     { phrases: ["montre-moi la tâche", "affiche la tâche", "voir la tâche", "visualise la tâche"], action: (t) => { /* handled by explicit question logic */ } },
@@ -196,7 +285,7 @@ const voiceCommands = [
     { phrases: ["configure les contacts d'urgence"], action: () => { openEmergencySettings(); } },
     // Heure / Date
     { phrases: ["quelle heure est-il", "donne-moi l'heure", "affiche l'heure"], action: () => commandWhatTime() },
-    { phrases: ["donne-moi la date", "affiche la date", "quelle est la date"], action: () => { const now = new Date(); showSuccess('Nous sommes le ' + now.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })); } },
+    { phrases: ["donne-moi la date", "affiche la date", "quelle est la date"], action: () => { processUserMessage('Quelle est la date aujourd\'hui ?'); } },
     // Alarmes
     { phrases: ["affiche les alarmes", "montre-moi les alarmes"], action: () => { /* handled by alarm logic */ } },
     { phrases: ["snooze l'alarme", "rappelle-moi plus tard"], action: () => snoozeAlarm() },
@@ -280,6 +369,9 @@ let currentWakeWord = 'assistant'; // Default wake word
 let isListeningForCommand = false; // True after wake word detected
 let commandTimeout = null;
 const COMMAND_TIMEOUT_MS = 10000; // 10 seconds to give command after wake word
+
+// Ajout du flag global pour bloquer le réaffichage du bandeau d'erreur micro
+let microPermissionDenied = false;
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', async function() {
@@ -538,32 +630,30 @@ async function processSpeechTranscript(transcript) {
 function handleSpeechError(event) {
     console.log('[App] Speech recognition error:', event.error);
     isRecognitionActive = false;
-    
     if (listeningMode === 'manual') {
         const voiceBtn = document.getElementById('voiceBtn');
         voiceBtn.classList.remove('recording');
         showListeningIndicator(false);
-        
-        // Only show errors in manual mode
         if (event.error === 'no-speech') {
             showError(getLocalizedText('noSpeechDetected'));
         } else if (event.error === 'not-allowed') {
-            showError(getLocalizedText('microphonePermissionDenied'));
+            // Ne montre l'erreur que si le mode est always-listening
+            if (listeningMode === 'always-listening') {
+                showError(getLocalizedText('microphonePermissionDenied'));
+                microPermissionDenied = true;
+            }
         } else if (event.error === 'aborted') {
-            // Ignore aborted errors, they're normal when stopping
             console.log('[App] Recognition aborted (normal behavior)');
         }
     } else if (listeningMode === 'always-listening') {
-        // In always-listening mode, silently handle no-speech errors
         if (event.error === 'no-speech') {
             console.log('[App] No speech detected in always-listening mode, will restart');
         } else if (event.error === 'not-allowed') {
-            // Critical error, inform user and stop always-listening
             showError(getLocalizedText('microphonePermissionDenied'));
+            microPermissionDenied = true;
             listeningMode = 'manual';
             updateModeUI();
         } else if (event.error === 'aborted') {
-            // Ignore aborted errors
             console.log('[App] Recognition aborted');
         } else {
             console.error('[App] Unhandled error in always-listening:', event.error);
@@ -577,12 +667,11 @@ function handleSpeechEnd() {
     isRecognitionActive = false;
     
     if (listeningMode === 'always-listening' && recognition) {
-        // Restart continuous listening immediately without exponential backoff
-        // The continuous mode should handle this better now
+        // Restart only if mode is still always-listening
         const delay = 300; // Short delay to avoid rapid restarts
         console.log(`[App] Restarting recognition in ${delay}ms`);
-        
         setTimeout(() => {
+            // Vérification stricte : ne relance que si le mode est TOUJOURS 'always-listening'
             if (listeningMode === 'always-listening' && !isRecognitionActive) {
                 try {
                     recognition.start();
@@ -591,7 +680,6 @@ function handleSpeechEnd() {
                 } catch (error) {
                     console.error('[App] Could not restart continuous recognition:', error);
                     isRecognitionActive = false;
-                    
                     // Increment attempts and try again with longer delay
                     recognitionRestartAttempts++;
                     if (recognitionRestartAttempts < MAX_RESTART_ATTEMPTS) {
@@ -604,6 +692,9 @@ function handleSpeechEnd() {
                         recognitionRestartAttempts = 0;
                     }
                 }
+            } else {
+                // Si le mode n'est plus always-listening, on ne relance pas
+                console.log('[App] Recognition NOT restarted: mode is', listeningMode);
             }
         }, delay);
     } else if (listeningMode === 'manual') {
@@ -1364,7 +1455,7 @@ async function refreshTaskDisplay() {
         return;
     }
 
-    // --- TODAY VIEW (default) ---
+    // --- TODAY VIEW (défaut) ---
     if (tasks.length === 0) {
         if (noTasksMsg) noTasksMsg.style.display = 'block';
         container.innerHTML = '';
@@ -1565,6 +1656,7 @@ function createTaskElement(task, lang, mode = '') {
             </div>
         `;
         taskDiv.onclick = function(e) {
+            // Prevent action buttons from triggering popup
             if (e.target.closest('.btn-task-action')) return;
             if (window.openTaskPopup) window.openTaskPopup(task, false);
         };
@@ -1731,7 +1823,7 @@ function showLoading(show) {
 }
 
 function showError(message) {
-    const errorDiv = document.getElementById('errorMessage');
+       const errorDiv = document.getElementById('errorMessage');
     if (errorDiv) {
         errorDiv.textContent = message;
         errorDiv.style.display = 'block';
@@ -1752,7 +1844,7 @@ function showSuccess(message) {
 function getLocalizedText(key) {
     const lang = getCurrentLanguage();
     const texts = {
-        voiceActive: { fr: 'Micro activé', it: 'Microfono attivo', en: 'Microphone active' },
+        voiceActive: { fr: 'Micro activé', it: 'Microfono attivo attivo', en: 'Microphone active' },
         voiceInactive: { fr: 'Micro désactivé', it: 'Microfono disattivato', en: 'Microphone inactive' },
         noSpeechDetected: { fr: 'Aucune parole détectée', it: 'Nessun parlato rilevato', en: 'No speech detected' },
         microphonePermissionDenied: { fr: 'Permission microphone refusée', it: 'Permesso microfono negato', en: 'Microphone permission denied' },
@@ -1839,11 +1931,13 @@ function toggleSection(sectionId) {
 function loadEmergencyContacts() {
     for (let i = 1; i <= 3; i++) {
         const contact = JSON.parse(localStorage.getItem(`emergencyContact${i}`) || 'null');
-        if (contact) {
+        if (contact && contact.name && contact.name.trim() !== '') {
             document.getElementById(`contact${i}Name`).textContent = contact.name;
             document.getElementById(`contact${i}Phone`).textContent = contact.phone;
             document.getElementById(`contact${i}Relation`).textContent = contact.relation;
             document.getElementById(`contact${i}Card`).style.display = 'flex';
+        } else {
+            document.getElementById(`contact${i}Card`).style.display = 'none';
         }
     }
 }
@@ -1858,9 +1952,126 @@ function callEmergencyContact(contactNumber) {
     window.location.href = `tel:${phone}`;
 }
 
+// Ouvre la modale de configuration des contacts d'urgence
+// Ajoute un contact supplémentaire dans la modale (max 3)
+function addEmergencyContact() {
+    const c2 = document.getElementById('contactConfig2');
+    const c3 = document.getElementById('contactConfig3');
+    if (c2.style.display === 'none') {
+        c2.style.display = 'block';
+    } else if (c3.style.display === 'none') {
+        c3.style.display = 'block';
+        document.getElementById('addContactBtn').style.display = 'none';
+    }
+}
+
+// Ferme la modale de configuration des contacts d'urgence
+function closeEmergencySettings() {
+    const modal = document.getElementById('emergencySettingsModal');
+    if (modal) {
+        modal.style.display = 'none';
+        // Réinitialise l'affichage à un seul contact pour la prochaine ouverture
+        document.getElementById('contactConfig1').style.display = 'block';
+        document.getElementById('contactConfig2').style.display = 'none';
+        document.getElementById('contactConfig3').style.display = 'none';
+        document.getElementById('addContactBtn').style.display = 'inline-block';
+    }
+}
+
+// Enregistre les contacts d'urgence depuis la modale
+// Efface un contact dans la modale de configuration
+function deleteEmergencyContact(num) {
+    if (num === 1) {
+        document.getElementById('contact1NameInput').value = '';
+        document.getElementById('contact1PhoneInput').value = '';
+        document.getElementById('contact1RelationInput').value = '';
+        // Optionnel: masquer la section si on ne veut jamais zéro contact
+    } else if (num === 2) {
+        document.getElementById('contact2NameInput').value = '';
+        document.getElementById('contact2PhoneInput').value = '';
+        document.getElementById('contact2RelationInput').value = '';
+        document.getElementById('contactConfig2').style.display = 'none';
+        document.getElementById('addContactBtn').style.display = 'inline-block';
+    } else if (num === 3) {
+        document.getElementById('contact3NameInput').value = '';
+        document.getElementById('contact3PhoneInput').value = '';
+        document.getElementById('contact3RelationInput').value = '';
+        document.getElementById('contactConfig3').style.display = 'none';
+        document.getElementById('addContactBtn').style.display = 'inline-block';
+    }
+}
+function saveEmergencyContacts() {
+    // Contact 1
+    const c1Name = document.getElementById('contact1NameInput').value.trim();
+    const c1Phone = document.getElementById('contact1PhoneInput').value.trim();
+    const c1Relation = document.getElementById('contact1RelationInput').value.trim();
+    // Contact 2
+    const c2Visible = document.getElementById('contactConfig2').style.display !== 'none';
+    const c2Name = c2Visible ? document.getElementById('contact2NameInput').value.trim() : '';
+    const c2Phone = c2Visible ? document.getElementById('contact2PhoneInput').value.trim() : '';
+    const c2Relation = c2Visible ? document.getElementById('contact2RelationInput').value.trim() : '';
+    // Contact 3
+    const c3Visible = document.getElementById('contactConfig3').style.display !== 'none';
+    const c3Name = c3Visible ? document.getElementById('contact3NameInput').value.trim() : '';
+    const c3Phone = c3Visible ? document.getElementById('contact3PhoneInput').value.trim() : '';
+    const c3Relation = c3Visible ? document.getElementById('contact3RelationInput').value.trim() : '';
+
+    // Save to localStorage
+    localStorage.setItem('emergencyContact1', JSON.stringify({ name: c1Name, phone: c1Phone, relation: c1Relation }));
+    localStorage.setItem('emergencyContact2', JSON.stringify({ name: c2Name, phone: c2Phone, relation: c2Relation }));
+    localStorage.setItem('emergencyContact3', JSON.stringify({ name: c3Name, phone: c3Phone, relation: c3Relation }));
+
+    // Update UI
+    document.getElementById('contact1Name').textContent = c1Name || 'Contact 1';
+    document.getElementById('contact1Phone').textContent = c1Phone || '+33 6 00 00 00 00';
+    document.getElementById('contact1Relation').textContent = c1Relation || 'Famille';
+    document.getElementById('contact1Card').style.display = c1Name ? 'block' : 'none';
+
+    document.getElementById('contact2Name').textContent = c2Name || 'Contact 2';
+    document.getElementById('contact2Phone').textContent = c2Phone || '+33 6 00 00 00 00';
+    document.getElementById('contact2Relation').textContent = c2Relation || 'Médecin';
+    document.getElementById('contact2Card').style.display = c2Name ? 'block' : 'none';
+
+    document.getElementById('contact3Name').textContent = c3Name || 'Contact 3';
+    document.getElementById('contact3Phone').textContent = c3Phone || '15';
+    document.getElementById('contact3Relation').textContent = c3Relation || 'SAMU';
+    document.getElementById('contact3Card').style.display = c3Name ? 'block' : 'none';
+
+    closeEmergencySettings();
+    showSuccess('Contacts d\'urgence enregistrés.');
+}
 function openEmergencySettings() {
-    // Would open a modal to configure emergency contacts
-    alert('Feature to configure emergency contacts - to be implemented in settings modal');
+    const modal = document.getElementById('emergencySettingsModal');
+    if (modal) {
+        // Remplir le contact 1
+        const c1Name = document.getElementById('contact1Name');
+        const c1Phone = document.getElementById('contact1Phone');
+        const c1Relation = document.getElementById('contact1Relation');
+        document.getElementById('contact1NameInput').value = c1Name ? c1Name.textContent : '';
+        document.getElementById('contact1PhoneInput').value = c1Phone ? c1Phone.textContent : '';
+        document.getElementById('contact1RelationInput').value = c1Relation ? c1Relation.textContent : '';
+        // Contact 2
+        const c2Name = document.getElementById('contact2Name');
+        const c2Phone = document.getElementById('contact2Phone');
+        const c2Relation = document.getElementById('contact2Relation');
+        document.getElementById('contact2NameInput').value = c2Name ? c2Name.textContent : '';
+        document.getElementById('contact2PhoneInput').value = c2Phone ? c2Phone.textContent : '';
+        document.getElementById('contact2RelationInput').value = c2Relation ? c2Relation.textContent : '';
+        // Contact 3
+        const c3Name = document.getElementById('contact3Name');
+        const c3Phone = document.getElementById('contact3Phone');
+        const c3Relation = document.getElementById('contact3Relation');
+        document.getElementById('contact3NameInput').value = c3Name ? c3Name.textContent : '';
+        document.getElementById('contact3PhoneInput').value = c3Phone ? c3Phone.textContent : '';
+        document.getElementById('contact3RelationInput').value = c3Relation ? c3Relation.textContent : '';
+        // Affiche seulement le contact 1 par défaut
+        document.getElementById('contactConfig1').style.display = 'block';
+        document.getElementById('contactConfig2').style.display = 'none';
+        document.getElementById('contactConfig3').style.display = 'none';
+        document.getElementById('addContactBtn').style.display = 'inline-block';
+        modal.style.display = 'block';
+        modal.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
 }
 
 // Add task modal
@@ -1947,4 +2158,26 @@ async function fetchLastModified() {
         const docDate = new Date(document.lastModified);
         document.getElementById('lastModified').textContent = formatDate(docDate);
     }
+}
+
+// Ouvre la modale de sélection du son d'alarme
+function openAlarmSoundModal() {
+    document.getElementById('alarmSoundModal').style.display = 'block';
+}
+
+function closeAlarmSoundModal() {
+    document.getElementById('alarmSoundModal').style.display = 'none';
+}
+
+function saveAlarmSound() {
+    const select = document.getElementById('alarmSoundSelect');
+    const value = select.value;
+    // Change le src du son d'alarme
+    const alarmAudio = document.getElementById('alarmSound');
+    if (alarmAudio) {
+        alarmAudio.src = 'assets/alarm-sounds/' + value;
+        alarmAudio.load();
+    }
+    closeAlarmSoundModal();
+    showSuccess('Son d\'alarme changé !');
 }

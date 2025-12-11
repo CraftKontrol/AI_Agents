@@ -1943,3 +1943,115 @@ body {
         font-size: 48px;
     }
 }
+
+/* Modale configuration contacts d'urgence */
+#emergencySettingsModal.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+#emergencySettingsModal .modal-content {
+    background: var(--surface-color);
+    color: var(--text-color);
+    padding: 30px;
+    min-width: 350px;
+    max-width: 400px;
+    border-radius: 0;
+    box-shadow: 0 0 30px rgba(0,0,0,0.3);
+}
+#emergencySettingsModal .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+#emergencySettingsModal .modal-header h2 {
+    font-size: 22px;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+#emergencySettingsModal .close-btn {
+    background: transparent;
+    border: none;
+    color: var(--error-color);
+    font-size: 24px;
+    cursor: pointer;
+    margin-left: 10px;
+}
+#emergencySettingsModal .modal-body {
+    margin-bottom: 20px;
+}
+#emergencySettingsModal .input-group {
+    margin-bottom: 15px;
+}
+#emergencySettingsModal .input-group label {
+    color: var(--text-color);
+    font-weight: 500;
+    margin-bottom: 5px;
+    display: block;
+}
+#emergencySettingsModal .input-group input {
+    width: 100%;
+    padding: 10px;
+    background: var(--background-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 0;
+    font-size: 15px;
+}
+#emergencySettingsModal .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+}
+
+.contact-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 10px;
+    gap: 10px;
+}
+#addContactBtn {
+    padding: 10px 20px;
+    background-color: var(--primary-color);
+    color: #fff;
+    border: none;
+    border-radius: 0;
+    font-size: 15px;
+    cursor: pointer;
+}
+#addContactBtn:disabled {
+    background-color: var(--text-muted);
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+.contact-config hr {
+    border: none;
+    border-top: 1px solid var(--border-color);
+    margin: 15px 0;
+}
+
+.btn-delete-contact {
+    padding: 8px 16px;
+    background: transparent;
+    border: 1px solid var(--error-color);
+    color: var(--error-color);
+    font-size: 14px;
+    cursor: pointer;
+    margin-top: 10px;
+    margin-bottom: 5px;
+    width: 100%;
+    transition: background 0.2s;
+}
+.btn-delete-contact:hover {
+    background: rgba(255,68,68,0.08);
+}
