@@ -32,6 +32,106 @@ body {
 .material-symbols-outlined {
     font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
     vertical-align: middle;
+
+.task-popup .modal-content {
+    background: var(--surface-color);
+    color: var(--text-color);
+    padding: 30px 30px 20px 30px;
+    min-width: 350px;
+    max-width: 420px;
+    border-radius: 0;
+    box-shadow: 0 0 30px 0 rgba(0,0,0,0.7);
+}
+.task-popup .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+}
+.task-popup .modal-header h2 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 22px;
+    color: #fff;
+}
+.task-popup .close-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 28px;
+    cursor: pointer;
+    margin-left: 10px;
+}
+.task-popup .modal-body {
+    margin-bottom: 18px;
+}
+.task-popup .task-details .input-group {
+    margin-bottom: 12px;
+}
+.task-popup .input-group label {
+    color: var(--text-muted);
+    font-size: 14px;
+    margin-bottom: 2px;
+    display: block;
+}
+.task-popup .popup-value {
+    color: var(--text-color);
+    font-size: 16px;
+    background: var(--background-color);
+    padding: 8px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 0;
+    min-height: 24px;
+}
+.task-popup textarea,
+.task-popup input[type="date"],
+.task-popup input[type="time"],
+.task-popup select {
+    width: 100%;
+    background: var(--background-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 0;
+    font-size: 16px;
+    padding: 8px 10px;
+    margin-top: 2px;
+}
+.task-popup .modal-footer {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 10px;
+}
+.task-popup .btn-primary,
+.task-popup .btn-secondary {
+    padding: 10px 18px;
+    font-size: 15px;
+    border-radius: 0;
+    border: none;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.task-popup .btn-primary {
+    background: var(--primary-color);
+    color: #fff;
+}
+.task-popup .btn-primary:hover {
+    background: var(--primary-dark);
+}
+.task-popup .btn-secondary {
+    background: var(--surface-elevated);
+    color: var(--text-muted);
+    border: 1px solid var(--border-color);
+}
+.task-popup .btn-secondary:hover {
+    background: var(--surface-color);
+    color: var(--primary-color);
+}
     user-select: none;
 }
 
@@ -315,8 +415,8 @@ body {
     display: flex;
     align-items: center;
     gap: 15px;
-    margin-bottom: 20px;
-    font-size: 28px;
+    margin-bottom: 5px;
+    font-size: 22px;
     color: var(--text-color);
 }
 
@@ -818,6 +918,380 @@ body {
     grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
     gap: 24px;
     align-items: stretch;
+}
+
+/* Grille du mois : 7 colonnes, chaque case = jour */
+.tasks-month-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+    background: var(--surface-color);
+    padding: 8px;
+}
+.month-day-cell {
+    background: var(--background-color);
+    min-height: 80px;
+    border: 1px solid var(--border-color);
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.month-day-label {
+    font-size: 15px;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+    font-weight: 600;
+}
+.task-item.mini {
+    background: none;
+    border: none;
+    padding: 2px 0 2px 0;
+    margin: 0;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.task-item.mini .task-title {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-color);
+}
+.task-item.mini .task-actions {
+    gap: 2px;
+}
+.task-item.mini .btn-task-action {
+    padding: 0 2px;
+    min-width: unset;
+    font-size: 16px;
+    background: none;
+    color: var(--primary-color);
+}
+.task-item.mini .btn-task-action .material-symbols-outlined {
+    font-size: 18px;
+}
+
+/* Card unique année */
+.tasks-year-card {
+    background: var(--surface-color);
+    padding: 10px;
+    overflow-x: auto;
+}
+.year-card {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+.year-month-block {
+    min-width: 180px;
+    background: var(--background-color);
+    border: 1px solid var(--border-color);
+    margin-bottom: 8px;
+    padding: 4px;
+}
+.year-month-label {
+    font-size: 16px;
+    color: var(--primary-color);
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+.year-day-block {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    font-size: 13px;
+    margin-bottom: 2px;
+}
+.year-day-label {
+    color: var(--text-muted);
+    font-size: 13px;
+    margin-right: 2px;
+}
+.task-item.micro {
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+.task-item.micro .task-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-color);
+}
+.task-item.micro .task-actions {
+    gap: 2px;
+}
+.task-item.micro .btn-task-action {
+    padding: 0 1px;
+    min-width: unset;
+    font-size: 13px;
+    background: none;
+    color: var(--primary-color);
+}
+.task-item.micro .btn-task-action .material-symbols-outlined {
+    font-size: 15px;
+}
+
+/* Compact semaine */
+
+/* Tâche du jour (aujourd'hui) */
+.task-item.task-day {
+    background: var(--background-color);
+    border-left: 6px solid var(--primary-color);
+    padding: 25px;
+    margin-bottom: 20px;
+    font-size: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+}
+.task-item.task-day .task-title {
+    font-size: 26px;
+    font-weight: 600;
+    color: var(--text-color);
+}
+.task-item.task-day .task-details {
+    gap: 25px;
+    font-size: 20px;
+}
+.task-item.task-day .task-actions {
+    gap: 15px;
+}
+.task-item.task-day .btn-task-action {
+    padding: 2px 5px;
+    font-size: 20px;
+    min-width: 150px;
+}
+.task-item.task-day .btn-task-action .material-symbols-outlined {
+    font-size: 28px;
+}
+
+/* Tâche semaine (compact) */
+.task-item.task-week {
+    background: var(--background-color);
+    border-left: 4px solid var(--primary-color);
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    font-size: 17px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2px;
+}
+.task-item.task-week .task-title {
+    font-size: 17px;
+    font-weight: 500;
+    color: var(--text-color);
+    margin: 0;
+}
+.task-item.task-week .task-details {
+    gap: 8px;
+    font-size: 15px;
+    margin: 0;
+}
+.task-item.task-week .task-actions {
+    gap: 4px;
+    flex-direction: row;
+}
+.task-item.task-week .btn-task-action {
+    padding: 0 4px;
+    min-width: unset;
+    font-size: 17px;
+    background: none;
+    color: var(--primary-color);
+}
+.task-item.task-week .btn-task-action .material-symbols-outlined {
+    font-size: 20px;
+}
+
+/* Tâche mois (mini) */
+.task-item.task-month {
+    background: none;
+    border: none;
+    padding: 2px 0 2px 0;
+    margin: 0;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.task-item.task-month .task-title {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-color);
+}
+.task-item.task-month .task-actions {
+    gap: 2px;
+    flex-direction: row;
+}
+.task-item.task-month .btn-task-action {
+    padding: 0 2px;
+    min-width: unset;
+    font-size: 16px;
+    background: none;
+    color: var(--primary-color);
+}
+.task-item.task-month .btn-task-action .material-symbols-outlined {
+    font-size: 18px;
+}
+
+/* Tâche année (micro) */
+.task-item.task-year {
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+.task-item.task-year .task-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-color);
+}
+.task-item.task-year .task-actions {
+    gap: 2px;
+    flex-direction: row;
+}
+.task-item.task-year .btn-task-action {
+    padding: 0 1px;
+    min-width: unset;
+    font-size: 13px;
+    background: none;
+    color: var(--primary-color);
+}
+.task-item.task-year .btn-task-action .material-symbols-outlined {
+    font-size: 15px;
+}
+
+/* --- Sub-tabs for week/month/year --- */
+.subtabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 18px;
+    border-bottom: 2px solid var(--border-color);
+    overflow-x: auto;
+    padding-bottom: 2px;
+}
+.subtab {
+    background: transparent;
+    color: var(--text-muted);
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 500;
+    padding: 10px 10px;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+.subtab:hover {
+    color: var(--text-color);
+    background-color: rgba(74, 158, 255, 0.08);
+}
+.subtab.active {
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
+    font-weight: 600;
+}
+
+/* --- Vertical table for week (hours), month/year (days) --- */
+.vertical-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--background-color);
+    margin-bottom: 20px;
+}
+.vertical-table th,
+.vertical-table td {
+    border-bottom: 1px solid var(--border-color);
+    padding: 8px 12px;
+    font-size: 16px;
+    color: var(--text-color);
+    text-align: left;
+    vertical-align: top;
+}
+.vertical-table th {
+    background: var(--surface-color);
+    color: var(--primary-color);
+    font-weight: 600;
+    font-size: 15px;
+    border-bottom: 2px solid var(--primary-color);
+}
+.vertical-table .hour-label,
+.vertical-table .day-label {
+    color: var(--text-muted);
+    font-size: 15px;
+    font-weight: 500;
+    min-width: 70px;
+}
+.vertical-table .focused-row {
+    background: rgba(74, 158, 255, 0.08);
+    border-left: 4px solid var(--primary-color);
+}
+.vertical-table .task-cell {
+    padding: 0;
+}
+.vertical-table .task-item {
+
+    margin-bottom: 4px;
+    padding: 4px 0 4px 0;
+    border-left: none;
+    background-color: #373737;
+}
+.vertical-table .task-actions {
+    gap: 2px;
+}
+.vertical-table .btn-task-action {
+    font-size: 15px;
+    padding: 0 2px;
+    min-width: unset;
+}
+
+/* Responsive for sub-tabs and vertical tables */
+@media (max-width: 768px) {
+    .subtabs {
+        gap: 4px;
+        padding-bottom: 0;
+    }
+    .subtab {
+        font-size: 14px;
+        padding: 8px 2px;
+    }
+    .vertical-table th,
+    .vertical-table td {
+        font-size: 14px;
+        padding: 6px 8px;
+    }
+    .vertical-table .hour-label,
+    .vertical-table .day-label {
+        font-size: 13px;
+        min-width: 50px;
+    }
+}
+@media (max-width: 480px) {
+    .subtab {
+        font-size: 13px;
+        padding: 6px 0px;
+    }
+    .vertical-table th,
+    .vertical-table td {
+        font-size: 12px;
+        padding: 4px 4px;
+    }
+    .vertical-table .hour-label,
+    .vertical-table .day-label {
+        font-size: 11px;
+        min-width: 35px;
+    }
 }
 
 .no-tasks {
@@ -1404,10 +1878,10 @@ body {
     .task-actions {
         width: 100%;
         flex-direction: column;
+        justify-content: center;
     }
 
     .btn-task-action {
-        width: 100%;
         justify-content: center;
     }
 

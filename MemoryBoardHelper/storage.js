@@ -244,7 +244,10 @@ async function getTodayTasks() {
                 if (priorityOrder[a.priority] !== priorityOrder[b.priority]) {
                     return priorityOrder[a.priority] - priorityOrder[b.priority];
                 }
-                return a.time.localeCompare(b.time);
+                // Fallback si time null
+                const timeA = a.time || '';
+                const timeB = b.time || '';
+                return timeA.localeCompare(timeB);
             })
             .slice(0, 5); // Limit to 5 tasks
     } catch (error) {

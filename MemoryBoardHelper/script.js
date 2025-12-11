@@ -1,4 +1,263 @@
+// Commande : Ajouter une tâche
+function quickAddTask() {
+    openAddTaskModal();
+    showSuccess('Ajout d\'une nouvelle tâche.');
+}
+
+// Commande : Afficher les tâches du jour
+function quickShowTodayTasks() {
+    switchPeriod('today');
+    commandWhatToday();
+}
+// Commande : Afficher les tâches de la semaine (réponse Mistral)
+function commandWhatWeek() {
+    console.log('[MemoryBoardHelper] commandWhatWeek called');
+    if (typeof window.mistralAgentRespond === 'function') {
+        console.log('[MemoryBoardHelper] Calling mistralAgentRespond("week")');
+        window.mistralAgentRespond('week');
+    } else {
+        console.warn('[MemoryBoardHelper] mistralAgentRespond is not defined or not a function');
+    }
+}
+
+// Commande : Afficher les tâches du mois (réponse Mistral)
+function commandWhatMonth() {
+    console.log('[MemoryBoardHelper] commandWhatMonth called');
+    if (typeof window.mistralAgentRespond === 'function') {
+        console.log('[MemoryBoardHelper] Calling mistralAgentRespond("month")');
+        window.mistralAgentRespond('month');
+    } else {
+        console.warn('[MemoryBoardHelper] mistralAgentRespond is not defined or not a function');
+    }
+}
+
+// Commande : Afficher les tâches de l'année (réponse Mistral)
+function commandWhatYear() {
+    console.log('[MemoryBoardHelper] commandWhatYear called');
+    if (typeof window.mistralAgentRespond === 'function') {
+        console.log('[MemoryBoardHelper] Calling mistralAgentRespond("year")');
+        window.mistralAgentRespond('year');
+    } else {
+        console.warn('[MemoryBoardHelper] mistralAgentRespond is not defined or not a function');
+    }
+}
+// Fonction globale pour répondre aux commandes Mistral (week/month/year)
+window.mistralAgentRespond = async function(period) {
+    console.log('[MemoryBoardHelper] mistralAgentRespond called with period:', period);
+    let message = '';
+    switch (period) {
+        case 'week':
+            message = 'Quelles sont mes tâches cette semaine ?';
+            break;
+        case 'month':
+            message = 'Quelles sont mes tâches ce mois-ci ?';
+            break;
+        case 'year':
+            message = 'Quelles sont mes tâches cette année ?';
+            break;
+        default:
+            message = 'Quelles sont mes tâches aujourd\'hui ?';
+    }
+    await processUserMessage(message);
+}
+
+// Commande : Afficher les tâches de la semaine
+function quickShowWeekTasks() {
+    switchPeriod('week');
+    commandWhatWeek();
+}
+
+// Commande : Afficher les tâches du mois
+function quickShowMonthTasks() {
+    switchPeriod('month');
+    commandWhatMonth();
+}
+
+// Commande : Afficher les tâches de l'année
+function quickShowYearTasks() {
+    switchPeriod('year');
+    commandWhatYear();
+}
+
+// Commande : Ajouter un médicament
+function quickAddMedication() {
+    openAddTaskModal();
+    document.getElementById('taskType').value = 'medication';
+    showSuccess('Ajout d\'un médicament.');
+}
+
+// Commande : Afficher l'heure
+function quickShowTime() {
+    commandWhatTime();
+}
+
+// Commande : Afficher la date
+function quickShowDate() {
+    showSuccess('Nous sommes le ' + new Date().toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }));
+}
+
+// Commande : Activer le mode automatique
+function quickActivateAutoMode() {
+    if (listeningMode !== 'always-listening') {
+        listeningMode = 'always-listening';
+        startAlwaysListening();
+        updateModeUI();
+        showSuccess('Mode automatique activé.');
+    }
+}
+
+// Commande : Désactiver le mode automatique
+function quickDeactivateAutoMode() {
+    if (listeningMode !== 'manual') {
+        listeningMode = 'manual';
+        stopAlwaysListening();
+        updateModeUI();
+        showSuccess('Mode automatique désactivé.');
+    }
+}
+
+// Commande : Ouvrir les contacts d'urgence
+function quickShowEmergencyContacts() {
+    toggleEmergencyPanel();
+    showSuccess('Affichage des contacts d\'urgence.');
+}
+
+// Commande : Configurer les contacts d'urgence
+function quickConfigureEmergencyContacts() {
+    openEmergencySettings();
+    showSuccess('Configuration des contacts d\'urgence.');
+}
+
+// Commande : Gestion des clés API
+function quickShowApiKeys() {
+    toggleSection('apiKeysContent');
+    showSuccess('Affichage de la gestion des clés API.');
+}
+
+function quickSaveApiKeys() {
+    saveApiKeys();
+    showSuccess('Clés API enregistrées.');
+}
+
+// Commande : Désactiver le mot de réveil
+function quickDisableWakeWord() {
+    document.getElementById('wakeWordEnabled').checked = false;
+    wakeWordEnabled = false;
+    updateWakeWordDisplay();
+    showSuccess('Mot de réveil désactivé.');
+}
+
+// Commande : Activer le mot de réveil
+function quickEnableWakeWord() {
+    document.getElementById('wakeWordEnabled').checked = true;
+    wakeWordEnabled = true;
+    updateWakeWordDisplay();
+    showSuccess('Mot de réveil activé.');
+}
+
+// Commande : Snooze alarme
+function quickSnoozeAlarm() {
+    snoozeAlarm();
+    showSuccess('Alarme reportée de 10 min.');
+}
+
+// Commande : Arrêter l'alarme
+function quickDismissAlarm() {
+    dismissAlarm();
+    showSuccess('Alarme arrêtée.');
+}
 // Script.js - Main controller for Memory Board Helper
+// --- Navigation vocale : mapping des sections et focus ---
+// Mapping des commandes vocales vers les fonctions principales
+const voiceCommands = [
+    // Mode automatique
+    { phrases: ["active le mode automatique", "mets-toi en mode automatique", "écoute active"], action: () => { if (listeningMode !== 'always-listening') { listeningMode = 'always-listening'; startAlwaysListening(); updateModeUI(); showSuccess('Mode automatique activé.'); } } },
+    { phrases: ["désactive le mode automatique", "passe en mode manuel", "arrête l'écoute active", "mode manuel"], action: () => { if (listeningMode !== 'manual') { listeningMode = 'manual'; stopAlwaysListening(); updateModeUI(); showSuccess('Mode automatique désactivé.'); } } },
+    // Tâches
+    { phrases: ["ajoute une tâche", "nouvelle tâche", "crée une tâche"], action: () => openAddTaskModal() },
+    { phrases: ["montre-moi la tâche", "affiche la tâche", "voir la tâche", "visualise la tâche"], action: (t) => { /* handled by explicit question logic */ } },
+    { phrases: ["supprime la tâche", "annule la tâche", "efface la tâche"], action: (t) => { /* handled by delete logic */ } },
+    { phrases: ["modifie la tâche", "change la tâche"], action: (t) => { /* handled by update logic */ } },
+    { phrases: ["marque la tâche comme faite", "termine la tâche", "complète la tâche"], action: (t) => { /* handled by complete logic */ } },
+    { phrases: ["quelles sont mes tâches aujourd'hui", "liste mes tâches", "qu'ai-je à faire", "mes tâches"], action: () => commandWhatToday() },
+    { phrases: ["quelles sont mes tâches cette semaine", "tâches de la semaine"], action: () => switchPeriod('week') },
+    { phrases: ["quelles sont mes tâches ce mois-ci", "tâches du mois"], action: () => switchPeriod('month') },
+    { phrases: ["quelles sont mes tâches cette année", "tâches de l'année"], action: () => switchPeriod('year') },
+    // Mot de réveil
+    { phrases: ["change le mot de réveil en", "modifie le mot de réveil"], action: (t) => {/* handled by wake word logic */} },
+    { phrases: ["désactive le mot de réveil"], action: () => { wakeWordEnabled = false; document.getElementById('wakeWordEnabled').checked = false; updateWakeWordDisplay(); showSuccess('Mot de réveil désactivé.'); } },
+    { phrases: ["active le mot de réveil"], action: () => { wakeWordEnabled = true; document.getElementById('wakeWordEnabled').checked = true; updateWakeWordDisplay(); showSuccess('Mot de réveil activé.'); } },
+    // Clés API
+    { phrases: ["ouvre la gestion des clés api", "affiche les clés api", "gestion des clés api"], action: () => { toggleSection('apiKeysContent'); } },
+    { phrases: ["sauvegarde les clés api"], action: () => { saveApiKeys(); showSuccess('Clés API enregistrées.'); } },
+    // Urgence / Contacts
+    { phrases: ["ouvre les contacts d'urgence", "affiche les contacts d'urgence", "contacts d'urgence"], action: () => { toggleEmergencyPanel(); } },
+    { phrases: ["appelle le contact", "appelle contact"], action: (t) => {/* handled by call logic */} },
+    { phrases: ["configure les contacts d'urgence"], action: () => { openEmergencySettings(); } },
+    // Heure / Date
+    { phrases: ["quelle heure est-il", "donne-moi l'heure", "affiche l'heure"], action: () => commandWhatTime() },
+    { phrases: ["donne-moi la date", "affiche la date", "quelle est la date"], action: () => { const now = new Date(); showSuccess('Nous sommes le ' + now.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })); } },
+    // Alarmes
+    { phrases: ["affiche les alarmes", "montre-moi les alarmes"], action: () => { /* handled by alarm logic */ } },
+    { phrases: ["snooze l'alarme", "rappelle-moi plus tard"], action: () => snoozeAlarm() },
+    { phrases: ["arrête l'alarme", "désactive l'alarme"], action: () => dismissAlarm() },
+    // Commandes rapides
+    { phrases: ["que dois-je faire aujourd'hui", "ma prochaine tâche"], action: () => commandWhatToday() },
+    { phrases: ["ajoute un médicament"], action: () => commandAddMedication() },
+];
+
+// Navigation vocale par section (pour scroll/focus)
+const sectionMap = {
+    'clés api': 'apiKeysTitle',
+    'api': 'apiKeysTitle',
+    'gestion des clés': 'apiKeysTitle',
+    'mot de réveil': 'wakeWordTitle',
+    'urgence': 'emergencyTitle',
+    'contacts d\'urgence': 'emergencyTitle',
+    'tâches': 'todayTasksTitle',
+    'mes tâches': 'todayTasksTitle',
+    'commandes': 'commandsTitle',
+    'commandes vocales': 'commandsTitle',
+    'ajouter une tâche': 'addTaskModalTitle',
+    'heure': 'currentTime',
+    'date': 'currentDate',
+    'alarme': 'alarmTitle',
+    'assistant': 'appTitle',
+};
+
+function focusSection(sectionKey) {
+    let id = sectionMap[sectionKey.toLowerCase()];
+    if (!id) return false;
+    const el = document.getElementById(id);
+    if (el) {
+        el.scrollIntoView({behavior: 'smooth', block: 'center'});
+        el.setAttribute('tabindex', '-1');
+        el.focus();
+        showSuccess(`Section "${sectionKey}" affichée.`);
+        return true;
+    }
+    return false;
+}
+
+function handleVoiceNavigation(transcript) {
+    const lowerTranscript = transcript.toLowerCase();
+    // Commandes vocales directes
+    for (const cmd of voiceCommands) {
+        for (const phrase of cmd.phrases) {
+            if (lowerTranscript.includes(phrase)) {
+                cmd.action(transcript);
+                return true;
+            }
+        }
+    }
+    // Navigation par section
+    for (const key in sectionMap) {
+        if (lowerTranscript.includes(key)) {
+            return focusSection(key);
+        }
+    }
+    return false;
+}
 // Voice interaction, mode switching, UI coordination
 
 // Application state
@@ -250,7 +509,19 @@ async function handleSpeechResult(event) {
     
     // Process the command
     showTranscript(transcript);
+    await processSpeechTranscript(transcript);
+
+// Priorisation navigation vocale sur Mistral
+async function processSpeechTranscript(transcript) {
+    // Navigation vocale prioritaire
+    if (handleVoiceNavigation(transcript)) {
+        // Navigation effectuée, on bloque le reste
+        console.log('[App] Navigation vocale exécutée:', transcript);
+        return;
+    }
+    // Sinon, traitement normal (Mistral, ajout de tâche, etc.)
     await processUserMessage(transcript);
+}
     
     if (listeningMode === 'manual') {
         const voiceBtn = document.getElementById('voiceBtn');
@@ -437,24 +708,33 @@ async function processUserMessage(message) {
     showLoading(true);
     
     try {
-        // Get recent conversation history
-        const recentHistory = conversationHistory.slice(-MAX_CONVERSATION_HISTORY);
-
-        // Get current tasks for context
-        const currentTasks = await getTodayTasks();
-
-        // Check what type of request this is
-        const result = await processWithMistral(message, recentHistory);
-
-        // Log la réponse reçue de Mistral
-        if (result) {
-            logMistralResponse(message, result);
+        // Détection commande activation/désactivation mode automatique
+        const msgLower = message.toLowerCase();
+        if (msgLower.includes('mets-toi en mode automatique') || msgLower.includes('active le mode automatique') || msgLower.includes('mode écoute active')) {
+            if (listeningMode !== 'always-listening') {
+                listeningMode = 'always-listening';
+                startAlwaysListening();
+                updateModeUI();
+                showSuccess('Mode automatique activé.');
+            }
+        } else if (msgLower.includes('désactive le mode automatique') || msgLower.includes('arrête le mode automatique') || msgLower.includes('mode manuel')) {
+            if (listeningMode !== 'manual') {
+                listeningMode = 'manual';
+                stopAlwaysListening();
+                updateModeUI();
+                showSuccess('Mode automatique désactivé.');
+            }
         }
 
+        // Get recent conversation history
+        const recentHistory = conversationHistory.slice(-MAX_CONVERSATION_HISTORY);
+        // Get current tasks for context
+        const currentTasks = await getTodayTasks();
+        // Check what type of request this is
+        const result = await processWithMistral(message, recentHistory);
         if (!result) {
             throw new Error('No response from Mistral');
         }
-
         // Handle different actions
         if (result.action === 'add_task') {
             await handleAddTask(result);
@@ -465,12 +745,14 @@ async function processUserMessage(message) {
         } else if (result.action === 'update_task') {
             await handleUpdateTask(result, currentTasks);
         } else if (result.action === 'question') {
-            await handleQuestion(result, currentTasks);
+            await handleQuestion(result, currentTasks, message);
         } else {
             // General conversation
             showResponse(result.response);
             speakResponse(result.response);
         }
+        // Log la réponse reçue de Mistral (only once per user request, after all actions)
+        logMistralResponse(message, result);
 // Gère la modification d'une tâche existante (date/heure)
 async function handleUpdateTask(result, tasks) {
     if (!result.task) {
@@ -803,9 +1085,9 @@ async function handleDeleteTask(result, tasks) {
 
 // Handle question action
 async function handleQuestion(result, tasks) {
-    const answer = await answerQuestion(result.response, tasks, conversationHistory);
-    showResponse(answer.response);
-    speakResponse(answer.response);
+    // Affiche directement la réponse de Mistral sans réinterpréter
+    showResponse(result.response);
+    speakResponse(result.response);
 }
 
 // Execute quick command
@@ -937,8 +1219,11 @@ async function refreshTaskDisplay() {
     const taskCount = document.getElementById('taskCount');
     const todayTasksTitle = document.getElementById('todayTasksTitle');
     const noTasksText = document.getElementById('noTasksText');
+    const subTabsContainer = document.getElementById('subTabsContainer');
+    const verticalTableContainer = document.getElementById('verticalTableContainer');
 
     const tasks = await getTasksByPeriod(currentPeriod);
+    const lang = getCurrentLanguage();
 
     // Titre dynamique selon la période
     const periodTitles = {
@@ -947,7 +1232,6 @@ async function refreshTaskDisplay() {
         month: { fr: 'Tâches du mois', en: 'This Month', it: 'Mese' },
         year: { fr: 'Tâches de l\'année', en: 'This Year', it: 'Anno' }
     };
-    const lang = getCurrentLanguage();
     if (todayTasksTitle) todayTasksTitle.textContent = periodTitles[currentPeriod]?.[lang] || periodTitles[currentPeriod]?.fr;
 
     // Message "aucune tâche" dynamique
@@ -964,31 +1248,218 @@ async function refreshTaskDisplay() {
         taskCount.textContent = tasks.length;
     }
 
-    // Affichage grille pour semaine/mois/année
-    if (['week','month','year'].includes(currentPeriod)) {
-        container.classList.add('tasks-grid');
-    } else {
-        container.classList.remove('tasks-grid');
-    }
+    // Hide all advanced containers by default
+    subTabsContainer.style.display = 'none';
+    verticalTableContainer.style.display = 'none';
+    container.classList.remove('tasks-grid', 'tasks-month-grid', 'tasks-year-card');
+    container.innerHTML = '';
 
-    if (tasks.length === 0) {
-        if (noTasksMsg) noTasksMsg.style.display = 'block';
-        // Clear existing tasks
-        const existingTasks = container.querySelectorAll('.task-item');
-        existingTasks.forEach(t => t.remove());
+    // --- WEEK VIEW ---
+    if (currentPeriod === 'week') {
+        // Sub-tabs: days of week
+        const now = new Date();
+        const weekStart = new Date(now);
+        weekStart.setDate(now.getDate() - now.getDay()); // Sunday
+        const days = [];
+        for (let i = 0; i < 7; i++) {
+            const d = new Date(weekStart);
+            d.setDate(weekStart.getDate() + i);
+            days.push(d);
+        }
+        let focusedDayIdx = now.getDay();
+        subTabsContainer.innerHTML = '';
+        days.forEach((d, idx) => {
+            const btn = document.createElement('button');
+            btn.className = 'subtab' + (idx === focusedDayIdx ? ' active' : '');
+            // Format: dim 7
+            let weekday = d.toLocaleDateString('fr-FR', { weekday: 'short' });
+            let dayNum = d.getDate();
+            btn.textContent = `${weekday.replace('.', '')} ${dayNum}`;
+            btn.onclick = () => renderWeekVerticalTable(idx);
+            subTabsContainer.appendChild(btn);
+        });
+        subTabsContainer.style.display = 'flex';
+        verticalTableContainer.style.display = 'block';
+        renderWeekVerticalTable(focusedDayIdx);
+        if (tasks.length === 0 && noTasksMsg) noTasksMsg.style.display = 'block';
+        else if (noTasksMsg) noTasksMsg.style.display = 'none';
         return;
     }
 
+    // --- MONTH VIEW ---
+    if (currentPeriod === 'month') {
+        // Sub-tabs: weeks of month
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const weeks = [];
+        let week = [];
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dateObj = new Date(year, month, d);
+            if (dateObj.getDay() === 0 && week.length) {
+                weeks.push(week);
+                week = [];
+            }
+            week.push(dateObj);
+        }
+        if (week.length) weeks.push(week);
+        // Focus on current week
+        let focusedWeekIdx = weeks.findIndex(w => w.some(d => d.getDate() === now.getDate()));
+        if (focusedWeekIdx === -1) focusedWeekIdx = 0;
+        subTabsContainer.innerHTML = '';
+        weeks.forEach((w, idx) => {
+            const btn = document.createElement('button');
+            // --- Intégration vocale et Mistral : ouverture du popup modifiable ---
+            // À appeler après reconnaissance vocale ou résultat Mistral
+            function showTaskFromVoiceOrMistral(task) {
+                if (window.openTaskPopup) window.openTaskPopup(task, false);
+            }
+            window.showTaskFromVoiceOrMistral = showTaskFromVoiceOrMistral;
+            btn.className = 'subtab' + (idx === focusedWeekIdx ? ' active' : '');
+            // Format: 21-27
+            let startDay = w[0].getDate();
+            let endDay = w[w.length-1].getDate();
+            btn.textContent = `${startDay}-${endDay}`;
+            btn.onclick = () => renderMonthVerticalTable(idx);
+            subTabsContainer.appendChild(btn);
+        });
+        subTabsContainer.style.display = 'flex';
+        verticalTableContainer.style.display = 'block';
+        renderMonthVerticalTable(focusedWeekIdx);
+        if (tasks.length === 0 && noTasksMsg) noTasksMsg.style.display = 'block';
+        else if (noTasksMsg) noTasksMsg.style.display = 'none';
+        return;
+    }
+
+    // --- YEAR VIEW ---
+    if (currentPeriod === 'year') {
+        // Sub-tabs: months
+        const now = new Date();
+        const year = now.getFullYear();
+        let focusedMonthIdx = now.getMonth();
+        subTabsContainer.innerHTML = '';
+        // French month abbreviations
+        const frMonths = ['jan', 'fev', 'mar', 'avr', 'mai', 'jui', 'jui', 'aou', 'sep', 'oct', 'nov', 'dec'];
+        for (let m = 0; m < 12; m++) {
+            const btn = document.createElement('button');
+            btn.className = 'subtab' + (m === focusedMonthIdx ? ' active' : '');
+            let label;
+            if (lang === 'fr') {
+                label = frMonths[m];
+            } else if (lang === 'it') {
+                label = new Date(year, m, 1).toLocaleString('it-IT', { month: 'short' });
+            } else {
+                label = new Date(year, m, 1).toLocaleString('en-US', { month: 'short' });
+            }
+            btn.textContent = label;
+            btn.onclick = () => renderYearVerticalTable(m);
+            subTabsContainer.appendChild(btn);
+        }
+        subTabsContainer.style.display = 'flex';
+        verticalTableContainer.style.display = 'block';
+        renderYearVerticalTable(focusedMonthIdx);
+        if (tasks.length === 0 && noTasksMsg) noTasksMsg.style.display = 'block';
+        else if (noTasksMsg) noTasksMsg.style.display = 'none';
+        return;
+    }
+
+    // --- TODAY VIEW (default) ---
+    if (tasks.length === 0) {
+        if (noTasksMsg) noTasksMsg.style.display = 'block';
+        container.innerHTML = '';
+        return;
+    }
     if (noTasksMsg) noTasksMsg.style.display = 'none';
-
-    // Clear existing tasks
-    const existingTasks = container.querySelectorAll('.task-item');
-    existingTasks.forEach(t => t.remove());
-
-    // Ajout des tâches
+    container.innerHTML = '';
     for (const task of tasks) {
-        const taskElement = createTaskElement(task, lang);
-        container.appendChild(taskElement);
+        const el = createTaskElement(task, lang);
+        container.appendChild(el);
+    }
+
+    // --- Helper functions for vertical tables ---
+    function renderWeekVerticalTable(dayIdx) {
+        // Highlight subtab
+        Array.from(subTabsContainer.children).forEach((btn, idx) => btn.classList.toggle('active', idx === dayIdx));
+        const now = new Date();
+        const weekStart = new Date(now);
+        weekStart.setDate(now.getDate() - now.getDay());
+        const dayDate = new Date(weekStart);
+        dayDate.setDate(weekStart.getDate() + dayIdx);
+        // Build table: hours 0-23
+        let html = '<table class="vertical-table"><thead><tr><th>Heure</th><th>Tâches</th></tr></thead><tbody>';
+        for (let h = 0; h < 24; h++) {
+            const hourStr = h.toString().padStart(2, '0') + ':00';
+            const rowTasks = tasks.filter(t => t.date === dayDate.toISOString().split('T')[0] && t.time && t.time.startsWith(hourStr.slice(0,2)));
+            html += `<tr${dayDate.getDate() === now.getDate() ? ' class="focused-row"' : ''}><td class="hour-label">${hourStr}</td><td class="task-cell">`;
+            if (rowTasks.length) {
+                rowTasks.forEach(t => {
+                    html += createTaskElement(t, lang, 'compact').outerHTML;
+                });
+            }
+            html += '</td></tr>';
+        }
+        html += '</tbody></table>';
+        verticalTableContainer.innerHTML = html;
+    }
+
+    function renderMonthVerticalTable(weekIdx) {
+        // Highlight subtab
+        Array.from(subTabsContainer.children).forEach((btn, idx) => btn.classList.toggle('active', idx === weekIdx));
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        // Get week days
+        const weeks = [];
+        let week = [];
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dateObj = new Date(year, month, d);
+            if (dateObj.getDay() === 0 && week.length) {
+                weeks.push(week);
+                week = [];
+            }
+            week.push(dateObj);
+        }
+        if (week.length) weeks.push(week);
+        const weekDays = weeks[weekIdx];
+        let html = '<table class="vertical-table"><thead><tr><th>Jour</th><th>Tâches</th></tr></thead><tbody>';
+        weekDays.forEach(d => {
+            const dateStr = d.toISOString().split('T')[0];
+            const rowTasks = tasks.filter(t => t.date === dateStr);
+            html += `<tr${d.getDate() === now.getDate() ? ' class="focused-row"' : ''}><td class="day-label">${d.toLocaleDateString(lang === 'fr' ? 'fr-FR' : lang === 'it' ? 'it-IT' : 'en-US', { weekday: 'short', day: 'numeric', month: 'short' })}</td><td class="task-cell">`;
+            if (rowTasks.length) {
+                rowTasks.forEach(t => {
+                    html += createTaskElement(t, lang, 'mini').outerHTML;
+                });
+            }
+            html += '</td></tr>';
+        });
+        html += '</tbody></table>';
+        verticalTableContainer.innerHTML = html;
+    }
+
+    function renderYearVerticalTable(monthIdx) {
+        // Highlight subtab
+        Array.from(subTabsContainer.children).forEach((btn, idx) => btn.classList.toggle('active', idx === monthIdx));
+        const now = new Date();
+        const year = now.getFullYear();
+        const daysInMonth = new Date(year, monthIdx + 1, 0).getDate();
+        let html = '<table class="vertical-table"><thead><tr><th>Jour</th><th>Tâches</th></tr></thead><tbody>';
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dateObj = new Date(year, monthIdx, d);
+            const dateStr = dateObj.toISOString().split('T')[0];
+            const rowTasks = tasks.filter(t => t.date === dateStr);
+            html += `<tr${monthIdx === now.getMonth() && d === now.getDate() ? ' class="focused-row"' : ''}><td class="day-label">${dateObj.toLocaleDateString(lang === 'fr' ? 'fr-FR' : lang === 'it' ? 'it-IT' : 'en-US', { day: 'numeric', month: 'short' })}</td><td class="task-cell">`;
+            if (rowTasks.length) {
+                rowTasks.forEach(t => {
+                    html += createTaskElement(t, lang, 'micro').outerHTML;
+                });
+            }
+            html += '</td></tr>';
+        }
+        html += '</tbody></table>';
+        verticalTableContainer.innerHTML = html;
     }
 }
 
@@ -1032,24 +1503,97 @@ function formatTaskForDisplay(task, lang) {
 }
 
 // Create task element
-function createTaskElement(task, lang) {
+function createTaskElement(task, lang, mode = '') {
     const taskDiv = document.createElement('div');
     taskDiv.className = 'task-item';
+    taskDiv.setAttribute('data-task-id', task.id);
     if (task.priority === 'urgent') taskDiv.classList.add('urgent');
     if (task.isMedication) taskDiv.classList.add('medication');
     if (task.status === 'completed') taskDiv.classList.add('completed');
     if (task.recurrence) taskDiv.classList.add('recurring');
-    
+
     const formattedTask = formatTaskForDisplay(task, lang);
-    
-    // Format date for display (toujours affichée)
     const taskDate = new Date(task.date);
     const formattedDate = taskDate.toLocaleDateString(lang === 'fr' ? 'fr-FR' : lang === 'it' ? 'it-IT' : 'en-US', {
-        weekday: 'short',
-        day: 'numeric',
-        month: 'short'
+        weekday: 'short', day: 'numeric', month: 'short'
     });
 
+    // Semaine
+    if (mode === 'compact') {
+        taskDiv.classList.add('task-week');
+        taskDiv.innerHTML = `
+            <div class="task-title">${task.description}</div>
+            <div class="task-details">
+                <span class="task-detail"><span class="material-symbols-outlined">event</span>${formattedDate}</span>
+                ${task.time ? `<span class="task-detail"><span class="material-symbols-outlined">schedule</span>${task.time}</span>` : ''}
+            </div>
+            <div class="task-actions">
+                ${task.status !== 'completed' ? `
+                    <button class="btn-task-action btn-complete" title="Terminer" onclick="completeTaskUI(${task.id})">
+                        <span class="material-symbols-outlined">check_circle</span>
+                    </button>
+                    <button class="btn-task-action btn-snooze-task" title="Reporter" onclick="snoozeTaskUI(${task.id})">
+                        <span class="material-symbols-outlined">snooze</span>
+                    </button>
+                    <button class="btn-task-action btn-delete-task" title="Supprimer" onclick="deleteTaskUI(${task.id})">
+                        <span class="material-symbols-outlined">delete</span>
+                    </button>
+                ` : ''}
+            </div>
+        `;
+        taskDiv.onclick = function(e) {
+            // Prevent action buttons from triggering popup
+            if (e.target.closest('.btn-task-action')) return;
+            if (window.openTaskPopup) window.openTaskPopup(task, false);
+        };
+        return taskDiv;
+    }
+    // Mois
+    if (mode === 'mini') {
+        taskDiv.classList.add('task-month');
+        taskDiv.innerHTML = `
+            <div class="task-title">${task.description}</div>
+            <div class="task-actions">
+                ${task.status !== 'completed' ? `
+                    <button class="btn-task-action btn-complete" title="Terminer" onclick="completeTaskUI(${task.id})">
+                        <span class="material-symbols-outlined">check_circle</span>
+                    </button>
+                    <button class="btn-task-action btn-delete-task" title="Supprimer" onclick="deleteTaskUI(${task.id})">
+                        <span class="material-symbols-outlined">delete</span>
+                    </button>
+                ` : ''}
+            </div>
+        `;
+        taskDiv.onclick = function(e) {
+            if (e.target.closest('.btn-task-action')) return;
+            if (window.openTaskPopup) window.openTaskPopup(task, false);
+        };
+        return taskDiv;
+    }
+    // Année
+    if (mode === 'micro') {
+        taskDiv.classList.add('task-year');
+        taskDiv.innerHTML = `
+            <div class="task-title">${task.description}</div>
+            <div class="task-actions">
+                ${task.status !== 'completed' ? `
+                    <button class="btn-task-action btn-complete" title="Terminer" onclick="completeTaskUI(${task.id})">
+                        <span class="material-symbols-outlined">check_circle</span>
+                    </button>
+                    <button class="btn-task-action btn-delete-task" title="Supprimer" onclick="deleteTaskUI(${task.id})">
+                        <span class="material-symbols-outlined">delete</span>
+                    </button>
+                ` : ''}
+            </div>
+        `;
+        taskDiv.onclick = function(e) {
+            if (e.target.closest('.btn-task-action')) return;
+            if (window.openTaskPopup) window.openTaskPopup(task, false);
+        };
+        return taskDiv;
+    }
+    // Aujourd'hui (défaut)
+    taskDiv.classList.add('task-day');
     taskDiv.innerHTML = `
         <div class="task-info">
             <div class="task-title">
@@ -1080,7 +1624,10 @@ function createTaskElement(task, lang) {
             ` : ''}
         </div>
     `;
-    
+    taskDiv.onclick = function(e) {
+        if (e.target.closest('.btn-task-action')) return;
+        if (window.openTaskPopup) window.openTaskPopup(task, false);
+    };
     return taskDiv;
 }
 
