@@ -23,6 +23,8 @@ A voice-first AI assistant powered by Mistral AI that helps manage daily tasks, 
 - Max 3-5 tasks displayed at once (elderly-friendly)
 - Priority-based sorting (urgent, normal, low)
 - Task types: General, Medication, Appointment, Call, Shopping
+- **Visual task type indicators**: Color-coded badges with icons
+- **Recurring vs One-time badges**: Easily identify task frequency
 - Automatic deletion after completion (via Mistral)
 - Manual task creation with large, accessible UI
 
@@ -311,6 +313,25 @@ For assistance or questions:
 - **Accuracy**: Verify all AI-extracted information manually
 - **Responsibility**: User is responsible for their own task management
 - **Battery**: Always-listening mode may consume more battery on mobile
+
+---
+
+## 📋 Recent Updates
+
+### v1.1 - Task Type Visual Indicators (Dec 2025)
+- ✨ **NEW**: Visual badges to distinguish task types (Général, Médicament, Rendez-vous, etc.)
+- ✨ **NEW**: Recurring vs One-time task badges with icons
+- 🎨 Color-coded task type indicators for better visual clarity
+- 🎯 Specific icons for each task type (medication, appointment, call, shopping)
+- 📱 Responsive badge design for mobile devices
+- 🔄 Automatic detection of recurring tasks
+
+### Color Legend:
+- 🔵 **Blue**: General tasks / One-time tasks
+- 🟠 **Orange**: Medication
+- 🟣 **Purple**: Appointments / Recurring tasks
+- 🟢 **Green**: Phone calls
+- 🔴 **Red**: Shopping / Urgent priority
 
 ---
 

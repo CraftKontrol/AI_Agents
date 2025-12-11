@@ -7,9 +7,20 @@ let isProcessing = false;
 let recognition = null;
 let conversationHistory = [];
 const MAX_CONVERSATION_HISTORY = 10;
+let currentPeriod = 'today'; // 'today', 'week', 'month', 'year'
 
 // Speech recognition setup
 let sttMethod = 'browser'; // 'browser' or 'google'
+let recognitionRestartAttempts = 0;
+const MAX_RESTART_ATTEMPTS = 3;
+let isRecognitionActive = false;
+
+// Wake word system
+let wakeWordEnabled = true;
+let currentWakeWord = 'assistant'; // Default wake word
+let isListeningForCommand = false; // True after wake word detected
+let commandTimeout = null;
+const COMMAND_TIMEOUT_MS = 10000; // 10 seconds to give command after wake word
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', async function() {
@@ -24,8 +35,21 @@ document.addEventListener('DOMContentLoaded', async function() {
         showError('Erreur d\'initialisation de la base de données');
     }
     
+    // Initialize systems that depend on database
+    if (typeof initializeTaskManager === 'function') {
+        initializeTaskManager();
+    }
+    if (typeof initializeAlarmSystem === 'function') {
+        initializeAlarmSystem();
+        // Also check for pre-reminders every 2 minutes
+        setInterval(checkForPreReminders, 120000);
+    }
+    
     // Load saved API keys
     await loadSavedApiKeys();
+    
+    // Load wake word settings
+    loadWakeWordSettings();
     
     // Initialize speech recognition
     initializeSpeechRecognition();
@@ -53,9 +77,16 @@ function initializeSpeechRecognition() {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         recognition = new SpeechRecognition();
-        recognition.continuous = false;
+        recognition.continuous = true; // Always continuous to avoid permission re-request
         recognition.interimResults = false;
         recognition.maxAlternatives = 1;
+        recognition.lang = 'fr-FR'; // Default language, can be changed based on user preference
+        
+        recognition.onstart = () => {
+            isRecognitionActive = true;
+            recognitionRestartAttempts = 0;
+            console.log('[App] Recognition started');
+        };
         
         recognition.onresult = handleSpeechResult;
         recognition.onerror = handleSpeechError;
@@ -86,12 +117,16 @@ function startAlwaysListening() {
     console.log('[App] Starting always-listening mode');
     
     if (recognition && sttMethod === 'browser') {
-        recognition.continuous = true;
+        recognitionRestartAttempts = 0;
+        
         try {
-            recognition.start();
-            showListeningIndicator(true);
+            if (!isRecognitionActive) {
+                recognition.start();
+                showListeningIndicator(true);
+            }
         } catch (error) {
             console.error('[App] Error starting continuous recognition:', error);
+            isRecognitionActive = false;
         }
     }
     
@@ -103,12 +138,14 @@ function stopAlwaysListening() {
     console.log('[App] Stopping always-listening mode');
     
     if (recognition && sttMethod === 'browser') {
-        recognition.continuous = false;
         try {
-            recognition.stop();
+            if (isRecognitionActive) {
+                recognition.stop();
+            }
         } catch (error) {
             console.log('[App] Recognition already stopped');
         }
+        isRecognitionActive = false;
     }
     
     showListeningIndicator(false);
@@ -179,9 +216,39 @@ async function handleVoiceInteraction() {
 
 // Handle speech recognition result
 async function handleSpeechResult(event) {
-    const transcript = event.results[0][0].transcript;
+    const transcript = event.results[event.results.length - 1][0].transcript;
     console.log('[App] Speech recognized:', transcript);
     
+    // In always-listening mode with wake word enabled
+    if (listeningMode === 'always-listening' && wakeWordEnabled) {
+        if (!isListeningForCommand) {
+            // Check if transcript contains wake word
+            if (detectWakeWord(transcript)) {
+                console.log('[App] Wake word detected!');
+                isListeningForCommand = true;
+                showWakeWordDetected();
+                
+                // Set timeout to reset listening state
+                if (commandTimeout) clearTimeout(commandTimeout);
+                commandTimeout = setTimeout(() => {
+                    console.log('[App] Command timeout - resetting to wake word mode');
+                    isListeningForCommand = false;
+                    hideWakeWordDetected();
+                }, COMMAND_TIMEOUT_MS);
+                
+                return; // Don't process wake word as command
+            }
+            // Ignore speech that doesn't contain wake word
+            return;
+        } else {
+            // Wake word already detected, process as command
+            if (commandTimeout) clearTimeout(commandTimeout);
+            isListeningForCommand = false;
+            hideWakeWordDetected();
+        }
+    }
+    
+    // Process the command
     showTranscript(transcript);
     await processUserMessage(transcript);
     
@@ -189,37 +256,89 @@ async function handleSpeechResult(event) {
         const voiceBtn = document.getElementById('voiceBtn');
         voiceBtn.classList.remove('recording');
         showListeningIndicator(false);
+        // Stop recognition after manual input
+        if (isRecognitionActive) {
+            recognition.stop();
+        }
     }
 }
 
 // Handle speech recognition error
 function handleSpeechError(event) {
-    console.error('[App] Speech recognition error:', event.error);
+    console.log('[App] Speech recognition error:', event.error);
+    isRecognitionActive = false;
     
     if (listeningMode === 'manual') {
         const voiceBtn = document.getElementById('voiceBtn');
         voiceBtn.classList.remove('recording');
         showListeningIndicator(false);
-    }
-    
-    if (event.error === 'no-speech') {
-        showError(getLocalizedText('noSpeechDetected'));
-    } else if (event.error === 'not-allowed') {
-        showError(getLocalizedText('microphonePermissionDenied'));
+        
+        // Only show errors in manual mode
+        if (event.error === 'no-speech') {
+            showError(getLocalizedText('noSpeechDetected'));
+        } else if (event.error === 'not-allowed') {
+            showError(getLocalizedText('microphonePermissionDenied'));
+        } else if (event.error === 'aborted') {
+            // Ignore aborted errors, they're normal when stopping
+            console.log('[App] Recognition aborted (normal behavior)');
+        }
+    } else if (listeningMode === 'always-listening') {
+        // In always-listening mode, silently handle no-speech errors
+        if (event.error === 'no-speech') {
+            console.log('[App] No speech detected in always-listening mode, will restart');
+        } else if (event.error === 'not-allowed') {
+            // Critical error, inform user and stop always-listening
+            showError(getLocalizedText('microphonePermissionDenied'));
+            listeningMode = 'manual';
+            updateModeUI();
+        } else if (event.error === 'aborted') {
+            // Ignore aborted errors
+            console.log('[App] Recognition aborted');
+        } else {
+            console.error('[App] Unhandled error in always-listening:', event.error);
+        }
     }
 }
 
 // Handle speech recognition end
 function handleSpeechEnd() {
+    console.log('[App] Recognition ended, mode:', listeningMode);
+    isRecognitionActive = false;
+    
     if (listeningMode === 'always-listening' && recognition) {
-        // Restart continuous listening
+        // Restart continuous listening immediately without exponential backoff
+        // The continuous mode should handle this better now
+        const delay = 300; // Short delay to avoid rapid restarts
+        console.log(`[App] Restarting recognition in ${delay}ms`);
+        
         setTimeout(() => {
-            try {
-                recognition.start();
-            } catch (error) {
-                console.log('[App] Could not restart continuous recognition');
+            if (listeningMode === 'always-listening' && !isRecognitionActive) {
+                try {
+                    recognition.start();
+                    showListeningIndicator(true);
+                    recognitionRestartAttempts = 0; // Reset counter on successful restart
+                } catch (error) {
+                    console.error('[App] Could not restart continuous recognition:', error);
+                    isRecognitionActive = false;
+                    
+                    // Increment attempts and try again with longer delay
+                    recognitionRestartAttempts++;
+                    if (recognitionRestartAttempts < MAX_RESTART_ATTEMPTS) {
+                        setTimeout(() => handleSpeechEnd(), 1000 * recognitionRestartAttempts);
+                    } else {
+                        console.error('[App] Max restart attempts reached, stopping always-listening');
+                        listeningMode = 'manual';
+                        updateModeUI();
+                        showError(getLocalizedText('recognitionFailed'));
+                        recognitionRestartAttempts = 0;
+                    }
+                }
             }
-        }, 1000);
+        }, delay);
+    } else if (listeningMode === 'manual') {
+        // In manual mode, don't restart
+        console.log('[App] Manual mode - not restarting recognition');
+        showListeningIndicator(false);
     }
 }
 
@@ -234,6 +353,80 @@ async function fallbackToGoogleSTT() {
     // This would require getUserMedia and audio recording
     // For simplicity, showing error for now
     showError('Google STT fallback not yet implemented in this version');
+}
+
+// Wake word detection
+function detectWakeWord(transcript) {
+    const normalizedTranscript = transcript.toLowerCase().trim();
+    const normalizedWakeWord = currentWakeWord.toLowerCase().trim();
+    
+    // Check if wake word is present in transcript
+    return normalizedTranscript.includes(normalizedWakeWord);
+}
+
+// Load wake word settings
+function loadWakeWordSettings() {
+    const savedWakeWord = localStorage.getItem('wakeWord');
+    const wakeWordEnabledSetting = localStorage.getItem('wakeWordEnabled');
+    
+    if (savedWakeWord) {
+        currentWakeWord = savedWakeWord;
+        document.getElementById('wakeWord').value = savedWakeWord;
+    }
+    
+    if (wakeWordEnabledSetting !== null) {
+        wakeWordEnabled = wakeWordEnabledSetting === 'true';
+        document.getElementById('wakeWordEnabled').checked = wakeWordEnabled;
+    }
+    
+    updateWakeWordDisplay();
+}
+
+// Save wake word settings
+function saveWakeWordSettings() {
+    const newWakeWord = document.getElementById('wakeWord').value.trim();
+    const enabled = document.getElementById('wakeWordEnabled').checked;
+    
+    if (newWakeWord && newWakeWord.length >= 2) {
+        currentWakeWord = newWakeWord;
+        localStorage.setItem('wakeWord', newWakeWord);
+    }
+    
+    wakeWordEnabled = enabled;
+    localStorage.setItem('wakeWordEnabled', enabled.toString());
+    
+    updateWakeWordDisplay();
+    showSuccess(getLocalizedText('wakeWordSaved'));
+}
+
+// Update wake word display
+function updateWakeWordDisplay() {
+    const statusElement = document.getElementById('wakeWordStatus');
+    if (statusElement) {
+        const lang = getCurrentLanguage();
+        const texts = {
+            fr: wakeWordEnabled ? `Mot de réveil actif: "${currentWakeWord}"` : 'Mot de réveil désactivé',
+            it: wakeWordEnabled ? `Parola di attivazione: "${currentWakeWord}"` : 'Parola di attivazione disattivata',
+            en: wakeWordEnabled ? `Wake word active: "${currentWakeWord}"` : 'Wake word disabled'
+        };
+        statusElement.textContent = texts[lang] || texts.fr;
+    }
+}
+
+// Show wake word detected indicator
+function showWakeWordDetected() {
+    const indicator = document.getElementById('wakeWordIndicator');
+    if (indicator) {
+        indicator.style.display = 'flex';
+    }
+}
+
+// Hide wake word detected indicator
+function hideWakeWordDetected() {
+    const indicator = document.getElementById('wakeWordIndicator');
+    if (indicator) {
+        indicator.style.display = 'none';
+    }
 }
 
 // Process user message with Mistral
@@ -262,6 +455,8 @@ async function processUserMessage(message) {
             await handleAddTask(result);
         } else if (result.action === 'complete_task') {
             await handleCompleteTask(result, currentTasks);
+        } else if (result.action === 'delete_task') {
+            await handleDeleteTask(result, currentTasks);
         } else if (result.action === 'question') {
             await handleQuestion(result, currentTasks);
         } else {
@@ -331,6 +526,85 @@ async function handleCompleteTask(result, tasks) {
     } else {
         showResponse(completionResult.response);
         speakResponse(completionResult.response);
+    }
+}
+
+// Handle delete task action
+async function handleDeleteTask(result, tasks) {
+    if (!result.task) {
+        showError(getLocalizedText('taskExtractionFailed'));
+        return;
+    }
+    
+    // Find matching task by description and time
+    const description = result.task.description.toLowerCase();
+    const targetTime = result.task.time;
+    let taskToDelete = null;
+    
+    // Priority 1: Match by time + description (most specific)
+    if (targetTime) {
+        taskToDelete = tasks.find(t => 
+            t.time === targetTime &&
+            (t.description.toLowerCase().includes(description) ||
+             description.includes(t.description.toLowerCase()))
+        );
+    }
+    
+    // Priority 2: If no time match, try exact description match
+    if (!taskToDelete) {
+        taskToDelete = tasks.find(t => 
+            t.description.toLowerCase() === description
+        );
+    }
+    
+    // Priority 3: Partial description match only (least specific)
+    if (!taskToDelete) {
+        const matches = tasks.filter(t => 
+            t.description.toLowerCase().includes(description) ||
+            description.includes(t.description.toLowerCase())
+        );
+        
+        // If multiple matches, prefer one without time or show error
+        if (matches.length === 1) {
+            taskToDelete = matches[0];
+        } else if (matches.length > 1) {
+            const noTimeMatch = matches.find(t => !t.time);
+            if (noTimeMatch) {
+                taskToDelete = noTimeMatch;
+            } else {
+                // Multiple matches with times - need clarification
+                const taskList = matches.map(t => `"${t.description}"${t.time ? ` à ${t.time}` : ''}`).join(', ');
+                const clarifyMessages = {
+                    fr: `J'ai trouvé plusieurs tâches correspondantes : ${taskList}. Veuillez être plus précis.`,
+                    it: `Ho trovato più compiti corrispondenti: ${taskList}. Per favore sii più specifico.`,
+                    en: `I found multiple matching tasks: ${taskList}. Please be more specific.`
+                };
+                const msg = clarifyMessages[result.language] || clarifyMessages.fr;
+                showResponse(msg);
+                speakResponse(msg);
+                return;
+            }
+        }
+    }
+    
+    if (taskToDelete) {
+        const deleteResult = await deleteTask(taskToDelete.id);
+        
+        if (deleteResult.success) {
+            const confirmMsg = result.response || getLocalizedResponse('taskDeleted', result.language);
+            showSuccess(confirmMsg);
+            speakResponse(confirmMsg);
+            await refreshTaskDisplay();
+        }
+    } else {
+        const noTaskMessages = {
+            fr: 'Je n\'ai pas trouvé cette tâche dans votre liste.',
+            it: 'Non ho trovato questo compito nella tua lista.',
+            en: 'I couldn\'t find this task in your list.'
+        };
+        const msg = noTaskMessages[result.language] || noTaskMessages.fr;
+        showResponse(msg);
+        speakResponse(msg);
     }
 }
 
@@ -449,13 +723,27 @@ async function speakResponse(text) {
     }
 }
 
+// Switch period tab
+async function switchPeriod(period) {
+    currentPeriod = period;
+    
+    // Update tab UI
+    document.querySelectorAll('.period-tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    document.querySelector(`[data-period="${period}"]`).classList.add('active');
+    
+    // Refresh display
+    await refreshTaskDisplay();
+}
+
 // Refresh task display
 async function refreshTaskDisplay() {
     const container = document.getElementById('tasksContainer');
     const noTasksMsg = document.getElementById('noTasksMessage');
     const taskCount = document.getElementById('taskCount');
     
-    const tasks = await getDisplayableTasks();
+    const tasks = await getTasksByPeriod(currentPeriod);
     
     // Update task count
     if (taskCount) {
@@ -484,6 +772,45 @@ async function refreshTaskDisplay() {
     }
 }
 
+// Format task for display with localized labels
+function formatTaskForDisplay(task, lang) {
+    // Task type labels
+    const typeLabels = {
+        general: { fr: 'Général', it: 'Generale', en: 'General' },
+        medication: { fr: 'Médicament', it: 'Medicinale', en: 'Medication' },
+        appointment: { fr: 'Rendez-vous', it: 'Appuntamento', en: 'Appointment' },
+        call: { fr: 'Appel', it: 'Chiamata', en: 'Call' },
+        shopping: { fr: 'Courses', it: 'Spesa', en: 'Shopping' },
+        recurring: { fr: 'Récurrente', it: 'Ricorrente', en: 'Recurring' },
+        oneTime: { fr: 'Ponctuelle', it: 'Una volta', en: 'One-time' }
+    };
+
+    // Priority labels
+    const priorityLabels = {
+        urgent: { fr: 'Urgent', it: 'Urgente', en: 'Urgent' },
+        normal: { fr: 'Normal', it: 'Normale', en: 'Normal' },
+        low: { fr: 'Faible', it: 'Bassa', en: 'Low' }
+    };
+
+    // Task type icons
+    const typeIcons = {
+        general: 'assignment',
+        medication: 'medication',
+        appointment: 'event',
+        call: 'call',
+        shopping: 'shopping_cart',
+        recurring: 'repeat',
+        oneTime: 'today'
+    };
+
+    return {
+        typeLabel: typeLabels[task.type]?.[lang] || typeLabels.general[lang],
+        priorityLabel: priorityLabels[task.priority]?.[lang] || priorityLabels.normal[lang],
+        typeIcon: typeIcons[task.type] || typeIcons.general,
+        isRecurring: task.recurrence ? true : false
+    };
+}
+
 // Create task element
 function createTaskElement(task, lang) {
     const taskDiv = document.createElement('div');
@@ -491,16 +818,31 @@ function createTaskElement(task, lang) {
     if (task.priority === 'urgent') taskDiv.classList.add('urgent');
     if (task.isMedication) taskDiv.classList.add('medication');
     if (task.status === 'completed') taskDiv.classList.add('completed');
+    if (task.recurrence) taskDiv.classList.add('recurring');
     
     const formattedTask = formatTaskForDisplay(task, lang);
     
+    // Format date for display
+    const taskDate = new Date(task.date);
+    const today = new Date().toISOString().split('T')[0];
+    const showDate = task.date !== today;
+    const formattedDate = taskDate.toLocaleDateString(lang === 'fr' ? 'fr-FR' : lang === 'it' ? 'it-IT' : 'en-US', {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short'
+    });
+    
     taskDiv.innerHTML = `
         <div class="task-info">
-            <div class="task-title">${task.description}</div>
+            <div class="task-title">
+                ${task.description}
+                ${task.recurrence ? `<span class="badge badge-recurring" title="Tâche récurrente"><span class="material-symbols-outlined">repeat</span></span>` : `<span class="badge badge-onetime" title="Tâche ponctuelle"><span class="material-symbols-outlined">today</span></span>`}
+            </div>
             <div class="task-details">
+                ${showDate ? `<span class="task-detail"><span class="material-symbols-outlined">event</span>${formattedDate}</span>` : ''}
                 ${task.time ? `<span class="task-detail"><span class="material-symbols-outlined">schedule</span>${task.time}</span>` : ''}
-                <span class="task-detail"><span class="material-symbols-outlined">label</span>${formattedTask.typeLabel}</span>
-                ${task.priority === 'urgent' ? `<span class="task-detail"><span class="material-symbols-outlined">warning</span>${formattedTask.priorityLabel}</span>` : ''}
+                <span class="task-detail task-type-badge" data-type="${task.type}"><span class="material-symbols-outlined">${formattedTask.typeIcon}</span>${formattedTask.typeLabel}</span>
+                ${task.priority === 'urgent' ? `<span class="task-detail priority-badge"><span class="material-symbols-outlined">warning</span>${formattedTask.priorityLabel}</span>` : ''}
             </div>
         </div>
         <div class="task-actions">
@@ -512,6 +854,10 @@ function createTaskElement(task, lang) {
                 <button class="btn-task-action btn-snooze-task" onclick="snoozeTaskUI(${task.id})">
                     <span class="material-symbols-outlined">snooze</span>
                     <span>${getTaskActionText('snooze', lang)}</span>
+                </button>
+                <button class="btn-task-action btn-delete-task" onclick="deleteTaskUI(${task.id})">
+                    <span class="material-symbols-outlined">delete</span>
+                    <span>${getTaskActionText('delete', lang)}</span>
                 </button>
             ` : ''}
         </div>
@@ -541,12 +887,31 @@ async function snoozeTaskUI(taskId) {
     }
 }
 
+// Delete task from UI
+async function deleteTaskUI(taskId) {
+    const lang = getCurrentLanguage();
+    const confirmMessages = {
+        fr: 'Êtes-vous sûr de vouloir supprimer cette tâche ?',
+        it: 'Sei sicuro di voler cancellare questo compito?',
+        en: 'Are you sure you want to delete this task?'
+    };
+    
+    if (confirm(confirmMessages[lang] || confirmMessages.fr)) {
+        const result = await deleteTask(taskId);
+        if (result.success) {
+            await refreshTaskDisplay();
+            showSuccess(getLocalizedResponse('taskDeleted', lang));
+        }
+    }
+}
+
 // Get task action text
 function getTaskActionText(action, lang) {
     const texts = {
         complete: { fr: 'Terminé', it: 'Completato', en: 'Complete' },
         snooze: { fr: '10 min', it: '10 min', en: '10 min' },
-        snoozed: { fr: 'Reporté de 10 minutes', it: 'Posticipato di 10 minuti', en: 'Snoozed for 10 minutes' }
+        snoozed: { fr: 'Reporté de 10 minutes', it: 'Posticipato di 10 minuti', en: 'Snoozed for 10 minutes' },
+        delete: { fr: 'Supprimer', it: 'Cancella', en: 'Delete' }
     };
     return texts[action]?.[lang] || texts[action]?.fr || '';
 }
@@ -626,9 +991,17 @@ function getLocalizedText(key) {
         voiceInactive: { fr: 'Micro désactivé', it: 'Microfono disattivato', en: 'Microphone inactive' },
         noSpeechDetected: { fr: 'Aucune parole détectée', it: 'Nessun parlato rilevato', en: 'No speech detected' },
         microphonePermissionDenied: { fr: 'Permission microphone refusée', it: 'Permesso microfono negato', en: 'Microphone permission denied' },
+        recognitionFailed: { fr: 'La reconnaissance vocale a échoué. Basculement en mode manuel.', it: 'Il riconoscimento vocale è fallito. Passaggio alla modalità manuale.', en: 'Speech recognition failed. Switching to manual mode.' },
         sttApiKeyMissing: { fr: 'Clé API STT manquante', it: 'Chiave API STT mancante', en: 'STT API key missing' },
         taskExtractionFailed: { fr: 'Impossible d\'extraire la tâche', it: 'Impossibile estrarre il compito', en: 'Could not extract task' },
-        taskCreationFailed: { fr: 'Erreur lors de la création', it: 'Errore durante la creazione', en: 'Creation error' }
+        taskCreationFailed: { fr: 'Erreur lors de la création', it: 'Errore durante la creazione', en: 'Creation error' },
+        show: { fr: 'Afficher', it: 'Mostra', en: 'Show' },
+        hide: { fr: 'Masquer', it: 'Nascondi', en: 'Hide' },
+        apiKeysSaved: { fr: 'Clés API enregistrées', it: 'Chiavi API salvate', en: 'API keys saved' },
+        apiKeyDeleted: { fr: 'Clé API supprimée', it: 'Chiave API eliminata', en: 'API key deleted' },
+        descriptionRequired: { fr: 'Description requise', it: 'Descrizione richiesta', en: 'Description required' },
+        wakeWordSaved: { fr: 'Mot de réveil enregistré', it: 'Parola di attivazione salvata', en: 'Wake word saved' },
+        wakeWordDetected: { fr: 'Mot de réveil détecté! Dites votre commande...', it: 'Parola di attivazione rilevata! Di la tua richiesta...', en: 'Wake word detected! Say your command...' }
     };
     return texts[key]?.[lang] || texts[key]?.fr || key;
 }
@@ -728,8 +1101,12 @@ function openEmergencySettings() {
 // Add task modal
 function openAddTaskModal() {
     document.getElementById('addTaskModal').style.display = 'flex';
+    document.getElementById('taskDate').value = new Date().toISOString().split('T')[0];
     document.getElementById('taskTime').value = '';
     document.getElementById('taskDescription').value = '';
+    document.getElementById('taskType').value = 'general';
+    document.getElementById('taskPriority').value = 'normal';
+    document.getElementById('taskRecurrence').value = '';
 }
 
 function closeAddTaskModal() {
@@ -738,16 +1115,34 @@ function closeAddTaskModal() {
 
 async function saveNewTask() {
     const description = document.getElementById('taskDescription').value.trim();
+    const date = document.getElementById('taskDate').value;
     const time = document.getElementById('taskTime').value;
     const type = document.getElementById('taskType').value;
     const priority = document.getElementById('taskPriority').value;
+    const recurrenceFrequency = document.getElementById('taskRecurrence').value;
     
     if (!description) {
         showError(getLocalizedText('descriptionRequired'));
         return;
     }
     
-    const result = await createTask({ description, time, type, priority });
+    // Use selected date or default to today
+    const taskDate = date || new Date().toISOString().split('T')[0];
+    
+    // Build recurrence object if frequency is selected
+    const recurrence = recurrenceFrequency ? {
+        frequency: recurrenceFrequency,
+        interval: 1
+    } : null;
+    
+    const result = await createTask({ 
+        description, 
+        date: taskDate, 
+        time, 
+        type, 
+        priority,
+        recurrence 
+    });
     
     if (result.success) {
         closeAddTaskModal();

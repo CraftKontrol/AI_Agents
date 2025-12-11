@@ -102,7 +102,7 @@ async function triggerAlarm(task) {
     showAlarmNotification(task);
     
     // Play alarm sound
-    playAlarmSound();
+    await playAlarmSound();
     
     // Send browser notification
     sendBrowserNotification(task);
@@ -133,13 +133,26 @@ function showAlarmNotification(task) {
 }
 
 // Play alarm sound
-function playAlarmSound() {
+async function playAlarmSound() {
     const audio = document.getElementById('alarmSound');
     if (audio) {
-        audio.volume = 0.7;
-        audio.play().catch(error => {
-            console.error('[AlarmSystem] Error playing alarm sound:', error);
-        });
+        try {
+            // Stop any existing playback first
+            audio.pause();
+            audio.currentTime = 0;
+            audio.volume = 0.7;
+            
+            // Wait a brief moment before playing to avoid conflicts
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            // Play the audio
+            await audio.play();
+        } catch (error) {
+            // Only log if it's not a user interaction issue
+            if (error.name !== 'NotAllowedError') {
+                console.error('[AlarmSystem] Error playing alarm sound:', error);
+            }
+        }
     }
 }
 
@@ -147,8 +160,12 @@ function playAlarmSound() {
 function stopAlarmSound() {
     const audio = document.getElementById('alarmSound');
     if (audio) {
-        audio.pause();
-        audio.currentTime = 0;
+        try {
+            audio.pause();
+            audio.currentTime = 0;
+        } catch (error) {
+            console.error('[AlarmSystem] Error stopping alarm sound:', error);
+        }
     }
 }
 
@@ -474,12 +491,4 @@ function stopAllAlarms() {
     console.log('[AlarmSystem] All alarms stopped');
 }
 
-// Auto-initialize
-if (typeof window !== 'undefined') {
-    window.addEventListener('DOMContentLoaded', () => {
-        initializeAlarmSystem();
-        
-        // Also check for pre-reminders every 2 minutes
-        setInterval(checkForPreReminders, 120000);
-    });
-}
+// Note: Initialize by calling initializeAlarmSystem() after database is ready

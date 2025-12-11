@@ -87,6 +87,54 @@
             </div>
         </section>
 
+        <section class="wake-word-section">
+            <h2>
+                <span class="material-symbols-outlined">record_voice_over</span>
+                <span id="wakeWordTitle">Configuration du mot de réveil</span>
+            </h2>
+            
+            <div class="wake-word-content">
+                <div class="wake-word-info">
+                    <p id="wakeWordDescription">
+                        Le mot de réveil permet d'activer l'assistant sans redemander l'autorisation du micro. 
+                        Dites d'abord le mot de réveil, puis votre commande.
+                    </p>
+                    <div class="wake-word-status" id="wakeWordStatus">
+                        Mot de réveil actif: "assistant"
+                    </div>
+                </div>
+                
+                <div class="input-group">
+                    <label for="wakeWord">
+                        <span class="material-symbols-outlined">keyboard_voice</span>
+                        <span id="wakeWordLabel">Mot de réveil:</span>
+                    </label>
+                    <input type="text" id="wakeWord" value="assistant" placeholder="Ex: assistant, ok computer, hey aide...">
+                    <span class="hint" id="wakeWordHint">Choisissez un mot ou une courte phrase facile à prononcer</span>
+                </div>
+                
+                <div class="wake-word-actions">
+                    <label class="remember-key-label">
+                        <input type="checkbox" id="wakeWordEnabled" checked>
+                        <span id="wakeWordEnabledText">Activer le mot de réveil</span>
+                    </label>
+                    <button class="btn-save" onclick="saveWakeWordSettings()" id="saveWakeWordBtn">
+                        <span class="material-symbols-outlined">save</span>
+                        <span>Enregistrer</span>
+                    </button>
+                </div>
+                
+                <div class="wake-word-examples">
+                    <h4 id="examplesTitle">Exemples d'utilisation:</h4>
+                    <ul>
+                        <li id="example1">"<strong>assistant</strong>, quelle heure est-il ?"</li>
+                        <li id="example2">"<strong>assistant</strong>, ajoute une tâche pour demain"</li>
+                        <li id="example3">"<strong>assistant</strong>, qu'ai-je aujourd'hui ?"</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
         <section class="emergency-panel" id="emergencyPanel" style="display: none;">
             <div class="emergency-header">
                 <h2>
@@ -153,6 +201,10 @@
                     <div class="pulse"></div>
                     <span id="listeningText">Écoute en cours...</span>
                 </div>
+                <div class="wake-word-indicator" id="wakeWordIndicator" style="display: none;">
+                    <span class="material-symbols-outlined">chat</span>
+                    <span id="wakeWordIndicatorText">Je vous écoute...</span>
+                </div>
             </div>
 
             <div class="voice-controls">
@@ -179,12 +231,31 @@
             <div class="tasks-header">
                 <h2>
                     <span class="material-symbols-outlined">today</span>
-                    <span id="todayTasksTitle">Mes tâches d'aujourd'hui</span>
+                    <span id="todayTasksTitle">Mes tâches</span>
                 </h2>
                 <div class="task-counter">
                     <span id="taskCount">0</span>
-                    <span id="taskCountLabel">/5 tâches</span>
+                    <span id="taskCountLabel"> tâches</span>
                 </div>
+            </div>
+
+            <div class="period-tabs">
+                <button class="period-tab active" data-period="today" onclick="switchPeriod('today')">
+                    <span class="material-symbols-outlined">today</span>
+                    <span id="tabToday">Aujourd'hui</span>
+                </button>
+                <button class="period-tab" data-period="week" onclick="switchPeriod('week')">
+                    <span class="material-symbols-outlined">view_week</span>
+                    <span id="tabWeek">Semaine</span>
+                </button>
+                <button class="period-tab" data-period="month" onclick="switchPeriod('month')">
+                    <span class="material-symbols-outlined">calendar_month</span>
+                    <span id="tabMonth">Mois</span>
+                </button>
+                <button class="period-tab" data-period="year" onclick="switchPeriod('year')">
+                    <span class="material-symbols-outlined">calendar_today</span>
+                    <span id="tabYear">Année</span>
+                </button>
             </div>
 
             <div id="loadingTasks" class="loading-indicator" style="display: none;">
@@ -240,6 +311,10 @@
                     <textarea id="taskDescription" rows="3" placeholder="Exemple: Prendre mes médicaments"></textarea>
                 </div>
                 <div class="input-group">
+                    <label for="taskDate" id="taskDateLabel">Date:</label>
+                    <input type="date" id="taskDate">
+                </div>
+                <div class="input-group">
                     <label for="taskTime" id="taskTimeLabel">Heure:</label>
                     <input type="time" id="taskTime">
                 </div>
@@ -259,6 +334,15 @@
                         <option value="normal">Normal</option>
                         <option value="urgent">Urgent</option>
                         <option value="low">Faible</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label for="taskRecurrence" id="taskRecurrenceLabel">Récurrence:</label>
+                    <select id="taskRecurrence">
+                        <option value="">Aucune (Ponctuelle)</option>
+                        <option value="daily">Quotidienne</option>
+                        <option value="weekly">Hebdomadaire</option>
+                        <option value="monthly">Mensuelle</option>
                     </select>
                 </div>
             </div>

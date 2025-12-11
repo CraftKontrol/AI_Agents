@@ -15,6 +15,7 @@ async function createTask(taskData) {
         createdAt: new Date().toISOString(),
         completedAt: null,
         snoozedUntil: null,
+        recurrence: taskData.recurrence || null,  // Support for recurring tasks
         isMedication: taskData.type === 'medication',
         medicationInfo: taskData.type === 'medication' ? {
             dosage: extractDosageFromDescription(taskData.description),
@@ -30,6 +31,75 @@ async function createTask(taskData) {
     } catch (error) {
         console.error('[TaskManager] Error creating task:', error);
         return { success: false, error: error.message };
+    }
+}
+
+// Get tasks by period
+async function getTasksByPeriod(period) {
+    try {
+        const now = new Date();
+        const allTasks = await getAllTasks();
+        
+        let filteredTasks = [];
+        
+        switch(period) {
+            case 'today':
+                const today = now.toISOString().split('T')[0];
+                filteredTasks = allTasks.filter(task => 
+                    task.date === today && task.status !== 'completed'
+                );
+                break;
+                
+            case 'week':
+                const weekStart = new Date(now);
+                weekStart.setDate(now.getDate() - now.getDay());
+                weekStart.setHours(0, 0, 0, 0);
+                
+                const weekEnd = new Date(weekStart);
+                weekEnd.setDate(weekStart.getDate() + 7);
+                
+                filteredTasks = allTasks.filter(task => {
+                    const taskDate = new Date(task.date);
+                    return taskDate >= weekStart && taskDate < weekEnd && task.status !== 'completed';
+                });
+                break;
+                
+            case 'month':
+                const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+                const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                
+                filteredTasks = allTasks.filter(task => {
+                    const taskDate = new Date(task.date);
+                    return taskDate >= monthStart && taskDate <= monthEnd && task.status !== 'completed';
+                });
+                break;
+                
+            case 'year':
+                const yearStart = new Date(now.getFullYear(), 0, 1);
+                const yearEnd = new Date(now.getFullYear(), 11, 31);
+                
+                filteredTasks = allTasks.filter(task => {
+                    const taskDate = new Date(task.date);
+                    return taskDate >= yearStart && taskDate <= yearEnd && task.status !== 'completed';
+                });
+                break;
+        }
+        
+        // Sort by date and time
+        return filteredTasks.sort((a, b) => {
+            const dateCompare = a.date.localeCompare(b.date);
+            if (dateCompare !== 0) return dateCompare;
+            
+            const priorityOrder = { urgent: 0, normal: 1, low: 2 };
+            if (priorityOrder[a.priority] !== priorityOrder[b.priority]) {
+                return priorityOrder[a.priority] - priorityOrder[b.priority];
+            }
+            
+            return (a.time || '').localeCompare(b.time || '');
+        });
+    } catch (error) {
+        console.error('[TaskManager] Error getting tasks by period:', error);
+        return [];
     }
 }
 
@@ -92,7 +162,7 @@ async function snoozeTask(taskId, minutes = 10) {
         await saveTask(task);
         
         console.log(`[TaskManager] Task snoozed for ${minutes} minutes:`, taskId);
-        return { success: true, task, snoozedUntil };
+        return { success: true, task, snoozeUntil };
     } catch (error) {
         console.error('[TaskManager] Error snoozing task:', error);
         return { success: false, error: error.message };
@@ -120,9 +190,9 @@ async function updateTask(taskId, updates) {
 }
 
 // Delete task
-async function removeTask(taskId) {
+async function deleteTask(taskId) {
     try {
-        await deleteTask(taskId);
+        await deleteFromStore(STORES.TASKS, taskId);
         console.log('[TaskManager] Task deleted:', taskId);
         return { success: true };
     } catch (error) {
@@ -349,5 +419,5 @@ async function initializeTaskManager() {
 
 // Auto-initialize
 if (typeof window !== 'undefined') {
-    window.addEventListener('DOMContentLoaded', initializeTaskManager);
+    // Note: Initialize by calling initializeTaskManager() after database is ready
 }

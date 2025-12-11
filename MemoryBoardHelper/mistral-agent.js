@@ -18,17 +18,19 @@ const SYSTEM_PROMPT = `You are a helpful memory assistant for elderly or memory-
 
 When extracting tasks, respond in JSON format with:
 {
-  "action": "add_task|complete_task|question|conversation",
+  "action": "add_task|complete_task|delete_task|question|conversation",
   "task": {
     "description": "clear task description",
     "time": "HH:MM format if mentioned, else null",
     "type": "general|medication|appointment|call|shopping",
     "priority": "normal|urgent|low"
   },
-  "taskId": "id if completing existing task",
+  "taskId": "id if completing or deleting existing task",
   "response": "friendly message to user",
   "language": "fr|it|en"
 }
+
+For delete_task action, identify which task the user wants to remove/delete/cancel/supprimer/annuler/cancellare.
 
 For medication tasks, extract dosage information in the description.
 Always be encouraging and supportive.`;
@@ -207,6 +209,40 @@ async function checkTaskCompletion(userMessage, tasks, conversationHistory = [])
     }
 }
 
+// Check if user wants to delete a task
+async function checkTaskDeletion(userMessage, tasks, conversationHistory = []) {
+    try {
+        const result = await processWithMistral(userMessage, conversationHistory);
+        
+        if (result.action === 'delete_task') {
+            // Find matching task
+            const taskToDelete = findMatchingTask(tasks, result.task?.description || userMessage);
+            
+            if (taskToDelete) {
+                return {
+                    success: true,
+                    taskId: taskToDelete.id,
+                    response: result.response,
+                    language: result.language
+                };
+            }
+        }
+        
+        return {
+            success: false,
+            response: result.response,
+            language: result.language
+        };
+    } catch (error) {
+        console.error('[Mistral] Task deletion check error:', error);
+        return {
+            success: false,
+            error: error.message,
+            language: detectedLanguage
+        };
+    }
+}
+
 // Find matching task by description similarity
 function findMatchingTask(tasks, description) {
     if (!tasks || tasks.length === 0) return null;
@@ -290,6 +326,11 @@ function getLocalizedResponse(key, language = 'fr') {
             fr: 'Parfait ! J\'ai marqué cette tâche comme terminée.',
             it: 'Perfetto! Ho segnato questo compito come completato.',
             en: 'Perfect! I marked this task as completed.'
+        },
+        taskDeleted: {
+            fr: 'D\'accord, j\'ai supprimé cette tâche de votre liste.',
+            it: 'D\'accordo, ho cancellato questo compito dalla tua lista.',
+            en: 'Alright, I removed this task from your list.'
         },
         noTasks: {
             fr: 'Vous n\'avez aucune tâche prévue pour aujourd\'hui.',
