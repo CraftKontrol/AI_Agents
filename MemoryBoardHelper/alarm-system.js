@@ -1,3 +1,19 @@
+// Associe chaque type de tâche à un son d'alarme spécifique
+function getAlarmSoundForTaskType(type) {
+    switch (type) {
+        case 'medication':
+            return 'chime-alarm.mp3';
+        case 'appointment':
+            return 'bell-alarm.mp3';
+        case 'call':
+            return 'soft-beep.mp3';
+        case 'shopping':
+            return 'gentle-alarm.mp3';
+        case 'general':
+        default:
+            return 'gentle-alarm.mp3';
+    }
+}
 // Alarm-System.js - Time monitoring, alarms, and notifications
 // Continuous system time checking, audio alerts, voice announcements
 
@@ -100,13 +116,13 @@ async function triggerAlarm(task) {
     
     // Show visual notification
     showAlarmNotification(task);
-    
-    // Play alarm sound
-    await playAlarmSound();
-    
+
+    // Play alarm sound spécifique au type de tâche
+    await playAlarmSound(getAlarmSoundForTaskType(task.type));
+
     // Send browser notification
     sendBrowserNotification(task);
-    
+
     // Announce via voice (TTS)
     await announceTask(task);
 }
@@ -132,23 +148,26 @@ function showAlarmNotification(task) {
     }
 }
 
-// Play alarm sound
-async function playAlarmSound() {
+// Joue un son d'alarme spécifique (par nom de fichier)
+async function playAlarmSound(soundFile = 'gentle-alarm.mp3') {
     const audio = document.getElementById('alarmSound');
     if (audio) {
         try {
+            // Change la source si besoin
+            const source = audio.querySelector('source');
+            if (source && !source.src.endsWith(soundFile)) {
+                source.src = 'assets/alarm-sounds/' + soundFile;
+                audio.load();
+            }
             // Stop any existing playback first
             audio.pause();
             audio.currentTime = 0;
             audio.volume = 0.7;
-            
             // Wait a brief moment before playing to avoid conflicts
             await new Promise(resolve => setTimeout(resolve, 100));
-            
             // Play the audio
             await audio.play();
         } catch (error) {
-            // Only log if it's not a user interaction issue
             if (error.name !== 'NotAllowedError') {
                 console.error('[AlarmSystem] Error playing alarm sound:', error);
             }

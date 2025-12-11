@@ -49,9 +49,10 @@
                             <div class="input-group">
                                 <label for="alarmSoundSelect">Son d'alarme :</label>
                                 <select id="alarmSoundSelect">
-                                    <option value="gentle-alarm.mp3">Alarme douce</option>
-                                    <option value="classic-alarm.mp3">Alarme classique</option>
-                                    <option value="digital-alarm.mp3">Alarme digitale</option>
+                                    <option value="gentle-alarm.mp3">Alarme douce (gentle-alarm.mp3)</option>
+                                    <option value="chime-alarm.mp3">Carillon (chime-alarm.mp3)</option>
+                                    <option value="bell-alarm.mp3">Cloche (bell-alarm.mp3)</option>
+                                    <option value="soft-beep.mp3">Bip doux (soft-beep.mp3)</option>
                                 </select>
                             </div>
                         </div>
@@ -273,7 +274,7 @@
             <div class="current-time">
                 <span class="material-symbols-outlined">schedule</span>
                 <div class="time-info">
-                    <div id="currentTime" class="time-text">00:00</div>
+                    <div id="currentTime" class="time-text" tabindex="0">00:00</div>
                     <div id="currentDate" class="date-text">Chargement...</div>
                 </div>
             </div>
@@ -584,6 +585,16 @@
         </div>
     </div>
 
+    <!-- Sound Effects -->
+    <audio id="tapSound">
+        <source src="assets/alarm-sounds/Tap.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="validationSound">
+        <source src="assets/alarm-sounds/Validation.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="listeningSound">
+        <source src="assets/alarm-sounds/Listening.mp3" type="audio/mpeg">
+    </audio>
     <audio id="alarmSound" loop>
         <source src="assets/alarm-sounds/gentle-alarm.mp3" type="audio/mpeg">
     </audio>

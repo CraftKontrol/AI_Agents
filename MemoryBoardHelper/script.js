@@ -1,3 +1,61 @@
+// --- Focus automatique sur l'heure après inactivité utilisateur ---
+let focusTimer = null;
+const FOCUS_DELAY = 30000; // 30 secondes
+
+function focusVoiceInteraction() {
+    // Focus sur le bouton principal de la section voice-interaction
+    const voiceBtn = document.getElementById('voiceBtn');
+    if (voiceBtn) {
+        voiceBtn.focus();
+    } else {
+        // Fallback : scroll vers la section si le bouton n'existe pas
+        const section = document.querySelector('.voice-interaction');
+        if (section) section.scrollIntoView({behavior: 'smooth', block: 'center'});
+    }
+}
+
+function resetFocusTimer() {
+    if (focusTimer) clearTimeout(focusTimer);
+    focusTimer = setTimeout(focusVoiceInteraction, FOCUS_DELAY);
+}
+
+['mousedown', 'keydown', 'touchstart', 'focusin'].forEach(evt => {
+    window.addEventListener(evt, resetFocusTimer, true);
+});
+
+document.addEventListener('DOMContentLoaded', resetFocusTimer);
+// --- Sound Effects ---
+function playTapSound() {
+    const audio = document.getElementById('tapSound');
+    if (audio) {
+        audio.currentTime = 0;
+        audio.play();
+    }
+}
+
+function playValidationSound() {
+    const audio = document.getElementById('validationSound');
+    if (audio) {
+        audio.currentTime = 0;
+        audio.play();
+    }
+}
+
+function playListeningSound() {
+    const audio = document.getElementById('listeningSound');
+    if (audio) {
+        audio.currentTime = 0;
+        audio.play();
+    }
+}
+// Patch all button presses to play tap sound
+document.addEventListener('DOMContentLoaded', function() {
+    document.body.addEventListener('click', function(e) {
+        if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
+            playTapSound();
+        }
+    }, true);
+});
 // Commande : Ajouter une tâche
 // Désactive le mode automatique en simulant un clic sur le bouton
 function disableAutoModeByButton() {
@@ -437,6 +495,7 @@ function initializeSpeechRecognition() {
             isRecognitionActive = true;
             recognitionRestartAttempts = 0;
             console.log('[App] Recognition started');
+            playListeningSound();
         };
         
         recognition.onresult = handleSpeechResult;
@@ -1727,6 +1786,7 @@ function createTaskElement(task, lang, mode = '') {
 async function completeTaskUI(taskId) {
     const result = await completeTask(taskId);
     if (result.success) {
+        playValidationSound();
         await refreshTaskDisplay();
         const lang = getCurrentLanguage();
         showSuccess(getLocalizedResponse('taskCompleted', lang));

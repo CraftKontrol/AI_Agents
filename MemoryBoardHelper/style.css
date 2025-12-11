@@ -1,3 +1,6 @@
+html {
+    scroll-behavior: smooth;
+}
 :root {
     --primary-color: #4a9eff;
     --primary-dark: #0d4fff;

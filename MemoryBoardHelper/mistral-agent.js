@@ -112,8 +112,12 @@ async function processWithMistral(userMessage, conversationHistory = []) {
     // Add recent conversation history (last 5 exchanges)
     const recentHistory = conversationHistory.slice(-5);
     for (const conv of recentHistory) {
-        messages.push({ role: 'user', content: conv.userMessage });
-        messages.push({ role: 'assistant', content: conv.assistantResponse });
+        if (conv.userMessage) {
+            messages.push({ role: 'user', content: conv.userMessage });
+        }
+        if (conv.assistantResponse) {
+            messages.push({ role: 'assistant', content: conv.assistantResponse });
+        }
     }
 
     // Add current message
