@@ -8,8 +8,8 @@ This folder should contain alarm sound files in MP3 format.
 
 ## Recommended Sound Files
 
-You can add additional alarm sounds:
-- `gentle-alarm.mp3` (required, referenced in index.html)
+**alarm sounds**
+- `gentle-alarm.mp3` 
 - `chime-alarm.mp3`
 - `bell-alarm.mp3`
 - `soft-beep.mp3`
@@ -22,6 +22,11 @@ For elderly-friendly alarms, sounds should be:
 - **Distinctive**: Easy to recognize
 - **Duration**: 3-5 seconds, designed to loop
 - **Volume**: Medium-high but not startling
+
+## Sounds
+- Validation.mp3 - A short confirmation sound for task completion
+- Listening.mp3 - A gentle tone indicating the app is listening for voice input
+- Tap.mp3 - A soft tap sound for button presses
 
 ## Free Sound Resources
 
@@ -37,7 +42,7 @@ You can find free alarm sounds at:
 3. Update `index.html` if using a different default sound:
    ```html
    <audio id="alarmSound" loop>
-       <source src="assets/alarm-sounds/your-sound.mp3" type="audio/mpeg">
+       <source src="assets/alarm-sounds/gentle-alarm.mp3" type="audio/mpeg">
    </audio>
    ```
 
