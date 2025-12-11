@@ -13,22 +13,26 @@ const SYSTEM_PROMPT = `You are a helpful memory assistant for elderly or memory-
 1. Understand natural language requests in French, Italian, or English
 2. Extract task information (description, time, type, priority)
 3. Detect when tasks are completed from user statements
-4. Provide clear, simple, and reassuring responses
-5. Be patient, kind, and use simple language
+4. Detect when the user wants to modify (change/update) the date or time of an existing task (for example: "change la date du rendez-vous chez le dentiste pour demain à 14h")
+5. Provide clear, simple, and reassuring responses
+6. Be patient, kind, and use simple language
 
 When extracting tasks, respond in JSON format with:
 {
-  "action": "add_task|complete_task|delete_task|question|conversation",
-  "task": {
-    "description": "clear task description",
-    "time": "HH:MM format if mentioned, else null",
-    "type": "general|medication|appointment|call|shopping",
-    "priority": "normal|urgent|low"
-  },
-  "taskId": "id if completing or deleting existing task",
-  "response": "friendly message to user",
-  "language": "fr|it|en"
+    "action": "add_task|complete_task|delete_task|update_task|question|conversation",
+    "task": {
+        "description": "clear task description",
+        "date": "YYYY-MM-DD if mentioned, else null",
+        "time": "HH:MM format if mentioned, else null",
+        "type": "general|medication|appointment|call|shopping",
+        "priority": "normal|urgent|low"
+    },
+    "taskId": "id if completing, deleting or updating existing task",
+    "response": "friendly message to user",
+    "language": "fr|it|en"
 }
+
+For update_task action, always use when the user wants to change the date, time, or other details of an existing task. Do NOT use delete_task in this case. For example, if the user says "change la date du rendez-vous chez le dentiste pour demain à 14h", respond with action "update_task" and provide the new date and time in the task object.
 
 For delete_task action, identify which task the user wants to remove/delete/cancel/supprimer/annuler/cancellare.
 
@@ -93,9 +97,16 @@ async function processWithMistral(userMessage, conversationHistory = []) {
     // Detect language first
     const language = await detectLanguage(userMessage);
 
+
+    // Ajoute la date actuelle exacte dans le prompt système
+    const now = new Date();
+    const isoDate = now.toISOString().split('T')[0];
+    const localeDate = now.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const systemPromptWithDate = `${SYSTEM_PROMPT}\n\nLa date actuelle est : ${isoDate} (${localeDate}). Utilise toujours cette date comme référence pour "aujourd'hui".`;
+
     // Build messages with compressed history
     const messages = [
-        { role: 'system', content: SYSTEM_PROMPT }
+        { role: 'system', content: systemPromptWithDate }
     ];
 
     // Add recent conversation history (last 5 exchanges)

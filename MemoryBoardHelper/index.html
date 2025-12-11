@@ -88,12 +88,13 @@
         </section>
 
         <section class="wake-word-section">
-            <h2>
-                <span class="material-symbols-outlined">record_voice_over</span>
-                <span id="wakeWordTitle">Configuration du mot de réveil</span>
+            <h2 style="display: flex; align-items: center; justify-content: space-between;">
+                <span>
+                    <span id="wakeWordTitle">Mot de Réveil</span>
+                </span>
+                <button class="section-toggle" onclick="toggleSection('wakeWordContent')" id="wakeWordToggleBtn">Masquer</button>
             </h2>
-            
-            <div class="wake-word-content">
+            <div class="wake-word-content section-content" id="wakeWordContent">
                 <div class="wake-word-info">
                     <p id="wakeWordDescription">
                         Le mot de réveil permet d'activer l'assistant sans redemander l'autorisation du micro. 

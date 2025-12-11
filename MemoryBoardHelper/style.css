@@ -806,8 +806,18 @@ body {
     100% { transform: rotate(360deg); }
 }
 
+
 .tasks-list {
     min-height: 200px;
+    width: 100%;
+}
+
+/* Grille responsive pour les périodes semaine/mois/année */
+.tasks-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 24px;
+    align-items: stretch;
 }
 
 .no-tasks {

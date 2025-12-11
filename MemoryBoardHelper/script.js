@@ -439,17 +439,22 @@ async function processUserMessage(message) {
     try {
         // Get recent conversation history
         const recentHistory = conversationHistory.slice(-MAX_CONVERSATION_HISTORY);
-        
+
         // Get current tasks for context
         const currentTasks = await getTodayTasks();
-        
+
         // Check what type of request this is
         const result = await processWithMistral(message, recentHistory);
-        
+
+        // Log la réponse reçue de Mistral
+        if (result) {
+            logMistralResponse(message, result);
+        }
+
         if (!result) {
             throw new Error('No response from Mistral');
         }
-        
+
         // Handle different actions
         if (result.action === 'add_task') {
             await handleAddTask(result);
@@ -457,6 +462,8 @@ async function processUserMessage(message) {
             await handleCompleteTask(result, currentTasks);
         } else if (result.action === 'delete_task') {
             await handleDeleteTask(result, currentTasks);
+        } else if (result.action === 'update_task') {
+            await handleUpdateTask(result, currentTasks);
         } else if (result.action === 'question') {
             await handleQuestion(result, currentTasks);
         } else {
@@ -464,11 +471,147 @@ async function processUserMessage(message) {
             showResponse(result.response);
             speakResponse(result.response);
         }
-        
+// Gère la modification d'une tâche existante (date/heure)
+async function handleUpdateTask(result, tasks) {
+    if (!result.task) {
+        showError(getLocalizedText('taskExtractionFailed'));
+        return;
+    }
+
+    // Recherche la tâche à modifier par description (et éventuellement heure/type)
+    const description = result.task.description?.toLowerCase() || '';
+    let taskToUpdate = null;
+
+    // Recherche la tâche la plus proche (par description, type, heure)
+    taskToUpdate = tasks.find(t =>
+        t.description.toLowerCase() === description
+    );
+    if (!taskToUpdate) {
+        // Essaye une correspondance partielle
+        const matches = tasks.filter(t =>
+            t.description.toLowerCase().includes(description) ||
+            description.includes(t.description.toLowerCase())
+        );
+        if (matches.length === 1) {
+            taskToUpdate = matches[0];
+        } else if (matches.length > 1) {
+            // Plusieurs tâches similaires, demande de précision
+            const taskList = matches.map(t => `"${t.description}"${t.time ? ` à ${t.time}` : ''}`).join(', ');
+            const clarifyMessages = {
+                fr: `Plusieurs tâches correspondent : ${taskList}. Veuillez préciser.`,
+                it: `Più compiti corrispondenti: ${taskList}. Per favore sii più specifico.`,
+                en: `Multiple matching tasks: ${taskList}. Please be more specific.`
+            };
+            const msg = clarifyMessages[result.language] || clarifyMessages.fr;
+            showResponse(msg);
+            speakResponse(msg);
+            return;
+        }
+    }
+
+
+    if (!taskToUpdate) {
+        // Fallback : si aucune tâche trouvée, crée la tâche à la place
+        // Recherche et supprime toutes les anciennes tâches similaires (description, type, date, heure)
+        const allTasks = await getAllTasks();
+        const newDesc = result.task.description?.toLowerCase() || '';
+        const newType = result.task.type || '';
+        const newDate = result.task.date || null;
+        const newTime = result.task.time || null;
+        // Supprime toutes les tâches qui ont la même description (ou partielle), même type, et une date/heure différente
+        const possibleOldTasks = allTasks.filter(t =>
+            t.description.toLowerCase().includes(newDesc) &&
+            (newType ? t.type === newType : true) &&
+            ((newDate && t.date !== newDate) || (newTime && t.time !== newTime) || (!newDate && !newTime))
+        );
+        for (const oldTask of possibleOldTasks) {
+            await deleteTask(oldTask.id);
+        }
+        // Crée la nouvelle tâche
+        const createResult = await createTask({
+            description: result.task.description,
+            date: result.task.date || null,
+            time: result.task.time || null,
+            type: result.task.type || 'general',
+            priority: result.task.priority || 'normal'
+        });
+        if (createResult && createResult.success) {
+            const confirmMsg = result.response || getLocalizedResponse('taskAdded', result.language) || 'Tâche ajoutée.';
+            showSuccess(confirmMsg);
+            speakResponse(confirmMsg);
+            // Si la date n'est pas aujourd'hui, bascule l'onglet pour afficher la tâche
+            const today = new Date().toISOString().split('T')[0];
+            if (createResult.task.date && createResult.task.date !== today) {
+                // Si la tâche est dans la semaine courante, bascule sur "week", sinon "month"
+                const now = new Date();
+                const taskDate = new Date(createResult.task.date);
+                const weekStart = new Date(now);
+                weekStart.setDate(now.getDate() - now.getDay());
+                weekStart.setHours(0, 0, 0, 0);
+                const weekEnd = new Date(weekStart);
+                weekEnd.setDate(weekStart.getDate() + 7);
+                if (taskDate >= weekStart && taskDate < weekEnd) {
+                    await switchPeriod('week');
+                } else {
+                    await switchPeriod('month');
+                }
+            } else {
+                await refreshTaskDisplay();
+            }
+        } else {
+            showError(getLocalizedText('taskCreationFailed'));
+        }
+        return;
+    }
+
+
+    // Avant de mettre à jour, si la date ou la description change, supprimer l'ancienne tâche
+    const newDate = result.task.date || taskToUpdate.date;
+    const newTime = result.task.time || taskToUpdate.time;
+    let needDeleteOld = false;
+    if (taskToUpdate.date !== newDate || taskToUpdate.time !== newTime || taskToUpdate.description.toLowerCase() !== (result.task.description?.toLowerCase() || '')) {
+        needDeleteOld = true;
+    }
+    if (needDeleteOld) {
+        // Supprime l'ancienne tâche
+        await deleteTask(taskToUpdate.id);
+        // Crée la nouvelle tâche modifiée
+        const createResult = await createTask({
+            description: result.task.description,
+            date: newDate,
+            time: newTime,
+            type: result.task.type || 'general',
+            priority: result.task.priority || 'normal'
+        });
+        if (createResult && createResult.success) {
+            const confirmMsg = result.response || getLocalizedResponse('taskUpdated', result.language) || 'Tâche mise à jour.';
+            showSuccess(confirmMsg);
+            speakResponse(confirmMsg);
+            await refreshTaskDisplay();
+        } else {
+            showError(getLocalizedText('taskCreationFailed'));
+        }
+    } else {
+        // Si pas de changement, juste mettre à jour
+        const updateResult = await updateTask(taskToUpdate.id, {
+            date: newDate,
+            time: newTime
+        });
+        if (updateResult && updateResult.success) {
+            const confirmMsg = result.response || getLocalizedResponse('taskUpdated', result.language) || 'Tâche mise à jour.';
+            showSuccess(confirmMsg);
+            speakResponse(confirmMsg);
+            await refreshTaskDisplay();
+        } else {
+            showError(getLocalizedText('taskCreationFailed'));
+        }
+    }
+}
+
         // Save conversation
         await saveConversation(message, result.response, result.language);
         conversationHistory.push({ userMessage: message, assistantResponse: result.response });
-        
+
     } catch (error) {
         console.error('[App] Error processing message:', error);
         showError(error.message);
@@ -476,6 +619,37 @@ async function processUserMessage(message) {
         isProcessing = false;
         showLoading(false);
     }
+// Log la réponse reçue de Mistral dans un fichier local (MemoryBoardHelper.log)
+function logMistralResponse(userMessage, mistralResult) {
+    try {
+        const logEntry = {
+            timestamp: new Date().toISOString(),
+            userMessage,
+            mistralResult
+        };
+        const logLine = JSON.stringify(logEntry) + '\n';
+        // Ajout dans localStorage (append)
+        let logs = localStorage.getItem('MemoryBoardHelper.log') || '';
+        logs += logLine;
+        localStorage.setItem('MemoryBoardHelper.log', logs);
+
+        // Optionnel: téléchargement automatique du log (pour export manuel)
+        // saveLogFile(logs);
+    } catch (e) {
+        console.warn('Erreur lors du log Mistral:', e);
+    }
+}
+
+// Pour exporter le log en fichier (optionnel, bouton à ajouter si besoin)
+function saveLogFile(logs) {
+    const blob = new Blob([logs], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'MemoryBoardHelper.log';
+    a.click();
+    URL.revokeObjectURL(url);
+}
 }
 
 // Handle add task action
@@ -493,6 +667,7 @@ async function handleAddTask(result) {
     // For now, auto-confirm (in production, would wait for user confirmation)
     const taskData = {
         description: result.task.description,
+        date: result.task.date || null,
         time: result.task.time || null,
         type: result.task.type || 'general',
         priority: result.task.priority || 'normal'
@@ -500,11 +675,28 @@ async function handleAddTask(result) {
     
     const createResult = await createTask(taskData);
     
-    if (createResult.success) {
+    if (createResult && createResult.success) {
         const confirmMsg = result.response || getLocalizedResponse('taskAdded', result.language);
         showSuccess(confirmMsg);
         speakResponse(confirmMsg);
-        await refreshTaskDisplay();
+        // Si la date n'est pas aujourd'hui, bascule l'onglet pour afficher la tâche
+        const today = new Date().toISOString().split('T')[0];
+        if (createResult.task.date && createResult.task.date !== today) {
+            const now = new Date();
+            const taskDate = new Date(createResult.task.date);
+            const weekStart = new Date(now);
+            weekStart.setDate(now.getDate() - now.getDay());
+            weekStart.setHours(0, 0, 0, 0);
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekStart.getDate() + 7);
+            if (taskDate >= weekStart && taskDate < weekEnd) {
+                await switchPeriod('week');
+            } else {
+                await switchPeriod('month');
+            }
+        } else {
+            await refreshTaskDisplay();
+        }
     } else {
         showError(getLocalizedText('taskCreationFailed'));
     }
@@ -540,51 +732,52 @@ async function handleDeleteTask(result, tasks) {
     const description = result.task.description.toLowerCase();
     const targetTime = result.task.time;
     let taskToDelete = null;
-    
-    // Priority 1: Match by time + description (most specific)
-    if (targetTime) {
-        taskToDelete = tasks.find(t => 
-            t.time === targetTime &&
-            (t.description.toLowerCase().includes(description) ||
-             description.includes(t.description.toLowerCase()))
-        );
-    }
-    
-    // Priority 2: If no time match, try exact description match
-    if (!taskToDelete) {
-        taskToDelete = tasks.find(t => 
-            t.description.toLowerCase() === description
-        );
-    }
-    
-    // Priority 3: Partial description match only (least specific)
-    if (!taskToDelete) {
-        const matches = tasks.filter(t => 
+
+    // Recherche d'abord dans la période courante
+    function findTaskInList(list) {
+        // Priority 1: Match by time + description (most specific)
+        if (targetTime) {
+            const t = list.find(t =>
+                t.time === targetTime &&
+                (t.description.toLowerCase().includes(description) ||
+                 description.includes(t.description.toLowerCase()))
+            );
+            if (t) return t;
+        }
+        // Priority 2: If no time match, try exact description match
+        let t = list.find(t => t.description.toLowerCase() === description);
+        if (t) return t;
+        // Priority 3: Partial description match only (least specific)
+        const matches = list.filter(t =>
             t.description.toLowerCase().includes(description) ||
             description.includes(t.description.toLowerCase())
         );
-        
-        // If multiple matches, prefer one without time or show error
-        if (matches.length === 1) {
-            taskToDelete = matches[0];
-        } else if (matches.length > 1) {
+        if (matches.length === 1) return matches[0];
+        if (matches.length > 1) {
             const noTimeMatch = matches.find(t => !t.time);
-            if (noTimeMatch) {
-                taskToDelete = noTimeMatch;
-            } else {
-                // Multiple matches with times - need clarification
-                const taskList = matches.map(t => `"${t.description}"${t.time ? ` à ${t.time}` : ''}`).join(', ');
-                const clarifyMessages = {
-                    fr: `J'ai trouvé plusieurs tâches correspondantes : ${taskList}. Veuillez être plus précis.`,
-                    it: `Ho trovato più compiti corrispondenti: ${taskList}. Per favore sii più specifico.`,
-                    en: `I found multiple matching tasks: ${taskList}. Please be more specific.`
-                };
-                const msg = clarifyMessages[result.language] || clarifyMessages.fr;
-                showResponse(msg);
-                speakResponse(msg);
-                return;
-            }
+            if (noTimeMatch) return noTimeMatch;
+            // Multiple matches with times - need clarification
+            const taskList = matches.map(t => `"${t.description}"${t.time ? ` à ${t.time}` : ''}`).join(', ');
+            const clarifyMessages = {
+                fr: `J'ai trouvé plusieurs tâches correspondantes : ${taskList}. Veuillez être plus précis.`,
+                it: `Ho trovato più compiti corrispondenti: ${taskList}. Per favore sii più specifico.`,
+                en: `I found multiple matching tasks: ${taskList}. Please be more specific.`
+            };
+            const msg = clarifyMessages[result.language] || clarifyMessages.fr;
+            showResponse(msg);
+            speakResponse(msg);
+            return null;
         }
+        return null;
+    }
+
+    // 1. Cherche dans la période courante
+    taskToDelete = findTaskInList(tasks);
+
+    // 2. Si pas trouvé, cherche dans toutes les tâches (toutes dates)
+    if (!taskToDelete) {
+        const allTasks = await getAllTasks();
+        taskToDelete = findTaskInList(allTasks);
     }
     
     if (taskToDelete) {
@@ -742,14 +935,42 @@ async function refreshTaskDisplay() {
     const container = document.getElementById('tasksContainer');
     const noTasksMsg = document.getElementById('noTasksMessage');
     const taskCount = document.getElementById('taskCount');
-    
+    const todayTasksTitle = document.getElementById('todayTasksTitle');
+    const noTasksText = document.getElementById('noTasksText');
+
     const tasks = await getTasksByPeriod(currentPeriod);
-    
+
+    // Titre dynamique selon la période
+    const periodTitles = {
+        today: { fr: 'Mes tâches', en: 'My Tasks', it: 'I miei compiti' },
+        week: { fr: 'Tâches de la semaine', en: 'This Week', it: 'Settimana' },
+        month: { fr: 'Tâches du mois', en: 'This Month', it: 'Mese' },
+        year: { fr: 'Tâches de l\'année', en: 'This Year', it: 'Anno' }
+    };
+    const lang = getCurrentLanguage();
+    if (todayTasksTitle) todayTasksTitle.textContent = periodTitles[currentPeriod]?.[lang] || periodTitles[currentPeriod]?.fr;
+
+    // Message "aucune tâche" dynamique
+    const noTasksMessages = {
+        today: { fr: "Aucune tâche pour aujourd'hui", en: 'No tasks for today', it: 'Nessun compito per oggi' },
+        week: { fr: 'Aucune tâche cette semaine', en: 'No tasks this week', it: 'Nessun compito questa settimana' },
+        month: { fr: 'Aucune tâche ce mois-ci', en: 'No tasks this month', it: 'Nessun compito questo mese' },
+        year: { fr: 'Aucune tâche cette année', en: 'No tasks this year', it: 'Nessun compito quest\'anno' }
+    };
+    if (noTasksText) noTasksText.textContent = noTasksMessages[currentPeriod]?.[lang] || noTasksMessages[currentPeriod]?.fr;
+
     // Update task count
     if (taskCount) {
         taskCount.textContent = tasks.length;
     }
-    
+
+    // Affichage grille pour semaine/mois/année
+    if (['week','month','year'].includes(currentPeriod)) {
+        container.classList.add('tasks-grid');
+    } else {
+        container.classList.remove('tasks-grid');
+    }
+
     if (tasks.length === 0) {
         if (noTasksMsg) noTasksMsg.style.display = 'block';
         // Clear existing tasks
@@ -757,15 +978,14 @@ async function refreshTaskDisplay() {
         existingTasks.forEach(t => t.remove());
         return;
     }
-    
+
     if (noTasksMsg) noTasksMsg.style.display = 'none';
-    
+
     // Clear existing tasks
     const existingTasks = container.querySelectorAll('.task-item');
     existingTasks.forEach(t => t.remove());
-    
-    // Add tasks
-    const lang = getCurrentLanguage();
+
+    // Ajout des tâches
     for (const task of tasks) {
         const taskElement = createTaskElement(task, lang);
         container.appendChild(taskElement);
@@ -822,16 +1042,14 @@ function createTaskElement(task, lang) {
     
     const formattedTask = formatTaskForDisplay(task, lang);
     
-    // Format date for display
+    // Format date for display (toujours affichée)
     const taskDate = new Date(task.date);
-    const today = new Date().toISOString().split('T')[0];
-    const showDate = task.date !== today;
     const formattedDate = taskDate.toLocaleDateString(lang === 'fr' ? 'fr-FR' : lang === 'it' ? 'it-IT' : 'en-US', {
         weekday: 'short',
         day: 'numeric',
         month: 'short'
     });
-    
+
     taskDiv.innerHTML = `
         <div class="task-info">
             <div class="task-title">
@@ -839,7 +1057,7 @@ function createTaskElement(task, lang) {
                 ${task.recurrence ? `<span class="badge badge-recurring" title="Tâche récurrente"><span class="material-symbols-outlined">repeat</span></span>` : `<span class="badge badge-onetime" title="Tâche ponctuelle"><span class="material-symbols-outlined">today</span></span>`}
             </div>
             <div class="task-details">
-                ${showDate ? `<span class="task-detail"><span class="material-symbols-outlined">event</span>${formattedDate}</span>` : ''}
+                <span class="task-detail"><span class="material-symbols-outlined">event</span>${formattedDate}</span>
                 ${task.time ? `<span class="task-detail"><span class="material-symbols-outlined">schedule</span>${task.time}</span>` : ''}
                 <span class="task-detail task-type-badge" data-type="${task.type}"><span class="material-symbols-outlined">${formattedTask.typeIcon}</span>${formattedTask.typeLabel}</span>
                 ${task.priority === 'urgent' ? `<span class="task-detail priority-badge"><span class="material-symbols-outlined">warning</span>${formattedTask.priorityLabel}</span>` : ''}
