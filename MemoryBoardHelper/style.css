@@ -1,3 +1,76 @@
+/* --- Floating Voice Button --- */
+.btn-voice-floating {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background-color: var(--primary-color);
+    color: #ffffff;
+    border: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 0 0 rgba(74, 158, 255, 0.4);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    z-index: 1000;
+    animation: fadeInUp 0.3s ease;
+}
+
+.btn-voice-floating:hover {
+    background-color: var(--primary-dark);
+    transform: scale(1.1);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4), 0 0 0 10px rgba(74, 158, 255, 0.1);
+}
+
+.btn-voice-floating:active {
+    transform: scale(0.95);
+}
+
+.btn-voice-floating .material-symbols-outlined {
+    font-size: 32px;
+}
+
+.btn-voice-floating.listening {
+    animation: pulse 1.5s ease-in-out infinite;
+    background-color: var(--error-color);
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 0 0 rgba(255, 68, 68, 0.7);
+    }
+    50% {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 0 20px rgba(255, 68, 68, 0);
+    }
+}
+
+@media (max-width: 768px) {
+    .btn-voice-floating {
+        width: 60px;
+        height: 60px;
+        bottom: 20px;
+        right: 20px;
+    }
+    
+    .btn-voice-floating .material-symbols-outlined {
+        font-size: 28px;
+    }
+}
+
 /* --- Mistral Settings Section Styles --- */
 .mistral-settings-section {
     background-color: var(--surface-color);

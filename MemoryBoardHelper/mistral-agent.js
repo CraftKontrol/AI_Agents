@@ -74,6 +74,28 @@ Respond in JSON format with:
 
 Always be encouraging and supportive.`;
 
+const CALL_PROMPT = `You are an emergency call assistant for elderly or memory-deficient persons. Your role is to:
+1. Understand natural language call requests in French, Italian, or English
+2. Identify which emergency contact the user wants to call (if specified)
+3. Confirm the call action with a reassuring message
+4. Be patient, kind, and use simple language
+
+When the user wants to make a call, respond in JSON format with:
+{
+    "action": "call",
+    "contactName": "name of the contact if mentioned, else null",
+    "response": "friendly confirmation message",
+    "language": "fr|it|en"
+}
+
+Examples:
+- "Appelle Arnaud" → action: "call", contactName: "Arnaud"
+- "Téléphone au docteur" → action: "call", contactName: "docteur"
+- "Call emergency" → action: "call", contactName: null
+- "Appelle" → action: "call", contactName: null
+
+Always be encouraging and supportive.`;
+
 // Default chat prompt (used as placeholder if no custom prompt is set)
 const DEFAULT_CHAT_PROMPT = `You are a helpful memory assistant for elderly or memory-deficient persons. Your role is to:
 1. Understand natural language requests in French, Italian, or English
@@ -208,12 +230,52 @@ async function processWithMistral(userMessage, conversationHistory = []) {
     // Double vérification du type d'action
     function detectActionByKeywords(text) {
         const txt = text.toLowerCase();
+        
+        // Time and date queries
+        if (/quelle.*heure|what.*time|che.*ora|heure.*il|time.*is/.test(txt)) return 'show_time';
+        if (/quelle.*date|what.*date|che.*data|date.*est|today.*date/.test(txt)) return 'show_date';
+        
+        // Task management
         if (/ajoute|add|nouveau|rendez-vous|appointment|create|créer|shop|acheter|course|shopping|medicament|médicament|take|prendre/.test(txt)) return 'add_task';
         if (/termine|fini|done|complete|accompli|accomplished|finir|check|coché|cocher|marquer|mark/.test(txt)) return 'complete_task';
         if (/supprime|delete|enleve|enlever|remove|annule|cancel|cancella|annuler/.test(txt)) return 'delete_task';
         if (/change|modifie|update|modifier|déplace|déplacer|move|reschedule|reporter/.test(txt)) return 'update_task';
-        if (/question|quand|combien|quel|how|when|what|where|qui|pourquoi|why|help|aide|info|information/.test(txt)) return 'question';
+        
+        // Task viewing by period
+        if (/tâche.*aujourd'hui|task.*today|compiti.*oggi|aujourd'hui.*tâche|today.*task/.test(txt)) return 'show_today_tasks';
+        if (/tâche.*semaine|task.*week|compiti.*settimana|semaine.*tâche|week.*task/.test(txt)) return 'show_week_tasks';
+        if (/tâche.*mois|task.*month|compiti.*mese|mois.*tâche|month.*task/.test(txt)) return 'show_month_tasks';
+        if (/tâche.*année|task.*year|compiti.*anno|année.*tâche|year.*task/.test(txt)) return 'show_year_tasks';
+        
+        // Voice mode control
+        if (/activ.*mode.*auto|activ.*mode.*vocal|enable.*auto.*mode|start.*listening|attiv.*modo.*auto/.test(txt)) return 'activate_auto_mode';
+        if (/désactiv.*mode.*auto|désactiv.*mode.*vocal|disable.*auto.*mode|stop.*listening|disattiv.*modo.*auto/.test(txt)) return 'deactivate_auto_mode';
+        
+        // Wake word
+        if (/chang.*mot.*réveil|chang.*wake.*word|modifi.*mot.*réveil|cambi.*parola.*attivazione/.test(txt)) return 'change_wake_word';
+        
+        // Alarm management
+        if (/snooze|répéter.*alarme|reprise.*alarme|postpone.*alarm|ritarda.*allarme/.test(txt)) return 'snooze_alarm';
+        if (/arrêt.*alarme|stop.*alarm|dismiss.*alarm|ferma.*allarme|désactiv.*alarme/.test(txt)) return 'dismiss_alarm';
+        if (/test.*alarme|test.*alarm|prova.*allarme|essai.*alarme/.test(txt)) return 'test_alarm';
+        if (/chang.*alarme|modifi.*alarme|change.*alarm|modify.*alarm|cambi.*allarme/.test(txt)) return 'change_alarm';
+        
+        // Emergency contacts
+        if (/contact.*urgence|emergency.*contact|contatt.*emergenza|urgence.*contact|montrer.*contact.*urgence|show.*emergency/.test(txt)) return 'show_emergency_contacts';
+        if (/configur.*contact|config.*contact|setup.*contact|impost.*contatt|paramètr.*contact/.test(txt)) return 'configure_emergency_contacts';
+        
+        // History
+        if (/effac.*historique|clear.*history|supprim.*historique|cancella.*cronologia|delete.*history/.test(txt)) return 'clear_history';
+        
+        // Navigation
         if (/navigation|navigue|navigate|aller|go to|ouvre|open|ferme|close|section|page|montre.*option|show.*option|menu|affiche.*option|display.*option/.test(txt)) return 'nav';
+        
+        // Phone calls
+        if (/appelle|phone|call|téléphone|chiama/.test(txt)) return 'call';
+        
+        // Questions and general info
+        if (/question|quand|combien|quel|how|when|what|where|qui|pourquoi|why|help|aide|info|information/.test(txt)) return 'question';
+        
         return 'conversation';
     }
     const keywordAction = detectActionByKeywords(_userMessage);
@@ -236,13 +298,16 @@ async function processWithMistral(userMessage, conversationHistory = []) {
         case 'nav':
             mainPrompt = NAV_PROMPT;
             break;
+        case 'call':
+            mainPrompt = CALL_PROMPT;
+            break;
         case 'question':
         case 'conversation':
         default:
             mainPrompt = getChatPrompt();
             break;
     }
-    console.log('[Mistral][DEBUG] Prompt sélectionné:', keywordAction === 'add_task' || keywordAction === 'complete_task' || keywordAction === 'delete_task' || keywordAction === 'update_task' ? 'TASK_PROMPT' : keywordAction === 'nav' ? 'NAV_PROMPT' : 'CHAT_PROMPT');
+    console.log('[Mistral][DEBUG] Prompt sélectionné:', keywordAction === 'add_task' || keywordAction === 'complete_task' || keywordAction === 'delete_task' || keywordAction === 'update_task' ? 'TASK_PROMPT' : keywordAction === 'nav' ? 'NAV_PROMPT' : keywordAction === 'call' ? 'CALL_PROMPT' : 'CHAT_PROMPT');
     
     // Extract previous responses to add explicit reminder
     const recentHistory = _conversationHistory.slice(-5);
@@ -572,6 +637,16 @@ function getLocalizedResponse(key, language = 'fr') {
             it: 'Non hai compiti previsti per oggi.',
             en: 'You have no tasks scheduled for today.'
         },
+        noEmergencyContacts: {
+            fr: 'Aucun contact d\'urgence n\'est configuré. Veuillez ajouter des contacts dans les paramètres.',
+            it: 'Nessun contatto di emergenza configurato. Si prega di aggiungere contatti nelle impostazioni.',
+            en: 'No emergency contacts are configured. Please add contacts in settings.'
+        },
+        callFailed: {
+            fr: 'Désolé, je n\'ai pas pu lancer l\'appel.',
+            it: 'Scusa, non sono riuscito ad avviare la chiamata.',
+            en: 'Sorry, I couldn\'t initiate the call.'
+        },
         error: {
             fr: 'Désolé, je n\'ai pas bien compris. Pouvez-vous répéter ?',
             it: 'Scusa, non ho capito bene. Puoi ripetere?',
@@ -597,5 +672,128 @@ function setLanguage(lang) {
     if (SUPPORTED_LANGUAGES.includes(lang)) {
         detectedLanguage = lang;
         console.log('[Mistral] Language set to:', lang);
+    }
+}
+
+// Get emergency contacts from localStorage
+function getEmergencyContacts() {
+    try {
+        const contacts = [];
+        // Load contacts from emergencyContact1, emergencyContact2, emergencyContact3
+        for (let i = 1; i <= 3; i++) {
+            const contact = JSON.parse(localStorage.getItem(`emergencyContact${i}`) || 'null');
+            if (contact && contact.name && contact.name.trim() !== '' && contact.phone) {
+                contacts.push(contact);
+            }
+        }
+        console.log('[Mistral] Loaded emergency contacts:', contacts);
+        return contacts;
+    } catch (error) {
+        console.error('[Mistral] Error loading emergency contacts:', error);
+        return [];
+    }
+}
+
+// Find matching emergency contact by name
+function findEmergencyContact(userMessage, contacts) {
+    if (!contacts || contacts.length === 0) return null;
+    
+    const message = userMessage.toLowerCase();
+    
+    // Try exact name match first
+    let match = contacts.find(contact => {
+        const name = contact.name.toLowerCase();
+        return message.includes(name);
+    });
+    
+    if (match) {
+        console.log('[Mistral] Found exact contact match:', match.name);
+        return match;
+    }
+    
+    // Try fuzzy match with name parts
+    for (const contact of contacts) {
+        const nameParts = contact.name.toLowerCase().split(/\s+/);
+        if (nameParts.some(part => message.includes(part) && part.length > 2)) {
+            console.log('[Mistral] Found fuzzy contact match:', contact.name);
+            return match = contact;
+        }
+    }
+    
+    return null;
+}
+
+// Handle emergency call request
+async function handleEmergencyCall(userMessage, conversationHistory = []) {
+    try {
+        const contacts = getEmergencyContacts();
+        
+        if (contacts.length === 0) {
+            return {
+                success: false,
+                response: getLocalizedResponse('noEmergencyContacts', detectedLanguage),
+                language: detectedLanguage
+            };
+        }
+        
+        // Try to find a specific contact mentioned in the message
+        const matchedContact = findEmergencyContact(userMessage, contacts);
+        const contactToCall = matchedContact || contacts[0];
+        
+        console.log('[Mistral] Calling contact:', contactToCall.name, contactToCall.phone);
+        
+        // Initiate the call
+        const callSuccess = initiatePhoneCall(contactToCall.phone);
+        
+        if (callSuccess) {
+            const response = matchedContact
+                ? {
+                    fr: `J'appelle ${contactToCall.name} au ${contactToCall.phone}.`,
+                    it: `Chiamo ${contactToCall.name} al ${contactToCall.phone}.`,
+                    en: `Calling ${contactToCall.name} at ${contactToCall.phone}.`
+                }
+                : {
+                    fr: `J'appelle le premier contact d'urgence : ${contactToCall.name} au ${contactToCall.phone}.`,
+                    it: `Chiamo il primo contatto di emergenza: ${contactToCall.name} al ${contactToCall.phone}.`,
+                    en: `Calling the first emergency contact: ${contactToCall.name} at ${contactToCall.phone}.`
+                };
+            
+            return {
+                success: true,
+                contact: contactToCall,
+                response: response[detectedLanguage] || response.fr,
+                language: detectedLanguage
+            };
+        } else {
+            return {
+                success: false,
+                response: getLocalizedResponse('callFailed', detectedLanguage),
+                language: detectedLanguage
+            };
+        }
+    } catch (error) {
+        console.error('[Mistral] Emergency call error:', error);
+        return {
+            success: false,
+            error: error.message,
+            language: detectedLanguage
+        };
+    }
+}
+
+// Initiate phone call using tel: protocol
+function initiatePhoneCall(phoneNumber) {
+    try {
+        // Clean phone number (remove spaces, dashes, etc.)
+        const cleanNumber = phoneNumber.replace(/[\s\-\(\)]/g, '');
+        
+        // Use tel: protocol to initiate call
+        window.location.href = `tel:${cleanNumber}`;
+        
+        console.log('[Mistral] Phone call initiated:', cleanNumber);
+        return true;
+    } catch (error) {
+        console.error('[Mistral] Error initiating call:', error);
+        return false;
     }
 }

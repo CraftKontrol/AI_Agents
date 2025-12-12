@@ -41,8 +41,51 @@ function updateTTSValue(type, val) {
     saveTTSSettings();
 }
 
+// --- Floating Voice Button Logic ---
+function initFloatingVoiceButton() {
+    const voiceBtn = document.getElementById('voiceBtn');
+    const floatingBtn = document.getElementById('floatingVoiceBtn');
+    
+    if (!voiceBtn || !floatingBtn) return;
+    
+    const observer = new IntersectionObserver(
+        (entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    // Le bouton principal est visible, cacher le bouton flottant
+                    floatingBtn.style.display = 'none';
+                } else {
+                    // Le bouton principal n'est pas visible, afficher le bouton flottant
+                    floatingBtn.style.display = 'flex';
+                }
+            });
+        },
+        {
+            threshold: 0.1,
+            rootMargin: '0px'
+        }
+    );
+    
+    observer.observe(voiceBtn);
+    
+    // Synchroniser l'état d'écoute avec le bouton flottant
+    const syncFloatingButton = () => {
+        const isListening = voiceBtn.classList.contains('listening');
+        if (isListening) {
+            floatingBtn.classList.add('listening');
+        } else {
+            floatingBtn.classList.remove('listening');
+        }
+    };
+    
+    // Observer les changements de classe sur le bouton principal
+    const classObserver = new MutationObserver(syncFloatingButton);
+    classObserver.observe(voiceBtn, { attributes: true, attributeFilter: ['class'] });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     loadTTSSettings();
+    initFloatingVoiceButton();
     // Save on change
     ['ttsVoice','ttsSpeakingRate','ttsPitch','ttsVolume','autoPlayTTS'].forEach(id => {
         const el = document.getElementById(id);
@@ -1028,6 +1071,9 @@ async function processUserMessage(message) {
         } else if (result.action === 'goto_section' || result.action === 'nav') {
             console.log('[App] Handling goto_section/nav');
             await handleGotoSection(result);
+        } else if (result.action === 'call') {
+            console.log('[App] Handling call');
+            await handleCall(message);
         } else {
             console.log('[App] Handling general conversation');
             // General conversation
@@ -1459,6 +1505,30 @@ async function handleGotoSection(result) {
         console.log('[App][Navigation] ERROR: Section ID not found in map');
         const errorMsg = result.response || 'Section non trouvée.';
         showResponse(errorMsg);
+        speakResponse(errorMsg);
+    }
+}
+
+// Handle emergency call
+async function handleCall(message) {
+    console.log('[App][Call] Handling emergency call request:', message);
+    
+    try {
+        const callResult = await handleEmergencyCall(message, conversationHistory);
+        
+        if (callResult.success) {
+            console.log('[App][Call] Call initiated successfully:', callResult.contact);
+            showSuccess(callResult.response);
+            speakResponse(callResult.response);
+        } else {
+            console.log('[App][Call] Call failed:', callResult.response);
+            showError(callResult.response);
+            speakResponse(callResult.response);
+        }
+    } catch (error) {
+        console.error('[App][Call] Error handling call:', error);
+        const errorMsg = getLocalizedResponse('callFailed', getCurrentLanguage());
+        showError(errorMsg);
         speakResponse(errorMsg);
     }
 }

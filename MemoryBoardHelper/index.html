@@ -65,6 +65,310 @@
         <div id="errorMessage" class="error-message" style="display: none;"></div>
         <div id="successMessage" class="success-message" style="display: none;"></div>
 
+        <!-- Emergency Contacts Panel -->
+        <section class="emergency-panel" id="emergencyPanel" style="display: none;">
+            <div class="emergency-header">
+                <h2>
+                    <span class="material-symbols-outlined">emergency</span>
+                    <span id="emergencyTitle">Contacts d'Urgence</span>
+                </h2>
+                <button class="close-btn" onclick="toggleEmergencyPanel()">×</button>
+            </div>
+            <div class="emergency-contacts">
+                <div class="contact-card" id="contact1Card" style="display: none;">
+                    <div class="contact-info">
+                        <h3 id="contact1Name">Contact 1</h3>
+                        <p id="contact1Phone">+33 6 00 00 00 00</p>
+                        <p id="contact1Relation">Famille</p>
+                    </div>
+                    <button class="btn-call" onclick="callEmergencyContact(1)">
+                        <span class="material-symbols-outlined">call</span>
+                        <span id="callBtn1">Appeler</span>
+                    </button>
+                </div>
+                <div class="contact-card" id="contact2Card" style="display: none;">
+                    <div class="contact-info">
+                        <h3 id="contact2Name">Contact 2</h3>
+                        <p id="contact2Phone">+33 6 00 00 00 00</p>
+                        <p id="contact2Relation">Médecin</p>
+                    </div>
+                    <button class="btn-call" onclick="callEmergencyContact(2)">
+                        <span class="material-symbols-outlined">call</span>
+                        <span id="callBtn2">Appeler</span>
+                    </button>
+                </div>
+                <div class="contact-card" id="contact3Card" style="display: none;">
+                    <div class="contact-info">
+                        <h3 id="contact3Name">Contact 3</h3>
+                        <p id="contact3Phone">15</p>
+                        <p id="contact3Relation">SAMU</p>
+                    </div>
+                    <button class="btn-call" onclick="callEmergencyContact(3)">
+                        <span class="material-symbols-outlined">call</span>
+                        <span id="callBtn3">Appeler</span>
+                    </button>
+                </div>
+            </div>
+            <button class="btn-secondary" onclick="openEmergencySettings()" id="configureContactsBtn">Configurer les contacts</button>
+        </section>
+
+
+
+        
+        <!-- Modale de configuration des contacts d'urgence -->
+        <div id="emergencySettingsModal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2><span class="material-symbols-outlined">settings</span> Configurer les contacts d'urgence</h2>
+                    <button class="close-btn" onclick="closeEmergencySettings()">×</button>
+                </div>
+                <div class="modal-body">
+                    <div id="contactInputs">
+                        <div class="contact-config" id="contactConfig1">
+                            <div class="input-group">
+                                <label for="contact1NameInput">Nom du contact :</label>
+                                <input type="text" id="contact1NameInput" placeholder="Nom...">
+                            </div>
+                            <div class="input-group">
+                                <label for="contact1PhoneInput">Téléphone :</label>
+                                <input type="text" id="contact1PhoneInput" placeholder="Téléphone...">
+                            </div>
+                            <div class="input-group">
+                                <label for="contact1RelationInput">Relation :</label>
+                                <input type="text" id="contact1RelationInput" placeholder="Relation...">
+                            </div>
+                            <button class="btn-delete-contact" type="button" onclick="deleteEmergencyContact(1)">Effacer</button>
+                        </div>
+                        <div class="contact-config" id="contactConfig2" style="display:none;">
+                            <hr>
+                            <div class="input-group">
+                                <label for="contact2NameInput">Nom du contact :</label>
+                                <input type="text" id="contact2NameInput" placeholder="Nom...">
+                            </div>
+                            <div class="input-group">
+                                <label for="contact2PhoneInput">Téléphone :</label>
+                                <input type="text" id="contact2PhoneInput" placeholder="Téléphone...">
+                            </div>
+                            <div class="input-group">
+                                <label for="contact2RelationInput">Relation :</label>
+                                <input type="text" id="contact2RelationInput" placeholder="Relation...">
+                            </div>
+                            <button class="btn-delete-contact" type="button" onclick="deleteEmergencyContact(2)">Effacer</button>
+                        </div>
+                        <div class="contact-config" id="contactConfig3" style="display:none;">
+                            <hr>
+                            <div class="input-group">
+                                <label for="contact3NameInput">Nom du contact :</label>
+                                <input type="text" id="contact3NameInput" placeholder="Nom...">
+                            </div>
+                            <div class="input-group">
+                                <label for="contact3PhoneInput">Téléphone :</label>
+                                <input type="text" id="contact3PhoneInput" placeholder="Téléphone...">
+                            </div>
+                            <div class="input-group">
+                                <label for="contact3RelationInput">Relation :</label>
+                                <input type="text" id="contact3RelationInput" placeholder="Relation...">
+                            </div>
+                            <button class="btn-delete-contact" type="button" onclick="deleteEmergencyContact(3)">Effacer</button>
+                        </div>
+                    </div>
+                    <div class="contact-actions">
+                        <button class="btn-secondary" id="addContactBtn" onclick="addEmergencyContact()">Ajouter un contact</button>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-secondary" onclick="closeEmergencySettings()">Annuler</button>
+                    <button class="btn-primary" onclick="saveEmergencyContacts()">Enregistrer</button>
+                </div>
+            </div>
+        </div>
+
+        <section class="time-display">
+            <div class="current-time">
+                <span class="material-symbols-outlined">schedule</span>
+                <div class="time-info">
+                    <div id="currentTime" class="time-text" tabindex="0">00:00</div>
+                    <div id="currentDate" class="date-text">Chargement...</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="voice-interaction">
+            <div class="voice-status">
+                <div class="status-indicator" id="voiceStatus">
+                    <span class="material-symbols-outlined" id="voiceStatusIcon">mic_off</span>
+                    <span id="voiceStatusText">Mode vocal désactivé</span>
+                </div>
+                <div class="listening-indicator" id="listeningIndicator" style="display: none;">
+                    <div class="pulse"></div>
+                    <span id="listeningText">Écoute en cours...</span>
+                </div>
+                <div class="wake-word-indicator" id="wakeWordIndicator" style="display: none;">
+                    <span class="material-symbols-outlined">chat</span>
+                    <span id="wakeWordIndicatorText">Je vous écoute...</span>
+                </div>
+            </div>
+
+            <div class="voice-controls">
+                <button class="btn-voice-large" id="voiceBtn" onclick="handleVoiceInteraction()">
+                    <span class="material-symbols-outlined">mic</span>
+                    <span id="voiceBtnText">Appuyez pour parler</span>
+                </button>
+            </div>
+
+            <div class="voice-transcript" id="voiceTranscript" style="display: none;">
+                <p id="transcriptText"></p>
+            </div>
+
+            <div class="voice-response" id="voiceResponse" style="display: none;">
+                <div class="response-header">
+                    <span class="material-symbols-outlined">smart_toy</span>
+                    <span id="assistantLabel">Assistant</span>
+                </div>
+                <p id="responseText"></p>
+            </div>
+        </section>
+
+        <section class="tasks-section">
+            <div class="tasks-header">
+                <h2>
+                    <span class="material-symbols-outlined">today</span>
+                    <span id="todayTasksTitle">Mes tâches</span>
+                </h2>
+                <div class="task-counter">
+                    <span id="taskCount">0</span>
+                    <span id="taskCountLabel"> tâches</span>
+                </div>
+            </div>
+
+            <div class="period-tabs">
+                <button class="period-tab active" data-period="today" onclick="switchPeriod('today')" hover-title="Tâches d'aujourd'hui">
+                    <span class="material-symbols-outlined">today</span>
+                </button>
+                <button class="period-tab" data-period="week" onclick="switchPeriod('week')" hover-title="Tâches de la semaine">
+                    <span class="material-symbols-outlined">view_week</span>
+                </button>
+                <button class="period-tab" data-period="month" onclick="switchPeriod('month')" hover-title="Tâches du mois">
+                    <span class="material-symbols-outlined">calendar_month</span>
+                </button>
+                <button class="period-tab" data-period="year" onclick="switchPeriod('year')">
+                    <span class="material-symbols-outlined">calendar_today</span>
+                </button>
+            </div>
+
+            <!-- Sub-tabs for advanced navigation -->
+            <div id="subTabsContainer" class="subtabs" style="display:none;"></div>
+
+            <!-- Vertical table for advanced display -->
+            <div id="verticalTableContainer" style="display:none;"></div>
+
+            <div id="loadingTasks" class="loading-indicator" style="display: none;">
+                <div class="spinner"></div>
+                <p id="loadingTasksText">Chargement...</p>
+            </div>
+
+            <div id="tasksContainer" class="tasks-list">
+                <div class="no-tasks" id="noTasksMessage">
+                    <span class="material-symbols-outlined">check_circle</span>
+                    <p id="noTasksText">Aucune tâche pour aujourd'hui</p>
+                </div>
+            </div>
+
+            <button class="btn-add-task" onclick="openAddTaskModal()" id="addTaskBtn">
+                <span class="material-symbols-outlined">add_circle</span>
+                <span id="addTaskBtnText">Ajouter une tâche</span>
+            </button>
+        </section>
+
+        <section class="quick-commands">
+            <h3 id="commandsTitle">Commandes rapides</h3>
+            <div class="commands-grid">
+                <!-- Tâches -->
+                <button class="command-btn" onclick="quickAddTask()">
+                    <span class="material-symbols-outlined">add_circle</span>
+                    <span>Ajouter une tâche</span>
+                </button>
+                <button class="command-btn" onclick="quickShowTodayTasks()">
+                    <span class="material-symbols-outlined">event</span>
+                    <span>Mes tâches aujourd'hui</span>
+                </button>
+                <button class="command-btn" onclick="quickShowWeekTasks()">
+                    <span class="material-symbols-outlined">view_week</span>
+                    <span>Tâches de la semaine</span>
+                </button>
+                <button class="command-btn" onclick="quickShowMonthTasks()">
+                    <span class="material-symbols-outlined">calendar_month</span>
+                    <span>Tâches du mois</span>
+                </button>
+                <button class="command-btn" onclick="quickShowYearTasks()">
+                    <span class="material-symbols-outlined">calendar_today</span>
+                    <span>Tâches de l'année</span>
+                </button>
+                <!-- Médicament -->
+                <button class="command-btn" onclick="quickAddMedication()">
+                    <span class="material-symbols-outlined">medication</span>
+                    <span>Ajouter un médicament</span>
+                </button>
+                <!-- Heure / Date -->
+                <button class="command-btn" onclick="quickShowTime()">
+                    <span class="material-symbols-outlined">schedule</span>
+                    <span>Quelle heure est-il ?</span>
+                </button>
+                <button class="command-btn" onclick="quickShowDate()">
+                    <span class="material-symbols-outlined">calendar_today</span>
+                    <span>Quelle est la date ?</span>
+                </button>
+                <!-- Mode automatique -->
+                <button class="command-btn" onclick="quickActivateAutoMode()">
+                    <span class="material-symbols-outlined">mic</span>
+                    <span>Activer le mode automatique</span>
+                </button>
+                <button class="command-btn" onclick="quickDeactivateAutoMode()">
+                    <span class="material-symbols-outlined">mic_off</span>
+                    <span>Désactiver le mode automatique</span>
+                </button>
+                <!-- Urgence / Contacts -->
+                <button class="command-btn" onclick="quickShowEmergencyContacts()">
+                    <span class="material-symbols-outlined">local_hospital</span>
+                    <span>Contacts d'urgence</span>
+                </button>
+                <button class="command-btn" onclick="quickConfigureEmergencyContacts()">
+                    <span class="material-symbols-outlined">settings</span>
+                    <span>Configurer les contacts</span>
+                </button>
+               
+                <!-- Mot de réveil -->
+                <button class="command-btn" onclick="quickChangeWakeWord()">
+                    <span class="material-symbols-outlined">keyboard_voice</span>
+                    <span>Changer le mot de reveil</span>
+                </button>
+                <!-- Alarmes -->
+                <button class="command-btn" onclick="quickSnoozeAlarm()">
+                    <span class="material-symbols-outlined">snooze</span>
+                    <span>Snooze alarme</span>
+                </button>
+                <button class="command-btn" onclick="quickDismissAlarm()">
+                    <span class="material-symbols-outlined">notifications_off</span>
+                    <span>Arrêter l'alarme</span>
+                </button>
+                <!-- Historique -->
+                <button class="command-btn" onclick="clearConversationHistory()">
+                    <span class="material-symbols-outlined">delete_sweep</span>
+                    <span>Effacer l'historique</span>
+                </button>
+                <!-- Alarmes supplémentaires -->
+                <button class="command-btn" onclick="quickTestAlarm()">
+                    <span class="material-symbols-outlined">notifications_active</span>
+                    <span>Tester l'alarme</span>
+                </button>
+                <button class="command-btn" onclick="quickChangeAlarm()">
+                    <span class="material-symbols-outlined">alarm</span>
+                    <span>Changer l'alarme</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- API Key Management Section -->
         <section class="api-management-section">
             <h2>
                 <span id="apiKeysTitle">Gestion des clés API</span>
@@ -220,6 +524,7 @@
             </div>
         </section>
 
+        <!-- Wake Word Configuration Section -->
         <section class="wake-word-section">
             <h2 style="display: flex; align-items: center; justify-content: space-between;">
                 <span id="wakeWordTitle">Mot de Réveil</span>
@@ -263,169 +568,7 @@
                 </div>
             </div>
         </section>
-        </section>
-
-        <section class="emergency-panel" id="emergencyPanel" style="display: none;">
-            <div class="emergency-header">
-                <h2>
-                    <span class="material-symbols-outlined">emergency</span>
-                    <span id="emergencyTitle">Contacts d'Urgence</span>
-                </h2>
-                <button class="close-btn" onclick="toggleEmergencyPanel()">×</button>
-            </div>
-            <div class="emergency-contacts">
-                <div class="contact-card" id="contact1Card" style="display: none;">
-                    <div class="contact-info">
-                        <h3 id="contact1Name">Contact 1</h3>
-                        <p id="contact1Phone">+33 6 00 00 00 00</p>
-                        <p id="contact1Relation">Famille</p>
-                    </div>
-                    <button class="btn-call" onclick="callEmergencyContact(1)">
-                        <span class="material-symbols-outlined">call</span>
-                        <span id="callBtn1">Appeler</span>
-                    </button>
-                </div>
-                <div class="contact-card" id="contact2Card" style="display: none;">
-                    <div class="contact-info">
-                        <h3 id="contact2Name">Contact 2</h3>
-                        <p id="contact2Phone">+33 6 00 00 00 00</p>
-                        <p id="contact2Relation">Médecin</p>
-                    </div>
-                    <button class="btn-call" onclick="callEmergencyContact(2)">
-                        <span class="material-symbols-outlined">call</span>
-                        <span id="callBtn2">Appeler</span>
-                    </button>
-                </div>
-                <div class="contact-card" id="contact3Card" style="display: none;">
-                    <div class="contact-info">
-                        <h3 id="contact3Name">Contact 3</h3>
-                        <p id="contact3Phone">15</p>
-                        <p id="contact3Relation">SAMU</p>
-                    </div>
-                    <button class="btn-call" onclick="callEmergencyContact(3)">
-                        <span class="material-symbols-outlined">call</span>
-                        <span id="callBtn3">Appeler</span>
-                    </button>
-                </div>
-            </div>
-            <button class="btn-secondary" onclick="openEmergencySettings()" id="configureContactsBtn">Configurer les contacts</button>
-        </section>
-
-        <!-- Modale de configuration des contacts d'urgence -->
-        <div id="emergencySettingsModal" class="modal" style="display: none;">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2><span class="material-symbols-outlined">settings</span> Configurer les contacts d'urgence</h2>
-                    <button class="close-btn" onclick="closeEmergencySettings()">×</button>
-                </div>
-                <div class="modal-body">
-                    <div id="contactInputs">
-                        <div class="contact-config" id="contactConfig1">
-                            <div class="input-group">
-                                <label for="contact1NameInput">Nom du contact :</label>
-                                <input type="text" id="contact1NameInput" placeholder="Nom...">
-                            </div>
-                            <div class="input-group">
-                                <label for="contact1PhoneInput">Téléphone :</label>
-                                <input type="text" id="contact1PhoneInput" placeholder="Téléphone...">
-                            </div>
-                            <div class="input-group">
-                                <label for="contact1RelationInput">Relation :</label>
-                                <input type="text" id="contact1RelationInput" placeholder="Relation...">
-                            </div>
-                            <button class="btn-delete-contact" type="button" onclick="deleteEmergencyContact(1)">Effacer</button>
-                        </div>
-                        <div class="contact-config" id="contactConfig2" style="display:none;">
-                            <hr>
-                            <div class="input-group">
-                                <label for="contact2NameInput">Nom du contact :</label>
-                                <input type="text" id="contact2NameInput" placeholder="Nom...">
-                            </div>
-                            <div class="input-group">
-                                <label for="contact2PhoneInput">Téléphone :</label>
-                                <input type="text" id="contact2PhoneInput" placeholder="Téléphone...">
-                            </div>
-                            <div class="input-group">
-                                <label for="contact2RelationInput">Relation :</label>
-                                <input type="text" id="contact2RelationInput" placeholder="Relation...">
-                            </div>
-                            <button class="btn-delete-contact" type="button" onclick="deleteEmergencyContact(2)">Effacer</button>
-                        </div>
-                        <div class="contact-config" id="contactConfig3" style="display:none;">
-                            <hr>
-                            <div class="input-group">
-                                <label for="contact3NameInput">Nom du contact :</label>
-                                <input type="text" id="contact3NameInput" placeholder="Nom...">
-                            </div>
-                            <div class="input-group">
-                                <label for="contact3PhoneInput">Téléphone :</label>
-                                <input type="text" id="contact3PhoneInput" placeholder="Téléphone...">
-                            </div>
-                            <div class="input-group">
-                                <label for="contact3RelationInput">Relation :</label>
-                                <input type="text" id="contact3RelationInput" placeholder="Relation...">
-                            </div>
-                            <button class="btn-delete-contact" type="button" onclick="deleteEmergencyContact(3)">Effacer</button>
-                        </div>
-                    </div>
-                    <div class="contact-actions">
-                        <button class="btn-secondary" id="addContactBtn" onclick="addEmergencyContact()">Ajouter un contact</button>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn-secondary" onclick="closeEmergencySettings()">Annuler</button>
-                    <button class="btn-primary" onclick="saveEmergencyContacts()">Enregistrer</button>
-                </div>
-            </div>
-        </div>
-
-        <section class="time-display">
-            <div class="current-time">
-                <span class="material-symbols-outlined">schedule</span>
-                <div class="time-info">
-                    <div id="currentTime" class="time-text" tabindex="0">00:00</div>
-                    <div id="currentDate" class="date-text">Chargement...</div>
-                </div>
-            </div>
-        </section>
-
-        <section class="voice-interaction">
-            <div class="voice-status">
-                <div class="status-indicator" id="voiceStatus">
-                    <span class="material-symbols-outlined" id="voiceStatusIcon">mic_off</span>
-                    <span id="voiceStatusText">Mode vocal désactivé</span>
-                </div>
-                <div class="listening-indicator" id="listeningIndicator" style="display: none;">
-                    <div class="pulse"></div>
-                    <span id="listeningText">Écoute en cours...</span>
-                </div>
-                <div class="wake-word-indicator" id="wakeWordIndicator" style="display: none;">
-                    <span class="material-symbols-outlined">chat</span>
-                    <span id="wakeWordIndicatorText">Je vous écoute...</span>
-                </div>
-            </div>
-
-            <div class="voice-controls">
-                <button class="btn-voice-large" id="voiceBtn" onclick="handleVoiceInteraction()">
-                    <span class="material-symbols-outlined">mic</span>
-                    <span id="voiceBtnText">Appuyez pour parler</span>
-                </button>
-            </div>
-
-            <div class="voice-transcript" id="voiceTranscript" style="display: none;">
-                <p id="transcriptText"></p>
-            </div>
-
-            <div class="voice-response" id="voiceResponse" style="display: none;">
-                <div class="response-header">
-                    <span class="material-symbols-outlined">smart_toy</span>
-                    <span id="assistantLabel">Assistant</span>
-                </div>
-                <p id="responseText"></p>
-            </div>
-        </section>
-
-        <!-- Text-to-Speech Configuration -->
+                <!-- Text-to-Speech Configuration -->
         <section class="tts-section">
             <h2>
                 <span class="material-symbols-outlined">speaker</span>
@@ -501,145 +644,6 @@
                     </div>
                    
                 </div>
-            </div>
-        </section>
-
-        <section class="tasks-section">
-            <div class="tasks-header">
-                <h2>
-                    <span class="material-symbols-outlined">today</span>
-                    <span id="todayTasksTitle">Mes tâches</span>
-                </h2>
-                <div class="task-counter">
-                    <span id="taskCount">0</span>
-                    <span id="taskCountLabel"> tâches</span>
-                </div>
-            </div>
-
-            <div class="period-tabs">
-                <button class="period-tab active" data-period="today" onclick="switchPeriod('today')" hover-title="Tâches d'aujourd'hui">
-                    <span class="material-symbols-outlined">today</span>
-                </button>
-                <button class="period-tab" data-period="week" onclick="switchPeriod('week')" hover-title="Tâches de la semaine">
-                    <span class="material-symbols-outlined">view_week</span>
-                </button>
-                <button class="period-tab" data-period="month" onclick="switchPeriod('month')" hover-title="Tâches du mois">
-                    <span class="material-symbols-outlined">calendar_month</span>
-                </button>
-                <button class="period-tab" data-period="year" onclick="switchPeriod('year')">
-                    <span class="material-symbols-outlined">calendar_today</span>
-                </button>
-            </div>
-
-            <!-- Sub-tabs for advanced navigation -->
-            <div id="subTabsContainer" class="subtabs" style="display:none;"></div>
-
-            <!-- Vertical table for advanced display -->
-            <div id="verticalTableContainer" style="display:none;"></div>
-
-            <div id="loadingTasks" class="loading-indicator" style="display: none;">
-                <div class="spinner"></div>
-                <p id="loadingTasksText">Chargement...</p>
-            </div>
-
-            <div id="tasksContainer" class="tasks-list">
-                <div class="no-tasks" id="noTasksMessage">
-                    <span class="material-symbols-outlined">check_circle</span>
-                    <p id="noTasksText">Aucune tâche pour aujourd'hui</p>
-                </div>
-            </div>
-
-            <button class="btn-add-task" onclick="openAddTaskModal()" id="addTaskBtn">
-                <span class="material-symbols-outlined">add_circle</span>
-                <span id="addTaskBtnText">Ajouter une tâche</span>
-            </button>
-        </section>
-
-        <section class="quick-commands">
-            <h3 id="commandsTitle">Commandes rapides</h3>
-            <div class="commands-grid">
-                <!-- Tâches -->
-                <button class="command-btn" onclick="quickAddTask()">
-                    <span class="material-symbols-outlined">add_circle</span>
-                    <span>Ajouter une tâche</span>
-                </button>
-                <button class="command-btn" onclick="quickShowTodayTasks()">
-                    <span class="material-symbols-outlined">event</span>
-                    <span>Mes tâches aujourd'hui</span>
-                </button>
-                <button class="command-btn" onclick="quickShowWeekTasks()">
-                    <span class="material-symbols-outlined">view_week</span>
-                    <span>Tâches de la semaine</span>
-                </button>
-                <button class="command-btn" onclick="quickShowMonthTasks()">
-                    <span class="material-symbols-outlined">calendar_month</span>
-                    <span>Tâches du mois</span>
-                </button>
-                <button class="command-btn" onclick="quickShowYearTasks()">
-                    <span class="material-symbols-outlined">calendar_today</span>
-                    <span>Tâches de l'année</span>
-                </button>
-                <!-- Médicament -->
-                <button class="command-btn" onclick="quickAddMedication()">
-                    <span class="material-symbols-outlined">medication</span>
-                    <span>Ajouter un médicament</span>
-                </button>
-                <!-- Heure / Date -->
-                <button class="command-btn" onclick="quickShowTime()">
-                    <span class="material-symbols-outlined">schedule</span>
-                    <span>Quelle heure est-il ?</span>
-                </button>
-                <button class="command-btn" onclick="quickShowDate()">
-                    <span class="material-symbols-outlined">calendar_today</span>
-                    <span>Quelle est la date ?</span>
-                </button>
-                <!-- Mode automatique -->
-                <button class="command-btn" onclick="quickActivateAutoMode()">
-                    <span class="material-symbols-outlined">mic</span>
-                    <span>Activer le mode automatique</span>
-                </button>
-                <button class="command-btn" onclick="quickDeactivateAutoMode()">
-                    <span class="material-symbols-outlined">mic_off</span>
-                    <span>Désactiver le mode automatique</span>
-                </button>
-                <!-- Urgence / Contacts -->
-                <button class="command-btn" onclick="quickShowEmergencyContacts()">
-                    <span class="material-symbols-outlined">local_hospital</span>
-                    <span>Contacts d'urgence</span>
-                </button>
-                <button class="command-btn" onclick="quickConfigureEmergencyContacts()">
-                    <span class="material-symbols-outlined">settings</span>
-                    <span>Configurer les contacts</span>
-                </button>
-               
-                <!-- Mot de réveil -->
-                <button class="command-btn" onclick="quickChangeWakeWord()">
-                    <span class="material-symbols-outlined">keyboard_voice</span>
-                    <span>Changer le mot de reveil</span>
-                </button>
-                <!-- Alarmes -->
-                <button class="command-btn" onclick="quickSnoozeAlarm()">
-                    <span class="material-symbols-outlined">snooze</span>
-                    <span>Snooze alarme</span>
-                </button>
-                <button class="command-btn" onclick="quickDismissAlarm()">
-                    <span class="material-symbols-outlined">notifications_off</span>
-                    <span>Arrêter l'alarme</span>
-                </button>
-                <!-- Historique -->
-                <button class="command-btn" onclick="clearConversationHistory()">
-                    <span class="material-symbols-outlined">delete_sweep</span>
-                    <span>Effacer l'historique</span>
-                </button>
-                <!-- Alarmes supplémentaires -->
-                <button class="command-btn" onclick="quickTestAlarm()">
-                    <span class="material-symbols-outlined">notifications_active</span>
-                    <span>Tester l'alarme</span>
-                </button>
-                <button class="command-btn" onclick="quickChangeAlarm()">
-                    <span class="material-symbols-outlined">alarm</span>
-                    <span>Changer l'alarme</span>
-                </button>
             </div>
         </section>
     </main>
@@ -719,6 +723,11 @@
             </div>
         </div>
     </div>
+
+    <!-- Floating Voice Button -->
+    <button class="btn-voice-floating" id="floatingVoiceBtn" style="display: none;" onclick="handleVoiceInteraction()">
+        <span class="material-symbols-outlined">mic</span>
+    </button>
 
     <footer class="footer">
         <p>Arnaud Cassone © Artcraft Visuals 2025</p>
