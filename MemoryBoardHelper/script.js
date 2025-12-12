@@ -356,28 +356,33 @@ function isConfirmation(text, language = 'fr') {
 }
 
 // --- Sound Effects ---
-function playTapSound() {
-    const audio = document.getElementById('tapSound');
+function playSound(soundType) {
+    const soundMap = {
+        'tap': 'tapSound',
+        'validation': 'validationSound',
+        'listening': 'listeningSound',
+        'alarm': 'alarmSound'
+    };
+    
+    const audioId = soundMap[soundType] || soundType + 'Sound';
+    const audio = document.getElementById(audioId);
+    
     if (audio) {
         audio.currentTime = 0;
-        audio.play();
+        audio.play().catch(err => console.log('[Sound] Play error:', err));
     }
+}
+
+function playTapSound() {
+    playSound('tap');
 }
 
 function playValidationSound() {
-    const audio = document.getElementById('validationSound');
-    if (audio) {
-        audio.currentTime = 0;
-        audio.play();
-    }
+    playSound('validation');
 }
 
 function playListeningSound() {
-    const audio = document.getElementById('listeningSound');
-    if (audio) {
-        audio.currentTime = 0;
-        audio.play();
-    }
+    playSound('listening');
 }
 // Patch all button presses to play tap sound
 document.addEventListener('DOMContentLoaded', function() {
@@ -402,11 +407,14 @@ function quickAddTask() {
 
 // Commande : Afficher les tâches du jour
 function quickShowTodayTasks() {
-    switchPeriod('today');
+    if (typeof changeCalendarView === 'function') {
+        changeCalendarView('timeGridDay');
+        calendarToday();
+    }
     commandWhatToday();
-    const tasksSection = document.querySelector('.tasks-section');
-    if (tasksSection) {
-        tasksSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const calendarSection = document.querySelector('.calendar-section');
+    if (calendarSection) {
+        calendarSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 }
 // Commande : Afficher les tâches de la semaine (réponse Mistral)
@@ -463,31 +471,37 @@ window.mistralAgentRespond = async function(period) {
 
 // Commande : Afficher les tâches de la semaine
 function quickShowWeekTasks() {
-    switchPeriod('week');
+    if (typeof changeCalendarView === 'function') {
+        changeCalendarView('timeGridWeek');
+    }
     commandWhatWeek();
-    const tasksSection = document.querySelector('.tasks-section');
-    if (tasksSection) {
-        tasksSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const calendarSection = document.querySelector('.calendar-section');
+    if (calendarSection) {
+        calendarSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 }
 
 // Commande : Afficher les tâches du mois
 function quickShowMonthTasks() {
-    switchPeriod('month');
+    if (typeof changeCalendarView === 'function') {
+        changeCalendarView('dayGridMonth');
+    }
     commandWhatMonth();
-    const tasksSection = document.querySelector('.tasks-section');
-    if (tasksSection) {
-        tasksSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const calendarSection = document.querySelector('.calendar-section');
+    if (calendarSection) {
+        calendarSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 }
 
 // Commande : Afficher les tâches de l'année
 function quickShowYearTasks() {
-    switchPeriod('year');
+    if (typeof changeCalendarView === 'function') {
+        changeCalendarView('dayGridMonth');
+    }
     commandWhatYear();
-    const tasksSection = document.querySelector('.tasks-section');
-    if (tasksSection) {
-        tasksSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const calendarSection = document.querySelector('.calendar-section');
+    if (calendarSection) {
+        calendarSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 }
 
@@ -666,9 +680,9 @@ const voiceCommands = [
     // Note: "modifie la tâche" removed - must be handled by Mistral with conversation history context
     // Note: "marque la tâche comme faite" removed - must be handled by Mistral with conversation history context
     { phrases: ["quelles sont mes tâches aujourd'hui", "liste mes tâches", "qu'ai-je à faire", "mes tâches"], action: () => commandWhatToday() },
-    { phrases: ["quelles sont mes tâches cette semaine", "tâches de la semaine"], action: () => switchPeriod('week') },
-    { phrases: ["quelles sont mes tâches ce mois-ci", "tâches du mois"], action: () => switchPeriod('month') },
-    { phrases: ["quelles sont mes tâches cette année", "tâches de l'année"], action: () => switchPeriod('year') },
+    { phrases: ["quelles sont mes tâches cette semaine", "tâches de la semaine"], action: () => { changeCalendarView('timeGridWeek'); } },
+    { phrases: ["quelles sont mes tâches ce mois-ci", "tâches du mois"], action: () => { changeCalendarView('dayGridMonth'); } },
+    { phrases: ["quelles sont mes tâches cette année", "tâches de l'année"], action: () => { changeCalendarView('dayGridMonth'); } },
     // Mot de réveil
     { phrases: ["change le mot de réveil en", "modifie le mot de réveil"], action: (t) => {/* handled by wake word logic */} },
     { phrases: ["désactive le mot de réveil"], action: () => { wakeWordEnabled = false; document.getElementById('wakeWordEnabled').checked = false; updateWakeWordDisplay(); showSuccess('Mot de réveil désactivé.'); } },
@@ -837,11 +851,27 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Load Mistral settings
     loadMistralSettings();
     
+    // Load TTS settings
+    loadTTSSettings();
+    
+    // Load SSML settings
+    loadSSMLSettings();
+    
+    // Load alarm sound setting
+    const savedAlarmSound = localStorage.getItem('alarmSound');
+    if (savedAlarmSound) {
+        const alarmAudio = document.getElementById('alarmSound');
+        if (alarmAudio) {
+            alarmAudio.src = 'assets/alarm-sounds/' + savedAlarmSound;
+            alarmAudio.load();
+        }
+    }
+    
     // Load conversation history
     await loadConversationHistory();
     
     // Display tasks
-    await refreshTaskDisplay();
+    if (typeof refreshCalendar === 'function') await refreshCalendar();
     
     // Fetch last modified date
     fetchLastModified();
@@ -1436,12 +1466,12 @@ async function handleUpdateTask(result, tasks) {
                 const weekEnd = new Date(weekStart);
                 weekEnd.setDate(weekStart.getDate() + 7);
                 if (taskDate >= weekStart && taskDate < weekEnd) {
-                    await switchPeriod('week');
+                    if (typeof changeCalendarView === 'function') changeCalendarView('timeGridWeek');
                 } else {
-                    await switchPeriod('month');
+                    if (typeof changeCalendarView === 'function') changeCalendarView('dayGridMonth');
                 }
             } else {
-                await refreshTaskDisplay();
+                if (typeof refreshCalendar === 'function') await refreshCalendar();
             }
         } else {
             showError(getLocalizedText('taskCreationFailed'));
@@ -1517,7 +1547,7 @@ async function updateTaskFromConfirmation(data, language) {
             const confirmMsg = confirmMessages[language] || confirmMessages.fr;
             showSuccess(confirmMsg);
             speakResponse(confirmMsg);
-            await refreshTaskDisplay();
+            if (typeof refreshCalendar === 'function') await refreshCalendar();
         } else {
             showError(getLocalizedText('taskCreationFailed'));
         }
@@ -1536,7 +1566,7 @@ async function updateTaskFromConfirmation(data, language) {
             const confirmMsg = confirmMessages[language] || confirmMessages.fr;
             showSuccess(confirmMsg);
             speakResponse(confirmMsg);
-            await refreshTaskDisplay();
+            if (typeof refreshCalendar === 'function') await refreshCalendar();
         } else {
             showError(getLocalizedText('taskCreationFailed'));
         }
@@ -1660,12 +1690,12 @@ async function createTaskFromConfirmation(taskData, language) {
             const weekEnd = new Date(weekStart);
             weekEnd.setDate(weekStart.getDate() + 7);
             if (taskDate >= weekStart && taskDate < weekEnd) {
-                await switchPeriod('week');
+                if (typeof changeCalendarView === 'function') changeCalendarView('timeGridWeek');
             } else {
-                await switchPeriod('month');
+                if (typeof changeCalendarView === 'function') changeCalendarView('dayGridMonth');
             }
         } else {
-            await refreshTaskDisplay();
+            if (typeof refreshCalendar === 'function') await refreshCalendar();
         }
     } else {
         showError(getLocalizedText('taskCreationFailed'));
@@ -1735,7 +1765,7 @@ async function completeTaskFromConfirmation(data, language) {
         const confirmMsg = confirmMessages[language] || confirmMessages.fr;
         showSuccess(confirmMsg);
         speakResponse(confirmMsg);
-        await refreshTaskDisplay();
+        if (typeof refreshCalendar === 'function') await refreshCalendar();
     } else {
         showError(getLocalizedText('taskUpdateFailed'));
     }
@@ -1849,7 +1879,7 @@ async function deleteTaskFromConfirmation(data, language) {
         const confirmMsg = confirmMessages[language] || confirmMessages.fr;
         showSuccess(confirmMsg);
         speakResponse(confirmMsg);
-        await refreshTaskDisplay();
+        if (typeof refreshCalendar === 'function') await refreshCalendar();
     } else {
         showError(getLocalizedText('taskDeleteFailed'));
     }
@@ -1959,7 +1989,7 @@ async function handleSearchTask(result, tasks, userMessage) {
             const now = new Date();
             
             if (taskDate.toDateString() === now.toDateString()) {
-                await switchPeriod('today');
+                if (typeof changeCalendarView === 'function') { changeCalendarView('timeGridDay'); calendarToday(); }
             } else {
                 const weekStart = new Date(now);
                 weekStart.setDate(now.getDate() - now.getDay());
@@ -1968,9 +1998,9 @@ async function handleSearchTask(result, tasks, userMessage) {
                 weekEnd.setDate(weekStart.getDate() + 7);
                 
                 if (taskDate >= weekStart && taskDate < weekEnd) {
-                    await switchPeriod('week');
+                    if (typeof changeCalendarView === 'function') changeCalendarView('timeGridWeek');
                 } else {
-                    await switchPeriod('month');
+                    if (typeof changeCalendarView === 'function') changeCalendarView('dayGridMonth');
                 }
             }
         }
@@ -1997,7 +2027,7 @@ async function handleSearchTask(result, tasks, userMessage) {
         const now = new Date();
         
         if (taskDate.toDateString() === now.toDateString()) {
-            await switchPeriod('today');
+            if (typeof changeCalendarView === 'function') { changeCalendarView('timeGridDay'); calendarToday(); }
         } else {
             const weekStart = new Date(now);
             weekStart.setDate(now.getDate() - now.getDay());
@@ -2006,9 +2036,9 @@ async function handleSearchTask(result, tasks, userMessage) {
             weekEnd.setDate(weekStart.getDate() + 7);
             
             if (taskDate >= weekStart && taskDate < weekEnd) {
-                await switchPeriod('week');
+                if (typeof changeCalendarView === 'function') changeCalendarView('timeGridWeek');
             } else {
-                await switchPeriod('month');
+                if (typeof changeCalendarView === 'function') changeCalendarView('dayGridMonth');
             }
         }
         
@@ -2203,7 +2233,7 @@ async function commandCompleteTask() {
     if (tasks.length > 0) {
         // Complete the first pending task
         await completeTask(tasks[0].id);
-        await refreshTaskDisplay();
+        if (typeof refreshCalendar === 'function') await refreshCalendar();
         const lang = getCurrentLanguage();
         const simpleMsg = getLocalizedResponse('taskCompleted', lang);
         const enhancedMsg = await enhanceResponseWithMistral(simpleMsg, {
@@ -2277,446 +2307,43 @@ async function speakResponse(text) {
     }
 }
 
-// Switch period tab
+// ======================================================================
+// OLD TASK DISPLAY SYSTEM REMOVED - Now using FullCalendar
+// All task display is now handled by calendar-integration.js
+// ======================================================================
+
+// Switch period tab (REMOVED - use changeCalendarView from calendar-integration.js)
 async function switchPeriod(period) {
-    currentPeriod = period;
-    
-    // Update tab UI
-    document.querySelectorAll('.period-tab').forEach(tab => {
-        tab.classList.remove('active');
-    });
-    document.querySelector(`[data-period="${period}"]`).classList.add('active');
-    
-    // Refresh display
-    await refreshTaskDisplay();
+    console.warn('[Legacy] switchPeriod() called - redirecting to FullCalendar');
+    const viewMap = {
+        'today': 'timeGridDay',
+        'week': 'timeGridWeek',
+        'month': 'dayGridMonth',
+        'year': 'dayGridMonth'
+    };
+    if (typeof changeCalendarView === 'function' && viewMap[period]) {
+        changeCalendarView(viewMap[period]);
+        if (period === 'today' && typeof calendarToday === 'function') {
+            calendarToday();
+        }
+    }
 }
 
-// Refresh task display
+// Refresh task display (REMOVED - use refreshCalendar from calendar-integration.js)
 async function refreshTaskDisplay() {
-    const container = document.getElementById('tasksContainer');
-    const noTasksMsg = document.getElementById('noTasksMessage');
-    const taskCount = document.getElementById('taskCount');
-    const todayTasksTitle = document.getElementById('todayTasksTitle');
-    const noTasksText = document.getElementById('noTasksText');
-    const subTabsContainer = document.getElementById('subTabsContainer');
-    const verticalTableContainer = document.getElementById('verticalTableContainer');
-
-    const tasks = await getTasksByPeriod(currentPeriod);
-    const lang = getCurrentLanguage();
-
-    // Titre dynamique selon la période
-    const periodTitles = {
-        today: { fr: 'Mes tâches', en: 'My Tasks', it: 'I miei compiti' },
-        week: { fr: 'Tâches de la semaine', en: 'This Week', it: 'Settimana' },
-        month: { fr: 'Tâches du mois', en: 'This Month', it: 'Mese' },
-        year: { fr: 'Tâches de l\'année', en: 'This Year', it: 'Anno' }
-    };
-    if (todayTasksTitle) todayTasksTitle.textContent = periodTitles[currentPeriod]?.[lang] || periodTitles[currentPeriod]?.fr;
-
-    // Message "aucune tâche" dynamique
-    const noTasksMessages = {
-        today: { fr: "Aucune tâche pour aujourd'hui", en: 'No tasks for today', it: 'Nessun compito per oggi' },
-        week: { fr: 'Aucune tâche cette semaine', en: 'No tasks this week', it: 'Nessun compito questa settimana' },
-        month: { fr: 'Aucune tâche ce mois-ci', en: 'No tasks this month', it: 'Nessun compito questo mese' },
-        year: { fr: 'Aucune tâche cette année', en: 'No tasks this year', it: 'Nessun compito quest\'anno' }
-    };
-    if (noTasksText) noTasksText.textContent = noTasksMessages[currentPeriod]?.[lang] || noTasksMessages[currentPeriod]?.fr;
-
-    // Update task count
-    if (taskCount) {
-        taskCount.textContent = tasks.length;
-    }
-
-    // Hide all advanced containers by default
-    subTabsContainer.style.display = 'none';
-    verticalTableContainer.style.display = 'none';
-    container.classList.remove('tasks-grid', 'tasks-month-grid', 'tasks-year-card');
-    container.innerHTML = '';
-
-    // --- WEEK VIEW ---
-    if (currentPeriod === 'week') {
-        // Sub-tabs: days of week
-        const now = new Date();
-        const weekStart = new Date(now);
-        weekStart.setDate(now.getDate() - now.getDay()); // Sunday
-        const days = [];
-        for (let i = 0; i < 7; i++) {
-            const d = new Date(weekStart);
-            d.setDate(weekStart.getDate() + i);
-            days.push(d);
-        }
-        let focusedDayIdx = now.getDay();
-        subTabsContainer.innerHTML = '';
-        days.forEach((d, idx) => {
-            const btn = document.createElement('button');
-            btn.className = 'subtab' + (idx === focusedDayIdx ? ' active' : '');
-            // Format: dim 7
-            let weekday = d.toLocaleDateString('fr-FR', { weekday: 'short' });
-            let dayNum = d.getDate();
-            btn.textContent = `${weekday.replace('.', '')} ${dayNum}`;
-            btn.onclick = () => renderWeekVerticalTable(idx);
-            subTabsContainer.appendChild(btn);
-        });
-        subTabsContainer.style.display = 'flex';
-        verticalTableContainer.style.display = 'block';
-        renderWeekVerticalTable(focusedDayIdx);
-        if (tasks.length === 0 && noTasksMsg) noTasksMsg.style.display = 'block';
-        else if (noTasksMsg) noTasksMsg.style.display = 'none';
-        return;
-    }
-
-    // --- MONTH VIEW ---
-    if (currentPeriod === 'month') {
-        // Sub-tabs: weeks of month
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = now.getMonth();
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-        const weeks = [];
-        let week = [];
-        for (let d = 1; d <= daysInMonth; d++) {
-            const dateObj = new Date(year, month, d);
-            if (dateObj.getDay() === 0 && week.length) {
-                weeks.push(week);
-                week = [];
-            }
-            week.push(dateObj);
-        }
-        if (week.length) weeks.push(week);
-        // Focus on current week
-        let focusedWeekIdx = weeks.findIndex(w => w.some(d => d.getDate() === now.getDate()));
-        if (focusedWeekIdx === -1) focusedWeekIdx = 0;
-        subTabsContainer.innerHTML = '';
-        weeks.forEach((w, idx) => {
-            const btn = document.createElement('button');
-            // --- Intégration vocale et Mistral : ouverture du popup modifiable ---
-            // À appeler après reconnaissance vocale ou résultat Mistral
-            function showTaskFromVoiceOrMistral(task) {
-                if (window.openTaskPopup) window.openTaskPopup(task, false);
-            }
-            window.showTaskFromVoiceOrMistral = showTaskFromVoiceOrMistral;
-            btn.className = 'subtab' + (idx === focusedWeekIdx ? ' active' : '');
-            // Format: 21-27
-            let startDay = w[0].getDate();
-            let endDay = w[w.length-1].getDate();
-            btn.textContent = `${startDay}-${endDay}`;
-            btn.onclick = () => renderMonthVerticalTable(idx);
-            subTabsContainer.appendChild(btn);
-        });
-        subTabsContainer.style.display = 'flex';
-        verticalTableContainer.style.display = 'block';
-        renderMonthVerticalTable(focusedWeekIdx);
-        if (tasks.length === 0 && noTasksMsg) noTasksMsg.style.display = 'block';
-        else if (noTasksMsg) noTasksMsg.style.display = 'none';
-        return;
-    }
-
-    // --- YEAR VIEW ---
-    if (currentPeriod === 'year') {
-        // Sub-tabs: months
-        const now = new Date();
-        const year = now.getFullYear();
-        let focusedMonthIdx = now.getMonth();
-        subTabsContainer.innerHTML = '';
-        // French month abbreviations
-        const frMonths = ['jan', 'fev', 'mar', 'avr', 'mai', 'jui', 'jui', 'aou', 'sep', 'oct', 'nov', 'dec'];
-        for (let m = 0; m < 12; m++) {
-            const btn = document.createElement('button');
-            btn.className = 'subtab' + (m === focusedMonthIdx ? ' active' : '');
-            let label;
-            if (lang === 'fr') {
-                label = frMonths[m];
-            } else if (lang === 'it') {
-                label = new Date(year, m, 1).toLocaleString('it-IT', { month: 'short' });
-            } else {
-                label = new Date(year, m, 1).toLocaleString('en-US', { month: 'short' });
-            }
-            btn.textContent = label;
-            btn.onclick = () => renderYearVerticalTable(m);
-            subTabsContainer.appendChild(btn);
-        }
-        subTabsContainer.style.display = 'flex';
-        verticalTableContainer.style.display = 'block';
-        renderYearVerticalTable(focusedMonthIdx);
-        if (tasks.length === 0 && noTasksMsg) noTasksMsg.style.display = 'block';
-        else if (noTasksMsg) noTasksMsg.style.display = 'none';
-        return;
-    }
-
-    // --- TODAY VIEW (défaut) ---
-    if (tasks.length === 0) {
-        if (noTasksMsg) noTasksMsg.style.display = 'block';
-        container.innerHTML = '';
-        return;
-    }
-    if (noTasksMsg) noTasksMsg.style.display = 'none';
-    container.innerHTML = '';
-    for (const task of tasks) {
-        const el = createTaskElement(task, lang);
-        container.appendChild(el);
-    }
-
-    // --- Helper functions for vertical tables ---
-    function renderWeekVerticalTable(dayIdx) {
-        // Highlight subtab
-        Array.from(subTabsContainer.children).forEach((btn, idx) => btn.classList.toggle('active', idx === dayIdx));
-        const now = new Date();
-        const weekStart = new Date(now);
-        weekStart.setDate(now.getDate() - now.getDay());
-        const dayDate = new Date(weekStart);
-        dayDate.setDate(weekStart.getDate() + dayIdx);
-        // Build table: hours 0-23
-        let html = '<table class="vertical-table"><thead><tr><th>Heure</th><th>Tâches</th></tr></thead><tbody>';
-        for (let h = 0; h < 24; h++) {
-            const hourStr = h.toString().padStart(2, '0') + ':00';
-            const rowTasks = tasks.filter(t => t.date === dayDate.toISOString().split('T')[0] && t.time && t.time.startsWith(hourStr.slice(0,2)));
-            html += `<tr${dayDate.getDate() === now.getDate() ? ' class="focused-row"' : ''}><td class="hour-label">${hourStr}</td><td class="task-cell">`;
-            if (rowTasks.length) {
-                rowTasks.forEach(t => {
-                    html += createTaskElement(t, lang, 'compact').outerHTML;
-                });
-            }
-            html += '</td></tr>';
-        }
-        html += '</tbody></table>';
-        verticalTableContainer.innerHTML = html;
-    }
-
-    function renderMonthVerticalTable(weekIdx) {
-        // Highlight subtab
-        Array.from(subTabsContainer.children).forEach((btn, idx) => btn.classList.toggle('active', idx === weekIdx));
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = now.getMonth();
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-        // Get week days
-        const weeks = [];
-        let week = [];
-        for (let d = 1; d <= daysInMonth; d++) {
-            const dateObj = new Date(year, month, d);
-            if (dateObj.getDay() === 0 && week.length) {
-                weeks.push(week);
-                week = [];
-            }
-            week.push(dateObj);
-        }
-        if (week.length) weeks.push(week);
-        const weekDays = weeks[weekIdx];
-        let html = '<table class="vertical-table"><thead><tr><th>Jour</th><th>Tâches</th></tr></thead><tbody>';
-        weekDays.forEach(d => {
-            const dateStr = d.toISOString().split('T')[0];
-            const rowTasks = tasks.filter(t => t.date === dateStr);
-            html += `<tr${d.getDate() === now.getDate() ? ' class="focused-row"' : ''}><td class="day-label">${d.toLocaleDateString(lang === 'fr' ? 'fr-FR' : lang === 'it' ? 'it-IT' : 'en-US', { weekday: 'short', day: 'numeric', month: 'short' })}</td><td class="task-cell">`;
-            if (rowTasks.length) {
-                rowTasks.forEach(t => {
-                    html += createTaskElement(t, lang, 'mini').outerHTML;
-                });
-            }
-            html += '</td></tr>';
-        });
-        html += '</tbody></table>';
-        verticalTableContainer.innerHTML = html;
-    }
-
-    function renderYearVerticalTable(monthIdx) {
-        // Highlight subtab
-        Array.from(subTabsContainer.children).forEach((btn, idx) => btn.classList.toggle('active', idx === monthIdx));
-        const now = new Date();
-        const year = now.getFullYear();
-        const daysInMonth = new Date(year, monthIdx + 1, 0).getDate();
-        let html = '<table class="vertical-table"><thead><tr><th>Jour</th><th>Tâches</th></tr></thead><tbody>';
-        for (let d = 1; d <= daysInMonth; d++) {
-            const dateObj = new Date(year, monthIdx, d);
-            const dateStr = dateObj.toISOString().split('T')[0];
-            const rowTasks = tasks.filter(t => t.date === dateStr);
-            html += `<tr${monthIdx === now.getMonth() && d === now.getDate() ? ' class="focused-row"' : ''}><td class="day-label">${dateObj.toLocaleDateString(lang === 'fr' ? 'fr-FR' : lang === 'it' ? 'it-IT' : 'en-US', { day: 'numeric', month: 'short' })}</td><td class="task-cell">`;
-            if (rowTasks.length) {
-                rowTasks.forEach(t => {
-                    html += createTaskElement(t, lang, 'micro').outerHTML;
-                });
-            }
-            html += '</td></tr>';
-        }
-        html += '</tbody></table>';
-        verticalTableContainer.innerHTML = html;
+    console.warn('[Legacy] refreshTaskDisplay() called - redirecting to FullCalendar');
+    if (typeof refreshCalendar === 'function') {
+        await refreshCalendar();
     }
 }
 
-// Format task for display with localized labels
-function formatTaskForDisplay(task, lang) {
-    // Task type labels
-    const typeLabels = {
-        general: { fr: 'Général', it: 'Generale', en: 'General' },
-        medication: { fr: 'Médicament', it: 'Medicinale', en: 'Medication' },
-        appointment: { fr: 'Rendez-vous', it: 'Appuntamento', en: 'Appointment' },
-        call: { fr: 'Appel', it: 'Chiamata', en: 'Call' },
-        shopping: { fr: 'Courses', it: 'Spesa', en: 'Shopping' },
-        recurring: { fr: 'Récurrente', it: 'Ricorrente', en: 'Recurring' },
-        oneTime: { fr: 'Ponctuelle', it: 'Una volta', en: 'One-time' }
-    };
-
-    // Priority labels
-    const priorityLabels = {
-        urgent: { fr: 'Urgent', it: 'Urgente', en: 'Urgent' },
-        normal: { fr: 'Normal', it: 'Normale', en: 'Normal' },
-        low: { fr: 'Faible', it: 'Bassa', en: 'Low' }
-    };
-
-    // Task type icons
-    const typeIcons = {
-        general: 'assignment',
-        medication: 'medication',
-        appointment: 'event',
-        call: 'call',
-        shopping: 'shopping_cart',
-        recurring: 'repeat',
-        oneTime: 'today'
-    };
-
-    return {
-        typeLabel: typeLabels[task.type]?.[lang] || typeLabels.general[lang],
-        priorityLabel: priorityLabels[task.priority]?.[lang] || priorityLabels.normal[lang],
-        typeIcon: typeIcons[task.type] || typeIcons.general,
-        isRecurring: task.recurrence ? true : false
-    };
-}
-
-// Create task element
-function createTaskElement(task, lang, mode = '') {
-    const taskDiv = document.createElement('div');
-    taskDiv.className = 'task-item';
-    taskDiv.setAttribute('data-task-id', task.id);
-    if (task.priority === 'urgent') taskDiv.classList.add('urgent');
-    if (task.isMedication) taskDiv.classList.add('medication');
-    if (task.status === 'completed') taskDiv.classList.add('completed');
-    if (task.recurrence) taskDiv.classList.add('recurring');
-
-    const formattedTask = formatTaskForDisplay(task, lang);
-    const taskDate = new Date(task.date);
-    const formattedDate = taskDate.toLocaleDateString(lang === 'fr' ? 'fr-FR' : lang === 'it' ? 'it-IT' : 'en-US', {
-        weekday: 'short', day: 'numeric', month: 'short'
-    });
-
-    // Semaine
-    if (mode === 'compact') {
-        taskDiv.classList.add('task-week');
-        taskDiv.innerHTML = `
-            <div class="task-title">${task.description}</div>
-            <div class="task-details">
-                <span class="task-detail"><span class="material-symbols-outlined">event</span>${formattedDate}</span>
-                ${task.time ? `<span class="task-detail"><span class="material-symbols-outlined">schedule</span>${task.time}</span>` : ''}
-            </div>
-            <div class="task-actions">
-                ${task.status !== 'completed' ? `
-                    <button class="btn-task-action btn-complete" title="Terminer" onclick="completeTaskUI(${task.id})">
-                        <span class="material-symbols-outlined">check_circle</span>
-                    </button>
-                    <button class="btn-task-action btn-snooze-task" title="Reporter" onclick="snoozeTaskUI(${task.id})">
-                        <span class="material-symbols-outlined">snooze</span>
-                    </button>
-                    <button class="btn-task-action btn-delete-task" title="Supprimer" onclick="deleteTaskUI(${task.id})">
-                        <span class="material-symbols-outlined">delete</span>
-                    </button>
-                ` : ''}
-            </div>
-        `;
-        taskDiv.onclick = function(e) {
-            // Prevent action buttons from triggering popup
-            if (e.target.closest('.btn-task-action')) return;
-            if (window.openTaskPopup) window.openTaskPopup(task, false);
-        };
-        return taskDiv;
-    }
-    // Mois
-    if (mode === 'mini') {
-        taskDiv.classList.add('task-month');
-        taskDiv.innerHTML = `
-            <div class="task-title">${task.description}</div>
-            <div class="task-actions">
-                ${task.status !== 'completed' ? `
-                    <button class="btn-task-action btn-complete" title="Terminer" onclick="completeTaskUI(${task.id})">
-                        <span class="material-symbols-outlined">check_circle</span>
-                    </button>
-                    <button class="btn-task-action btn-delete-task" title="Supprimer" onclick="deleteTaskUI(${task.id})">
-                        <span class="material-symbols-outlined">delete</span>
-                    </button>
-                ` : ''}
-            </div>
-        `;
-        taskDiv.onclick = function(e) {
-            // Prevent action buttons from triggering popup
-            if (e.target.closest('.btn-task-action')) return;
-            if (window.openTaskPopup) window.openTaskPopup(task, false);
-        };
-        return taskDiv;
-    }
-    // Année
-    if (mode === 'micro') {
-        taskDiv.classList.add('task-year');
-        taskDiv.innerHTML = `
-            <div class="task-title">${task.description}</div>
-            <div class="task-actions">
-                ${task.status !== 'completed' ? `
-                    <button class="btn-task-action btn-complete" title="Terminer" onclick="completeTaskUI(${task.id})">
-                        <span class="material-symbols-outlined">check_circle</span>
-                    </button>
-                    <button class="btn-task-action btn-delete-task" title="Supprimer" onclick="deleteTaskUI(${task.id})">
-                        <span class="material-symbols-outlined">delete</span>
-                    </button>
-                ` : ''}
-            </div>
-        `;
-        taskDiv.onclick = function(e) {
-            if (e.target.closest('.btn-task-action')) return;
-            if (window.openTaskPopup) window.openTaskPopup(task, false);
-        };
-        return taskDiv;
-    }
-    // Aujourd'hui (défaut)
-    taskDiv.classList.add('task-day');
-    taskDiv.innerHTML = `
-        <div class="task-info">
-            <div class="task-title">
-                ${task.description}
-                ${task.recurrence ? `<span class="badge badge-recurring" title="Tâche récurrente"><span class="material-symbols-outlined">repeat</span></span>` : `<span class="badge badge-onetime" title="Tâche ponctuelle"><span class="material-symbols-outlined">today</span></span>`}
-            </div>
-            <div class="task-details">
-                <span class="task-detail"><span class="material-symbols-outlined">event</span>${formattedDate}</span>
-                ${task.time ? `<span class="task-detail"><span class="material-symbols-outlined">schedule</span>${task.time}</span>` : ''}
-                <span class="task-detail task-type-badge" data-type="${task.type}"><span class="material-symbols-outlined">${formattedTask.typeIcon}</span>${formattedTask.typeLabel}</span>
-                ${task.priority === 'urgent' ? `<span class="task-detail priority-badge"><span class="material-symbols-outlined">warning</span>${formattedTask.priorityLabel}</span>` : ''}
-            </div>
-        </div>
-        <div class="task-actions">
-            ${task.status !== 'completed' ? `
-                <button class="btn-task-action btn-complete" onclick="completeTaskUI(${task.id})">
-                    <span class="material-symbols-outlined">check_circle</span>
-                    <span>${getTaskActionText('complete', lang)}</span>
-                </button>
-                <button class="btn-task-action btn-snooze-task" onclick="snoozeTaskUI(${task.id})">
-                    <span class="material-symbols-outlined">snooze</span>
-                    <span>${getTaskActionText('snooze', lang)}</span>
-                </button>
-                <button class="btn-task-action btn-delete-task" onclick="deleteTaskUI(${task.id})">
-                    <span class="material-symbols-outlined">delete</span>
-                    <span>${getTaskActionText('delete', lang)}</span>
-                </button>
-            ` : ''}
-        </div>
-    `;
-    taskDiv.onclick = function(e) {
-        if (e.target.closest('.btn-task-action')) return;
-        if (window.openTaskPopup) window.openTaskPopup(task, false);
-    };
-    return taskDiv;
-}
-
+// All old rendering functions removed - see calendar-integration.js for FullCalendar implementation
 // Complete task from UI
 async function completeTaskUI(taskId) {
     const result = await completeTask(taskId);
     if (result.success) {
         playValidationSound();
-        await refreshTaskDisplay();
+        if (typeof refreshCalendar === 'function') await refreshCalendar();
         const lang = getCurrentLanguage();
         const simpleMsg = getLocalizedResponse('taskCompleted', lang);
         const task = await getTaskById(taskId);
@@ -2731,7 +2358,7 @@ async function completeTaskUI(taskId) {
 async function snoozeTaskUI(taskId) {
     const result = await snoozeTask(taskId, 10);
     if (result.success) {
-        await refreshTaskDisplay();
+        if (typeof refreshCalendar === 'function') await refreshCalendar();
         const lang = getCurrentLanguage();
         const simpleMsg = getTaskActionText('snoozed', lang);
         const enhancedMsg = await enhanceResponseWithMistral(simpleMsg, {
@@ -2753,7 +2380,7 @@ async function deleteTaskUI(taskId) {
     if (confirm(confirmMessages[lang] || confirmMessages.fr)) {
         const result = await deleteTask(taskId);
         if (result.success) {
-            await refreshTaskDisplay();
+            if (typeof refreshCalendar === 'function') await refreshCalendar();
             const simpleMsg = getLocalizedResponse('taskDeleted', lang);
             const enhancedMsg = await enhanceResponseWithMistral(simpleMsg);
             showSuccess(enhancedMsg);
@@ -2965,8 +2592,10 @@ function loadMistralSettings() {
 }
 
 async function saveMistralSettings() {
+    const systemPromptValue = document.getElementById('systemPrompt').value.trim();
+    
     const settings = {
-        systemPrompt: document.getElementById('systemPrompt').value,
+        systemPrompt: systemPromptValue || DEFAULT_MISTRAL_SETTINGS.systemPrompt,
         model: document.getElementById('mistralModel').value,
         temperature: parseFloat(document.getElementById('mistralTemperature').value),
         maxTokens: parseInt(document.getElementById('mistralMaxTokens').value),
@@ -3143,16 +2772,15 @@ function openEmergencySettings() {
         document.getElementById('contactConfig2').style.display = 'none';
         document.getElementById('contactConfig3').style.display = 'none';
         document.getElementById('addContactBtn').style.display = 'inline-block';
-        modal.style.display = 'block';
-        modal.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        modal.style.display = 'flex';
     }
 }
 
 // Add task modal
-function openAddTaskModal() {
+function openAddTaskModal(selectedDate = null, selectedTime = null) {
     document.getElementById('addTaskModal').style.display = 'flex';
-    document.getElementById('taskDate').value = new Date().toISOString().split('T')[0];
-    document.getElementById('taskTime').value = '';
+    document.getElementById('taskDate').value = selectedDate || new Date().toISOString().split('T')[0];
+    document.getElementById('taskTime').value = selectedTime || '';
     document.getElementById('taskDescription').value = '';
     document.getElementById('taskType').value = 'general';
     document.getElementById('taskPriority').value = 'normal';
@@ -3185,18 +2813,33 @@ async function saveNewTask() {
         interval: 1
     } : null;
     
-    const result = await createTask({ 
-        description, 
-        date: taskDate, 
-        time, 
-        type, 
-        priority,
-        recurrence 
-    });
+    // Use calendar integration if available
+    let result;
+    if (typeof addEventToCalendar === 'function') {
+        result = await addEventToCalendar({ 
+            description, 
+            date: taskDate, 
+            time, 
+            type, 
+            priority,
+            recurrence 
+        });
+    } else {
+        result = await createTask({ 
+            description, 
+            date: taskDate, 
+            time, 
+            type, 
+            priority,
+            recurrence 
+        });
+    }
     
     if (result.success) {
         closeAddTaskModal();
-        await refreshTaskDisplay();
+        if (typeof refreshTaskDisplay === 'function') {
+            if (typeof refreshCalendar === 'function') await refreshCalendar();
+        }
         const simpleMsg = getLocalizedResponse('taskAdded', getCurrentLanguage());
         const enhancedMsg = await enhanceResponseWithMistral(simpleMsg, { 
             taskType: type,
@@ -3289,6 +2932,157 @@ function saveAlarmSound() {
         alarmAudio.src = 'assets/alarm-sounds/' + value;
         alarmAudio.load();
     }
+    // Save to localStorage
+    localStorage.setItem('alarmSound', value);
     closeAlarmSoundModal();
     showSuccess('Son d\'alarme changé !');
 }
+
+// --- Settings Modal Functions ---
+function openSettingsModal() {
+    // Load current settings into modal
+    const wakeWord = localStorage.getItem('wakeWord') || '';
+    const wakeWordEnabled = localStorage.getItem('wakeWordEnabled') === 'true';
+    const alarmSound = localStorage.getItem('alarmSound') || 'gentle-alarm.mp3';
+    const ttsSettings = JSON.parse(localStorage.getItem('ttsSettings') || 'null') || DEFAULT_TTS_SETTINGS;
+    const ssmlSettings = JSON.parse(localStorage.getItem('ssmlSettings') || 'null') || DEFAULT_SSML_SETTINGS;
+
+    document.getElementById('settingsWakeWord').value = wakeWord;
+    document.getElementById('settingsWakeWordEnabled').checked = wakeWordEnabled;
+    document.getElementById('settingsAlarmSound').value = alarmSound;
+    document.getElementById('settingsAutoPlayTTS').checked = ttsSettings.autoPlay;
+    document.getElementById('settingsSsmlEnabled').checked = ssmlSettings.enabled;
+    document.getElementById('settingsCustomKeywords').value = ssmlSettings.customKeywords || '';
+
+    document.getElementById('settingsModal').style.display = 'flex';
+}
+
+function closeSettingsModal() {
+    document.getElementById('settingsModal').style.display = 'none';
+}
+
+function saveSettings() {
+    // Save Wake Word
+    const wakeWord = document.getElementById('settingsWakeWord').value.trim();
+    const wakeWordEnabled = document.getElementById('settingsWakeWordEnabled').checked;
+    if (wakeWord) {
+        localStorage.setItem('wakeWord', wakeWord);
+    }
+    localStorage.setItem('wakeWordEnabled', wakeWordEnabled.toString());
+
+    // Save Alarm Sound
+    const alarmSound = document.getElementById('settingsAlarmSound').value;
+    localStorage.setItem('alarmSound', alarmSound);
+    const alarmAudio = document.getElementById('alarmSound');
+    if (alarmAudio) {
+        alarmAudio.src = 'assets/alarm-sounds/' + alarmSound;
+        alarmAudio.load();
+    }
+
+    // Save TTS AutoPlay
+    const ttsSettings = JSON.parse(localStorage.getItem('ttsSettings') || 'null') || DEFAULT_TTS_SETTINGS;
+    ttsSettings.autoPlay = document.getElementById('settingsAutoPlayTTS').checked;
+    localStorage.setItem('ttsSettings', JSON.stringify(ttsSettings));
+
+    // Save SSML Settings
+    const ssmlSettings = JSON.parse(localStorage.getItem('ssmlSettings') || 'null') || DEFAULT_SSML_SETTINGS;
+    ssmlSettings.enabled = document.getElementById('settingsSsmlEnabled').checked;
+    ssmlSettings.customKeywords = document.getElementById('settingsCustomKeywords').value.trim();
+    localStorage.setItem('ssmlSettings', JSON.stringify(ssmlSettings));
+
+    closeSettingsModal();
+    showSuccess('Préférences enregistrées avec succès !');
+    
+    // Reload settings
+    loadTTSSettings();
+    loadSSMLSettings();
+    loadWakeWordSettings();
+}
+
+function resetAllSettings() {
+    if (!confirm('⚠️ ATTENTION ⚠️\n\nCette action va :\n- Réinitialiser tous les paramètres\n- Supprimer toutes les clés API\n- Effacer toutes les tâches\n- Effacer l\'historique des conversations\n- Supprimer les contacts d\'urgence\n- Réinitialiser tous les réglages audio\n\nCette action est IRRÉVERSIBLE.\n\nÊtes-vous absolument sûr de vouloir continuer ?')) {
+        return;
+    }
+
+    // Second confirmation
+    if (!confirm('DERNIÈRE CONFIRMATION\n\nToutes vos données seront définitivement perdues.\n\nContinuer ?')) {
+        return;
+    }
+
+    try {
+        // Clear all localStorage
+        localStorage.clear();
+
+        // Clear IndexedDB
+        indexedDB.deleteDatabase(DB_NAME);
+
+        // Show success and reload
+        alert('✓ Tous les paramètres ont été réinitialisés.\n\nL\'application va maintenant redémarrer.');
+        
+        // Reload the page
+        window.location.reload();
+    } catch (error) {
+        console.error('[Settings] Error resetting settings:', error);
+        showError('Erreur lors de la réinitialisation des paramètres');
+    }
+}
+
+function viewLogs() {
+    const logs = localStorage.getItem('MemoryBoardHelper.log') || 'Aucun log disponible.';
+    
+    // Create a modal to display logs
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'flex';
+    modal.innerHTML = `
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2><span class="material-symbols-outlined">description</span> Logs de l'application</h2>
+                <button class="close-btn" onclick="this.closest('.modal').remove()">×</button>
+            </div>
+            <div class="modal-body">
+                <pre style="background: var(--background-color); padding: 15px; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word; font-family: monospace; font-size: 14px; max-height: 60vh; overflow-y: auto;">${logs}</pre>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="this.closest('.modal').remove()">Fermer</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+function clearLogs() {
+    if (!confirm('Êtes-vous sûr de vouloir effacer tous les logs ?')) {
+        return;
+    }
+    localStorage.setItem('MemoryBoardHelper.log', '');
+    showSuccess('Logs effacés avec succès !');
+}
+
+// Export quick command functions globally
+window.quickAddTask = quickAddTask;
+window.quickShowTodayTasks = quickShowTodayTasks;
+window.quickShowWeekTasks = quickShowWeekTasks;
+window.quickShowMonthTasks = quickShowMonthTasks;
+window.quickShowYearTasks = quickShowYearTasks;
+window.quickAddMedication = quickAddMedication;
+window.quickShowTime = quickShowTime;
+window.quickShowDate = quickShowDate;
+window.quickActivateAutoMode = quickActivateAutoMode;
+window.quickDeactivateAutoMode = quickDeactivateAutoMode;
+window.quickShowEmergencyContacts = quickShowEmergencyContacts;
+window.quickConfigureEmergencyContacts = quickConfigureEmergencyContacts;
+window.quickChangeWakeWord = quickChangeWakeWord;
+window.quickSnoozeAlarm = quickSnoozeAlarm;
+window.quickDismissAlarm = quickDismissAlarm;
+window.quickTestAlarm = quickTestAlarm;
+window.quickChangeAlarm = quickChangeAlarm;
+
+// Export sound functions
+window.playSound = playSound;
+window.playTapSound = playTapSound;
+window.playValidationSound = playValidationSound;
+window.playListeningSound = playListeningSound;
+
+console.log('[Script] Quick command functions exported:', typeof window.quickAddTask);
+

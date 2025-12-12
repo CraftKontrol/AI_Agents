@@ -134,13 +134,25 @@ function closeTaskPopup() {
 }
 
 // Marquer comme fait
-function markTaskDone() {
+async function markTaskDone() {
     if (!currentTaskPopup) return;
-    currentTaskPopup.status = 'fait';
-    // TODO: enregistrer la tâche modifiée (API ou local)
-    setTaskPopupFields(currentTaskPopup, false);
-    // Optionnel: fermer le popup
-    // closeTaskPopup();
+    
+    try {
+        // Use calendar integration if available
+        if (typeof markTaskCompletedInCalendar === 'function') {
+            await markTaskCompletedInCalendar(currentTaskPopup.id);
+        } else {
+            currentTaskPopup.status = 'completed';
+            currentTaskPopup.completedAt = new Date().toISOString();
+            await updateTask(currentTaskPopup.id, currentTaskPopup);
+        }
+        
+        closeTaskPopup();
+        showSuccess('Tâche marquée comme terminée');
+    } catch (error) {
+        console.error('[TaskPopup] Error marking task done:', error);
+        showError('Erreur lors de la validation de la tâche');
+    }
 }
 
 // Modifier la tâche (affiche les champs modifiables)
@@ -160,27 +172,60 @@ function editTaskPopup() {
 }
 
 // Enregistre la modification
-function saveTaskPopupEdit() {
+async function saveTaskPopupEdit() {
     if (!currentTaskPopup) return;
-    // Récupérer les valeurs modifiées
-    currentTaskPopup.description = document.getElementById('popupEditDesc').value;
-    currentTaskPopup.date = document.getElementById('popupEditDate').value;
-    currentTaskPopup.time = document.getElementById('popupEditTime').value;
-    currentTaskPopup.type = document.getElementById('popupEditType').value;
-    currentTaskPopup.priority = document.getElementById('popupEditPriority').value;
-    currentTaskPopup.recurrence = document.getElementById('popupEditRecurrence').value;
-    // TODO: enregistrer la tâche modifiée (API ou local)
-    setTaskPopupFields(currentTaskPopup, false);
-    // Supprimer le bouton "Enregistrer"
-    const saveBtn = document.getElementById('popupSaveBtn');
-    if (saveBtn) saveBtn.remove();
+    
+    try {
+        // Récupérer les valeurs modifiées
+        currentTaskPopup.description = document.getElementById('popupEditDesc').value;
+        currentTaskPopup.date = document.getElementById('popupEditDate').value;
+        currentTaskPopup.time = document.getElementById('popupEditTime').value;
+        currentTaskPopup.type = document.getElementById('popupEditType').value;
+        currentTaskPopup.priority = document.getElementById('popupEditPriority').value;
+        currentTaskPopup.recurrence = document.getElementById('popupEditRecurrence').value;
+        
+        // Use calendar integration if available
+        if (typeof updateEventInCalendar === 'function') {
+            await updateEventInCalendar(currentTaskPopup.id, currentTaskPopup);
+        } else {
+            await updateTask(currentTaskPopup.id, currentTaskPopup);
+        }
+        
+        setTaskPopupFields(currentTaskPopup, false);
+        
+        // Supprimer le bouton "Enregistrer"
+        const saveBtn = document.getElementById('popupSaveBtn');
+        if (saveBtn) saveBtn.remove();
+        
+        showSuccess('Tâche mise à jour');
+    } catch (error) {
+        console.error('[TaskPopup] Error saving task:', error);
+        showError('Erreur lors de la sauvegarde');
+    }
 }
 
 // Supprimer la tâche
-function deleteTaskPopup() {
+async function deleteTaskPopup() {
     if (!currentTaskPopup) return;
-    // TODO: supprimer la tâche (API ou local)
-    closeTaskPopup();
+    
+    if (!confirm('Êtes-vous sûr de vouloir supprimer cette tâche ?')) {
+        return;
+    }
+    
+    try {
+        // Use calendar integration if available
+        if (typeof removeEventFromCalendar === 'function') {
+            await removeEventFromCalendar(currentTaskPopup.id);
+        } else {
+            await deleteTask(currentTaskPopup.id);
+        }
+        
+        closeTaskPopup();
+        showSuccess('Tâche supprimée');
+    } catch (error) {
+        console.error('[TaskPopup] Error deleting task:', error);
+        showError('Erreur lors de la suppression');
+    }
 }
 
 // --- Intégration avec la liste de tâches ---

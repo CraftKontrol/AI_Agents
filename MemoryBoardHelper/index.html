@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Memory Board Helper - CraftKontrol</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <!-- FullCalendar CSS -->
+    <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css' rel='stylesheet' />
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1a1a1a">
@@ -16,6 +18,9 @@
             <p id="appSubtitle">Votre assistant mémoire intelligent</p>
         </div>
         <div class="header-controls">
+            <button class="icon-btn" onclick="openSettingsModal()" title="Paramètres">
+                <span class="material-symbols-outlined">settings</span>
+            </button>
             <div class="mode-toggle">
                 <button id="modeToggleBtn" class="mode-btn" onclick="toggleListeningMode()">
                     <span class="material-symbols-outlined" id="modeIcon">mic_off</span>
@@ -62,6 +67,93 @@
                         </div>
                     </div>
                 </div>
+
+        <!-- Modale des Préférences -->
+        <div id="settingsModal" class="modal" style="display: none;">
+            <div class="modal-content modal-large">
+                <div class="modal-header">
+                    <h2><span class="material-symbols-outlined">settings</span> Préférences</h2>
+                    <button class="close-btn" onclick="closeSettingsModal()">×</button>
+                </div>
+                <div class="modal-body">
+                    <!-- Wake Word Settings -->
+                    <div class="settings-section">
+                        <h3><span class="material-symbols-outlined">chat</span> Mot de réveil</h3>
+                        <div class="input-group">
+                            <label for="settingsWakeWord">Mot de réveil personnalisé :</label>
+                            <input type="text" id="settingsWakeWord" placeholder="Ex: Bonjour, Salut...">
+                        </div>
+                        <div class="input-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="settingsWakeWordEnabled">
+                                <span>Activer le mot de réveil</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Alarm Sound Settings -->
+                    <div class="settings-section">
+                        <h3><span class="material-symbols-outlined">alarm</span> Son d'alarme</h3>
+                        <div class="input-group">
+                            <label for="settingsAlarmSound">Son d'alarme :</label>
+                            <select id="settingsAlarmSound">
+                                <option value="gentle-alarm.mp3">Alarme douce (gentle-alarm.mp3)</option>
+                                <option value="chime-alarm.mp3">Carillon (chime-alarm.mp3)</option>
+                                <option value="bell-alarm.mp3">Cloche (bell-alarm.mp3)</option>
+                                <option value="soft-beep.mp3">Bip doux (soft-beep.mp3)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Auto-play TTS -->
+                    <div class="settings-section">
+                        <h3><span class="material-symbols-outlined">volume_up</span> Audio</h3>
+                        <div class="input-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="settingsAutoPlayTTS">
+                                <span>Lecture automatique des réponses vocales</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- SSML Settings -->
+                    <div class="settings-section">
+                        <h3><span class="material-symbols-outlined">mic</span> SSML (Modulation vocale avancée)</h3>
+                        <div class="input-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="settingsSsmlEnabled">
+                                <span>Activer SSML</span>
+                            </label>
+                        </div>
+                        <div class="input-group">
+                            <label for="settingsCustomKeywords">Mots-clés personnalisés (séparés par virgules) :</label>
+                            <input type="text" id="settingsCustomKeywords" placeholder="important, urgent, attention...">
+                        </div>
+                    </div>
+
+                    <!-- Logs -->
+                    <div class="settings-section">
+                        <h3><span class="material-symbols-outlined">description</span> Logs</h3>
+                        <div class="input-group">
+                            <button class="btn-secondary" onclick="viewLogs()">Voir les logs</button>
+                            <button class="btn-secondary" onclick="clearLogs()">Effacer les logs</button>
+                        </div>
+                    </div>
+
+                    <!-- Reset Section -->
+                    <div class="settings-section settings-danger">
+                        <h3><span class="material-symbols-outlined">warning</span> Zone dangereuse</h3>
+                        <p class="warning-text">Cette action réinitialisera tous les paramètres à leurs valeurs par défaut et supprimera toutes les données sauvegardées.</p>
+                        <button class="btn-danger" onclick="resetAllSettings()">Réinitialiser tous les paramètres</button>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-secondary" onclick="closeSettingsModal()">Annuler</button>
+                    <button class="btn-primary" onclick="saveSettings()">Enregistrer</button>
+                </div>
+            </div>
+        </div>
+
         <div id="errorMessage" class="error-message" style="display: none;"></div>
         <div id="successMessage" class="success-message" style="display: none;"></div>
 
@@ -229,50 +321,39 @@
             </div>
         </section>
 
-        <section class="tasks-section">
-            <div class="tasks-header">
+        <section class="calendar-section">
+            <div class="calendar-header">
                 <h2>
-                    <span class="material-symbols-outlined">today</span>
-                    <span id="todayTasksTitle">Mes tâches</span>
-                </h2>
-                <div class="task-counter">
-                    <span id="taskCount">0</span>
-                    <span id="taskCountLabel"> tâches</span>
-                </div>
-            </div>
-
-            <div class="period-tabs">
-                <button class="period-tab active" data-period="today" onclick="switchPeriod('today')" hover-title="Tâches d'aujourd'hui">
-                    <span class="material-symbols-outlined">today</span>
-                </button>
-                <button class="period-tab" data-period="week" onclick="switchPeriod('week')" hover-title="Tâches de la semaine">
-                    <span class="material-symbols-outlined">view_week</span>
-                </button>
-                <button class="period-tab" data-period="month" onclick="switchPeriod('month')" hover-title="Tâches du mois">
                     <span class="material-symbols-outlined">calendar_month</span>
-                </button>
-                <button class="period-tab" data-period="year" onclick="switchPeriod('year')">
-                    <span class="material-symbols-outlined">calendar_today</span>
-                </button>
-            </div>
-
-            <!-- Sub-tabs for advanced navigation -->
-            <div id="subTabsContainer" class="subtabs" style="display:none;"></div>
-
-            <!-- Vertical table for advanced display -->
-            <div id="verticalTableContainer" style="display:none;"></div>
-
-            <div id="loadingTasks" class="loading-indicator" style="display: none;">
-                <div class="spinner"></div>
-                <p id="loadingTasksText">Chargement...</p>
-            </div>
-
-            <div id="tasksContainer" class="tasks-list">
-                <div class="no-tasks" id="noTasksMessage">
-                    <span class="material-symbols-outlined">check_circle</span>
-                    <p id="noTasksText">Aucune tâche pour aujourd'hui</p>
+                    <span id="calendarTitle">Mon Calendrier</span>
+                </h2>
+                <div class="calendar-controls">
+                    <button class="btn-calendar-control" onclick="calendarToday()" title="Aujourd'hui">
+                        <span class="material-symbols-outlined">today</span>
+                    </button>
+                    <button class="btn-calendar-control" onclick="calendarPrev()" title="Précédent">
+                        <span class="material-symbols-outlined">chevron_left</span>
+                    </button>
+                    <button class="btn-calendar-control" onclick="calendarNext()" title="Suivant">
+                        <span class="material-symbols-outlined">chevron_right</span>
+                    </button>
+                    <div class="view-selector">
+                        <select id="calendarViewSelect" onchange="changeCalendarView(this.value)">
+                            <option value="dayGridMonth">Mois</option>
+                            <option value="timeGridWeek">Semaine</option>
+                            <option value="timeGridDay">Jour</option>
+                            <option value="listWeek">Liste</option>
+                        </select>
+                    </div>
                 </div>
             </div>
+
+            <div id="loadingCalendar" class="loading-indicator" style="display: none;">
+                <div class="spinner"></div>
+                <p id="loadingCalendarText">Chargement du calendrier...</p>
+            </div>
+
+            <div id="calendarContainer"></div>
 
             <button class="btn-add-task" onclick="openAddTaskModal()" id="addTaskBtn">
                 <span class="material-symbols-outlined">add_circle</span>
@@ -1140,10 +1221,14 @@
         <source src="assets/alarm-sounds/gentle-alarm.mp3" type="audio/mpeg">
     </audio>
 
+    <!-- FullCalendar JS -->
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
+    
     <script src="storage.js"></script>
     <script src="mistral-agent.js"></script>
     <script src="task-manager.js"></script>
     <script src="alarm-system.js"></script>
+    <script src="calendar-integration.js"></script>
     <script src="script.js"></script>
     <script src="script-task-popup.js"></script>
 </body>
