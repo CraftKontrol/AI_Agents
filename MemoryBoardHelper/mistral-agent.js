@@ -45,17 +45,33 @@ Always be encouraging and supportive.`;
 
 const NAV_PROMPT = `You are a navigation assistant for elderly or memory-deficient persons. Your role is to:
 1. Understand natural language requests in French, Italian, or English
-2. Provide clear, simple, and reassuring navigation instructions about the app
-3. Guide the user by moving the focus on the screen to the relevant sections
-3. Be patient, kind, and use simple language.
+2. Identify navigation intents to sections or pages of the application
+3. Focus to the requested section or page
+4. Confirm navigation actions with the user
+5. Provide clear, simple, and reassuring responses
+6. Be patient, kind, and use simple language
+
+Respond in JSON format with:
+{
+    "action": "goto_section|open_page|close_page|question|conversation",
+    "response": "friendly message to user",
+    "language": "fr|it|en"
+}
+
 Always be encouraging and supportive.`;
 
-const CHAT_PROMPT = `You are a friendly conversational assistant for elderly or memory-deficient persons. Your role is to:
+const CHAT_PROMPT = `You are a helpful memory assistant for elderly or memory-deficient persons. Your role is to:
 1. Understand natural language requests in French, Italian, or English
-2. Provide responses that are clear and simple.
-3. Don't hallucinate or make up information.
-4. At the end of your response, always ask if the user needs further assistance.
-5. Be patient, kind, and use simple language.
+5. Provide clear, simple, and reassuring responses
+6. Be patient, kind, and use simple language
+
+Respond in JSON format with:
+{
+    "action": "add_task|complete_task|delete_task|update_task|question|conversation",
+    "response": "friendly message to user",
+    "language": "fr|it|en"
+}
+
 Always be encouraging and supportive.`;
 
 
@@ -151,23 +167,25 @@ async function processWithMistral(userMessage, conversationHistory = []) {
     const isoDate = now.toISOString().split('T')[0];
     const localeDate = now.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-    // Sélection du prompt principal
+    // Sélection du prompt principal selon l'action détectée par mots-clés
     let mainPrompt = '';
-    switch (promptType) {
-        case 'chat':
-            mainPrompt = CHAT_PROMPT;
+    switch (keywordAction) {
+        case 'add_task':
+        case 'complete_task':
+        case 'delete_task':
+        case 'update_task':
+            mainPrompt = TASK_PROMPT;
             break;
         case 'nav':
             mainPrompt = NAV_PROMPT;
             break;
-        case 'system':
-            mainPrompt = SYSTEM_PROMPT;
-            break;
-        case 'task':
+        case 'question':
+        case 'conversation':
         default:
-            mainPrompt = TASK_PROMPT;
+            mainPrompt = CHAT_PROMPT;
             break;
     }
+    console.log('[Mistral][DEBUG] Prompt sélectionné:', keywordAction === 'add_task' || keywordAction === 'complete_task' || keywordAction === 'delete_task' || keywordAction === 'update_task' ? 'TASK_PROMPT' : keywordAction === 'nav' ? 'NAV_PROMPT' : 'CHAT_PROMPT');
     // Ajoute SYSTEM_PROMPT à tous les prompts comme commande générale
     const fullPrompt = `${SYSTEM_PROMPT}\n\n${mainPrompt}\n\nLa date actuelle est : ${isoDate} (${localeDate}). Utilise toujours cette date comme référence pour "aujourd'hui".`;
 

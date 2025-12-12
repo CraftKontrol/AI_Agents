@@ -987,8 +987,12 @@ async function processUserMessage(message) {
             }
         }
 
-        // Get recent conversation history
-        const recentHistory = conversationHistory.slice(-MAX_CONVERSATION_HISTORY);
+        // Get recent conversation history and clean duplicates
+        let recentHistory = conversationHistory.slice(-MAX_CONVERSATION_HISTORY);
+        recentHistory = cleanDuplicatesFromHistory(recentHistory);
+        // Limit to 5 exchanges max (10 messages)
+        recentHistory = recentHistory.slice(-10);
+        console.log('[App] Using cleaned history with', recentHistory.length, 'messages');
         // Get current tasks for context
         const currentTasks = await getTodayTasks();
         // Check what type of request this is
@@ -1154,6 +1158,10 @@ async function handleUpdateTask(result, tasks) {
         // Save conversation
         await saveConversation(message, result.response, result.language);
         conversationHistory.push({ userMessage: message, assistantResponse: result.response });
+        // Limit in-memory history to MAX_CONVERSATION_HISTORY
+        if (conversationHistory.length > MAX_CONVERSATION_HISTORY) {
+            conversationHistory = conversationHistory.slice(-MAX_CONVERSATION_HISTORY);
+        }
 
     } catch (error) {
         console.error('[App] Error processing message:', error);
@@ -2304,6 +2312,35 @@ async function saveNewTask() {
 async function loadConversationHistory() {
     conversationHistory = await getRecentConversations(MAX_CONVERSATION_HISTORY);
     console.log('[App] Loaded conversation history:', conversationHistory.length);
+}
+
+// Clear conversation history
+async function clearConversationHistory() {
+    try {
+        conversationHistory = [];
+        await cleanOldConversations(0); // Delete all from database
+        console.log('[App] Conversation history cleared');
+        showSuccess(getLocalizedText('historyCleared') || 'Historique effacé avec succès');
+    } catch (error) {
+        console.error('[App] Error clearing conversation history:', error);
+        showError('Erreur lors de l\'effacement de l\'historique');
+    }
+}
+
+// Clean duplicates from conversation history (remove consecutive duplicates)
+function cleanDuplicatesFromHistory(history) {
+    if (!history || history.length === 0) return [];
+    const cleaned = [];
+    let lastUserMsg = null;
+    for (const item of history) {
+        // Skip if same user message as previous
+        if (item.userMessage && item.userMessage === lastUserMsg) {
+            continue;
+        }
+        cleaned.push(item);
+        lastUserMsg = item.userMessage;
+    }
+    return cleaned;
 }
 
 // Fetch last modified date
