@@ -60,7 +60,8 @@ Respond in JSON format with:
 
 Always be encouraging and supportive.`;
 
-const CHAT_PROMPT = `You are a helpful memory assistant for elderly or memory-deficient persons. Your role is to:
+// Default chat prompt (used as placeholder if no custom prompt is set)
+const DEFAULT_CHAT_PROMPT = `You are a helpful memory assistant for elderly or memory-deficient persons. Your role is to:
 1. Understand natural language requests in French, Italian, or English
 5. Provide clear, simple, and reassuring responses
 6. Be patient, kind, and use simple language
@@ -73,6 +74,48 @@ Respond in JSON format with:
 }
 
 Always be encouraging and supportive.`;
+
+// Get chat prompt from storage or use default
+function getChatPrompt() {
+    // Split DEFAULT_CHAT_PROMPT at first blank line to separate intro from JSON format instructions
+    const parts = DEFAULT_CHAT_PROMPT.split('\n\n');
+    const jsonFormatPart = parts.slice(1).join('\n\n'); // Keep everything after first blank line
+    
+    // First check mistralSettings.systemPrompt
+    const mistralSettings = JSON.parse(localStorage.getItem('mistralSettings') || 'null');
+    if (mistralSettings && mistralSettings.systemPrompt && mistralSettings.systemPrompt.trim().length > 0) {
+        console.log('[Mistral] Using custom chat prompt from settings');
+        // Combine custom prompt with JSON format instructions
+        return `${mistralSettings.systemPrompt}\n\n${jsonFormatPart}`;
+    }
+    
+    // Fallback to standalone chatPrompt key
+    const stored = localStorage.getItem('chatPrompt');
+    if (stored && stored.trim().length > 0) {
+        console.log('[Mistral] Using custom chat prompt');
+        // Combine custom prompt with JSON format instructions
+        return `${stored}\n\n${jsonFormatPart}`;
+    }
+    
+    console.log('[Mistral] Using default chat prompt');
+    return DEFAULT_CHAT_PROMPT;
+}
+
+// Save custom chat prompt to storage
+function setChatPrompt(prompt) {
+    if (prompt && prompt.trim().length > 0) {
+        localStorage.setItem('chatPrompt', prompt);
+        console.log('[Mistral] Custom chat prompt saved');
+        return true;
+    }
+    return false;
+}
+
+// Reset chat prompt to default
+function resetChatPrompt() {
+    localStorage.removeItem('chatPrompt');
+    console.log('[Mistral] Chat prompt reset to default');
+}
 
 
 // Detect language from text using Mistral
@@ -182,7 +225,7 @@ async function processWithMistral(userMessage, conversationHistory = []) {
         case 'question':
         case 'conversation':
         default:
-            mainPrompt = CHAT_PROMPT;
+            mainPrompt = getChatPrompt();
             break;
     }
     console.log('[Mistral][DEBUG] Prompt sélectionné:', keywordAction === 'add_task' || keywordAction === 'complete_task' || keywordAction === 'delete_task' || keywordAction === 'update_task' ? 'TASK_PROMPT' : keywordAction === 'nav' ? 'NAV_PROMPT' : 'CHAT_PROMPT');

@@ -111,6 +111,115 @@
             </div>
         </section>
 
+        <!-- Mistral Conversation Settings -->
+        <section class="mistral-settings-section">
+            <h2 style="display: flex; align-items: center; justify-content: space-between;">
+                <span id="mistralSettingsTitle">Paramètres de conversation Mistral</span>
+                <button class="section-toggle" onclick="toggleSection('mistralSettingsContent')" id="mistralToggleBtn">Afficher</button>
+            </h2>
+            
+            <div id="mistralSettingsContent" class="section-content" style="display: none;">
+                <div class="mistral-settings-grid">
+                    <div class="setting-card full-width">
+                        <label for="systemPrompt">
+                            <span class="material-symbols-outlined">description</span>
+                            <span id="systemPromptLabel">Prompt système</span>
+                        </label>
+                        <textarea id="systemPrompt" rows="6"></textarea>
+                        <p class="setting-hint" id="systemPromptHint">Définit le comportement et le style de réponse de l'IA</p>
+                    </div>
+
+                    <div class="setting-card">
+                        <label for="mistralModel">
+                            <span class="material-symbols-outlined">model_training</span>
+                            <span id="modelLabel">Modèle</span>
+                        </label>
+                        <select id="mistralModel">
+                            <option value="mistral-small-latest" selected>Mistral Small (Rapide)</option>
+                            <option value="mistral-medium-latest">Mistral Medium (Équilibré)</option>
+                            <option value="mistral-large-latest">Mistral Large (Puissant)</option>
+                            <option value="open-mistral-7b">Open Mistral 7B</option>
+                            <option value="open-mixtral-8x7b">Open Mixtral 8x7B</option>
+                            <option value="open-mixtral-8x22b">Open Mixtral 8x22B</option>
+                        </select>
+                        <p class="setting-hint" id="modelHint">Choisissez le modèle selon vos besoins de performance/qualité</p>
+                    </div>
+
+                    <div class="setting-card">
+                        <label for="mistralTemperature">
+                            <span class="material-symbols-outlined">thermostat</span>
+                            <span id="temperatureLabel">Température</span>
+                            <span class="setting-value" id="temperatureValue">0.3</span>
+                        </label>
+                        <input type="range" id="mistralTemperature" min="0" max="1" step="0.1" value="0.3" oninput="updateMistralValue('temperature', this.value)" />
+                        <div class="range-labels">
+                            <span>0 (Précis)</span>
+                            <span>0.5</span>
+                            <span>1 (Créatif)</span>
+                        </div>
+                        <p class="setting-hint" id="temperatureHint">Contrôle la créativité des réponses (0 = déterministe, 1 = créatif)</p>
+                    </div>
+
+                    <div class="setting-card">
+                        <label for="mistralMaxTokens">
+                            <span class="material-symbols-outlined">text_fields</span>
+                            <span id="maxTokensLabel">Tokens maximum</span>
+                            <span class="setting-value" id="maxTokensValue">500</span>
+                        </label>
+                        <input type="range" id="mistralMaxTokens" min="100" max="4000" step="100" value="500" oninput="updateMistralValue('maxTokens', this.value)" />
+                        <div class="range-labels">
+                            <span>100</span>
+                            <span>2000</span>
+                            <span>4000</span>
+                        </div>
+                        <p class="setting-hint" id="maxTokensHint">Longueur maximale de la réponse générée</p>
+                    </div>
+
+                    <div class="setting-card">
+                        <label for="mistralTopP">
+                            <span class="material-symbols-outlined">filter_alt</span>
+                            <span id="topPLabel">Top P (nucleus sampling)</span>
+                            <span class="setting-value" id="topPValue">0.9</span>
+                        </label>
+                        <input type="range" id="mistralTopP" min="0" max="1" step="0.05" value="0.9" oninput="updateMistralValue('topP', this.value)" />
+                        <div class="range-labels">
+                            <span>0</span>
+                            <span>0.5</span>
+                            <span>1</span>
+                        </div>
+                        <p class="setting-hint" id="topPHint">Contrôle la diversité en filtrant les tokens peu probables</p>
+                    </div>
+
+                    <div class="setting-card">
+                        <label>
+                            <span class="material-symbols-outlined">settings_suggest</span>
+                            <span id="advancedOptionsLabel">Options avancées</span>
+                        </label>
+                        <label class="setting-checkbox-label">
+                            <input type="checkbox" id="mistralSafeMode" />
+                            <span id="safeModeLabel">Mode sécurisé (Safe Mode)</span>
+                        </label>
+                        <label class="setting-checkbox-label">
+                            <input type="checkbox" id="mistralRandomSeed" />
+                            <span id="useRandomSeedLabel">Utiliser une graine aléatoire (reproductibilité)</span>
+                        </label>
+                        <p class="setting-hint" id="advancedHint">Options de sécurité et de reproductibilité</p>
+                    </div>
+                </div>
+
+                <div class="mistral-actions">
+                    <button class="btn-reset" onclick="resetMistralSettings()">
+                        <span class="material-symbols-outlined">restart_alt</span>
+                        <span id="resetToDefaultBtn">Réinitialiser par défaut</span>
+                    </button>
+                    <button class="btn-save" onclick="saveMistralSettings()">
+                        <span class="material-symbols-outlined">save</span>
+                        <span id="saveSettingsBtn">Enregistrer les paramètres</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
         <section class="wake-word-section">
             <h2 style="display: flex; align-items: center; justify-content: space-between;">
                 <span id="wakeWordTitle">Mot de Réveil</span>

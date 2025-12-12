@@ -577,6 +577,9 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Load emergency contacts
     loadEmergencyContacts();
     
+    // Load Mistral settings
+    loadMistralSettings();
+    
     // Load conversation history
     await loadConversationHistory();
     
@@ -2104,6 +2107,73 @@ function toggleSection(sectionId) {
     
     const btn = event.currentTarget;
     btn.textContent = isVisible ? getLocalizedText('show') : getLocalizedText('hide');
+}
+
+// Mistral Settings Management
+const DEFAULT_MISTRAL_SETTINGS = {
+    systemPrompt: '',
+    model: 'mistral-small-latest',
+    temperature: 0.3,
+    maxTokens: 500,
+    topP: 0.9,
+    safeMode: false,
+    randomSeed: false
+};
+
+function loadMistralSettings() {
+    const settings = JSON.parse(localStorage.getItem('mistralSettings') || 'null') || DEFAULT_MISTRAL_SETTINGS;
+    
+    // Set placeholder dynamically from DEFAULT_CHAT_PROMPT (only first part before blank line)
+    if (typeof DEFAULT_CHAT_PROMPT !== 'undefined') {
+        const firstPart = DEFAULT_CHAT_PROMPT.split('\n\n')[0];
+        document.getElementById('systemPrompt').placeholder = firstPart;
+    }
+    
+    document.getElementById('systemPrompt').value = settings.systemPrompt;
+    document.getElementById('mistralModel').value = settings.model;
+    document.getElementById('mistralTemperature').value = settings.temperature;
+    document.getElementById('temperatureValue').textContent = settings.temperature;
+    document.getElementById('mistralMaxTokens').value = settings.maxTokens;
+    document.getElementById('maxTokensValue').textContent = settings.maxTokens;
+    document.getElementById('mistralTopP').value = settings.topP;
+    document.getElementById('topPValue').textContent = settings.topP;
+    document.getElementById('mistralSafeMode').checked = settings.safeMode;
+    document.getElementById('mistralRandomSeed').checked = settings.randomSeed;
+}
+
+function saveMistralSettings() {
+    const settings = {
+        systemPrompt: document.getElementById('systemPrompt').value,
+        model: document.getElementById('mistralModel').value,
+        temperature: parseFloat(document.getElementById('mistralTemperature').value),
+        maxTokens: parseInt(document.getElementById('mistralMaxTokens').value),
+        topP: parseFloat(document.getElementById('mistralTopP').value),
+        safeMode: document.getElementById('mistralSafeMode').checked,
+        randomSeed: document.getElementById('mistralRandomSeed').checked
+    };
+    
+    localStorage.setItem('mistralSettings', JSON.stringify(settings));
+    showSuccess(getLocalizedText('settingsSaved') || 'Paramètres enregistrés avec succès');
+    console.log('[Mistral] Settings saved:', settings);
+}
+
+function resetMistralSettings() {
+    if (confirm(getLocalizedText('confirmReset') || 'Voulez-vous vraiment réinitialiser les paramètres par défaut ?')) {
+        localStorage.setItem('mistralSettings', JSON.stringify(DEFAULT_MISTRAL_SETTINGS));
+        loadMistralSettings();
+        showSuccess(getLocalizedText('settingsReset') || 'Paramètres réinitialisés');
+        console.log('[Mistral] Settings reset to default');
+    }
+}
+
+function updateMistralValue(type, value) {
+    if (type === 'temperature') {
+        document.getElementById('temperatureValue').textContent = value;
+    } else if (type === 'maxTokens') {
+        document.getElementById('maxTokensValue').textContent = value;
+    } else if (type === 'topP') {
+        document.getElementById('topPValue').textContent = value;
+    }
 }
 
 // Emergency contacts
