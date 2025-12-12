@@ -585,17 +585,217 @@
                             <span id="selectVoiceLabel">Sélectionner une voix</span>
                         </label>
                         <select id="ttsVoice" onchange="updateTTSVoice(this.value)">
-                            <optgroup label="Français (French)">
+                            <optgroup label="Français (French) - Neural2">
                                 <option value="fr-FR-Neural2-A" data-gender="female" selected>Neural2-A (Femme)</option>
+                                <option value="fr-FR-Neural2-B" data-gender="male">Neural2-B (Homme)</option>
+                                <option value="fr-FR-Neural2-C" data-gender="female">Neural2-C (Femme)</option>
                                 <option value="fr-FR-Neural2-D" data-gender="male">Neural2-D (Homme)</option>
+                                <option value="fr-FR-Neural2-E" data-gender="female">Neural2-E (Femme)</option>
                             </optgroup>
-                            <optgroup label="Italien (Italian)">
+                            <optgroup label="Français (French) - Wavenet">
+                                <option value="fr-FR-Wavenet-A" data-gender="female">Wavenet-A (Femme)</option>
+                                <option value="fr-FR-Wavenet-B" data-gender="male">Wavenet-B (Homme)</option>
+                                <option value="fr-FR-Wavenet-C" data-gender="female">Wavenet-C (Femme)</option>
+                                <option value="fr-FR-Wavenet-D" data-gender="male">Wavenet-D (Homme)</option>
+                                <option value="fr-FR-Wavenet-E" data-gender="female">Wavenet-E (Femme)</option>
+                            </optgroup>
+                            <optgroup label="Français (French) - Standard">
+                                <option value="fr-FR-Standard-A" data-gender="female">Standard-A (Femme)</option>
+                                <option value="fr-FR-Standard-B" data-gender="male">Standard-B (Homme)</option>
+                                <option value="fr-FR-Standard-C" data-gender="female">Standard-C (Femme)</option>
+                                <option value="fr-FR-Standard-D" data-gender="male">Standard-D (Homme)</option>
+                                <option value="fr-FR-Standard-E" data-gender="female">Standard-E (Femme)</option>
+                            </optgroup>
+                            <optgroup label="Français Canada - Neural2">
+                                <option value="fr-CA-Neural2-A" data-gender="female">Neural2-A (Femme)</option>
+                                <option value="fr-CA-Neural2-B" data-gender="male">Neural2-B (Homme)</option>
+                                <option value="fr-CA-Neural2-C" data-gender="female">Neural2-C (Femme)</option>
+                                <option value="fr-CA-Neural2-D" data-gender="male">Neural2-D (Homme)</option>
+                            </optgroup>
+                            <optgroup label="Français Canada - Wavenet">
+                                <option value="fr-CA-Wavenet-A" data-gender="female">Wavenet-A (Femme)</option>
+                                <option value="fr-CA-Wavenet-B" data-gender="male">Wavenet-B (Homme)</option>
+                                <option value="fr-CA-Wavenet-C" data-gender="female">Wavenet-C (Femme)</option>
+                                <option value="fr-CA-Wavenet-D" data-gender="male">Wavenet-D (Homme)</option>
+                            </optgroup>
+                            <optgroup label="Italien (Italian) - Neural2">
                                 <option value="it-IT-Neural2-A" data-gender="female">Neural2-A (Femme)</option>
-                                <option value="it-IT-Neural2-D" data-gender="male">Neural2-D (Homme)</option>
+                                <option value="it-IT-Neural2-C" data-gender="male">Neural2-C (Homme)</option>
                             </optgroup>
-                            <optgroup label="Anglais (English)">
-                                <option value="en-US-Neural2-C" data-gender="male">Neural2-C (Male)</option>
+                            <optgroup label="Italien (Italian) - Wavenet">
+                                <option value="it-IT-Wavenet-A" data-gender="female">Wavenet-A (Femme)</option>
+                                <option value="it-IT-Wavenet-B" data-gender="female">Wavenet-B (Femme)</option>
+                                <option value="it-IT-Wavenet-C" data-gender="male">Wavenet-C (Homme)</option>
+                                <option value="it-IT-Wavenet-D" data-gender="male">Wavenet-D (Homme)</option>
+                            </optgroup>
+                            <optgroup label="Italien (Italian) - Standard">
+                                <option value="it-IT-Standard-A" data-gender="female">Standard-A (Femme)</option>
+                                <option value="it-IT-Standard-B" data-gender="female">Standard-B (Femme)</option>
+                                <option value="it-IT-Standard-C" data-gender="male">Standard-C (Homme)</option>
+                                <option value="it-IT-Standard-D" data-gender="male">Standard-D (Homme)</option>
+                            </optgroup>
+                            <optgroup label="Anglais US - Neural2">
+                                <option value="en-US-Neural2-A" data-gender="male">Neural2-A (Male)</option>
+                                <option value="en-US-Neural2-C" data-gender="female">Neural2-C (Female)</option>
+                                <option value="en-US-Neural2-D" data-gender="male">Neural2-D (Male)</option>
+                                <option value="en-US-Neural2-E" data-gender="female">Neural2-E (Female)</option>
                                 <option value="en-US-Neural2-F" data-gender="female">Neural2-F (Female)</option>
+                                <option value="en-US-Neural2-G" data-gender="female">Neural2-G (Female)</option>
+                                <option value="en-US-Neural2-H" data-gender="female">Neural2-H (Female)</option>
+                                <option value="en-US-Neural2-I" data-gender="male">Neural2-I (Male)</option>
+                                <option value="en-US-Neural2-J" data-gender="male">Neural2-J (Male)</option>
+                            </optgroup>
+                            <optgroup label="Anglais US - Wavenet">
+                                <option value="en-US-Wavenet-A" data-gender="male">Wavenet-A (Male)</option>
+                                <option value="en-US-Wavenet-B" data-gender="male">Wavenet-B (Male)</option>
+                                <option value="en-US-Wavenet-C" data-gender="female">Wavenet-C (Female)</option>
+                                <option value="en-US-Wavenet-D" data-gender="male">Wavenet-D (Male)</option>
+                                <option value="en-US-Wavenet-E" data-gender="female">Wavenet-E (Female)</option>
+                                <option value="en-US-Wavenet-F" data-gender="female">Wavenet-F (Female)</option>
+                                <option value="en-US-Wavenet-G" data-gender="female">Wavenet-G (Female)</option>
+                                <option value="en-US-Wavenet-H" data-gender="female">Wavenet-H (Female)</option>
+                                <option value="en-US-Wavenet-I" data-gender="male">Wavenet-I (Male)</option>
+                                <option value="en-US-Wavenet-J" data-gender="male">Wavenet-J (Male)</option>
+                            </optgroup>
+                            <optgroup label="Anglais US - Standard">
+                                <option value="en-US-Standard-A" data-gender="male">Standard-A (Male)</option>
+                                <option value="en-US-Standard-B" data-gender="male">Standard-B (Male)</option>
+                                <option value="en-US-Standard-C" data-gender="female">Standard-C (Female)</option>
+                                <option value="en-US-Standard-D" data-gender="male">Standard-D (Male)</option>
+                                <option value="en-US-Standard-E" data-gender="female">Standard-E (Female)</option>
+                                <option value="en-US-Standard-F" data-gender="female">Standard-F (Female)</option>
+                                <option value="en-US-Standard-G" data-gender="female">Standard-G (Female)</option>
+                                <option value="en-US-Standard-H" data-gender="female">Standard-H (Female)</option>
+                                <option value="en-US-Standard-I" data-gender="male">Standard-I (Male)</option>
+                                <option value="en-US-Standard-J" data-gender="male">Standard-J (Male)</option>
+                            </optgroup>
+                            <optgroup label="Anglais UK - Neural2">
+                                <option value="en-GB-Neural2-A" data-gender="female">Neural2-A (Female)</option>
+                                <option value="en-GB-Neural2-B" data-gender="male">Neural2-B (Male)</option>
+                                <option value="en-GB-Neural2-C" data-gender="female">Neural2-C (Female)</option>
+                                <option value="en-GB-Neural2-D" data-gender="male">Neural2-D (Male)</option>
+                                <option value="en-GB-Neural2-F" data-gender="female">Neural2-F (Female)</option>
+                            </optgroup>
+                            <optgroup label="Anglais UK - Wavenet">
+                                <option value="en-GB-Wavenet-A" data-gender="female">Wavenet-A (Female)</option>
+                                <option value="en-GB-Wavenet-B" data-gender="male">Wavenet-B (Male)</option>
+                                <option value="en-GB-Wavenet-C" data-gender="female">Wavenet-C (Female)</option>
+                                <option value="en-GB-Wavenet-D" data-gender="male">Wavenet-D (Male)</option>
+                                <option value="en-GB-Wavenet-F" data-gender="female">Wavenet-F (Female)</option>
+                            </optgroup>
+                            <optgroup label="Espagnol Spain - Neural2">
+                                <option value="es-ES-Neural2-A" data-gender="female">Neural2-A (Mujer)</option>
+                                <option value="es-ES-Neural2-B" data-gender="male">Neural2-B (Hombre)</option>
+                                <option value="es-ES-Neural2-C" data-gender="female">Neural2-C (Mujer)</option>
+                                <option value="es-ES-Neural2-D" data-gender="female">Neural2-D (Mujer)</option>
+                                <option value="es-ES-Neural2-E" data-gender="female">Neural2-E (Mujer)</option>
+                                <option value="es-ES-Neural2-F" data-gender="male">Neural2-F (Hombre)</option>
+                            </optgroup>
+                            <optgroup label="Espagnol Spain - Wavenet">
+                                <option value="es-ES-Wavenet-B" data-gender="male">Wavenet-B (Hombre)</option>
+                                <option value="es-ES-Wavenet-C" data-gender="female">Wavenet-C (Mujer)</option>
+                                <option value="es-ES-Wavenet-D" data-gender="female">Wavenet-D (Mujer)</option>
+                            </optgroup>
+                            <optgroup label="Allemand - Neural2">
+                                <option value="de-DE-Neural2-A" data-gender="female">Neural2-A (Frau)</option>
+                                <option value="de-DE-Neural2-B" data-gender="male">Neural2-B (Mann)</option>
+                                <option value="de-DE-Neural2-C" data-gender="female">Neural2-C (Frau)</option>
+                                <option value="de-DE-Neural2-D" data-gender="male">Neural2-D (Mann)</option>
+                                <option value="de-DE-Neural2-F" data-gender="female">Neural2-F (Frau)</option>
+                            </optgroup>
+                            <optgroup label="Allemand - Wavenet">
+                                <option value="de-DE-Wavenet-A" data-gender="female">Wavenet-A (Frau)</option>
+                                <option value="de-DE-Wavenet-B" data-gender="male">Wavenet-B (Mann)</option>
+                                <option value="de-DE-Wavenet-C" data-gender="female">Wavenet-C (Frau)</option>
+                                <option value="de-DE-Wavenet-D" data-gender="male">Wavenet-D (Mann)</option>
+                                <option value="de-DE-Wavenet-E" data-gender="male">Wavenet-E (Mann)</option>
+                                <option value="de-DE-Wavenet-F" data-gender="female">Wavenet-F (Frau)</option>
+                            </optgroup>
+                            <optgroup label="Portugais Brazil - Neural2">
+                                <option value="pt-BR-Neural2-A" data-gender="female">Neural2-A (Feminino)</option>
+                                <option value="pt-BR-Neural2-B" data-gender="male">Neural2-B (Masculino)</option>
+                                <option value="pt-BR-Neural2-C" data-gender="female">Neural2-C (Feminino)</option>
+                            </optgroup>
+                            <optgroup label="Portugais Brazil - Wavenet">
+                                <option value="pt-BR-Wavenet-A" data-gender="female">Wavenet-A (Feminino)</option>
+                                <option value="pt-BR-Wavenet-B" data-gender="male">Wavenet-B (Masculino)</option>
+                                <option value="pt-BR-Wavenet-C" data-gender="female">Wavenet-C (Feminino)</option>
+                            </optgroup>
+                            <optgroup label="Japonais - Neural2">
+                                <option value="ja-JP-Neural2-B" data-gender="female">Neural2-B (女性)</option>
+                                <option value="ja-JP-Neural2-C" data-gender="male">Neural2-C (男性)</option>
+                                <option value="ja-JP-Neural2-D" data-gender="male">Neural2-D (男性)</option>
+                            </optgroup>
+                            <optgroup label="Japonais - Wavenet">
+                                <option value="ja-JP-Wavenet-A" data-gender="female">Wavenet-A (女性)</option>
+                                <option value="ja-JP-Wavenet-B" data-gender="female">Wavenet-B (女性)</option>
+                                <option value="ja-JP-Wavenet-C" data-gender="male">Wavenet-C (男性)</option>
+                                <option value="ja-JP-Wavenet-D" data-gender="male">Wavenet-D (男性)</option>
+                            </optgroup>
+                            <optgroup label="Coréen - Neural2">
+                                <option value="ko-KR-Neural2-A" data-gender="female">Neural2-A (여성)</option>
+                                <option value="ko-KR-Neural2-B" data-gender="female">Neural2-B (여성)</option>
+                                <option value="ko-KR-Neural2-C" data-gender="male">Neural2-C (남성)</option>
+                            </optgroup>
+                            <optgroup label="Coréen - Wavenet">
+                                <option value="ko-KR-Wavenet-A" data-gender="female">Wavenet-A (여성)</option>
+                                <option value="ko-KR-Wavenet-B" data-gender="female">Wavenet-B (여성)</option>
+                                <option value="ko-KR-Wavenet-C" data-gender="male">Wavenet-C (남성)</option>
+                                <option value="ko-KR-Wavenet-D" data-gender="male">Wavenet-D (남성)</option>
+                            </optgroup>
+                            <optgroup label="Chinois Mandarin - Neural2">
+                                <option value="cmn-CN-Neural2-A" data-gender="female">Neural2-A (女)</option>
+                                <option value="cmn-CN-Neural2-B" data-gender="male">Neural2-B (男)</option>
+                                <option value="cmn-CN-Neural2-C" data-gender="male">Neural2-C (男)</option>
+                                <option value="cmn-CN-Neural2-D" data-gender="female">Neural2-D (女)</option>
+                            </optgroup>
+                            <optgroup label="Chinois Mandarin - Wavenet">
+                                <option value="cmn-CN-Wavenet-A" data-gender="female">Wavenet-A (女)</option>
+                                <option value="cmn-CN-Wavenet-B" data-gender="male">Wavenet-B (男)</option>
+                                <option value="cmn-CN-Wavenet-C" data-gender="male">Wavenet-C (男)</option>
+                                <option value="cmn-CN-Wavenet-D" data-gender="female">Wavenet-D (女)</option>
+                            </optgroup>
+                            <optgroup label="Néerlandais - Neural2">
+                                <option value="nl-NL-Neural2-A" data-gender="female">Neural2-A (Vrouw)</option>
+                                <option value="nl-NL-Neural2-B" data-gender="male">Neural2-B (Man)</option>
+                                <option value="nl-NL-Neural2-C" data-gender="male">Neural2-C (Man)</option>
+                                <option value="nl-NL-Neural2-D" data-gender="female">Neural2-D (Vrouw)</option>
+                                <option value="nl-NL-Neural2-E" data-gender="female">Neural2-E (Vrouw)</option>
+                            </optgroup>
+                            <optgroup label="Néerlandais - Wavenet">
+                                <option value="nl-NL-Wavenet-A" data-gender="female">Wavenet-A (Vrouw)</option>
+                                <option value="nl-NL-Wavenet-B" data-gender="male">Wavenet-B (Man)</option>
+                                <option value="nl-NL-Wavenet-C" data-gender="male">Wavenet-C (Man)</option>
+                                <option value="nl-NL-Wavenet-D" data-gender="female">Wavenet-D (Vrouw)</option>
+                                <option value="nl-NL-Wavenet-E" data-gender="female">Wavenet-E (Vrouw)</option>
+                            </optgroup>
+                            <optgroup label="Polonais - Neural2">
+                                <option value="pl-PL-Neural2-A" data-gender="female">Neural2-A (Kobieta)</option>
+                                <option value="pl-PL-Neural2-B" data-gender="male">Neural2-B (Mężczyzna)</option>
+                                <option value="pl-PL-Neural2-C" data-gender="male">Neural2-C (Mężczyzna)</option>
+                                <option value="pl-PL-Neural2-D" data-gender="female">Neural2-D (Kobieta)</option>
+                                <option value="pl-PL-Neural2-E" data-gender="female">Neural2-E (Kobieta)</option>
+                            </optgroup>
+                            <optgroup label="Polonais - Wavenet">
+                                <option value="pl-PL-Wavenet-A" data-gender="female">Wavenet-A (Kobieta)</option>
+                                <option value="pl-PL-Wavenet-B" data-gender="male">Wavenet-B (Mężczyzna)</option>
+                                <option value="pl-PL-Wavenet-C" data-gender="male">Wavenet-C (Mężczyzna)</option>
+                                <option value="pl-PL-Wavenet-D" data-gender="female">Wavenet-D (Kobieta)</option>
+                                <option value="pl-PL-Wavenet-E" data-gender="female">Wavenet-E (Kobieta)</option>
+                            </optgroup>
+                            <optgroup label="Russe - Neural2">
+                                <option value="ru-RU-Neural2-A" data-gender="female">Neural2-A (Женский)</option>
+                                <option value="ru-RU-Neural2-B" data-gender="male">Neural2-B (Мужской)</option>
+                                <option value="ru-RU-Neural2-C" data-gender="female">Neural2-C (Женский)</option>
+                                <option value="ru-RU-Neural2-D" data-gender="male">Neural2-D (Мужской)</option>
+                                <option value="ru-RU-Neural2-E" data-gender="female">Neural2-E (Женский)</option>
+                            </optgroup>
+                            <optgroup label="Russe - Wavenet">
+                                <option value="ru-RU-Wavenet-A" data-gender="female">Wavenet-A (Женский)</option>
+                                <option value="ru-RU-Wavenet-B" data-gender="male">Wavenet-B (Мужской)</option>
+                                <option value="ru-RU-Wavenet-C" data-gender="female">Wavenet-C (Женский)</option>
+                                <option value="ru-RU-Wavenet-D" data-gender="male">Wavenet-D (Мужской)</option>
+                                <option value="ru-RU-Wavenet-E" data-gender="female">Wavenet-E (Женский)</option>
                             </optgroup>
                         </select>
                         <p class="tts-hint" id="voiceHint">Choisissez la voix pour la lecture des annonces</p>

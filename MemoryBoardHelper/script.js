@@ -282,7 +282,7 @@ function getVoiceName(languageCode, overrideName) {
 }
 // --- Focus automatique sur l'heure après inactivité utilisateur ---
 let focusTimer = null;
-const FOCUS_DELAY = 30000; // 30 secondes
+const FOCUS_DELAY = 240000; // 4 minutes
 
 function focusVoiceInteraction() {
     // Focus sur le bouton principal de la section voice-interaction

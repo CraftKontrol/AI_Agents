@@ -546,7 +546,59 @@ async function processWithMistral(userMessage, conversationHistory = []) {
         
         console.log('[Mistral] Response:', content);
         
-        let result = JSON.parse(content);
+        // Nettoyage et validation du JSON avant parsing
+        let result;
+        try {
+            // Nettoyer les potentiels problèmes de formatage
+            let cleanedContent = content.trim();
+            
+            // Retirer les markdown code blocks si présents
+            if (cleanedContent.startsWith('```json')) {
+                cleanedContent = cleanedContent.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
+            } else if (cleanedContent.startsWith('```')) {
+                cleanedContent = cleanedContent.replace(/^```\s*/, '').replace(/```\s*$/, '').trim();
+            }
+            
+            // Tentative de parsing
+            result = JSON.parse(cleanedContent);
+            
+            // Validation de la structure minimale
+            if (!result || typeof result !== 'object') {
+                throw new Error('Invalid JSON structure: not an object');
+            }
+            
+            // Assurer que l'action existe
+            if (!result.action) {
+                console.warn('[Mistral] Missing action in response, defaulting to conversation');
+                result.action = 'conversation';
+            }
+            
+        } catch (parseError) {
+            console.error('[Mistral] JSON parsing error:', parseError);
+            console.error('[Mistral] Raw content:', content);
+            
+            // Fallback: créer une réponse valide
+            result = {
+                action: 'conversation',
+                response: 'Désolé, j\'ai eu du mal à formuler ma réponse. Pouvez-vous reformuler votre demande ?',
+                language: language
+            };
+            
+            // Tenter d'extraire une réponse partielle si possible
+            try {
+                const responseMatch = content.match(/"response"\s*:\s*"([^"]+)"/);
+                if (responseMatch && responseMatch[1]) {
+                    result.response = responseMatch[1]
+                        .replace(/\\n/g, '\n')
+                        .replace(/\\t/g, '\t')
+                        .replace(/\\"/g, '"')
+                        .replace(/\\\\/g, '\\');
+                }
+            } catch {
+                // Ignorer l'erreur, utiliser le fallback par défaut
+            }
+        }
+        
         result.language = language;
 
         // Plus de correction forcée - on fait confiance à Mistral après clarification
@@ -555,7 +607,12 @@ async function processWithMistral(userMessage, conversationHistory = []) {
         return result;
     } catch (error) {
         console.error('[Mistral] Processing error:', error);
-        throw error;
+        // Retourner une réponse de secours au lieu de throw
+        return {
+            action: 'conversation',
+            response: 'Désolé, une erreur est survenue lors du traitement de votre demande.',
+            language: language
+        };
     }
 }
 
