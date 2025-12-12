@@ -137,6 +137,81 @@ function getChatPrompt() {
     return DEFAULT_CHAT_PROMPT;
 }
 
+// Get system prompt for response enhancement
+function getSystemPromptForEnhancement() {
+    const mistralSettings = JSON.parse(localStorage.getItem('mistralSettings') || 'null');
+    if (mistralSettings && mistralSettings.systemPrompt && mistralSettings.systemPrompt.trim().length > 0) {
+        return mistralSettings.systemPrompt;
+    }
+    return `Tu es un assistant mémoire bienveillant pour personnes âgées ou ayant des difficultés de mémoire. 
+Tu dois être chaleureux, encourageant et utiliser un langage simple. 
+Personnalise tes réponses avec empathie et bonne humeur.`;
+}
+
+// Enhance a simple response with personality using Mistral
+async function enhanceResponseWithMistral(simpleResponse, context = {}) {
+    const apiKey = localStorage.getItem('mistralApiKey');
+    if (!apiKey) {
+        console.log('[Mistral] No API key, returning simple response');
+        return simpleResponse;
+    }
+
+    try {
+        const systemPrompt = getSystemPromptForEnhancement();
+        const mistralSettings = JSON.parse(localStorage.getItem('mistralSettings') || 'null');
+        const modelToUse = mistralSettings?.model || MISTRAL_MODEL;
+        const temperatureToUse = mistralSettings?.temperature ?? 0.7; // Higher temperature for more personality
+        const maxTokensToUse = 150; // Short responses
+        
+        // Build context information
+        let contextInfo = '';
+        if (context.time) contextInfo += `Heure actuelle: ${context.time}\n`;
+        if (context.date) contextInfo += `Date actuelle: ${context.date}\n`;
+        if (context.taskCount !== undefined) contextInfo += `Nombre de tâches: ${context.taskCount}\n`;
+        if (context.taskType) contextInfo += `Type de tâche: ${context.taskType}\n`;
+        
+        const prompt = `${systemPrompt}
+
+${contextInfo ? 'Contexte:\n' + contextInfo + '\n' : ''}Réponse basique à améliorer: "${simpleResponse}"
+
+Réécris cette réponse de manière plus chaleureuse et personnalisée, en gardant l'information principale mais en ajoutant de la personnalité et de l'empathie. 
+Garde la réponse courte et claire (maximum 2 phrases).
+Réponds uniquement avec la réponse améliorée, sans guillemets ni explications.`;
+
+        console.log('[Mistral] Enhancing response:', simpleResponse);
+
+        const response = await fetch(MISTRAL_API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: modelToUse,
+                messages: [
+                    { role: 'user', content: prompt }
+                ],
+                temperature: temperatureToUse,
+                max_tokens: maxTokensToUse
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Mistral API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const enhancedResponse = data.choices[0].message.content.trim()
+            .replace(/^["']|["']$/g, ''); // Remove surrounding quotes if present
+        
+        console.log('[Mistral] Enhanced response:', enhancedResponse);
+        return enhancedResponse;
+    } catch (error) {
+        console.error('[Mistral] Enhancement error:', error);
+        return simpleResponse; // Fallback to simple response
+    }
+}
+
 // Save custom chat prompt to storage
 function setChatPrompt(prompt) {
     if (prompt && prompt.trim().length > 0) {
@@ -612,6 +687,108 @@ async function verifyTaskWithUser(task, language = 'fr') {
     };
     
     return confirmations[language] || confirmations.fr;
+}
+
+// Convert text response to SSML for enhanced speech synthesis
+function convertToSSML(text, language = 'fr') {
+    // Check if SSML is enabled
+    const ssmlSettings = JSON.parse(localStorage.getItem('ssmlSettings') || 'null');
+    if (ssmlSettings && !ssmlSettings.enabled) {
+        console.log('[Mistral] SSML disabled, returning plain text');
+        return text;
+    }
+    
+    // Use default settings if not configured
+    const settings = ssmlSettings || {
+        enabled: true,
+        sentencePause: 500,
+        timePause: 200,
+        emphasisLevel: 'strong',
+        questionPitch: 2,
+        exclamationPitch: 1,
+        greetingPitch: 1,
+        customKeywords: '',
+        keywordPitch: 1
+    };
+    
+    // Remove any existing SSML tags first
+    let cleanText = text.replace(/<\/?[^>]+(>|$)/g, '');
+    
+    // Start SSML document
+    let ssml = '<speak>';
+    
+    // Detect and emphasize important words/phrases
+    // Keywords to emphasize (context-specific)
+    const emphasisPatterns = {
+        fr: ['attention', 'important', 'urgent', 'rappel', 'maintenant', 'aujourd\'hui', 'demain', 'rendez-vous', 'médicament', 'médecin'],
+        en: ['attention', 'important', 'urgent', 'reminder', 'now', 'today', 'tomorrow', 'appointment', 'medication', 'doctor'],
+        it: ['attenzione', 'importante', 'urgente', 'promemoria', 'adesso', 'oggi', 'domani', 'appuntamento', 'farmaco', 'dottore']
+    };
+    
+    let keywords = [...(emphasisPatterns[language] || emphasisPatterns.fr)];
+    
+    // Add custom keywords from settings
+    if (settings.customKeywords && settings.customKeywords.trim().length > 0) {
+        const customWords = settings.customKeywords.split(',').map(w => w.trim().toLowerCase()).filter(w => w.length > 0);
+        keywords = [...keywords, ...customWords];
+        console.log('[Mistral] Using custom keywords:', customWords);
+    }
+    
+    // Split text into sentences
+    const sentences = cleanText.match(/[^.!?]+[.!?]+/g) || [cleanText];
+    
+    sentences.forEach((sentence, idx) => {
+        let processedSentence = sentence.trim();
+        
+        // Add emphasis to keywords with optional pitch variation
+        keywords.forEach(keyword => {
+            const regex = new RegExp(`\\b(${keyword})\\b`, 'gi');
+            if (settings.keywordPitch !== 0) {
+                const pitchSign = settings.keywordPitch > 0 ? '+' : '';
+                processedSentence = processedSentence.replace(regex, `<prosody pitch="${pitchSign}${settings.keywordPitch}st"><emphasis level="${settings.emphasisLevel}">$1</emphasis></prosody>`);
+            } else {
+                processedSentence = processedSentence.replace(regex, `<emphasis level="${settings.emphasisLevel}">$1</emphasis>`);
+            }
+        });
+        
+        // Detect questions and add appropriate prosody
+        if (processedSentence.includes('?')) {
+            processedSentence = `<prosody pitch="+${settings.questionPitch}st">${processedSentence}</prosody>`;
+        }
+        
+        // Detect exclamations and add excitement
+        if (processedSentence.includes('!')) {
+            processedSentence = `<prosody rate="medium" pitch="+${settings.exclamationPitch}st">${processedSentence}</prosody>`;
+        }
+        
+        // Add natural pauses between sentences
+        ssml += processedSentence;
+        if (idx < sentences.length - 1) {
+            ssml += `<break time="${settings.sentencePause}ms"/>`;
+        }
+    });
+    
+    // Detect time expressions and add slight pause before them
+    if (settings.timePause > 0) {
+        ssml = ssml.replace(/(\d{1,2}h\d{0,2})/gi, `<break time="${settings.timePause}ms"/>$1`);
+        ssml = ssml.replace(/(\d{1,2}:\d{2})/g, `<break time="${settings.timePause}ms"/>$1`);
+        
+        // Detect dates and add slight pause
+        ssml = ssml.replace(/(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)/gi, `<break time="${settings.timePause}ms"/>$1`);
+        ssml = ssml.replace(/(monday|tuesday|wednesday|thursday|friday|saturday|sunday)/gi, `<break time="${settings.timePause}ms"/>$1`);
+        ssml = ssml.replace(/(lunedì|martedì|mercoledì|giovedì|venerdì|sabato|domenica)/gi, `<break time="${settings.timePause}ms"/>$1`);
+    }
+    
+    // Add prosody for greetings (warmer tone)
+    if (settings.greetingPitch > 0) {
+        ssml = ssml.replace(/(bonjour|bonsoir|salut|hello|hi|ciao|buongiorno)/gi, `<prosody pitch="+${settings.greetingPitch}st" rate="0.9">$1</prosody>`);
+    }
+    
+    // Close SSML
+    ssml += '</speak>';
+    
+    console.log('[Mistral] Generated SSML:', ssml);
+    return ssml;
 }
 
 // Generate response based on language

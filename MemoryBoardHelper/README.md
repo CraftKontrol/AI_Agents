@@ -18,6 +18,7 @@ A voice-first AI assistant powered by Mistral AI that helps manage daily tasks, 
 - Intelligent task completion detection
 - Compressed conversation memory (last 10-20 exchanges)
 - Smart medication tracking
+- **🎭 Advanced SSML Speech Synthesis**: Expressive voice responses with automatic emphasis, pauses, and prosody
 
 ### ✅ **Task Management**
 - Max 3-5 tasks displayed at once (elderly-friendly)
@@ -248,6 +249,39 @@ The app automatically:
 
 ---
 
+## 🎭 SSML Enhanced Speech (NEW!)
+
+### What is SSML?
+**Speech Synthesis Markup Language** is used to add expressivity to voice responses, making the assistant sound more natural and human-like.
+
+### Automatic Features
+The app now automatically:
+- **Emphasizes important words**: "attention", "urgent", "medication", "today", etc.
+- **Adds natural pauses**: Before times (14:30), dates (Monday), and between sentences
+- **Adjusts intonation**: Questions rise in pitch, exclamations have more energy
+- **Warms up greetings**: "Bonjour", "Hello", "Ciao" are spoken with friendlier tone
+
+### Example Transformation
+
+**Before (Plain Text):**
+> "Attention, n'oubliez pas votre rendez-vous important aujourd'hui à 14h30"
+> 
+> *Monotone, flat delivery*
+
+**After (with SSML):**
+> "**ATTENTION**, n'oubliez pas votre **RENDEZ-VOUS IMPORTANT AUJOURD'HUI** [pause] à [pause] 14h30"
+> 
+> *Emphasized keywords, natural pauses, expressive delivery*
+
+### Technical Details
+- Powered by **Google Cloud Text-to-Speech Neural2 voices**
+- SSML patterns adapted for **French, Italian, and English**
+- Automatic detection and conversion for all Mistral responses
+- See `SSML_FEATURES.md` for complete documentation
+- See `GOOGLE_TTS_REFERENCE.md` for API reference
+
+---
+
 ## 📖 Usage Tips
 
 1. **Start Small**: Add 1-2 tasks first to get comfortable
@@ -317,6 +351,15 @@ For assistance or questions:
 ---
 
 ## 📋 Recent Updates
+
+### v1.2 - Advanced SSML Speech Synthesis (Dec 12, 2025)
+- 🎭 **NEW**: Automatic SSML conversion for all Mistral responses
+- 🗣️ **Enhanced Expressivity**: Emphasis on important keywords (attention, urgent, medication, etc.)
+- ⏸️ **Natural Pauses**: Automatic pauses before times, dates, and between sentences
+- 🎵 **Dynamic Prosody**: Questions with rising intonation, exclamations with energy
+- 🌍 **Multilingual Support**: SSML patterns adapted for French, Italian, and English
+- 🔊 **Warmer Greetings**: Special prosody for "bonjour", "hello", "ciao"
+- 📚 **Documentation**: Complete SSML reference guide added
 
 ### v1.1 - Task Type Visual Indicators (Dec 2025)
 - ✨ **NEW**: Visual badges to distinguish task types (Général, Médicament, Rendez-vous, etc.)

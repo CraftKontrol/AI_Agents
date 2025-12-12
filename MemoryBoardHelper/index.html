@@ -642,7 +642,146 @@
                         </div>
                         <p class="tts-hint" id="volumeHint">Ajuste le niveau sonore</p>
                     </div>
-                   
+                </div>
+
+                <!-- SSML Configuration -->
+                <div class="ssml-section">
+                    <h3>
+                        <span class="material-symbols-outlined">psychology</span>
+                        <span id="ssmlTitle">Paramètres d'expressivité (SSML)</span>
+                    </h3>
+                    <div class="tts-grid">
+                        <div class="tts-card full-width">
+                            <label class="setting-checkbox-label">
+                                <input type="checkbox" id="ssmlEnabled" checked onchange="updateSSMLSettings()">
+                                <span id="ssmlEnabledLabel">Activer l'expressivité vocale (SSML)</span>
+                            </label>
+                            <p class="tts-hint" id="ssmlHint">Ajoute automatiquement des emphases, pauses et intonations pour une voix plus naturelle</p>
+                        </div>
+
+                        <div class="tts-card" id="ssmlPausesCard">
+                            <label for="ssmlSentencePause">
+                                <span class="material-symbols-outlined">pause</span>
+                                <span id="sentencePauseLabel">Pause entre phrases</span>
+                                <span class="tts-value" id="sentencePauseValue">500 ms</span>
+                            </label>
+                            <input type="range" id="ssmlSentencePause" min="200" max="1000" step="50" value="500" oninput="updateSSMLValue('sentencePause', this.value)" />
+                            <div class="range-labels">
+                                <span>200ms</span>
+                                <span>500ms</span>
+                                <span>1000ms</span>
+                            </div>
+                            <p class="tts-hint" id="sentencePauseHint">Durée des pauses entre les phrases</p>
+                        </div>
+
+                        <div class="tts-card" id="ssmlTimePauseCard">
+                            <label for="ssmlTimePause">
+                                <span class="material-symbols-outlined">schedule</span>
+                                <span id="timePauseLabel">Pause avant heures/dates</span>
+                                <span class="tts-value" id="timePauseValue">200 ms</span>
+                            </label>
+                            <input type="range" id="ssmlTimePause" min="0" max="500" step="50" value="200" oninput="updateSSMLValue('timePause', this.value)" />
+                            <div class="range-labels">
+                                <span>0ms</span>
+                                <span>250ms</span>
+                                <span>500ms</span>
+                            </div>
+                            <p class="tts-hint" id="timePauseHint">Pause avant les heures et dates</p>
+                        </div>
+
+                        <div class="tts-card" id="ssmlEmphasisCard">
+                            <label for="ssmlEmphasisLevel">
+                                <span class="material-symbols-outlined">format_bold</span>
+                                <span id="emphasisLevelLabel">Niveau d'emphase</span>
+                            </label>
+                            <select id="ssmlEmphasisLevel" onchange="updateSSMLSettings()">
+                                <option value="moderate">Modéré</option>
+                                <option value="strong" selected>Fort (Recommandé)</option>
+                                <option value="reduced">Réduit</option>
+                            </select>
+                            <p class="tts-hint" id="emphasisHint">Intensité des emphases sur les mots-clés</p>
+                        </div>
+
+                        <div class="tts-card full-width" id="ssmlCustomKeywordsCard">
+                            <label for="ssmlCustomKeywords">
+                                <span class="material-symbols-outlined">text_fields</span>
+                                <span id="customKeywordsLabel">Mots-clés personnalisés</span>
+                            </label>
+                            <input type="text" id="ssmlCustomKeywords" placeholder="Ex: prénom, médicament spécifique, lieu..." onchange="updateSSMLSettings()">
+                            <p class="tts-hint" id="customKeywordsHint">Ajoutez des mots séparés par des virgules qui seront prononcés avec emphase forte (en plus des mots-clés par défaut)</p>
+                        </div>
+
+                        <div class="tts-card" id="ssmlKeywordPitchCard">
+                            <label for="ssmlKeywordPitch">
+                                <span class="material-symbols-outlined">trending_up</span>
+                                <span id="keywordPitchLabel">Élévation des mots-clés</span>
+                                <span class="tts-value" id="keywordPitchValue">+1 st</span>
+                            </label>
+                            <input type="range" id="ssmlKeywordPitch" min="-5" max="5" step="1" value="1" oninput="updateSSMLValue('keywordPitch', this.value)" />
+                            <div class="range-labels">
+                                <span>-5 st</span>
+                                <span>0 st</span>
+                                <span>+5 st</span>
+                            </div>
+                            <p class="tts-hint" id="keywordPitchHint">Élévation du ton pour les mots-clés importants (semitones)</p>
+                        </div>
+
+                        <div class="tts-card" id="ssmlQuestionPitchCard">
+                            <label for="ssmlQuestionPitch">
+                                <span class="material-symbols-outlined">help</span>
+                                <span id="questionPitchLabel">Intonation des questions</span>
+                                <span class="tts-value" id="questionPitchValue">+2 st</span>
+                            </label>
+                            <input type="range" id="ssmlQuestionPitch" min="0" max="5" step="1" value="2" oninput="updateSSMLValue('questionPitch', this.value)" />
+                            <div class="range-labels">
+                                <span>0 st</span>
+                                <span>+2 st</span>
+                                <span>+5 st</span>
+                            </div>
+                            <p class="tts-hint" id="questionPitchHint">Élévation du ton pour les questions (semitones)</p>
+                        </div>
+
+                        <div class="tts-card" id="ssmlExclamationCard">
+                            <label for="ssmlExclamationPitch">
+                                <span class="material-symbols-outlined">priority_high</span>
+                                <span id="exclamationPitchLabel">Énergie des exclamations</span>
+                                <span class="tts-value" id="exclamationPitchValue">+1 st</span>
+                            </label>
+                            <input type="range" id="ssmlExclamationPitch" min="0" max="3" step="1" value="1" oninput="updateSSMLValue('exclamationPitch', this.value)" />
+                            <div class="range-labels">
+                                <span>0 st</span>
+                                <span>+1 st</span>
+                                <span>+3 st</span>
+                            </div>
+                            <p class="tts-hint" id="exclamationPitchHint">Variation du ton pour les exclamations</p>
+                        </div>
+
+                        <div class="tts-card" id="ssmlGreetingCard">
+                            <label for="ssmlGreetingPitch">
+                                <span class="material-symbols-outlined">waving_hand</span>
+                                <span id="greetingPitchLabel">Chaleur des salutations</span>
+                                <span class="tts-value" id="greetingPitchValue">+1 st</span>
+                            </label>
+                            <input type="range" id="ssmlGreetingPitch" min="0" max="3" step="1" value="1" oninput="updateSSMLValue('greetingPitch', this.value)" />
+                            <div class="range-labels">
+                                <span>0 st</span>
+                                <span>+1 st</span>
+                                <span>+3 st</span>
+                            </div>
+                            <p class="tts-hint" id="greetingPitchHint">Ton plus chaleureux pour "Bonjour", "Hello", etc.</p>
+                        </div>
+                    </div>
+
+                    <div class="ssml-actions">
+                        <button class="btn-reset" onclick="resetSSMLSettings()">
+                            <span class="material-symbols-outlined">restart_alt</span>
+                            <span id="resetSSMLBtn">Réinitialiser SSML</span>
+                        </button>
+                        <button class="btn-save" onclick="saveSSMLSettings()">
+                            <span class="material-symbols-outlined">save</span>
+                            <span id="saveSSMLBtn">Enregistrer SSML</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </section>

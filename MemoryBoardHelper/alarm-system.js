@@ -250,9 +250,25 @@ async function announceTask(task) {
             en: 'Attention, it\'s time to'
         };
         
-        const message = `${labels[lang] || labels.fr}: ${task.description}`;
+        const simpleMessage = `${labels[lang] || labels.fr}: ${task.description}`;
         
-        await speakWithGoogleTTS(message, langCodes[lang] || 'fr-FR', ttsApiKey);
+        // Enhance message with Mistral if available
+        let message = simpleMessage;
+        if (typeof enhanceResponseWithMistral === 'function') {
+            message = await enhanceResponseWithMistral(simpleMessage, {
+                taskType: task.type,
+                time: task.time,
+                priority: task.priority
+            });
+        }
+        
+        // Convert to SSML for enhanced speech
+        let ssmlMessage = message;
+        if (!message.includes('<speak>') && typeof convertToSSML === 'function') {
+            ssmlMessage = convertToSSML(message, lang);
+        }
+        
+        await speakWithGoogleTTS(ssmlMessage, langCodes[lang] || 'fr-FR', ttsApiKey);
     } catch (error) {
         console.error('[AlarmSystem] Error announcing task:', error);
         // Fallback to browser TTS
@@ -264,9 +280,12 @@ async function announceTask(task) {
 async function speakWithGoogleTTS(text, languageCode, apiKey) {
     const url = `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`;
     
+    // Detect if text contains SSML tags
+    const isSSML = text.includes('<speak>') || text.includes('<emphasis>') || text.includes('<break');
+    
     const voiceInfo = getVoiceName(languageCode);
     const requestBody = {
-        input: { text },
+        input: isSSML ? { ssml: text } : { text },
         voice: {
             languageCode,
             name: voiceInfo.name,

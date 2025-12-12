@@ -7,6 +7,19 @@ const DEFAULT_TTS_SETTINGS = {
     autoPlay: true
 };
 
+// --- SSML Settings Logic ---
+const DEFAULT_SSML_SETTINGS = {
+    enabled: true,
+    sentencePause: 500,
+    timePause: 200,
+    emphasisLevel: 'strong',
+    questionPitch: 2,
+    exclamationPitch: 1,
+    greetingPitch: 1,
+    customKeywords: '',
+    keywordPitch: 1
+};
+
 function loadTTSSettings() {
     const settings = JSON.parse(localStorage.getItem('ttsSettings') || 'null') || DEFAULT_TTS_SETTINGS;
     // Update UI
@@ -83,8 +96,116 @@ function initFloatingVoiceButton() {
     classObserver.observe(voiceBtn, { attributes: true, attributeFilter: ['class'] });
 }
 
+function loadSSMLSettings() {
+    const settings = JSON.parse(localStorage.getItem('ssmlSettings') || 'null') || DEFAULT_SSML_SETTINGS;
+    // Update UI
+    const enabled = document.getElementById('ssmlEnabled');
+    if (enabled) enabled.checked = settings.enabled;
+    
+    const sentencePause = document.getElementById('ssmlSentencePause');
+    if (sentencePause) { 
+        sentencePause.value = settings.sentencePause; 
+        document.getElementById('sentencePauseValue').textContent = settings.sentencePause + ' ms';
+    }
+    
+    const timePause = document.getElementById('ssmlTimePause');
+    if (timePause) { 
+        timePause.value = settings.timePause; 
+        document.getElementById('timePauseValue').textContent = settings.timePause + ' ms';
+    }
+    
+    const emphasisLevel = document.getElementById('ssmlEmphasisLevel');
+    if (emphasisLevel) emphasisLevel.value = settings.emphasisLevel;
+    
+    const questionPitch = document.getElementById('ssmlQuestionPitch');
+    if (questionPitch) { 
+        questionPitch.value = settings.questionPitch; 
+        document.getElementById('questionPitchValue').textContent = '+' + settings.questionPitch + ' st';
+    }
+    
+    const exclamationPitch = document.getElementById('ssmlExclamationPitch');
+    if (exclamationPitch) { 
+        exclamationPitch.value = settings.exclamationPitch; 
+        document.getElementById('exclamationPitchValue').textContent = '+' + settings.exclamationPitch + ' st';
+    }
+    
+    const greetingPitch = document.getElementById('ssmlGreetingPitch');
+    if (greetingPitch) { 
+        greetingPitch.value = settings.greetingPitch; 
+        document.getElementById('greetingPitchValue').textContent = '+' + settings.greetingPitch + ' st';
+    }
+    
+    const customKeywords = document.getElementById('ssmlCustomKeywords');
+    if (customKeywords) customKeywords.value = settings.customKeywords || '';
+    
+    const keywordPitch = document.getElementById('ssmlKeywordPitch');
+    if (keywordPitch) { 
+        keywordPitch.value = settings.keywordPitch;
+        const sign = settings.keywordPitch >= 0 ? '+' : '';
+        document.getElementById('keywordPitchValue').textContent = sign + settings.keywordPitch + ' st';
+    }
+    
+    // Toggle visibility of SSML controls based on enabled state
+    toggleSSMLControls(settings.enabled);
+}
+
+function saveSSMLSettings() {
+    const settings = {
+        enabled: document.getElementById('ssmlEnabled')?.checked ?? DEFAULT_SSML_SETTINGS.enabled,
+        sentencePause: parseInt(document.getElementById('ssmlSentencePause')?.value) || DEFAULT_SSML_SETTINGS.sentencePause,
+        timePause: parseInt(document.getElementById('ssmlTimePause')?.value) || DEFAULT_SSML_SETTINGS.timePause,
+        emphasisLevel: document.getElementById('ssmlEmphasisLevel')?.value || DEFAULT_SSML_SETTINGS.emphasisLevel,
+        questionPitch: parseInt(document.getElementById('ssmlQuestionPitch')?.value) || DEFAULT_SSML_SETTINGS.questionPitch,
+        exclamationPitch: parseInt(document.getElementById('ssmlExclamationPitch')?.value) || DEFAULT_SSML_SETTINGS.exclamationPitch,
+        greetingPitch: parseInt(document.getElementById('ssmlGreetingPitch')?.value) || DEFAULT_SSML_SETTINGS.greetingPitch,
+        customKeywords: document.getElementById('ssmlCustomKeywords')?.value?.trim() || '',
+        keywordPitch: parseInt(document.getElementById('ssmlKeywordPitch')?.value) || DEFAULT_SSML_SETTINGS.keywordPitch
+    };
+    localStorage.setItem('ssmlSettings', JSON.stringify(settings));
+    showSuccess('Paramètres SSML enregistrés');
+}
+
+function resetSSMLSettings() {
+    localStorage.removeItem('ssmlSettings');
+    loadSSMLSettings();
+    showSuccess('Paramètres SSML réinitialisés');
+}
+
+function updateSSMLSettings() {
+    const enabled = document.getElementById('ssmlEnabled')?.checked ?? true;
+    toggleSSMLControls(enabled);
+    saveSSMLSettings();
+}
+
+function updateSSMLValue(type, val) {
+    if (type === 'sentencePause') document.getElementById('sentencePauseValue').textContent = val + ' ms';
+    if (type === 'timePause') document.getElementById('timePauseValue').textContent = val + ' ms';
+    if (type === 'keywordPitch') {
+        const sign = val >= 0 ? '+' : '';
+        document.getElementById('keywordPitchValue').textContent = sign + val + ' st';
+    }
+    if (type === 'questionPitch') document.getElementById('questionPitchValue').textContent = '+' + val + ' st';
+    if (type === 'exclamationPitch') document.getElementById('exclamationPitchValue').textContent = '+' + val + ' st';
+    if (type === 'greetingPitch') document.getElementById('greetingPitchValue').textContent = '+' + val + ' st';
+    saveSSMLSettings();
+}
+
+function toggleSSMLControls(enabled) {
+    const cards = ['ssmlPausesCard', 'ssmlTimePauseCard', 'ssmlEmphasisCard', 'ssmlCustomKeywordsCard', 'ssmlKeywordPitchCard',
+                   'ssmlQuestionPitchCard', 'ssmlExclamationCard', 'ssmlGreetingCard'];
+    cards.forEach(id => {
+        const card = document.getElementById(id);
+        if (card) {
+            card.style.opacity = enabled ? '1' : '0.5';
+            const inputs = card.querySelectorAll('input, select');
+            inputs.forEach(input => input.disabled = !enabled);
+        }
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     loadTTSSettings();
+    loadSSMLSettings();
     initFloatingVoiceButton();
     // Save on change
     ['ttsVoice','ttsSpeakingRate','ttsPitch','ttsVolume','autoPlayTTS'].forEach(id => {
@@ -98,8 +219,12 @@ async function speakWithGoogleTTS(text, languageCode, apiKey) {
     const ttsSettings = JSON.parse(localStorage.getItem('ttsSettings') || 'null') || DEFAULT_TTS_SETTINGS;
     const url = `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`;
     const voiceInfo = getVoiceName(languageCode, ttsSettings.voice);
+    
+    // Detect if text contains SSML tags
+    const isSSML = text.includes('<speak>') || text.includes('<emphasis>') || text.includes('<break');
+    
     const requestBody = {
-        input: { text },
+        input: isSSML ? { ssml: text } : { text },
         voice: {
             languageCode,
             name: voiceInfo.name,
@@ -315,10 +440,11 @@ function quickShowYearTasks() {
 }
 
 // Commande : Ajouter un médicament
-function quickAddMedication() {
+async function quickAddMedication() {
     openAddTaskModal();
     document.getElementById('taskType').value = 'medication';
-    showSuccess('Ajout d\'un médicament.');
+    const enhancedMsg = await enhanceResponseWithMistral('Ajout d\'un médicament.', { taskType: 'medication' });
+    showSuccess(enhancedMsg);
 }
 
 // Commande : Afficher l'heure
@@ -341,18 +467,19 @@ function quickShowDate() {
 }
 
 // Commande : Activer le mode automatique
-function quickActivateAutoMode() {
+async function quickActivateAutoMode() {
     if (listeningMode !== 'always-listening') {
         listeningMode = 'always-listening';
         startAlwaysListening();
         updateModeUI();
-        showSuccess('Mode automatique activé.');
+        const enhancedMsg = await enhanceResponseWithMistral('Mode automatique activé.');
+        showSuccess(enhancedMsg);
         processUserMessage('Active le mode automatique.');
     }
 }
 
 // Commande : Désactiver le mode automatique
-function quickDeactivateAutoMode() {
+async function quickDeactivateAutoMode() {
     // Désactive le mode automatique en simulant un clic sur le bouton
     disableAutoModeByButton();
     listeningMode = 'manual';
@@ -360,24 +487,27 @@ function quickDeactivateAutoMode() {
     updateModeUI();
     microPermissionDenied = false;
     if (typeof hideError === 'function') hideError();
-    showSuccess('Mode automatique désactivé.');
+    const enhancedMsg = await enhanceResponseWithMistral('Mode automatique désactivé.');
+    showSuccess(enhancedMsg);
     processUserMessage('Désactive le mode automatique.');
 }
 
 // Commande : Ouvrir les contacts d'urgence
-function quickShowEmergencyContacts() {
+async function quickShowEmergencyContacts() {
     toggleEmergencyPanel();
     const emergencyPanel = document.getElementById('emergencyPanel');
     if (emergencyPanel && emergencyPanel.style.display !== 'none') {
         emergencyPanel.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
-    showSuccess('Affichage des contacts d\'urgence.');
+    const enhancedMsg = await enhanceResponseWithMistral('Affichage des contacts d\'urgence.');
+    showSuccess(enhancedMsg);
 }
 
 // Commande : Configurer les contacts d'urgence
-function quickConfigureEmergencyContacts() {
+async function quickConfigureEmergencyContacts() {
     openEmergencySettings();
-    showSuccess('Configuration des contacts d\'urgence.');
+    const enhancedMsg = await enhanceResponseWithMistral('Configuration des contacts d\'urgence.');
+    showSuccess(enhancedMsg);
 }
 
 // Commande : Gestion des clés API
@@ -434,24 +564,27 @@ function quickChangeWakeWord() {
 }
 
 // Commande : Snooze alarme
-function quickSnoozeAlarm() {
+async function quickSnoozeAlarm() {
     snoozeAlarm();
-    showSuccess('Alarme reportée de 10 min.');
+    const enhancedMsg = await enhanceResponseWithMistral('Alarme reportée de 10 min.', { snoozeMinutes: 10 });
+    showSuccess(enhancedMsg);
 }
 
 // Commande : Arrêter l'alarme
-function quickDismissAlarm() {
+async function quickDismissAlarm() {
     dismissAlarm();
-    showSuccess('Alarme arrêtée.');
+    const enhancedMsg = await enhanceResponseWithMistral('Alarme arrêtée.');
+    showSuccess(enhancedMsg);
 }
 
 // Commande rapide : Tester l'alarme
-function quickTestAlarm() {
+async function quickTestAlarm() {
     const alarmAudio = document.getElementById('alarmSound');
     if (alarmAudio) {
         alarmAudio.currentTime = 0;
         alarmAudio.play();
-        showSuccess("Alarme testée !");
+        const enhancedMsg = await enhanceResponseWithMistral("Alarme testée !");
+        showSuccess(enhancedMsg);
         // Affiche la notification visuelle si souhaité
         const notif = document.getElementById('alarmNotification');
         if (notif) notif.style.display = 'block';
@@ -500,8 +633,12 @@ const voiceCommands = [
     { phrases: ["donne-moi la date", "affiche la date", "quelle est la date"], action: () => { processUserMessage('Quelle est la date aujourd\'hui ?'); } },
     // Alarmes
     { phrases: ["affiche les alarmes", "montre-moi les alarmes"], action: () => { /* handled by alarm logic */ } },
-    { phrases: ["snooze l'alarme", "rappelle-moi plus tard"], action: () => snoozeAlarm() },
-    { phrases: ["arrête l'alarme", "désactive l'alarme"], action: () => dismissAlarm() },
+    { phrases: ["snooze l'alarme", "rappelle-moi plus tard", "répète l'alarme"], action: () => snoozeAlarm() },
+    { phrases: ["arrête l'alarme", "désactive l'alarme", "stop l'alarme"], action: () => dismissAlarm() },
+    { phrases: ["test de l'alarme", "teste l'alarme", "essai de l'alarme", "essaye l'alarme"], action: () => quickTestAlarm() },
+    { phrases: ["change l'alarme", "modifie l'alarme", "changer le son d'alarme"], action: () => quickChangeAlarm() },
+    // Historique
+    { phrases: ["efface l'historique", "supprime l'historique", "nettoie l'historique", "clear l'historique"], action: () => clearConversationHistory() },
     // Commandes rapides
     { phrases: ["que dois-je faire aujourd'hui", "ma prochaine tâche"], action: () => commandWhatToday() },
     { phrases: ["ajoute un médicament"], action: () => commandAddMedication() },
@@ -542,21 +679,46 @@ function focusSection(sectionKey) {
 
 function handleVoiceNavigation(transcript) {
     const lowerTranscript = transcript.toLowerCase();
-    // Commandes vocales directes
+    
+    // Check if this is a command that should be handled by Mistral instead
+    // (task operations, questions, conversations, etc.)
+    const mistralActions = [
+        'ajoute', 'add', 'nouveau', 'create', 'créer',
+        'termine', 'fini', 'done', 'complete', 'accompli',
+        'supprime', 'delete', 'enleve', 'remove', 'annule',
+        'change', 'modifie', 'update', 'modifier', 'déplace',
+        'question', 'quand', 'combien', 'quel', 'how', 'when', 'what',
+        'appelle', 'phone', 'call', 'téléphone'
+    ];
+    
+    // If transcript contains task/question keywords and is not a direct voice command match,
+    // let Mistral handle it
+    const hasMistralKeyword = mistralActions.some(keyword => lowerTranscript.includes(keyword));
+    
+    // Commandes vocales directes - strict matching
     for (const cmd of voiceCommands) {
         for (const phrase of cmd.phrases) {
-            if (lowerTranscript.includes(phrase)) {
+            // Use exact phrase matching for voice commands
+            if (lowerTranscript === phrase || lowerTranscript.includes(phrase)) {
+                // If it's a Mistral-related action and not an exact match, skip it
+                if (hasMistralKeyword && lowerTranscript !== phrase && !lowerTranscript.startsWith(phrase)) {
+                    continue;
+                }
                 cmd.action(transcript);
                 return true;
             }
         }
     }
-    // Navigation par section
-    for (const key in sectionMap) {
-        if (lowerTranscript.includes(key)) {
-            return focusSection(key);
+    
+    // Navigation par section - only if no Mistral keyword detected
+    if (!hasMistralKeyword) {
+        for (const key in sectionMap) {
+            if (lowerTranscript.includes(key)) {
+                return focusSection(key);
+            }
         }
     }
+    
     return false;
 }
 // Voice interaction, mode switching, UI coordination
@@ -961,7 +1123,7 @@ function loadWakeWordSettings() {
 }
 
 // Save wake word settings
-function saveWakeWordSettings() {
+async function saveWakeWordSettings() {
     const newWakeWord = document.getElementById('wakeWord').value.trim();
     const enabled = document.getElementById('wakeWordEnabled').checked;
     
@@ -974,7 +1136,9 @@ function saveWakeWordSettings() {
     localStorage.setItem('wakeWordEnabled', enabled.toString());
     
     updateWakeWordDisplay();
-    showSuccess(getLocalizedText('wakeWordSaved'));
+    const simpleMsg = getLocalizedText('wakeWordSaved');
+    const enhancedMsg = await enhanceResponseWithMistral(simpleMsg, { wakeWord: currentWakeWord });
+    showSuccess(enhancedMsg);
 }
 
 // Update wake word display
@@ -1561,9 +1725,13 @@ async function commandWhatToday() {
     const lang = getCurrentLanguage();
     
     if (tasks.length === 0) {
-        const msg = getLocalizedResponse('noTasks', lang);
-        showResponse(msg);
-        speakResponse(msg);
+        const simpleMsg = getLocalizedResponse('noTasks', lang);
+        const enhancedMsg = await enhanceResponseWithMistral(simpleMsg, {
+            taskCount: 0,
+            date: new Date().toLocaleDateString(lang === 'fr' ? 'fr-FR' : lang === 'it' ? 'it-IT' : 'en-US')
+        });
+        showResponse(enhancedMsg);
+        speakResponse(enhancedMsg);
         return;
     }
     
@@ -1574,9 +1742,13 @@ async function commandWhatToday() {
         en: `You have ${tasks.length} task${tasks.length > 1 ? 's' : ''} today: ${taskList}`
     };
     
-    const msg = messages[lang] || messages.fr;
-    showResponse(msg);
-    speakResponse(msg);
+    const simpleMsg = messages[lang] || messages.fr;
+    const enhancedMsg = await enhanceResponseWithMistral(simpleMsg, {
+        taskCount: tasks.length,
+        date: new Date().toLocaleDateString(lang === 'fr' ? 'fr-FR' : lang === 'it' ? 'it-IT' : 'en-US')
+    });
+    showResponse(enhancedMsg);
+    speakResponse(enhancedMsg);
 }
 
 // Command: Add medication
@@ -1593,14 +1765,17 @@ async function commandCompleteTask() {
         await completeTask(tasks[0].id);
         await refreshTaskDisplay();
         const lang = getCurrentLanguage();
-        const msg = getLocalizedResponse('taskCompleted', lang);
-        showSuccess(msg);
-        speakResponse(msg);
+        const simpleMsg = getLocalizedResponse('taskCompleted', lang);
+        const enhancedMsg = await enhanceResponseWithMistral(simpleMsg, {
+            taskType: tasks[0].type
+        });
+        showSuccess(enhancedMsg);
+        speakResponse(enhancedMsg);
     }
 }
 
 // Command: What time is it?
-function commandWhatTime() {
+async function commandWhatTime() {
     const now = new Date();
     const time = now.toLocaleTimeString(getCurrentLanguage() === 'fr' ? 'fr-FR' : getCurrentLanguage() === 'it' ? 'it-IT' : 'en-US', {
         hour: '2-digit',
@@ -1614,9 +1789,16 @@ function commandWhatTime() {
         en: `It's ${time}`
     };
     
-    const msg = messages[lang] || messages.fr;
-    showResponse(msg);
-    speakResponse(msg);
+    const simpleMsg = messages[lang] || messages.fr;
+    
+    // Enhance with Mistral if available
+    const enhancedMsg = await enhanceResponseWithMistral(simpleMsg, {
+        time: time,
+        date: now.toLocaleDateString(lang === 'fr' ? 'fr-FR' : lang === 'it' ? 'it-IT' : 'en-US')
+    });
+    
+    showResponse(enhancedMsg);
+    speakResponse(enhancedMsg);
 }
 
 // Speak response using TTS
@@ -1631,13 +1813,27 @@ async function speakResponse(text) {
                 it: 'it-IT',
                 en: 'en-US'
             };
-            await speakWithGoogleTTS(text, langCodes[lang] || 'fr-FR', ttsApiKey);
+            
+            // Convert text to SSML if not already SSML
+            let ssmlText = text;
+            if (!text.includes('<speak>')) {
+                // Use the convertToSSML function from mistral-agent.js
+                if (typeof convertToSSML === 'function') {
+                    ssmlText = convertToSSML(text, lang);
+                }
+            }
+            
+            await speakWithGoogleTTS(ssmlText, langCodes[lang] || 'fr-FR', ttsApiKey);
         } catch (error) {
             console.error('[App] TTS error:', error);
-            speakWithBrowserTTS(text);
+            // Fallback to browser TTS without SSML
+            const cleanText = text.replace(/<\/?[^>]+(>|$)/g, '');
+            speakWithBrowserTTS(cleanText);
         }
     } else {
-        speakWithBrowserTTS(text);
+        // Browser TTS doesn't support SSML, so clean the text
+        const cleanText = text.replace(/<\/?[^>]+(>|$)/g, '');
+        speakWithBrowserTTS(cleanText);
     }
 }
 
@@ -2082,7 +2278,12 @@ async function completeTaskUI(taskId) {
         playValidationSound();
         await refreshTaskDisplay();
         const lang = getCurrentLanguage();
-        showSuccess(getLocalizedResponse('taskCompleted', lang));
+        const simpleMsg = getLocalizedResponse('taskCompleted', lang);
+        const task = await getTaskById(taskId);
+        const enhancedMsg = await enhanceResponseWithMistral(simpleMsg, {
+            taskType: task?.type
+        });
+        showSuccess(enhancedMsg);
     }
 }
 
@@ -2092,8 +2293,11 @@ async function snoozeTaskUI(taskId) {
     if (result.success) {
         await refreshTaskDisplay();
         const lang = getCurrentLanguage();
-        const msg = getTaskActionText('snoozed', lang);
-        showSuccess(msg);
+        const simpleMsg = getTaskActionText('snoozed', lang);
+        const enhancedMsg = await enhanceResponseWithMistral(simpleMsg, {
+            snoozeMinutes: 10
+        });
+        showSuccess(enhancedMsg);
     }
 }
 
@@ -2110,7 +2314,9 @@ async function deleteTaskUI(taskId) {
         const result = await deleteTask(taskId);
         if (result.success) {
             await refreshTaskDisplay();
-            showSuccess(getLocalizedResponse('taskDeleted', lang));
+            const simpleMsg = getLocalizedResponse('taskDeleted', lang);
+            const enhancedMsg = await enhanceResponseWithMistral(simpleMsg);
+            showSuccess(enhancedMsg);
         }
     }
 }
@@ -2140,7 +2346,9 @@ function showResponse(text) {
     const response = document.getElementById('voiceResponse');
     const responseText = document.getElementById('responseText');
     if (response && responseText) {
-        responseText.textContent = text;
+        // Remove SSML tags for display (keep only text content)
+        const cleanText = text.replace(/<\/?[^>]+(>|$)/g, '');
+        responseText.textContent = cleanText;
         response.style.display = 'block';
     }
 }
@@ -2230,7 +2438,7 @@ async function loadSavedApiKeys() {
     document.getElementById('rememberKeys').checked = rememberKeys;
 }
 
-function saveApiKeys() {
+async function saveApiKeys() {
     const mistralKey = document.getElementById('mistralApiKey').value.trim();
     const googleSTTKey = document.getElementById('googleSTTApiKey').value.trim();
     const googleTTSKey = document.getElementById('googleTTSApiKey').value.trim();
@@ -2248,14 +2456,18 @@ function saveApiKeys() {
         localStorage.setItem('rememberApiKeys', 'false');
     }
     
-    showSuccess(getLocalizedText('apiKeysSaved'));
+    const simpleMsg = getLocalizedText('apiKeysSaved');
+    const enhancedMsg = await enhanceResponseWithMistral(simpleMsg);
+    showSuccess(enhancedMsg);
     checkApiKeysAndHideSection();
 }
 
-function deleteApiKey(service) {
+async function deleteApiKey(service) {
     localStorage.removeItem(`${service}ApiKey`);
     document.getElementById(`${service}ApiKey`).value = '';
-    showSuccess(getLocalizedText('apiKeyDeleted'));
+    const simpleMsg = getLocalizedText('apiKeyDeleted');
+    const enhancedMsg = await enhanceResponseWithMistral(simpleMsg);
+    showSuccess(enhancedMsg);
 }
 
 function checkApiKeysAndHideSection() {
@@ -2282,7 +2494,7 @@ function toggleSection(sectionId) {
 
 // Mistral Settings Management
 const DEFAULT_MISTRAL_SETTINGS = {
-    systemPrompt: '',
+    systemPrompt: 'Tu es un assistant mémoire bienveillant et chaleureux pour personnes âgées ou ayant des difficultés de mémoire. Tu t\'exprimes avec empathie, douceur et encouragement. Tu utilises un langage simple, clair et rassurant. Tu es toujours positif et tu apportes une touche de bonne humeur dans tes réponses.',
     model: 'mistral-small-latest',
     temperature: 0.3,
     maxTokens: 500,
@@ -2312,7 +2524,7 @@ function loadMistralSettings() {
     document.getElementById('mistralRandomSeed').checked = settings.randomSeed;
 }
 
-function saveMistralSettings() {
+async function saveMistralSettings() {
     const settings = {
         systemPrompt: document.getElementById('systemPrompt').value,
         model: document.getElementById('mistralModel').value,
@@ -2324,7 +2536,9 @@ function saveMistralSettings() {
     };
     
     localStorage.setItem('mistralSettings', JSON.stringify(settings));
-    showSuccess(getLocalizedText('settingsSaved') || 'Paramètres enregistrés avec succès');
+    const simpleMsg = getLocalizedText('settingsSaved') || 'Paramètres enregistrés avec succès';
+    const enhancedMsg = await enhanceResponseWithMistral(simpleMsg);
+    showSuccess(enhancedMsg);
     console.log('[Mistral] Settings saved:', settings);
 }
 
@@ -2543,7 +2757,13 @@ async function saveNewTask() {
     if (result.success) {
         closeAddTaskModal();
         await refreshTaskDisplay();
-        showSuccess(getLocalizedResponse('taskAdded', getCurrentLanguage()));
+        const simpleMsg = getLocalizedResponse('taskAdded', getCurrentLanguage());
+        const enhancedMsg = await enhanceResponseWithMistral(simpleMsg, { 
+            taskType: type,
+            date: taskDate,
+            time: time 
+        });
+        showSuccess(enhancedMsg);
     } else {
         showError(getLocalizedText('taskCreationFailed'));
     }
@@ -2561,7 +2781,9 @@ async function clearConversationHistory() {
         conversationHistory = [];
         await cleanOldConversations(0); // Delete all from database
         console.log('[App] Conversation history cleared');
-        showSuccess(getLocalizedText('historyCleared') || 'Historique effacé avec succès');
+        const simpleMsg = getLocalizedText('historyCleared') || 'Historique effacé avec succès';
+        const enhancedMsg = await enhanceResponseWithMistral(simpleMsg);
+        showSuccess(enhancedMsg);
     } catch (error) {
         console.error('[App] Error clearing conversation history:', error);
         showError('Erreur lors de l\'effacement de l\'historique');
