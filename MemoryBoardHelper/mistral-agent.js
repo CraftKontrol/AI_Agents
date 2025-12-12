@@ -105,6 +105,29 @@ Examples:
 
 Always be encouraging and supportive.`;
 
+const UNKNOWN_PROMPT = `You are a helpful assistant for elderly or memory-deficient persons. Your role is to analyze the user's message and determine which type of action they want to perform.
+
+Available actions:
+- TASK: Add, complete, delete, update, or search for tasks (appointments, medications, reminders, shopping)
+- NAV: Navigate to different sections of the app (tasks, calendar, settings, stats)
+- CALL: Make an emergency phone call to a contact
+- CHAT: General conversation, questions, or unclear intent
+
+Analyze the user's message and respond in JSON format with:
+{
+    "action": "task|nav|call|chat",
+    "confidence": "high|medium|low",
+    "response": "brief acknowledgment in user's language",
+    "language": "fr|it|en"
+}
+
+Choose "task" if the user wants to manage any kind of reminder, appointment, medication, or shopping item.
+Choose "nav" if the user wants to navigate to a different section or view.
+Choose "call" if the user wants to call someone or make an emergency call.
+Choose "chat" if the intent is unclear, it's a general question, or just conversation.
+
+Always be patient, kind, and use simple language.`;
+
 // Default chat prompt (used as placeholder if no custom prompt is set)
 const DEFAULT_CHAT_PROMPT = `You are a helpful memory assistant for elderly or memory-deficient persons. Your role is to:
 1. Understand natural language requests in French, Italian, or English
@@ -311,73 +334,24 @@ async function processWithMistral(userMessage, conversationHistory = []) {
     // Detect language first
     const language = await detectLanguage(_userMessage);
 
-    // Double vérification du type d'action
+    // Détection simplifiée avec mots-clés clairs uniquement
     function detectActionByKeywords(text) {
         const txt = text.toLowerCase();
         
-        // Time and date queries
-        if (/quelle.*heure|what.*time|che.*ora|heure.*il|time.*is/.test(txt)) return 'show_time';
-        if (/quelle.*date|what.*date|che.*data|date.*est|today.*date/.test(txt)) return 'show_date';
+        // Seuls les mots-clés très spécifiques et non ambigus
+        // Appels téléphoniques - très clair
+        if (/\bappelle\b|\btéléphone\b|\bchiama\b/.test(txt)) return 'call';
         
-        // Task search/consultation (MUST BE BEFORE add_task to prevent false positives)
-        // Detection des questions sur les tâches existantes
-        if (/c'est quand|c'est à quelle|quand.*ai-je|quand.*est|when.*is.*my|qual.*è.*il.*mio|à quelle.*heure.*mon|what.*time.*my/.test(txt)) {
-            if (/rendez-vous|appointment|tâche|task|compito|médicament|medication/.test(txt)) return 'search_task';
-        }
-        // List/view all tasks queries (MUST BE BEFORE add_task)
-        if (/liste|list|tous.*mes|all.*my|toutes.*mes|voir.*mes|voir.*tous|show.*my|show.*all|affiche.*mes|affiche.*tous|display.*my|display.*all/.test(txt)) {
-            if (/rendez-vous|appointment|tâche|task|compito|médicament|medication/.test(txt)) return 'search_task';
-        }
-        // Contextual references to tasks (requires history lookup)
-        if (/voir.*tâche|voir.*rendez-vous|affiche.*tâche|affiche.*rendez-vous|montre.*tâche|montre.*rendez-vous|show.*task|show.*appointment|visualise.*tâche|montre-moi.*la|affiche-moi.*la|show.*me.*the/.test(txt)) return 'search_task';
+        // Navigation - mots très spécifiques
+        if (/\bouvre\b.*\b(calendrier|calendar|calendario)\b|\b(go to|aller|vai)\b.*\b(settings|paramètres|impostazioni)\b/.test(txt)) return 'nav';
         
-        // Task management (add new tasks)
-        if (/ajoute|add|nouveau|new|create|créer|prendre/.test(txt)) {
-            // Only detect as add_task if it's really about adding/creating
-            if (/rendez-vous|appointment|tâche|task|médicament|medication|course|shopping/.test(txt)) return 'add_task';
-        }
-        // Shopping-specific additions
-        if (/shop|acheter|course|shopping/.test(txt)) return 'add_task';
-        if (/termine|fini|done|complete|accompli|accomplished|finir|check|coché|cocher|marquer|mark/.test(txt)) return 'complete_task';
-        if (/supprime|delete|enleve|enlever|remove|annule|cancel|cancella|annuler/.test(txt)) return 'delete_task';
-        if (/change|modifie|update|modifier|déplace|déplacer|move|reschedule|reporter/.test(txt)) return 'update_task';
+        // Tâches - uniquement mots très clairs
+        if (/\bajoute\b.*\b(tâche|rendez-vous|médicament)|\badd\b.*\b(task|appointment|medication)|\baggiung\b.*\b(compito|appuntamento)/.test(txt)) return 'task';
+        if (/\bsupprime\b.*\b(tâche|rendez-vous)|\bdelete\b.*\b(task|appointment)|\bcancella\b.*\b(compito|appuntamento)/.test(txt)) return 'task';
+        if (/\bterminé\b.*\b(tâche|rendez-vous)|\bdone\b.*\b(task|appointment)|\bcompletato\b.*\b(compito|appuntamento)/.test(txt)) return 'task';
         
-        // Task viewing by period
-        if (/tâche.*aujourd'hui|task.*today|compiti.*oggi|aujourd'hui.*tâche|today.*task/.test(txt)) return 'show_today_tasks';
-        if (/tâche.*semaine|task.*week|compiti.*settimana|semaine.*tâche|week.*task/.test(txt)) return 'show_week_tasks';
-        if (/tâche.*mois|task.*month|compiti.*mese|mois.*tâche|month.*task/.test(txt)) return 'show_month_tasks';
-        if (/tâche.*année|task.*year|compiti.*anno|année.*tâche|year.*task/.test(txt)) return 'show_year_tasks';
-        
-        // Voice mode control
-        if (/activ.*mode.*auto|activ.*mode.*vocal|enable.*auto.*mode|start.*listening|attiv.*modo.*auto/.test(txt)) return 'activate_auto_mode';
-        if (/désactiv.*mode.*auto|désactiv.*mode.*vocal|disable.*auto.*mode|stop.*listening|disattiv.*modo.*auto/.test(txt)) return 'deactivate_auto_mode';
-        
-        // Wake word
-        if (/chang.*mot.*réveil|chang.*wake.*word|modifi.*mot.*réveil|cambi.*parola.*attivazione/.test(txt)) return 'change_wake_word';
-        
-        // Alarm management
-        if (/snooze|répéter.*alarme|reprise.*alarme|postpone.*alarm|ritarda.*allarme/.test(txt)) return 'snooze_alarm';
-        if (/arrêt.*alarme|stop.*alarm|dismiss.*alarm|ferma.*allarme|désactiv.*alarme/.test(txt)) return 'dismiss_alarm';
-        if (/test.*alarme|test.*alarm|prova.*allarme|essai.*alarme/.test(txt)) return 'test_alarm';
-        if (/chang.*alarme|modifi.*alarme|change.*alarm|modify.*alarm|cambi.*allarme/.test(txt)) return 'change_alarm';
-        
-        // Emergency contacts
-        if (/contact.*urgence|emergency.*contact|contatt.*emergenza|urgence.*contact|montrer.*contact.*urgence|show.*emergency/.test(txt)) return 'show_emergency_contacts';
-        if (/configur.*contact|config.*contact|setup.*contact|impost.*contatt|paramètr.*contact/.test(txt)) return 'configure_emergency_contacts';
-        
-        // History
-        if (/effac.*historique|clear.*history|supprim.*historique|cancella.*cronologia|delete.*history/.test(txt)) return 'clear_history';
-        
-        // Navigation
-        if (/navigation|navigue|navigate|aller|go to|ouvre|open|ferme|close|section|page|montre.*option|show.*option|menu|affiche.*option|display.*option/.test(txt)) return 'nav';
-        
-        // Phone calls
-        if (/appelle|phone|call|téléphone|chiama/.test(txt)) return 'call';
-        
-        // Questions and general info
-        if (/question|quand|combien|quel|how|when|what|where|qui|pourquoi|why|help|aide|info|information/.test(txt)) return 'question';
-        
-        return 'conversation';
+        // Tous les autres cas sont ambigus
+        return 'unknown';
     }
     const keywordAction = detectActionByKeywords(_userMessage);
     console.log('[Mistral][DEBUG] Action détectée par mots-clés:', keywordAction);
@@ -387,14 +361,59 @@ async function processWithMistral(userMessage, conversationHistory = []) {
     const isoDate = now.toISOString().split('T')[0];
     const localeDate = now.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-    // Sélection du prompt principal selon l'action détectée par mots-clés
+    // Si l'action est ambiguë, faire une pré-requête à Mistral
+    let resolvedAction = keywordAction;
+    if (keywordAction === 'unknown') {
+        console.log('[Mistral][DEBUG] Action ambiguë, pré-requête à Mistral...');
+        try {
+            const mistralSettings = JSON.parse(localStorage.getItem('mistralSettings') || 'null');
+            const modelToUse = mistralSettings?.model || MISTRAL_MODEL;
+            const clarificationResponse = await fetch(MISTRAL_API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: modelToUse,
+                    messages: [
+                        { role: 'system', content: UNKNOWN_PROMPT },
+                        { role: 'user', content: _userMessage }
+                    ],
+                    temperature: 0.3,
+                    max_tokens: 150,
+                    response_format: { type: 'json_object' }
+                })
+            });
+            
+            if (clarificationResponse.ok) {
+                const clarificationData = await clarificationResponse.json();
+                const clarificationResult = JSON.parse(clarificationData.choices[0].message.content);
+                console.log('[Mistral][DEBUG] Résultat de clarification:', clarificationResult);
+                
+                resolvedAction = clarificationResult.action;
+                
+                // Si confiance faible, utiliser chat par défaut
+                if (clarificationResult.confidence === 'low') {
+                    console.log('[Mistral][DEBUG] Confiance faible, utilisation de chat');
+                    resolvedAction = 'chat';
+                }
+            } else {
+                console.error('[Mistral][DEBUG] Erreur pré-requête, utilisation de chat par défaut');
+                resolvedAction = 'chat';
+            }
+        } catch (error) {
+            console.error('[Mistral][DEBUG] Erreur pré-requête:', error);
+            resolvedAction = 'chat';
+        }
+    }
+    
+    console.log('[Mistral][DEBUG] Action résolue:', resolvedAction);
+
+    // Sélection du prompt principal selon l'action résolue
     let mainPrompt = '';
-    switch (keywordAction) {
-        case 'add_task':
-        case 'complete_task':
-        case 'delete_task':
-        case 'update_task':
-        case 'search_task':
+    switch (resolvedAction) {
+        case 'task':
             mainPrompt = TASK_PROMPT;
             break;
         case 'nav':
@@ -403,13 +422,12 @@ async function processWithMistral(userMessage, conversationHistory = []) {
         case 'call':
             mainPrompt = CALL_PROMPT;
             break;
-        case 'question':
-        case 'conversation':
+        case 'chat':
         default:
             mainPrompt = getChatPrompt();
             break;
     }
-    console.log('[Mistral][DEBUG] Prompt sélectionné:', keywordAction === 'add_task' || keywordAction === 'complete_task' || keywordAction === 'delete_task' || keywordAction === 'update_task' || keywordAction === 'search_task' ? 'TASK_PROMPT' : keywordAction === 'nav' ? 'NAV_PROMPT' : keywordAction === 'call' ? 'CALL_PROMPT' : 'CHAT_PROMPT');
+    console.log('[Mistral][DEBUG] Prompt sélectionné:', resolvedAction === 'task' ? 'TASK_PROMPT' : resolvedAction === 'nav' ? 'NAV_PROMPT' : resolvedAction === 'call' ? 'CALL_PROMPT' : 'CHAT_PROMPT');
     
     // Extract previous responses to add explicit reminder
     const recentHistory = _conversationHistory.slice(-5);
@@ -531,15 +549,8 @@ async function processWithMistral(userMessage, conversationHistory = []) {
         let result = JSON.parse(content);
         result.language = language;
 
-        // Correction du type d'action si désaccord
-        if (result.action && result.action !== keywordAction) {
-            console.warn('[Mistral][WARN] Correction du type d\'action :', result.action, '->', keywordAction);
-            result.action_corrected = {
-                mistral: result.action,
-                keywords: keywordAction
-            };
-            result.action = keywordAction;
-        }
+        // Plus de correction forcée - on fait confiance à Mistral après clarification
+        console.log('[Mistral][DEBUG] Action finale de Mistral:', result.action);
 
         return result;
     } catch (error) {

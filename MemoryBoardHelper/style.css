@@ -1118,12 +1118,29 @@ body {
     animation: recordingPulse 1s ease-in-out infinite;
 }
 
+.btn-voice-large.awaiting-confirmation,
+.btn-voice-floating.awaiting-confirmation {
+    background-color: var(--warning-color);
+    animation: confirmationPulse 1.5s ease-in-out infinite;
+}
+
 @keyframes recordingPulse {
     0%, 100% {
         box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.7);
     }
     50% {
         box-shadow: 0 0 0 20px rgba(255, 68, 68, 0);
+    }
+}
+
+@keyframes confirmationPulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(255, 170, 68, 0.7);
+        transform: scale(1);
+    }
+    50% {
+        box-shadow: 0 0 0 20px rgba(255, 170, 68, 0);
+        transform: scale(1.05);
     }
 }
 

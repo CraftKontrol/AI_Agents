@@ -1,3 +1,6 @@
+// --- Confirmation State for Important Actions ---
+let pendingConfirmation = null; // Will store { action, data, language, confirmationMessage }
+
 // --- TTS Settings Logic ---
 const DEFAULT_TTS_SETTINGS = {
     voice: 'fr-FR-Neural2-A',
@@ -303,6 +306,55 @@ function resetFocusTimer() {
 });
 
 document.addEventListener('DOMContentLoaded', resetFocusTimer);
+
+// --- Confirmation System for Important Actions ---
+function setVoiceButtonsHighlight(highlight) {
+    const voiceBtn = document.getElementById('voiceBtn');
+    const floatingBtn = document.getElementById('floatingVoiceBtn');
+    
+    if (highlight) {
+        if (voiceBtn) voiceBtn.classList.add('awaiting-confirmation');
+        if (floatingBtn) floatingBtn.classList.add('awaiting-confirmation');
+    } else {
+        if (voiceBtn) voiceBtn.classList.remove('awaiting-confirmation');
+        if (floatingBtn) floatingBtn.classList.remove('awaiting-confirmation');
+    }
+}
+
+// Check if user is confirming or denying
+function isConfirmation(text, language = 'fr') {
+    const normalized = text.toLowerCase().trim();
+    
+    const confirmPatterns = {
+        fr: ['oui', 'ouais', 'ok', 'd\'accord', 'daccord', 'exact', 'c\'est ça', 'c\'est bon', 'correct', 'parfait', 'très bien', 'affirmatif', 'confirme'],
+        it: ['sì', 'si', 'va bene', 'okay', 'ok', 'd\'accordo', 'daccordo', 'esatto', 'corretto', 'perfetto', 'affermativo', 'conferma'],
+        en: ['yes', 'yeah', 'yep', 'ok', 'okay', 'correct', 'right', 'that\'s right', 'affirmative', 'confirm']
+    };
+    
+    const denyPatterns = {
+        fr: ['non', 'nan', 'pas du tout', 'pas vraiment', 'négatif', 'non non', 'aucun', 'jamais', 'annule'],
+        it: ['no', 'niente', 'per niente', 'negativo', 'cancella'],
+        en: ['no', 'nope', 'nah', 'not really', 'negative', 'cancel']
+    };
+    
+    const confirmWords = confirmPatterns[language] || confirmPatterns.fr;
+    const denyWords = denyPatterns[language] || denyPatterns.fr;
+    
+    for (const word of confirmWords) {
+        if (normalized === word || normalized.includes(word)) {
+            return 'confirm';
+        }
+    }
+    
+    for (const word of denyWords) {
+        if (normalized === word || normalized.includes(word)) {
+            return 'deny';
+        }
+    }
+    
+    return null;
+}
+
 // --- Sound Effects ---
 function playTapSound() {
     const audio = document.getElementById('tapSound');
@@ -948,6 +1000,24 @@ async function handleSpeechResult(event) {
     const transcript = event.results[event.results.length - 1][0].transcript;
     console.log('[App] Speech recognized:', transcript);
     
+    // Check if we're waiting for confirmation
+    if (pendingConfirmation) {
+        const confirmationResult = isConfirmation(transcript, pendingConfirmation.language);
+        
+        if (confirmationResult === 'confirm') {
+            console.log('[App] User confirmed action');
+            showTranscript(transcript);
+            await executeConfirmedAction(pendingConfirmation);
+            return;
+        } else if (confirmationResult === 'deny') {
+            console.log('[App] User denied action');
+            showTranscript(transcript);
+            await cancelPendingAction(pendingConfirmation);
+            return;
+        }
+        // If neither confirm nor deny, continue processing as normal command
+    }
+    
     // In always-listening mode with wake word enabled
     if (listeningMode === 'always-listening' && wakeWordEnabled) {
         if (!isListeningForCommand) {
@@ -980,6 +1050,43 @@ async function handleSpeechResult(event) {
     // Process the command
     showTranscript(transcript);
     await processSpeechTranscript(transcript);
+
+// Execute confirmed action
+async function executeConfirmedAction(confirmation) {
+    setVoiceButtonsHighlight(false);
+    pendingConfirmation = null;
+    
+    try {
+        if (confirmation.action === 'add_task') {
+            await createTaskFromConfirmation(confirmation.data, confirmation.language);
+        } else if (confirmation.action === 'complete_task') {
+            await completeTaskFromConfirmation(confirmation.data, confirmation.language);
+        } else if (confirmation.action === 'delete_task') {
+            await deleteTaskFromConfirmation(confirmation.data, confirmation.language);
+        } else if (confirmation.action === 'update_task') {
+            await updateTaskFromConfirmation(confirmation.data, confirmation.language);
+        }
+    } catch (error) {
+        console.error('[App] Error executing confirmed action:', error);
+        showError(error.message);
+    }
+}
+
+// Cancel pending action
+async function cancelPendingAction(confirmation) {
+    setVoiceButtonsHighlight(false);
+    pendingConfirmation = null;
+    
+    const cancelMessages = {
+        fr: 'D\'accord, je n\'ai rien fait. Que puis-je faire pour vous ?',
+        it: 'Va bene, non ho fatto nulla. Come posso aiutarti?',
+        en: 'Okay, I didn\'t do anything. How can I help you?'
+    };
+    
+    const message = cancelMessages[confirmation.language] || cancelMessages.fr;
+    showResponse(message);
+    speakResponse(message);
+}
 
 // Priorisation navigation vocale sur Mistral
 async function processSpeechTranscript(transcript) {
@@ -1346,23 +1453,68 @@ async function handleUpdateTask(result, tasks) {
     // Avant de mettre à jour, si la date ou la description change, supprimer l'ancienne tâche
     const newDate = result.task.date || taskToUpdate.date;
     const newTime = result.task.time || taskToUpdate.time;
+    const newDescription = result.task.description || taskToUpdate.description;
+    
+    // Build confirmation message
+    const confirmationMessages = {
+        fr: `Dois-je modifier "${taskToUpdate.description}"${taskToUpdate.time ? ' du ' + taskToUpdate.time : ''}${taskToUpdate.date ? ' du ' + formatDateForDisplay(taskToUpdate.date, 'fr') : ''} pour "${newDescription}"${newTime ? ' à ' + newTime : ''}${newDate ? ' le ' + formatDateForDisplay(newDate, 'fr') : ''} ?`,
+        it: `Devo modificare "${taskToUpdate.description}"${taskToUpdate.time ? ' delle ' + taskToUpdate.time : ''}${taskToUpdate.date ? ' del ' + formatDateForDisplay(taskToUpdate.date, 'it') : ''} in "${newDescription}"${newTime ? ' alle ' + newTime : ''}${newDate ? ' il ' + formatDateForDisplay(newDate, 'it') : ''} ?`,
+        en: `Should I change "${taskToUpdate.description}"${taskToUpdate.time ? ' at ' + taskToUpdate.time : ''}${taskToUpdate.date ? ' on ' + formatDateForDisplay(taskToUpdate.date, 'en') : ''} to "${newDescription}"${newTime ? ' at ' + newTime : ''}${newDate ? ' on ' + formatDateForDisplay(newDate, 'en') : ''} ?`
+    };
+    
+    const confirmationMsg = confirmationMessages[result.language] || confirmationMessages.fr;
+    
+    // Set pending confirmation
+    pendingConfirmation = {
+        action: 'update_task',
+        data: {
+            taskId: taskToUpdate.id,
+            oldDescription: taskToUpdate.description,
+            oldDate: taskToUpdate.date,
+            oldTime: taskToUpdate.time,
+            newDescription: newDescription,
+            newDate: newDate,
+            newTime: newTime,
+            type: result.task.type || taskToUpdate.type,
+            priority: result.task.priority || taskToUpdate.priority
+        },
+        language: result.language,
+        confirmationMessage: confirmationMsg
+    };
+    
+    // Highlight voice buttons
+    setVoiceButtonsHighlight(true);
+    
+    // Show and speak confirmation request
+    showResponse(confirmationMsg);
+    speakResponse(confirmationMsg);
+}
+
+// Update task after confirmation
+async function updateTaskFromConfirmation(data, language) {
     let needDeleteOld = false;
-    if (taskToUpdate.date !== newDate || taskToUpdate.time !== newTime || taskToUpdate.description.toLowerCase() !== (result.task.description?.toLowerCase() || '')) {
+    if (data.oldDate !== data.newDate || data.oldTime !== data.newTime || data.oldDescription.toLowerCase() !== data.newDescription.toLowerCase()) {
         needDeleteOld = true;
     }
+    
     if (needDeleteOld) {
         // Supprime l'ancienne tâche
-        await deleteTask(taskToUpdate.id);
+        await deleteTask(data.taskId);
         // Crée la nouvelle tâche modifiée
         const createResult = await createTask({
-            description: result.task.description,
-            date: newDate,
-            time: newTime,
-            type: result.task.type || 'general',
-            priority: result.task.priority || 'normal'
+            description: data.newDescription,
+            date: data.newDate,
+            time: data.newTime,
+            type: data.type || 'general',
+            priority: data.priority || 'normal'
         });
         if (createResult && createResult.success) {
-            const confirmMsg = result.response || getLocalizedResponse('taskUpdated', result.language) || 'Tâche mise à jour.';
+            const confirmMessages = {
+                fr: `J'ai modifié la tâche. Elle est maintenant "${data.newDescription}"${data.newTime ? ' à ' + data.newTime : ''}${data.newDate ? ' le ' + formatDateForDisplay(data.newDate, 'fr') : ''}.`,
+                it: `Ho modificato il compito. Ora è "${data.newDescription}"${data.newTime ? ' alle ' + data.newTime : ''}${data.newDate ? ' il ' + formatDateForDisplay(data.newDate, 'it') : ''}.`,
+                en: `I modified the task. It is now "${data.newDescription}"${data.newTime ? ' at ' + data.newTime : ''}${data.newDate ? ' on ' + formatDateForDisplay(data.newDate, 'en') : ''}.`
+            };
+            const confirmMsg = confirmMessages[language] || confirmMessages.fr;
             showSuccess(confirmMsg);
             speakResponse(confirmMsg);
             await refreshTaskDisplay();
@@ -1371,12 +1523,17 @@ async function handleUpdateTask(result, tasks) {
         }
     } else {
         // Si pas de changement, juste mettre à jour
-        const updateResult = await updateTask(taskToUpdate.id, {
-            date: newDate,
-            time: newTime
+        const updateResult = await updateTask(data.taskId, {
+            date: data.newDate,
+            time: data.newTime
         });
         if (updateResult && updateResult.success) {
-            const confirmMsg = result.response || getLocalizedResponse('taskUpdated', result.language) || 'Tâche mise à jour.';
+            const confirmMessages = {
+                fr: `J'ai mis à jour la tâche.`,
+                it: `Ho aggiornato il compito.`,
+                en: `I updated the task.`
+            };
+            const confirmMsg = confirmMessages[language] || confirmMessages.fr;
             showSuccess(confirmMsg);
             speakResponse(confirmMsg);
             await refreshTaskDisplay();
@@ -1445,12 +1602,7 @@ async function handleAddTask(result) {
         return;
     }
     
-    // Verify task with user
-    const verification = await verifyTaskWithUser(result.task, result.language);
-    showResponse(verification);
-    speakResponse(verification);
-    
-    // For now, auto-confirm (in production, would wait for user confirmation)
+    // Build confirmation message
     const taskData = {
         description: result.task.description,
         date: result.task.date || null,
@@ -1459,12 +1611,44 @@ async function handleAddTask(result) {
         priority: result.task.priority || 'normal'
     };
     
+    const confirmationMessages = {
+        fr: `Dois-je ajouter "${taskData.description}"${taskData.time ? ' à ' + taskData.time : ''}${taskData.date ? ' le ' + formatDateForDisplay(taskData.date, 'fr') : ''} ?`,
+        it: `Devo aggiungere "${taskData.description}"${taskData.time ? ' alle ' + taskData.time : ''}${taskData.date ? ' il ' + formatDateForDisplay(taskData.date, 'it') : ''} ?`,
+        en: `Should I add "${taskData.description}"${taskData.time ? ' at ' + taskData.time : ''}${taskData.date ? ' on ' + formatDateForDisplay(taskData.date, 'en') : ''} ?`
+    };
+    
+    const confirmationMsg = confirmationMessages[result.language] || confirmationMessages.fr;
+    
+    // Set pending confirmation
+    pendingConfirmation = {
+        action: 'add_task',
+        data: taskData,
+        language: result.language,
+        confirmationMessage: confirmationMsg
+    };
+    
+    // Highlight voice buttons
+    setVoiceButtonsHighlight(true);
+    
+    // Show and speak confirmation request
+    showResponse(confirmationMsg);
+    speakResponse(confirmationMsg);
+}
+
+// Create task after confirmation
+async function createTaskFromConfirmation(taskData, language) {
     const createResult = await createTask(taskData);
     
     if (createResult && createResult.success) {
-        const confirmMsg = result.response || getLocalizedResponse('taskAdded', result.language);
+        const confirmMessages = {
+            fr: `J'ai bien ajouté la tâche "${taskData.description}"${taskData.time ? ' à ' + taskData.time : ''}${taskData.date ? ' le ' + formatDateForDisplay(taskData.date, 'fr') : ''}.`,
+            it: `Ho aggiunto il compito "${taskData.description}"${taskData.time ? ' alle ' + taskData.time : ''}${taskData.date ? ' il ' + formatDateForDisplay(taskData.date, 'it') : ''}.`,
+            en: `I added the task "${taskData.description}"${taskData.time ? ' at ' + taskData.time : ''}${taskData.date ? ' on ' + formatDateForDisplay(taskData.date, 'en') : ''}.`
+        };
+        const confirmMsg = confirmMessages[language] || confirmMessages.fr;
         showSuccess(confirmMsg);
         speakResponse(confirmMsg);
+        
         // Si la date n'est pas aujourd'hui, bascule l'onglet pour afficher la tâche
         const today = new Date().toISOString().split('T')[0];
         if (createResult.task.date && createResult.task.date !== today) {
@@ -1488,22 +1672,72 @@ async function handleAddTask(result) {
     }
 }
 
+// Helper function to format date for display
+function formatDateForDisplay(dateStr, language) {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    const options = { weekday: 'long', day: 'numeric', month: 'long' };
+    const locale = language === 'fr' ? 'fr-FR' : language === 'it' ? 'it-IT' : 'en-US';
+    return date.toLocaleDateString(locale, options);
+}
+
 // Handle complete task action
 async function handleCompleteTask(result, tasks) {
     const completionResult = await checkTaskCompletion(result.task?.description || '', tasks, conversationHistory);
     
     if (completionResult.success && completionResult.taskId) {
-        const completeResult = await completeTask(completionResult.taskId);
-        
-        if (completeResult.success) {
-            const confirmMsg = completionResult.response || getLocalizedResponse('taskCompleted', completionResult.language);
-            showSuccess(confirmMsg);
-            speakResponse(confirmMsg);
-            await refreshTaskDisplay();
+        // Find the task details
+        const task = tasks.find(t => t.id === completionResult.taskId);
+        if (!task) {
+            showError(getLocalizedText('taskNotFound'));
+            return;
         }
+        
+        // Build confirmation message
+        const confirmationMessages = {
+            fr: `Dois-je marquer "${task.description}" comme terminée ?`,
+            it: `Devo segnare "${task.description}" come completato?`,
+            en: `Should I mark "${task.description}" as completed?`
+        };
+        
+        const confirmationMsg = confirmationMessages[result.language] || confirmationMessages.fr;
+        
+        // Set pending confirmation
+        pendingConfirmation = {
+            action: 'complete_task',
+            data: { taskId: completionResult.taskId, taskDescription: task.description },
+            language: result.language,
+            confirmationMessage: confirmationMsg
+        };
+        
+        // Highlight voice buttons
+        setVoiceButtonsHighlight(true);
+        
+        // Show and speak confirmation request
+        showResponse(confirmationMsg);
+        speakResponse(confirmationMsg);
     } else {
         showResponse(completionResult.response);
         speakResponse(completionResult.response);
+    }
+}
+
+// Complete task after confirmation
+async function completeTaskFromConfirmation(data, language) {
+    const completeResult = await completeTask(data.taskId);
+    
+    if (completeResult.success) {
+        const confirmMessages = {
+            fr: `J'ai marqué "${data.taskDescription}" comme terminée.`,
+            it: `Ho segnato "${data.taskDescription}" come completato.`,
+            en: `I marked "${data.taskDescription}" as completed.`
+        };
+        const confirmMsg = confirmMessages[language] || confirmMessages.fr;
+        showSuccess(confirmMsg);
+        speakResponse(confirmMsg);
+        await refreshTaskDisplay();
+    } else {
+        showError(getLocalizedText('taskUpdateFailed'));
     }
 }
 
@@ -1567,14 +1801,29 @@ async function handleDeleteTask(result, tasks) {
     }
     
     if (taskToDelete) {
-        const deleteResult = await deleteTask(taskToDelete.id);
+        // Build confirmation message
+        const confirmationMessages = {
+            fr: `Dois-je supprimer la tâche "${taskToDelete.description}"${taskToDelete.time ? ' à ' + taskToDelete.time : ''} ?`,
+            it: `Devo cancellare il compito "${taskToDelete.description}"${taskToDelete.time ? ' alle ' + taskToDelete.time : ''} ?`,
+            en: `Should I delete the task "${taskToDelete.description}"${taskToDelete.time ? ' at ' + taskToDelete.time : ''} ?`
+        };
         
-        if (deleteResult.success) {
-            const confirmMsg = result.response || getLocalizedResponse('taskDeleted', result.language);
-            showSuccess(confirmMsg);
-            speakResponse(confirmMsg);
-            await refreshTaskDisplay();
-        }
+        const confirmationMsg = confirmationMessages[result.language] || confirmationMessages.fr;
+        
+        // Set pending confirmation
+        pendingConfirmation = {
+            action: 'delete_task',
+            data: { taskId: taskToDelete.id, taskDescription: taskToDelete.description },
+            language: result.language,
+            confirmationMessage: confirmationMsg
+        };
+        
+        // Highlight voice buttons
+        setVoiceButtonsHighlight(true);
+        
+        // Show and speak confirmation request
+        showResponse(confirmationMsg);
+        speakResponse(confirmationMsg);
     } else {
         const noTaskMessages = {
             fr: 'Je n\'ai pas trouvé cette tâche dans votre liste.',
@@ -1584,6 +1833,25 @@ async function handleDeleteTask(result, tasks) {
         const msg = noTaskMessages[result.language] || noTaskMessages.fr;
         showResponse(msg);
         speakResponse(msg);
+    }
+}
+
+// Delete task after confirmation
+async function deleteTaskFromConfirmation(data, language) {
+    const deleteResult = await deleteTask(data.taskId);
+    
+    if (deleteResult.success) {
+        const confirmMessages = {
+            fr: `J'ai supprimé la tâche "${data.taskDescription}".`,
+            it: `Ho cancellato il compito "${data.taskDescription}".`,
+            en: `I deleted the task "${data.taskDescription}".`
+        };
+        const confirmMsg = confirmMessages[language] || confirmMessages.fr;
+        showSuccess(confirmMsg);
+        speakResponse(confirmMsg);
+        await refreshTaskDisplay();
+    } else {
+        showError(getLocalizedText('taskDeleteFailed'));
     }
 }
 
