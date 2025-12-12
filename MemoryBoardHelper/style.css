@@ -2418,3 +2418,21 @@ body {
 .btn-delete-contact:hover {
     background: rgba(255,68,68,0.08);
 }
+
+/* Task highlight animation */
+.task-item.highlight {
+    animation: highlightPulse 1s ease-in-out 3;
+    border: 2px solid var(--primary-color);
+    box-shadow: 0 0 15px rgba(74, 158, 255, 0.5);
+}
+
+@keyframes highlightPulse {
+    0%, 100% {
+        background-color: var(--surface-color);
+        transform: scale(1);
+    }
+    50% {
+        background-color: rgba(74, 158, 255, 0.15);
+        transform: scale(1.02);
+    }
+}

@@ -26,6 +26,7 @@ A voice-first AI assistant powered by Mistral AI that helps manage daily tasks, 
 - Task types: General, Medication, Appointment, Call, Shopping
 - **Visual task type indicators**: Color-coded badges with icons
 - **Recurring vs One-time badges**: Easily identify task frequency
+- **🔍 Smart Task Search**: Ask "When is my appointment?" and the system finds and displays your task with visual highlighting
 - Automatic deletion after completion (via Mistral)
 - Manual task creation with large, accessible UI
 
@@ -104,6 +105,13 @@ Simply open `index.html` in a modern web browser (Chrome, Edge, Firefox, Safari)
 - "Qu'ai-je aujourd'hui ?"
 - "Quelles sont mes tâches ?"
 - "Qu'est-ce que je dois faire ?"
+
+### **Searching for Specific Tasks** ✨ NEW
+- "C'est quand mon rendez-vous chez l'ophtalmo ?"
+- "Quand est mon rendez-vous chez le dentiste ?"
+- "À quelle heure mon médicament ?"
+- "When is my appointment with the doctor?"
+- The system will search through your tasks, display the matching task(s), and automatically navigate to the correct period view
 
 ### **Completing Tasks**
 - "J'ai pris mes médicaments"

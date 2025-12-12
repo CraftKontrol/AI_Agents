@@ -24,12 +24,14 @@ const TASK_PROMPT = `You are a helpful memory assistant for elderly or memory-de
 2. Extract task information (description, time, type, priority)
 3. Detect when tasks are completed from user statements
 4. Detect when the user wants to modify (change/update) the date or time of an existing task (for example: "change la date du rendez-vous chez le dentiste pour demain à 14h")
-5. Provide clear, simple, and reassuring responses
-6. Be patient, kind, and use simple language
+5. Detect when the user asks about an existing task (for example: "c'est quand mon rendez-vous chez l'ophtalmo?", "when is my appointment?")
+6. USE CONVERSATION HISTORY to resolve context references like "la tâche", "the task", "il", "elle", "it" - check what task was mentioned in previous messages
+7. Provide clear, simple, and reassuring responses
+8. Be patient, kind, and use simple language
 
 When extracting tasks, respond in JSON format with:
 {
-    "action": "add_task|complete_task|delete_task|update_task|question|conversation",
+    "action": "add_task|complete_task|delete_task|update_task|search_task|question|conversation",
     "task": {
         "description": "clear task description",
         "date": "YYYY-MM-DD if mentioned, else null",
@@ -42,9 +44,16 @@ When extracting tasks, respond in JSON format with:
     "language": "fr|it|en"
 }
 
+For search_task action, use when the user asks about an existing task (e.g., "c'est quand mon rendez-vous?", "when is my appointment?", "quand ai-je mon médicament?", "montre-moi la tâche", "show me the task"). 
+ALSO use search_task when the user wants to list/view multiple tasks (e.g., "liste tous mes rendez-vous", "list all my appointments", "quels sont mes rendez-vous", "what are my appointments").
+IMPORTANT: If the user says "la tâche" or "the task" without specifying which one, check the conversation history to find what task was discussed in recent messages and use that task description for the search.
+For list requests (tous/toutes/all/liste), extract ONLY the task type, not a specific description. For example: "tous mes rendez-vous" → task.type = "appointment", task.description = "rendez-vous" (generic).
+
 For update_task action, always use when the user wants to change the date, time, or other details of an existing task. Do NOT use delete_task in this case. For example, if the user says "change la date du rendez-vous chez le dentiste pour demain à 14h", respond with action "update_task" and provide the new date and time in the task object.
 
-For delete_task action, identify which task the user wants to remove/delete/cancel/supprimer/annuler/cancellare.
+For delete_task action, identify which task the user wants to remove/delete/cancel/supprimer/annuler/cancellare. Check conversation history if the user says "delete the task" or "supprime la tâche" without specifying which one.
+
+For complete_task action, check conversation history if the user says "mark it as done" or "marque-la comme faite" without specifying the task.
 
 For medication tasks, extract dosage information in the description.
 Always be encouraging and supportive.`;
@@ -310,8 +319,25 @@ async function processWithMistral(userMessage, conversationHistory = []) {
         if (/quelle.*heure|what.*time|che.*ora|heure.*il|time.*is/.test(txt)) return 'show_time';
         if (/quelle.*date|what.*date|che.*data|date.*est|today.*date/.test(txt)) return 'show_date';
         
-        // Task management
-        if (/ajoute|add|nouveau|rendez-vous|appointment|create|créer|shop|acheter|course|shopping|medicament|médicament|take|prendre/.test(txt)) return 'add_task';
+        // Task search/consultation (MUST BE BEFORE add_task to prevent false positives)
+        // Detection des questions sur les tâches existantes
+        if (/c'est quand|c'est à quelle|quand.*ai-je|quand.*est|when.*is.*my|qual.*è.*il.*mio|à quelle.*heure.*mon|what.*time.*my/.test(txt)) {
+            if (/rendez-vous|appointment|tâche|task|compito|médicament|medication/.test(txt)) return 'search_task';
+        }
+        // List/view all tasks queries (MUST BE BEFORE add_task)
+        if (/liste|list|tous.*mes|all.*my|toutes.*mes|voir.*mes|voir.*tous|show.*my|show.*all|affiche.*mes|affiche.*tous|display.*my|display.*all/.test(txt)) {
+            if (/rendez-vous|appointment|tâche|task|compito|médicament|medication/.test(txt)) return 'search_task';
+        }
+        // Contextual references to tasks (requires history lookup)
+        if (/voir.*tâche|voir.*rendez-vous|affiche.*tâche|affiche.*rendez-vous|montre.*tâche|montre.*rendez-vous|show.*task|show.*appointment|visualise.*tâche|montre-moi.*la|affiche-moi.*la|show.*me.*the/.test(txt)) return 'search_task';
+        
+        // Task management (add new tasks)
+        if (/ajoute|add|nouveau|new|create|créer|prendre/.test(txt)) {
+            // Only detect as add_task if it's really about adding/creating
+            if (/rendez-vous|appointment|tâche|task|médicament|medication|course|shopping/.test(txt)) return 'add_task';
+        }
+        // Shopping-specific additions
+        if (/shop|acheter|course|shopping/.test(txt)) return 'add_task';
         if (/termine|fini|done|complete|accompli|accomplished|finir|check|coché|cocher|marquer|mark/.test(txt)) return 'complete_task';
         if (/supprime|delete|enleve|enlever|remove|annule|cancel|cancella|annuler/.test(txt)) return 'delete_task';
         if (/change|modifie|update|modifier|déplace|déplacer|move|reschedule|reporter/.test(txt)) return 'update_task';
@@ -368,6 +394,7 @@ async function processWithMistral(userMessage, conversationHistory = []) {
         case 'complete_task':
         case 'delete_task':
         case 'update_task':
+        case 'search_task':
             mainPrompt = TASK_PROMPT;
             break;
         case 'nav':
@@ -382,7 +409,7 @@ async function processWithMistral(userMessage, conversationHistory = []) {
             mainPrompt = getChatPrompt();
             break;
     }
-    console.log('[Mistral][DEBUG] Prompt sélectionné:', keywordAction === 'add_task' || keywordAction === 'complete_task' || keywordAction === 'delete_task' || keywordAction === 'update_task' ? 'TASK_PROMPT' : keywordAction === 'nav' ? 'NAV_PROMPT' : keywordAction === 'call' ? 'CALL_PROMPT' : 'CHAT_PROMPT');
+    console.log('[Mistral][DEBUG] Prompt sélectionné:', keywordAction === 'add_task' || keywordAction === 'complete_task' || keywordAction === 'delete_task' || keywordAction === 'update_task' || keywordAction === 'search_task' ? 'TASK_PROMPT' : keywordAction === 'nav' ? 'NAV_PROMPT' : keywordAction === 'call' ? 'CALL_PROMPT' : 'CHAT_PROMPT');
     
     // Extract previous responses to add explicit reminder
     const recentHistory = _conversationHistory.slice(-5);

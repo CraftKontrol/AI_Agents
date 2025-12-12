@@ -609,10 +609,10 @@ const voiceCommands = [
     { phrases: ["désactive le mode automatique", "passe en mode manuel", "arrête l'écoute active", "mode manuel"], action: () => quickDeactivateAutoMode() },
     // Tâches
     { phrases: ["ajoute une tâche", "nouvelle tâche", "crée une tâche"], action: () => openAddTaskModal() },
-    { phrases: ["montre-moi la tâche", "affiche la tâche", "voir la tâche", "visualise la tâche"], action: (t) => { /* handled by explicit question logic */ } },
-    { phrases: ["supprime la tâche", "annule la tâche", "efface la tâche"], action: (t) => { /* handled by delete logic */ } },
-    { phrases: ["modifie la tâche", "change la tâche"], action: (t) => { /* handled by update logic */ } },
-    { phrases: ["marque la tâche comme faite", "termine la tâche", "complète la tâche"], action: (t) => { /* handled by complete logic */ } },
+    // Note: "montre-moi la tâche" removed - must be handled by Mistral with conversation history context
+    // Note: "supprime la tâche" removed - must be handled by Mistral with conversation history context
+    // Note: "modifie la tâche" removed - must be handled by Mistral with conversation history context
+    // Note: "marque la tâche comme faite" removed - must be handled by Mistral with conversation history context
     { phrases: ["quelles sont mes tâches aujourd'hui", "liste mes tâches", "qu'ai-je à faire", "mes tâches"], action: () => commandWhatToday() },
     { phrases: ["quelles sont mes tâches cette semaine", "tâches de la semaine"], action: () => switchPeriod('week') },
     { phrases: ["quelles sont mes tâches ce mois-ci", "tâches du mois"], action: () => switchPeriod('month') },
@@ -1229,6 +1229,9 @@ async function processUserMessage(message) {
         } else if (result.action === 'update_task') {
             console.log('[App] Handling update_task');
             await handleUpdateTask(result, currentTasks);
+        } else if (result.action === 'search_task') {
+            console.log('[App] Handling search_task');
+            await handleSearchTask(result, currentTasks, message);
         } else if (result.action === 'question') {
             console.log('[App] Handling question');
             await handleQuestion(result, currentTasks, message);
@@ -1581,6 +1584,175 @@ async function handleDeleteTask(result, tasks) {
         const msg = noTaskMessages[result.language] || noTaskMessages.fr;
         showResponse(msg);
         speakResponse(msg);
+    }
+}
+
+// Handle search task action
+async function handleSearchTask(result, tasks, userMessage) {
+    console.log('[App][SearchTask] Searching for task:', result.task?.description);
+    console.log('[App][SearchTask] User message:', userMessage);
+    console.log('[App][SearchTask] Conversation history length:', conversationHistory.length);
+    
+    if (!result.task || !result.task.description) {
+        // If Mistral didn't extract a description, maybe the user said "montre-moi la tâche"
+        // without context. Show a helpful message.
+        const noContextMsg = result.language === 'fr' ? 
+            `Quelle tâche voulez-vous voir ? Dites-moi le type de tâche ou sa description.` :
+            result.language === 'it' ?
+            `Quale compito vuoi vedere? Dimmi il tipo di compito o la sua descrizione.` :
+            `Which task would you like to see? Tell me the task type or description.`;
+        showResponse(noContextMsg);
+        speakResponse(noContextMsg);
+        return;
+    }
+    
+    // Recherche la tâche dans toutes les tâches (pas seulement la période courante)
+    const allTasks = await getAllTasks();
+    let searchDesc = result.task.description.toLowerCase();
+    
+    // Log for debugging context resolution
+    console.log('[App][SearchTask] Extracted description from Mistral:', searchDesc);
+    
+    // Filtrer les tâches terminées
+    const futureTasks = allTasks.filter(t => !t.completed);
+    
+    // Check if the user wants ALL tasks of a certain type (e.g., "tous mes rendez-vous")
+    const wantsAll = userMessage && /tous|toutes|all|liste|list/.test(userMessage.toLowerCase());
+    
+    let foundTasks;
+    
+    if (wantsAll && result.task.type && searchDesc.length < 20) {
+        // User wants all tasks of a specific type (e.g., all appointments)
+        console.log('[App][SearchTask] User wants all tasks of type:', result.task.type);
+        foundTasks = futureTasks.filter(t => t.type === result.task.type);
+    } else {
+        // Recherche exacte d'abord
+        foundTasks = futureTasks.filter(t => 
+            t.description.toLowerCase().includes(searchDesc) || 
+            searchDesc.includes(t.description.toLowerCase())
+        );
+        
+        // Si aucune correspondance exacte, essayer une recherche plus flexible (par type)
+        if (foundTasks.length === 0 && result.task.type) {
+            foundTasks = futureTasks.filter(t => t.type === result.task.type);
+        }
+    }
+    
+    console.log('[App][SearchTask] Found tasks:', foundTasks.length);
+    
+    if (foundTasks.length === 0) {
+        const notFoundMsg = result.language === 'fr' ? 
+            `Je n'ai pas trouvé de tâche correspondant à "${result.task.description}".` :
+            result.language === 'it' ?
+            `Non ho trovato compiti corrispondenti a "${result.task.description}".` :
+            `I couldn't find any task matching "${result.task.description}".`;
+        showResponse(notFoundMsg);
+        speakResponse(notFoundMsg);
+        return;
+    }
+    
+    // Si plusieurs tâches trouvées, afficher toutes les correspondances
+    if (foundTasks.length > 1) {
+        // Sort tasks by date
+        foundTasks.sort((a, b) => {
+            if (!a.date && !b.date) return 0;
+            if (!a.date) return 1;
+            if (!b.date) return -1;
+            const dateCompare = new Date(a.date) - new Date(b.date);
+            if (dateCompare !== 0) return dateCompare;
+            // If same date, sort by time
+            if (!a.time && !b.time) return 0;
+            if (!a.time) return 1;
+            if (!b.time) return -1;
+            return a.time.localeCompare(b.time);
+        });
+        
+        const taskList = foundTasks.slice(0, 10).map((t, index) => {
+            const dateStr = t.date ? new Date(t.date).toLocaleDateString(result.language === 'fr' ? 'fr-FR' : result.language === 'it' ? 'it-IT' : 'en-US', { weekday: 'short', day: 'numeric', month: 'short' }) : '';
+            const timeStr = t.time || '';
+            return `${index + 1}. "${t.description}" ${dateStr ? 'le ' + dateStr : ''} ${timeStr ? 'à ' + timeStr : ''}`;
+        }).join('. ');
+        
+        const truncatedNote = foundTasks.length > 10 ? ` (affichage limité aux 10 premiers)` : '';
+        
+        const multipleMsg = result.language === 'fr' ?
+            `Voici vos ${foundTasks.length} ${result.task.type === 'appointment' ? 'rendez-vous' : 'tâches'}${truncatedNote} : ${taskList}` :
+            result.language === 'it' ?
+            `Ecco i tuoi ${foundTasks.length} ${result.task.type === 'appointment' ? 'appuntamenti' : 'compiti'}${truncatedNote}: ${taskList}` :
+            `Here are your ${foundTasks.length} ${result.task.type === 'appointment' ? 'appointments' : 'tasks'}${truncatedNote}: ${taskList}`;
+        
+        showResponse(multipleMsg);
+        speakResponse(multipleMsg);
+        
+        // Afficher toutes les tâches trouvées en les ouvrant dans la vue
+        // Basculer vers la période appropriée pour la première tâche
+        if (foundTasks[0].date) {
+            const taskDate = new Date(foundTasks[0].date);
+            const now = new Date();
+            
+            if (taskDate.toDateString() === now.toDateString()) {
+                await switchPeriod('today');
+            } else {
+                const weekStart = new Date(now);
+                weekStart.setDate(now.getDate() - now.getDay());
+                weekStart.setHours(0, 0, 0, 0);
+                const weekEnd = new Date(weekStart);
+                weekEnd.setDate(weekStart.getDate() + 7);
+                
+                if (taskDate >= weekStart && taskDate < weekEnd) {
+                    await switchPeriod('week');
+                } else {
+                    await switchPeriod('month');
+                }
+            }
+        }
+        return;
+    }
+    
+    // Une seule tâche trouvée
+    const task = foundTasks[0];
+    const dateStr = task.date ? new Date(task.date).toLocaleDateString(result.language === 'fr' ? 'fr-FR' : result.language === 'it' ? 'it-IT' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : '';
+    const timeStr = task.time || '';
+    
+    const responseMsg = result.language === 'fr' ?
+        `Votre ${task.type === 'appointment' ? 'rendez-vous' : 'tâche'} "${task.description}" est prévu${task.type === 'appointment' ? '' : 'e'} ${dateStr ? 'le ' + dateStr : ''} ${timeStr ? 'à ' + timeStr : ''}.` :
+        result.language === 'it' ?
+        `Il tuo ${task.type === 'appointment' ? 'appuntamento' : 'compito'} "${task.description}" è previsto ${dateStr ? 'il ' + dateStr : ''} ${timeStr ? 'alle ' + timeStr : ''}.` :
+        `Your ${task.type === 'appointment' ? 'appointment' : 'task'} "${task.description}" is scheduled ${dateStr ? 'on ' + dateStr : ''} ${timeStr ? 'at ' + timeStr : ''}.`;
+    
+    showSuccess(responseMsg);
+    speakResponse(responseMsg);
+    
+    // Ouvrir la tâche dans la vue appropriée
+    if (task.date) {
+        const taskDate = new Date(task.date);
+        const now = new Date();
+        
+        if (taskDate.toDateString() === now.toDateString()) {
+            await switchPeriod('today');
+        } else {
+            const weekStart = new Date(now);
+            weekStart.setDate(now.getDate() - now.getDay());
+            weekStart.setHours(0, 0, 0, 0);
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekStart.getDate() + 7);
+            
+            if (taskDate >= weekStart && taskDate < weekEnd) {
+                await switchPeriod('week');
+            } else {
+                await switchPeriod('month');
+            }
+        }
+        
+        // Faire défiler vers la tâche et la mettre en évidence
+        setTimeout(() => {
+            const taskElement = document.querySelector(`[data-task-id="${task.id}"]`);
+            if (taskElement) {
+                taskElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                taskElement.classList.add('highlight');
+                setTimeout(() => taskElement.classList.remove('highlight'), 3000);
+            }
+        }, 500);
     }
 }
 
