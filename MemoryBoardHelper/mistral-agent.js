@@ -9,7 +9,14 @@ const SUPPORTED_LANGUAGES = ['fr', 'it', 'en'];
 let detectedLanguage = 'fr';
 
 // System prompt for the assistant
-const SYSTEM_PROMPT = `You make very long responses and arguments.`;
+const SYSTEM_PROMPT = `CRITICAL RULES - YOU MUST FOLLOW THESE:
+- NEVER repeat the same response, joke, story, or answer twice in the same conversation
+- Check the conversation history thoroughly before responding
+- If asked for "another" joke/story/answer, it MUST be different from ALL previous responses
+- If you've already given a specific answer, acknowledge it and provide a completely NEW one
+- Variety is essential - each response must be unique within this conversation
+- Keep responses concise and avoid redundancy
+`;
 
 // Task prompt for the assistant
 const TASK_PROMPT = `You are a helpful memory assistant for elderly or memory-deficient persons. Your role is to:
@@ -51,9 +58,16 @@ const NAV_PROMPT = `You are a navigation assistant for elderly or memory-deficie
 5. Provide clear, simple, and reassuring responses
 6. Be patient, kind, and use simple language
 
+Available sections:
+- "tasks": Task list section
+- "calendar": Calendar view section
+- "settings": Settings/options section
+- "stats": Statistics section
+
 Respond in JSON format with:
 {
     "action": "goto_section|open_page|close_page|question|conversation",
+    "section": "tasks|calendar|settings|stats (only for goto_section action)",
     "response": "friendly message to user",
     "language": "fr|it|en"
 }
@@ -199,7 +213,7 @@ async function processWithMistral(userMessage, conversationHistory = []) {
         if (/supprime|delete|enleve|enlever|remove|annule|cancel|cancella|annuler/.test(txt)) return 'delete_task';
         if (/change|modifie|update|modifier|déplace|déplacer|move|reschedule|reporter/.test(txt)) return 'update_task';
         if (/question|quand|combien|quel|how|when|what|where|qui|pourquoi|why|help|aide|info|information/.test(txt)) return 'question';
-        if (/navigation|navigue|navigate|aller|go to|ouvre|open|ferme|close|section|page/.test(txt)) return 'nav';
+        if (/navigation|navigue|navigate|aller|go to|ouvre|open|ferme|close|section|page|montre.*option|show.*option|menu|affiche.*option|display.*option/.test(txt)) return 'nav';
         return 'conversation';
     }
     const keywordAction = detectActionByKeywords(_userMessage);
@@ -229,8 +243,35 @@ async function processWithMistral(userMessage, conversationHistory = []) {
             break;
     }
     console.log('[Mistral][DEBUG] Prompt sélectionné:', keywordAction === 'add_task' || keywordAction === 'complete_task' || keywordAction === 'delete_task' || keywordAction === 'update_task' ? 'TASK_PROMPT' : keywordAction === 'nav' ? 'NAV_PROMPT' : 'CHAT_PROMPT');
+    
+    // Extract previous responses to add explicit reminder
+    const recentHistory = _conversationHistory.slice(-5);
+    let previousResponsesReminder = '';
+    if (recentHistory.length > 0) {
+        const previousResponses = [];
+        for (const conv of recentHistory) {
+            if (conv.assistantResponse) {
+                try {
+                    const parsed = typeof conv.assistantResponse === 'string' 
+                        ? JSON.parse(conv.assistantResponse) 
+                        : conv.assistantResponse;
+                    if (parsed.response) {
+                        previousResponses.push(parsed.response);
+                    }
+                } catch {
+                    if (typeof conv.assistantResponse === 'string') {
+                        previousResponses.push(conv.assistantResponse);
+                    }
+                }
+            }
+        }
+        if (previousResponses.length > 0) {
+            previousResponsesReminder = `\n\nIMPORTANT - You have already given these responses in this conversation:\n${previousResponses.map((r, i) => `${i + 1}. "${r.substring(0, 100)}${r.length > 100 ? '...' : ''}"`).join('\n')}\n\nYou MUST provide a COMPLETELY DIFFERENT response. DO NOT repeat any of these.`;
+        }
+    }
+    
     // Ajoute SYSTEM_PROMPT à tous les prompts comme commande générale
-    const fullPrompt = `${SYSTEM_PROMPT}\n\n${mainPrompt}\n\nLa date actuelle est : ${isoDate} (${localeDate}). Utilise toujours cette date comme référence pour "aujourd'hui".`;
+    const fullPrompt = `${SYSTEM_PROMPT}\n\n${mainPrompt}${previousResponsesReminder}\n\nLa date actuelle est : ${isoDate} (${localeDate}). Utilise toujours cette date comme référence pour "aujourd'hui".`;
 
     // Build messages with compressed history
     const messages = [
@@ -238,13 +279,31 @@ async function processWithMistral(userMessage, conversationHistory = []) {
     ];
 
     // Add recent conversation history (last 5 exchanges)
-    const recentHistory = _conversationHistory.slice(-5);
     for (const conv of recentHistory) {
         if (conv.userMessage) {
             messages.push({ role: 'user', content: conv.userMessage });
         }
         if (conv.assistantResponse) {
-            messages.push({ role: 'assistant', content: conv.assistantResponse });
+            // If assistantResponse is a JSON string or object, use it directly
+            // Otherwise, wrap it in a minimal JSON structure
+            let assistantContent = conv.assistantResponse;
+            if (typeof assistantContent === 'object') {
+                assistantContent = JSON.stringify(assistantContent);
+            } else if (typeof assistantContent === 'string') {
+                // Try to detect if it's already JSON
+                try {
+                    JSON.parse(assistantContent);
+                    // It's valid JSON, use as-is
+                } catch {
+                    // It's plain text, wrap it in a JSON structure
+                    assistantContent = JSON.stringify({
+                        action: 'conversation',
+                        response: assistantContent,
+                        language: 'fr'
+                    });
+                }
+            }
+            messages.push({ role: 'assistant', content: assistantContent });
         }
     }
 
@@ -252,9 +311,34 @@ async function processWithMistral(userMessage, conversationHistory = []) {
     messages.push({ role: 'user', content: _userMessage });
 
     try {
+        // Get Mistral settings for API parameters
+        const mistralSettings = JSON.parse(localStorage.getItem('mistralSettings') || 'null');
+        const modelToUse = mistralSettings?.model || MISTRAL_MODEL;
+        const temperatureToUse = mistralSettings?.temperature ?? 0.3;
+        const maxTokensToUse = mistralSettings?.maxTokens || 500;
+        const topPToUse = mistralSettings?.topP ?? 0.9;
+        
         // LOG: prompt complet envoyé à l'API
         console.log('[Mistral][DEBUG] Prompt envoyé à l\'API:', JSON.stringify(messages, null, 2));
+        console.log('[Mistral][DEBUG] Settings utilisés:', { model: modelToUse, temperature: temperatureToUse, maxTokens: maxTokensToUse, topP: topPToUse });
        // console.log('[Mistral][DEBUG] ConversationHistory:', JSON.stringify(_conversationHistory, null, 2));
+        
+        const requestBody = {
+            model: modelToUse,
+            messages: messages,
+            temperature: temperatureToUse,
+            max_tokens: maxTokensToUse,
+            top_p: topPToUse,
+            response_format: { type: 'json_object' }
+        };
+        
+        // Add optional parameters if configured
+        if (mistralSettings?.safeMode) {
+            requestBody.safe_prompt = true;
+        }
+        if (mistralSettings?.randomSeed) {
+            requestBody.random_seed = Math.floor(Math.random() * 1000000);
+        }
         
         const response = await fetch(MISTRAL_API_URL, {
             method: 'POST',
@@ -262,13 +346,7 @@ async function processWithMistral(userMessage, conversationHistory = []) {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${apiKey}`
             },
-            body: JSON.stringify({
-                model: MISTRAL_MODEL,
-                messages: messages,
-                temperature: 0.3,
-                max_tokens: 500,
-                response_format: { type: 'json_object' }
-            })
+            body: JSON.stringify(requestBody)
         });
 
         if (!response.ok) {

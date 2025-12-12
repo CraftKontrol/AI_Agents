@@ -971,6 +971,9 @@ async function processUserMessage(message) {
     isProcessing = true;
     showLoading(true);
     
+    // Store message globally for navigation detection
+    window.lastUserMessage = message;
+    
     try {
         // Détection commande activation/désactivation mode automatique
         const msgLower = message.toLowerCase();
@@ -1003,18 +1006,30 @@ async function processUserMessage(message) {
         if (!result) {
             throw new Error('No response from Mistral');
         }
+        console.log('[App] Mistral result action:', result.action);
+        console.log('[App] Full result:', JSON.stringify(result));
+        
         // Handle different actions
         if (result.action === 'add_task') {
+            console.log('[App] Handling add_task');
             await handleAddTask(result);
         } else if (result.action === 'complete_task') {
+            console.log('[App] Handling complete_task');
             await handleCompleteTask(result, currentTasks);
         } else if (result.action === 'delete_task') {
+            console.log('[App] Handling delete_task');
             await handleDeleteTask(result, currentTasks);
         } else if (result.action === 'update_task') {
+            console.log('[App] Handling update_task');
             await handleUpdateTask(result, currentTasks);
         } else if (result.action === 'question') {
+            console.log('[App] Handling question');
             await handleQuestion(result, currentTasks, message);
+        } else if (result.action === 'goto_section' || result.action === 'nav') {
+            console.log('[App] Handling goto_section/nav');
+            await handleGotoSection(result);
         } else {
+            console.log('[App] Handling general conversation');
             // General conversation
             showResponse(result.response);
             speakResponse(result.response);
@@ -1160,7 +1175,11 @@ async function handleUpdateTask(result, tasks) {
 
         // Save conversation
         await saveConversation(message, result.response, result.language);
-        conversationHistory.push({ userMessage: message, assistantResponse: result.response });
+        // Store the full JSON response in history for better context
+        conversationHistory.push({ 
+            userMessage: message, 
+            assistantResponse: JSON.stringify(result)
+        });
         // Limit in-memory history to MAX_CONVERSATION_HISTORY
         if (conversationHistory.length > MAX_CONVERSATION_HISTORY) {
             conversationHistory = conversationHistory.slice(-MAX_CONVERSATION_HISTORY);
@@ -1360,6 +1379,88 @@ async function handleQuestion(result, tasks) {
     // Affiche directement la réponse de Mistral sans réinterpréter
     showResponse(result.response);
     speakResponse(result.response);
+}
+
+// Handle navigation to sections
+async function handleGotoSection(result) {
+    console.log('[App][Navigation] Handling goto_section:', result);
+    let section = result.section;
+    console.log('[App][Navigation] Target section:', section);
+    
+    // Si la section n'est pas définie, essayer de la détecter depuis le message original
+    if (!section && window.lastUserMessage) {
+        const msg = window.lastUserMessage.toLowerCase();
+        if (/option|paramètre|setting|configuration|config/.test(msg)) {
+            section = 'settings';
+            console.log('[App][Navigation] Section detected from message:', section);
+        } else if (/tâche|task/.test(msg)) {
+            section = 'tasks';
+            console.log('[App][Navigation] Section detected from message:', section);
+        } else if (/calendrier|calendar/.test(msg)) {
+            section = 'calendar';
+            console.log('[App][Navigation] Section detected from message:', section);
+        }
+    }
+    
+    // Map section names to element IDs
+    const sectionMap = {
+        'settings': 'mistralSettingsContent',
+        'tasks': 'tasksContainer',
+        'calendar': 'tasksContainer',
+        'stats': 'tasksContainer' // Si vous avez une section stats
+    };
+    
+    const sectionId = sectionMap[section];
+    console.log('[App][Navigation] Mapped to element ID:', sectionId);
+    
+    if (sectionId) {
+        // Si c'est mistralSettingsContent, on doit l'afficher et faire défiler
+        if (sectionId === 'mistralSettingsContent') {
+            const sectionElement = document.getElementById(sectionId);
+            const toggleBtn = document.getElementById('mistralToggleBtn');
+            
+            console.log('[App][Navigation] Section element found:', !!sectionElement);
+            console.log('[App][Navigation] Current display:', sectionElement?.style.display);
+            
+            if (sectionElement && sectionElement.style.display === 'none') {
+                // Ouvrir la section si elle est fermée (manipulation directe)
+                console.log('[App][Navigation] Opening section...');
+                sectionElement.style.display = 'block';
+                if (toggleBtn) {
+                    toggleBtn.textContent = getLocalizedText('hide');
+                    console.log('[App][Navigation] Toggle button updated');
+                }
+            } else {
+                console.log('[App][Navigation] Section already visible');
+            }
+            
+            // Faire défiler vers la section
+            const parentSection = document.querySelector('.mistral-settings-section');
+            console.log('[App][Navigation] Parent section found:', !!parentSection);
+            if (parentSection) {
+                console.log('[App][Navigation] Scrolling to section...');
+                parentSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        } else {
+            // Pour les autres sections, faire défiler vers l'élément
+            const element = document.getElementById(sectionId);
+            console.log('[App][Navigation] Element found:', !!element);
+            if (element) {
+                console.log('[App][Navigation] Scrolling to element...');
+                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+        
+        // Afficher et parler la réponse
+        console.log('[App][Navigation] Showing response:', result.response);
+        showResponse(result.response);
+        speakResponse(result.response);
+    } else {
+        console.log('[App][Navigation] ERROR: Section ID not found in map');
+        const errorMsg = result.response || 'Section non trouvée.';
+        showResponse(errorMsg);
+        speakResponse(errorMsg);
+    }
 }
 
 // Execute quick command
