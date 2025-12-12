@@ -316,6 +316,85 @@
             </div>
         </section>
 
+        <!-- Text-to-Speech Configuration -->
+        <section class="tts-section">
+            <h2>
+                <span class="material-symbols-outlined">speaker</span>
+                <span id="ttsSettingsTitle">Paramètres de synthèse vocale</span>
+                <button class="section-toggle" onclick="toggleSection('ttsContent')" id="ttsToggleBtn">
+                    <span id="ttsShowBtn">Afficher</span>
+                </button>
+            </h2>
+            <div id="ttsContent" class="section-content" style="display: none;">
+                <div class="tts-grid">
+                    <div class="tts-card">
+                        <label for="ttsVoice">
+                            <span class="material-symbols-outlined">voice_selection</span>
+                            <span id="selectVoiceLabel">Sélectionner une voix</span>
+                        </label>
+                        <select id="ttsVoice" onchange="updateTTSVoice(this.value)">
+                            <optgroup label="Français (French)">
+                                <option value="fr-FR-Neural2-A" data-gender="female" selected>Neural2-A (Femme)</option>
+                                <option value="fr-FR-Neural2-D" data-gender="male">Neural2-D (Homme)</option>
+                            </optgroup>
+                            <optgroup label="Italien (Italian)">
+                                <option value="it-IT-Neural2-A" data-gender="female">Neural2-A (Femme)</option>
+                                <option value="it-IT-Neural2-D" data-gender="male">Neural2-D (Homme)</option>
+                            </optgroup>
+                            <optgroup label="Anglais (English)">
+                                <option value="en-US-Neural2-C" data-gender="male">Neural2-C (Male)</option>
+                                <option value="en-US-Neural2-F" data-gender="female">Neural2-F (Female)</option>
+                            </optgroup>
+                        </select>
+                        <p class="tts-hint" id="voiceHint">Choisissez la voix pour la lecture des annonces</p>
+                    </div>
+                    <div class="tts-card">
+                        <label for="ttsSpeakingRate">
+                            <span class="material-symbols-outlined">speed</span>
+                            <span id="speakingRateLabel">Vitesse de lecture</span>
+                            <span class="tts-value" id="speakingRateValue">0.9x</span>
+                        </label>
+                        <input type="range" id="ttsSpeakingRate" min="0.5" max="2.0" step="0.1" value="0.9" oninput="updateTTSValue('speakingRate', this.value)" />
+                        <div class="range-labels">
+                            <span>0.5x</span>
+                            <span>1.0x</span>
+                            <span>2.0x</span>
+                        </div>
+                        <p class="tts-hint" id="speakingRateHint">Contrôle la rapidité de la voix</p>
+                    </div>
+                    <div class="tts-card">
+                        <label for="ttsPitch">
+                            <span class="material-symbols-outlined">graphic_eq</span>
+                            <span id="pitchLabel">Tonalité (Pitch)</span>
+                            <span class="tts-value" id="pitchValue">0</span>
+                        </label>
+                        <input type="range" id="ttsPitch" min="-20" max="20" step="1" value="0" oninput="updateTTSValue('pitch', this.value)" />
+                        <div class="range-labels">
+                            <span>-20</span>
+                            <span>0</span>
+                            <span>+20</span>
+                        </div>
+                        <p class="tts-hint" id="pitchHint">Ajuste la hauteur de la voix</p>
+                    </div>
+                    <div class="tts-card">
+                        <label for="ttsVolume">
+                            <span class="material-symbols-outlined">volume_up</span>
+                            <span id="volumeLabel">Volume</span>
+                            <span class="tts-value" id="volumeValue">2 dB</span>
+                        </label>
+                        <input type="range" id="ttsVolume" min="-16" max="16" step="1" value="2" oninput="updateTTSValue('volume', this.value)" />
+                        <div class="range-labels">
+                            <span>-16 dB</span>
+                            <span>0 dB</span>
+                            <span>+16 dB</span>
+                        </div>
+                        <p class="tts-hint" id="volumeHint">Ajuste le niveau sonore</p>
+                    </div>
+                   
+                </div>
+            </div>
+        </section>
+
         <section class="tasks-section">
             <div class="tasks-header">
                 <h2>

@@ -9,7 +9,10 @@ const SUPPORTED_LANGUAGES = ['fr', 'it', 'en'];
 let detectedLanguage = 'fr';
 
 // System prompt for the assistant
-const SYSTEM_PROMPT = `You are a helpful memory assistant for elderly or memory-deficient persons. Your role is to:
+const SYSTEM_PROMPT = `You make very long responses and arguments.`;
+
+// Task prompt for the assistant
+const TASK_PROMPT = `You are a helpful memory assistant for elderly or memory-deficient persons. Your role is to:
 1. Understand natural language requests in French, Italian, or English
 2. Extract task information (description, time, type, priority)
 3. Detect when tasks are completed from user statements
@@ -38,6 +41,23 @@ For delete_task action, identify which task the user wants to remove/delete/canc
 
 For medication tasks, extract dosage information in the description.
 Always be encouraging and supportive.`;
+
+
+const NAV_PROMPT = `You are a navigation assistant for elderly or memory-deficient persons. Your role is to:
+1. Understand natural language requests in French, Italian, or English
+2. Provide clear, simple, and reassuring navigation instructions about the app
+3. Guide the user by moving the focus on the screen to the relevant sections
+3. Be patient, kind, and use simple language.
+Always be encouraging and supportive.`;
+
+const CHAT_PROMPT = `You are a friendly conversational assistant for elderly or memory-deficient persons. Your role is to:
+1. Understand natural language requests in French, Italian, or English
+2. Provide responses that are clear and simple.
+3. Don't hallucinate or make up information.
+4. At the end of your response, always ask if the user needs further assistance.
+5. Be patient, kind, and use simple language.
+Always be encouraging and supportive.`;
+
 
 // Detect language from text using Mistral
 async function detectLanguage(text) {
@@ -89,28 +109,75 @@ async function detectLanguage(text) {
 
 // Process user message with Mistral AI
 async function processWithMistral(userMessage, conversationHistory = []) {
+    // promptType: 'task' | 'chat' | 'nav' | 'system' (default: 'task')
+    let promptType = 'task';
+    let _userMessage = userMessage;
+    let _conversationHistory = conversationHistory;
+    if (typeof arguments[2] === 'string') {
+        promptType = arguments[2];
+    }
+    if (typeof arguments[2] === 'object' && arguments[2] !== null) {
+        // backward compatibility
+        _conversationHistory = arguments[2];
+    }
+    if (typeof arguments[3] === 'string') {
+        promptType = arguments[3];
+    }
+
     const apiKey = localStorage.getItem('mistralApiKey');
     if (!apiKey) {
         throw new Error('Mistral API key not configured');
     }
 
     // Detect language first
-    const language = await detectLanguage(userMessage);
+    const language = await detectLanguage(_userMessage);
 
+    // Double vérification du type d'action
+    function detectActionByKeywords(text) {
+        const txt = text.toLowerCase();
+        if (/ajoute|add|nouveau|rendez-vous|appointment|create|créer|shop|acheter|course|shopping|medicament|médicament|take|prendre/.test(txt)) return 'add_task';
+        if (/termine|fini|done|complete|accompli|accomplished|finir|check|coché|cocher|marquer|mark/.test(txt)) return 'complete_task';
+        if (/supprime|delete|enleve|enlever|remove|annule|cancel|cancella|annuler/.test(txt)) return 'delete_task';
+        if (/change|modifie|update|modifier|déplace|déplacer|move|reschedule|reporter/.test(txt)) return 'update_task';
+        if (/question|quand|combien|quel|how|when|what|where|qui|pourquoi|why|help|aide|info|information/.test(txt)) return 'question';
+        if (/navigation|navigue|navigate|aller|go to|ouvre|open|ferme|close|section|page/.test(txt)) return 'nav';
+        return 'conversation';
+    }
+    const keywordAction = detectActionByKeywords(_userMessage);
+    console.log('[Mistral][DEBUG] Action détectée par mots-clés:', keywordAction);
 
-    // Ajoute la date actuelle exacte dans le prompt système
+    // Ajoute la date actuelle exacte dans le prompt principal
     const now = new Date();
     const isoDate = now.toISOString().split('T')[0];
     const localeDate = now.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-    const systemPromptWithDate = `${SYSTEM_PROMPT}\n\nLa date actuelle est : ${isoDate} (${localeDate}). Utilise toujours cette date comme référence pour "aujourd'hui".`;
+
+    // Sélection du prompt principal
+    let mainPrompt = '';
+    switch (promptType) {
+        case 'chat':
+            mainPrompt = CHAT_PROMPT;
+            break;
+        case 'nav':
+            mainPrompt = NAV_PROMPT;
+            break;
+        case 'system':
+            mainPrompt = SYSTEM_PROMPT;
+            break;
+        case 'task':
+        default:
+            mainPrompt = TASK_PROMPT;
+            break;
+    }
+    // Ajoute SYSTEM_PROMPT à tous les prompts comme commande générale
+    const fullPrompt = `${SYSTEM_PROMPT}\n\n${mainPrompt}\n\nLa date actuelle est : ${isoDate} (${localeDate}). Utilise toujours cette date comme référence pour "aujourd'hui".`;
 
     // Build messages with compressed history
     const messages = [
-        { role: 'system', content: systemPromptWithDate }
+        { role: 'system', content: fullPrompt }
     ];
 
     // Add recent conversation history (last 5 exchanges)
-    const recentHistory = conversationHistory.slice(-5);
+    const recentHistory = _conversationHistory.slice(-5);
     for (const conv of recentHistory) {
         if (conv.userMessage) {
             messages.push({ role: 'user', content: conv.userMessage });
@@ -121,10 +188,12 @@ async function processWithMistral(userMessage, conversationHistory = []) {
     }
 
     // Add current message
-    messages.push({ role: 'user', content: userMessage });
+    messages.push({ role: 'user', content: _userMessage });
 
     try {
-        console.log('[Mistral] Processing message:', userMessage);
+        // LOG: prompt complet envoyé à l'API
+        console.log('[Mistral][DEBUG] Prompt envoyé à l\'API:', JSON.stringify(messages, null, 2));
+       // console.log('[Mistral][DEBUG] ConversationHistory:', JSON.stringify(_conversationHistory, null, 2));
         
         const response = await fetch(MISTRAL_API_URL, {
             method: 'POST',
@@ -147,13 +216,25 @@ async function processWithMistral(userMessage, conversationHistory = []) {
         }
 
         const data = await response.json();
+        // LOG: réponse brute de l'API
+        console.log('[Mistral][DEBUG] Réponse brute API:', JSON.stringify(data, null, 2));
         const content = data.choices[0].message.content;
         
         console.log('[Mistral] Response:', content);
         
-        const result = JSON.parse(content);
+        let result = JSON.parse(content);
         result.language = language;
-        
+
+        // Correction du type d'action si désaccord
+        if (result.action && result.action !== keywordAction) {
+            console.warn('[Mistral][WARN] Correction du type d\'action :', result.action, '->', keywordAction);
+            result.action_corrected = {
+                mistral: result.action,
+                keywords: keywordAction
+            };
+            result.action = keywordAction;
+        }
+
         return result;
     } catch (error) {
         console.error('[Mistral] Processing error:', error);
@@ -164,8 +245,9 @@ async function processWithMistral(userMessage, conversationHistory = []) {
 // Extract task from natural language
 async function extractTask(userMessage, conversationHistory = []) {
     try {
-        const result = await processWithMistral(userMessage, conversationHistory);
-        
+        const result = await processWithMistral(userMessage, conversationHistory, 'task');
+        // LOG: résultat brut après parsing
+        console.log('[Mistral][DEBUG] Résultat brut après parsing:', JSON.stringify(result, null, 2));
         if (result.action === 'add_task' && result.task) {
             return {
                 success: true,
@@ -174,7 +256,6 @@ async function extractTask(userMessage, conversationHistory = []) {
                 language: result.language
             };
         }
-        
         return {
             success: false,
             response: result.response,
@@ -193,7 +274,7 @@ async function extractTask(userMessage, conversationHistory = []) {
 // Check if user is confirming task completion
 async function checkTaskCompletion(userMessage, tasks, conversationHistory = []) {
     try {
-        const result = await processWithMistral(userMessage, conversationHistory);
+        const result = await processWithMistral(userMessage, conversationHistory, 'task');
         
         if (result.action === 'complete_task') {
             // Find matching task
@@ -227,7 +308,7 @@ async function checkTaskCompletion(userMessage, tasks, conversationHistory = [])
 // Check if user wants to delete a task
 async function checkTaskDeletion(userMessage, tasks, conversationHistory = []) {
     try {
-        const result = await processWithMistral(userMessage, conversationHistory);
+        const result = await processWithMistral(userMessage, conversationHistory, 'task');
         
         if (result.action === 'delete_task') {
             // Find matching task
@@ -301,7 +382,7 @@ async function answerQuestion(userMessage, tasks, conversationHistory = []) {
         
         const contextualMessage = `${tasksContext}\n\nUser question: ${userMessage}`;
         
-        const result = await processWithMistral(contextualMessage, conversationHistory);
+        const result = await processWithMistral(contextualMessage, conversationHistory, 'chat');
         
         return {
             success: true,

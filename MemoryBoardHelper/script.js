@@ -1,3 +1,114 @@
+// --- TTS Settings Logic ---
+const DEFAULT_TTS_SETTINGS = {
+    voice: 'fr-FR-Neural2-A',
+    speakingRate: 0.9,
+    pitch: 0,
+    volume: 2,
+    autoPlay: true
+};
+
+function loadTTSSettings() {
+    const settings = JSON.parse(localStorage.getItem('ttsSettings') || 'null') || DEFAULT_TTS_SETTINGS;
+    // Update UI
+    const voiceSel = document.getElementById('ttsVoice');
+    if (voiceSel) voiceSel.value = settings.voice;
+    const rate = document.getElementById('ttsSpeakingRate');
+    if (rate) { rate.value = settings.speakingRate; document.getElementById('speakingRateValue').textContent = settings.speakingRate + 'x'; }
+    const pitch = document.getElementById('ttsPitch');
+    if (pitch) { pitch.value = settings.pitch; document.getElementById('pitchValue').textContent = settings.pitch; }
+    const vol = document.getElementById('ttsVolume');
+    if (vol) { vol.value = settings.volume; document.getElementById('volumeValue').textContent = settings.volume + ' dB'; }
+    const auto = document.getElementById('autoPlayTTS');
+    if (auto) auto.checked = settings.autoPlay;
+}
+
+function saveTTSSettings() {
+    const settings = {
+        voice: document.getElementById('ttsVoice')?.value || DEFAULT_TTS_SETTINGS.voice,
+        speakingRate: parseFloat(document.getElementById('ttsSpeakingRate')?.value) || DEFAULT_TTS_SETTINGS.speakingRate,
+        pitch: parseInt(document.getElementById('ttsPitch')?.value) || DEFAULT_TTS_SETTINGS.pitch,
+        volume: parseInt(document.getElementById('ttsVolume')?.value) || DEFAULT_TTS_SETTINGS.volume,
+        autoPlay: document.getElementById('autoPlayTTS')?.checked ?? DEFAULT_TTS_SETTINGS.autoPlay
+    };
+    localStorage.setItem('ttsSettings', JSON.stringify(settings));
+}
+
+function updateTTSVoice(val) { saveTTSSettings(); }
+function updateTTSValue(type, val) {
+    if (type === 'speakingRate') document.getElementById('speakingRateValue').textContent = val + 'x';
+    if (type === 'pitch') document.getElementById('pitchValue').textContent = val;
+    if (type === 'volume') document.getElementById('volumeValue').textContent = val + ' dB';
+    saveTTSSettings();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadTTSSettings();
+    // Save on change
+    ['ttsVoice','ttsSpeakingRate','ttsPitch','ttsVolume','autoPlayTTS'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('change', saveTTSSettings);
+    });
+});
+
+// --- Patch TTS usage to use settings ---
+async function speakWithGoogleTTS(text, languageCode, apiKey) {
+    const ttsSettings = JSON.parse(localStorage.getItem('ttsSettings') || 'null') || DEFAULT_TTS_SETTINGS;
+    const url = `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`;
+    const voiceInfo = getVoiceName(languageCode, ttsSettings.voice);
+    const requestBody = {
+        input: { text },
+        voice: {
+            languageCode,
+            name: voiceInfo.name,
+            ssmlGender: voiceInfo.ssmlGender
+        },
+        audioConfig: {
+            audioEncoding: 'MP3',
+            speakingRate: ttsSettings.speakingRate,
+            pitch: ttsSettings.pitch,
+            volumeGainDb: ttsSettings.volume
+        }
+    };
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody)
+        });
+        if (!response.ok) {
+            throw new Error(`TTS API error: ${response.status}`);
+        }
+        const data = await response.json();
+        const audioContent = data.audioContent;
+        const audio = new Audio(`data:audio/mp3;base64,${audioContent}`);
+        audio.volume = 0.8;
+        await audio.play();
+        console.log('[AlarmSystem] Voice announcement completed');
+    } catch (error) {
+        console.error('[AlarmSystem] Google TTS error:', error);
+        throw error;
+    }
+}
+
+// Patch getVoiceName to allow override
+function getVoiceName(languageCode, overrideName) {
+    const voices = {
+        'fr-FR-Neural2-A': { name: 'fr-FR-Neural2-A', ssmlGender: 'FEMALE' },
+        'fr-FR-Neural2-D': { name: 'fr-FR-Neural2-D', ssmlGender: 'MALE' },
+        'it-IT-Neural2-A': { name: 'it-IT-Neural2-A', ssmlGender: 'FEMALE' },
+        'it-IT-Neural2-D': { name: 'it-IT-Neural2-D', ssmlGender: 'MALE' },
+        'en-US-Neural2-C': { name: 'en-US-Neural2-C', ssmlGender: 'MALE' },
+        'en-US-Neural2-F': { name: 'en-US-Neural2-F', ssmlGender: 'FEMALE' }
+    };
+    if (overrideName && voices[overrideName]) return voices[overrideName];
+    // fallback by language
+    const langDefaults = {
+        'fr-FR': 'fr-FR-Neural2-A',
+        'it-IT': 'it-IT-Neural2-A',
+        'en-US': 'en-US-Neural2-C'
+    };
+    return voices[langDefaults[languageCode] || 'fr-FR-Neural2-A'];
+}
 // --- Focus automatique sur l'heure après inactivité utilisateur ---
 let focusTimer = null;
 const FOCUS_DELAY = 30000; // 30 secondes

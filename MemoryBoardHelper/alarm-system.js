@@ -264,12 +264,13 @@ async function announceTask(task) {
 async function speakWithGoogleTTS(text, languageCode, apiKey) {
     const url = `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`;
     
+    const voiceInfo = getVoiceName(languageCode);
     const requestBody = {
         input: { text },
         voice: {
             languageCode,
-            name: getVoiceName(languageCode),
-            ssmlGender: 'NEUTRAL'
+            name: voiceInfo.name,
+            ssmlGender: voiceInfo.ssmlGender
         },
         audioConfig: {
             audioEncoding: 'MP3',
@@ -305,14 +306,23 @@ async function speakWithGoogleTTS(text, languageCode, apiKey) {
     }
 }
 
-// Get appropriate voice name for language
+// Google Cloud TTS voices (2025):
+// French (fr-FR):
+//   - 'fr-FR-Neural2-A' (FEMALE)
+//   - 'fr-FR-Neural2-D' (MALE)
+// Italian (it-IT):
+//   - 'it-IT-Neural2-A' (FEMALE)
+//   - 'it-IT-Neural2-D' (MALE)
+// English (en-US):
+//   - 'en-US-Neural2-C' (MALE)
+//   - 'en-US-Neural2-F' (FEMALE)
 function getVoiceName(languageCode) {
     const voices = {
-        'fr-FR': 'fr-FR-Neural2-A',
-        'it-IT': 'it-IT-Neural2-A',
-        'en-US': 'en-US-Neural2-C'
+        'fr-FR': { name: 'fr-FR-Neural2-A', ssmlGender: 'FEMALE' },
+        'it-IT': { name: 'it-IT-Neural2-A', ssmlGender: 'FEMALE' },
+        'en-US': { name: 'en-US-Neural2-C', ssmlGender: 'MALE' }
     };
-    return voices[languageCode] || 'fr-FR-Neural2-A';
+    return voices[languageCode] || voices['fr-FR'];
 }
 
 // Fallback: Browser Web Speech API TTS
