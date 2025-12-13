@@ -276,16 +276,27 @@
         </div>
 
         <section class="time-display">
-            <div class="current-time">
-                <span class="material-symbols-outlined">schedule</span>
-                <div class="time-info">
-                    <div id="currentTime" class="time-text" tabindex="0">00:00</div>
-                    <div id="currentDate" class="date-text">Chargement...</div>
+            <h2 style="display: flex; align-items: center; justify-content: space-between;">
+                <span id="timeDisplayTitle">Heure actuelle</span>
+                <button class="section-toggle" onclick="toggleSection('timeDisplayContent')" id="timeToggleBtn">Masquer</button>
+            </h2>
+            <div id="timeDisplayContent" class="section-content">
+                <div class="current-time">
+                    <span class="material-symbols-outlined">schedule</span>
+                    <div class="time-info">
+                        <div id="currentTime" class="time-text" tabindex="0">00:00</div>
+                        <div id="currentDate" class="date-text">Chargement...</div>
+                    </div>
                 </div>
             </div>
         </section>
 
         <section class="voice-interaction">
+            <h2 style="display: flex; align-items: center; justify-content: space-between;">
+                <span id="voiceInteractionTitle">Interaction vocale</span>
+                <button class="section-toggle" onclick="toggleSection('voiceInteractionContent')" id="voiceToggleBtn">Masquer</button>
+            </h2>
+            <div id="voiceInteractionContent" class="section-content">
             <div class="voice-status">
                 <div class="status-indicator" id="voiceStatus">
                     <span class="material-symbols-outlined" id="voiceStatusIcon">mic_off</span>
@@ -319,6 +330,7 @@
                 </div>
                 <p id="responseText"></p>
             </div>
+            </div>
         </section>
 
         <section class="calendar-section">
@@ -327,6 +339,9 @@
                     <span class="material-symbols-outlined">calendar_month</span>
                     <span id="calendarTitle">Mon Calendrier</span>
                 </h2>
+                <button class="section-toggle" onclick="toggleSection('calendarContent')" id="calendarToggleBtn">Masquer</button>
+            </div>
+            <div id="calendarContent" class="section-content">
                 <div class="calendar-controls">
                     <button class="btn-calendar-control" onclick="calendarToday()" title="Aujourd'hui">
                         <span class="material-symbols-outlined">today</span>
@@ -359,6 +374,7 @@
                 <span class="material-symbols-outlined">add_circle</span>
                 <span id="addTaskBtnText">Ajouter une tâche</span>
             </button>
+            </div>
         </section>
 
         <!-- Notes Section -->
@@ -368,13 +384,18 @@
                     <span class="material-symbols-outlined">note</span>
                     <span id="notesTitle">Mes Notes</span>
                 </h2>
-                <button class="btn-add" onclick="openAddNoteModal()">
-                    <span class="material-symbols-outlined">add</span>
-                    <span id="addNoteBtnText">Nouvelle note</span>
-                </button>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button class="btn-add" onclick="openAddNoteModal()">
+                        <span class="material-symbols-outlined">add</span>
+                        <span id="addNoteBtnText">Nouvelle note</span>
+                    </button>
+                    <button class="section-toggle" onclick="toggleSection('notesContent')" id="notesToggleBtn">Masquer</button>
+                </div>
             </div>
-            <div id="notesContainer" class="notes-grid">
-                <p class="empty-message" id="emptyNotesMessage">Aucune note pour le moment</p>
+            <div id="notesContent" class="section-content">
+                <div id="notesContainer" class="notes-grid">
+                    <p class="empty-message" id="emptyNotesMessage">Aucune note pour le moment</p>
+                </div>
             </div>
         </section>
 
@@ -385,18 +406,27 @@
                     <span class="material-symbols-outlined">checklist</span>
                     <span id="listsTitle">Mes Listes</span>
                 </h2>
-                <button class="btn-add" onclick="openAddListModal()">
-                    <span class="material-symbols-outlined">add</span>
-                    <span id="addListBtnText">Nouvelle liste</span>
-                </button>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button class="btn-add" onclick="openAddListModal()">
+                        <span class="material-symbols-outlined">add</span>
+                        <span id="addListBtnText">Nouvelle liste</span>
+                    </button>
+                    <button class="section-toggle" onclick="toggleSection('listsContent')" id="listsToggleBtn">Masquer</button>
+                </div>
             </div>
-            <div id="listsContainer" class="lists-grid">
-                <p class="empty-message" id="emptyListsMessage">Aucune liste pour le moment</p>
+            <div id="listsContent" class="section-content">
+                <div id="listsContainer" class="lists-grid">
+                    <p class="empty-message" id="emptyListsMessage">Aucune liste pour le moment</p>
+                </div>
             </div>
         </section>
 
         <section class="quick-commands">
-            <h3 id="commandsTitle">Commandes rapides</h3>
+            <h3 style="display: flex; align-items: center; justify-content: space-between;">
+                <span id="commandsTitle">Commandes rapides</span>
+                <button class="section-toggle" onclick="toggleSection('commandsContent')" id="commandsToggleBtn">Masquer</button>
+            </h3>
+            <div id="commandsContent" class="section-content">
             <div class="commands-grid">
                 <!-- Tâches -->
                 <button class="command-btn" onclick="quickAddTask()">
@@ -494,6 +524,7 @@
                     <span class="material-symbols-outlined">alarm</span>
                     <span>Changer l'alarme</span>
                 </button>
+            </div>
             </div>
         </section>
 
