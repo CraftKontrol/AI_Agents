@@ -901,6 +901,40 @@ document.addEventListener('DOMContentLoaded', async function() {
     console.log('[App] Initialization complete');
 });
 
+// Handle undo button click
+async function handleUndoClick() {
+    console.log('[App] Undo button clicked');
+    
+    try {
+        // Import undo system dynamically
+        const { undoLastAction, showToast } = await import('./undo-system.js');
+        
+        const result = await undoLastAction();
+        
+        if (result.success) {
+            showToast(result.message, 'success');
+            
+            // Refresh UI
+            await loadTasks();
+            if (typeof refreshCalendar === 'function') await refreshCalendar();
+            if (typeof loadNotes === 'function') await loadNotes();
+            if (typeof loadLists === 'function') await loadLists();
+            
+            // Speak confirmation
+            const ttsSettings = JSON.parse(localStorage.getItem('ttsSettings') || 'null');
+            if (ttsSettings && ttsSettings.autoPlay) {
+                speakText(result.message);
+            }
+        } else {
+            showToast(result.message, 'error');
+        }
+    } catch (error) {
+        console.error('[App] Error during undo:', error);
+        const { showToast } = await import('./undo-system.js');
+        showToast('Erreur lors de l\'annulation', 'error');
+    }
+}
+
 // Initialize speech recognition
 function initializeSpeechRecognition() {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
@@ -1139,6 +1173,16 @@ async function cancelPendingAction(confirmation) {
 
 // Priorisation navigation vocale sur Mistral
 async function processSpeechTranscript(transcript) {
+    // Check for undo command first (highest priority)
+    const undoKeywords = ['annuler', 'annule', 'undo', 'annulla', 'retour', 'défaire', 'defaire'];
+    const transcriptLower = transcript.toLowerCase();
+    
+    if (undoKeywords.some(keyword => transcriptLower.includes(keyword))) {
+        console.log('[App] Undo command detected:', transcript);
+        await handleUndoClick();
+        return;
+    }
+    
     // Navigation vocale prioritaire
     if (handleVoiceNavigation(transcript)) {
         // Navigation effectuée, on bloque le reste
@@ -1409,6 +1453,9 @@ async function processUserMessage(message) {
         } else if (result.action === 'call') {
             console.log('[App] Handling call');
             await handleCall(message);
+        } else if (result.action === 'undo') {
+            console.log('[App] Handling undo');
+            await handleUndoClick();
         } else {
             console.log('[App] Handling general conversation');
             // General conversation

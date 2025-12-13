@@ -1,6 +1,8 @@
 // Task-Manager.js - Task CRUD operations
 // Manages tasks with max 3-5 displayed, medication tracking, manual reset via Mistral
 
+import { recordAction, ACTION_TYPES } from './undo-system.js';
+
 const MAX_DISPLAYED_TASKS = 5;
 
 // Create new task
@@ -27,6 +29,10 @@ async function createTask(taskData) {
         const id = await saveTask(task);
         task.id = id;
         console.log('[TaskManager] Task created:', task);
+        
+        // Record action for undo
+        await recordAction(ACTION_TYPES.ADD_TASK, { taskId: id });
+        
         return { success: true, task };
     } catch (error) {
         console.error('[TaskManager] Error creating task:', error);
@@ -123,6 +129,12 @@ async function completeTask(taskId) {
             return { success: false, error: 'Task not found' };
         }
 
+        // Store previous state for undo
+        const previousState = {
+            status: task.status,
+            completedAt: task.completedAt
+        };
+
         task.status = 'completed';
         task.completedAt = new Date().toISOString();
         
@@ -132,6 +144,9 @@ async function completeTask(taskId) {
 
         await saveTask(task);
         console.log('[TaskManager] Task completed:', taskId);
+        
+        // Record action for undo
+        await recordAction(ACTION_TYPES.COMPLETE_TASK, { taskId, previousState });
         
         // Check if we should auto-delete (after confirmation via Mistral)
         const shouldDelete = await shouldAutoDeleteTask(task);
@@ -155,13 +170,24 @@ async function snoozeTask(taskId, minutes = 10) {
             return { success: false, error: 'Task not found' };
         }
 
+        // Store previous state for undo
+        const previousState = {
+            status: task.status,
+            snoozedUntil: task.snoozedUntil
+        };
+
         const now = new Date();
         const snoozeUntil = new Date(now.getTime() + minutes * 60000);
         
         task.snoozedUntil = snoozeUntil.toISOString();
+        task.status = 'snoozed';
         await saveTask(task);
         
         console.log(`[TaskManager] Task snoozed for ${minutes} minutes:`, taskId);
+        
+        // Record action for undo
+        await recordAction(ACTION_TYPES.SNOOZE_TASK, { taskId, previousState });
+        
         return { success: true, task, snoozeUntil };
     } catch (error) {
         console.error('[TaskManager] Error snoozing task:', error);
@@ -177,11 +203,23 @@ async function updateTask(taskId, updates) {
             return { success: false, error: 'Task not found' };
         }
 
+        // Store previous state for undo (only changed fields)
+        const previousState = {};
+        Object.keys(updates).forEach(key => {
+            if (task.hasOwnProperty(key)) {
+                previousState[key] = task[key];
+            }
+        });
+
         Object.assign(task, updates);
         task.updatedAt = new Date().toISOString();
         
         await saveTask(task);
         console.log('[TaskManager] Task updated:', taskId);
+        
+        // Record action for undo
+        await recordAction(ACTION_TYPES.UPDATE_TASK, { taskId, previousState });
+        
         return { success: true, task };
     } catch (error) {
         console.error('[TaskManager] Error updating task:', error);
@@ -192,8 +230,17 @@ async function updateTask(taskId, updates) {
 // Delete task
 async function deleteTask(taskId) {
     try {
+        // Get task before deleting for undo
+        const task = await getTask(taskId);
+        
         await deleteFromStore(STORES.TASKS, taskId);
         console.log('[TaskManager] Task deleted:', taskId);
+        
+        // Record action for undo (store entire task)
+        if (task) {
+            await recordAction(ACTION_TYPES.DELETE_TASK, { task });
+        }
+        
         return { success: true };
     } catch (error) {
         console.error('[TaskManager] Error deleting task:', error);

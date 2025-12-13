@@ -2,13 +2,14 @@
 // Manages tasks, conversation history, and settings
 
 const DB_NAME = 'MemoryBoardHelperDB';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const STORES = {
     TASKS: 'tasks',
     CONVERSATIONS: 'conversations',
     SETTINGS: 'settings',
     NOTES: 'notes',
-    LISTS: 'lists'
+    LISTS: 'lists',
+    ACTION_HISTORY: 'actionHistory'
 };
 
 let db = null;
@@ -70,6 +71,15 @@ async function initializeDatabase() {
                 listsStore.createIndex('timestamp', 'timestamp', { unique: false });
                 listsStore.createIndex('category', 'category', { unique: false });
                 console.log('[Storage] Lists store created');
+            }
+
+            // Create action history store (for undo system)
+            if (!db.objectStoreNames.contains(STORES.ACTION_HISTORY)) {
+                const actionHistoryStore = db.createObjectStore(STORES.ACTION_HISTORY, { keyPath: 'id', autoIncrement: true });
+                actionHistoryStore.createIndex('timestamp', 'timestamp', { unique: false });
+                actionHistoryStore.createIndex('type', 'type', { unique: false });
+                actionHistoryStore.createIndex('undone', 'undone', { unique: false });
+                console.log('[Storage] Action History store created');
             }
         };
     });

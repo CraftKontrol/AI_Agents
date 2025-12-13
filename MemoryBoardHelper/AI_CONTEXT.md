@@ -53,6 +53,7 @@
 | **calendar-integration.js** | Calendar UI | FullCalendar setup, event rendering, drag-drop, date selection |
 | **alarm-system.js** | Time monitoring | Continuous time checking (30s intervals), audio alarms, voice announcements |
 | **script-task-popup.js** | Task popup UI | Open/edit/delete task modal, field validation |
+| **undo-system.js** | Undo functionality | Action history, undo operations, toast notifications, button visibility |
 
 ---
 
@@ -89,7 +90,7 @@ The app uses **multiple prompts** for different intents:
 | Prompt Type | Purpose | Actions |
 |-------------|---------|---------|
 | `UNKNOWN_PROMPT` | Intent classifier | Determines if request is TASK/NAV/CALL/CHAT |
-| `TASK_PROMPT` | Task operations | add_task, add_list, add_note, complete_task, delete_task, update_task, search_task |
+| `TASK_PROMPT` | Task operations | add_task, add_list, add_note, complete_task, delete_task, update_task, search_task, undo |
 | `NAV_PROMPT` | Navigation | goto_section (tasks/calendar/settings/stats) |
 | `CALL_PROMPT` | Emergency calls | call (with optional contact name) |
 | Custom chat prompt | General conversation | Loaded from settings or DEFAULT_CHAT_PROMPT |
@@ -98,7 +99,7 @@ The app uses **multiple prompts** for different intents:
 
 ### 5. Storage Schema (IndexedDB)
 
-**Database:** `MemoryBoardHelperDB` (Version 2)
+**Database:** `MemoryBoardHelperDB` (Version 3)
 
 | Store | Key Path | Indexes | Purpose |
 |-------|----------|---------|---------|
@@ -107,6 +108,7 @@ The app uses **multiple prompts** for different intents:
 | **settings** | `key` | - | App settings (API keys, preferences) |
 | **notes** | `id` (auto-increment) | timestamp, category, pinned | User notes |
 | **lists** | `id` (auto-increment) | timestamp, category | User lists |
+| **actionHistory** | `id` (auto-increment) | timestamp, type, undone | Action history for undo system (max 20 actions) |
 
 ---
 
@@ -301,6 +303,28 @@ handleEventClick(info)           // Handle event click
 handleEventDrop(info)            // Handle drag-drop
 ```
 
+### Undo System (undo-system.js)
+
+```javascript
+recordAction(actionType, data)   // Record an action in history for undo
+undoLastAction()                 // Undo the last action performed
+showUndoButton()                 // Show undo button (auto-hides after 10s)
+hideUndoButton()                 // Hide undo button
+showToast(message, type)         // Show toast notification ('success', 'error', 'info')
+clearHistory()                   // Clear all action history (debug only)
+```
+
+**Supported Action Types:**
+- `ADD_TASK` - Undo: delete the task
+- `DELETE_TASK` - Undo: restore the task
+- `COMPLETE_TASK` - Undo: mark as pending
+- `SNOOZE_TASK` - Undo: restore previous snooze state
+- `UPDATE_TASK` - Undo: restore previous task data
+- `ADD_NOTE` - Undo: delete the note
+- `DELETE_NOTE` - Undo: restore the note
+- `ADD_LIST` - Undo: delete the list
+- `DELETE_LIST` - Undo: restore the list
+
 ---
 
 ## 🚨 Critical Business Rules
@@ -333,6 +357,15 @@ When `type === 'medication'`:
 - Support: French (fr), Italian (it), English (en)
 - Store `detectedLanguage` globally
 - Update UI labels dynamically
+
+### 7. Undo System
+- Records all user actions (add, delete, complete, snooze, update tasks/notes/lists)
+- Stores max **20 actions** in `actionHistory` store
+- Undo button appears after each action and auto-hides after **10 seconds**
+- Voice commands: "annuler", "annule", "undo", "retour", "défaire", "annulla"
+- Toast notifications show success/error feedback
+- UI refreshes automatically after undo operation
+- Undo restores previous state (including deleted items)
 
 ---
 
@@ -436,6 +469,12 @@ function getAlarmSoundForTaskType(type) {
 **Emergency Calls:**
 - "Appelle Arnaud"
 - "Téléphone au docteur"
+
+**Undo Commands:**
+- "Annuler" / "Annule"
+- "Undo"
+- "Retour" / "Défaire"
+- "Annulla" (Italian)
 
 ---
 
@@ -602,9 +641,10 @@ When making changes to the app, update this context file if:
 3. **Mistral-Powered** - All NLP goes through Mistral AI with conversation history
 4. **IndexedDB Storage** - Persistent client-side storage with structured schema
 5. **CraftKontrol Theme** - Dark theme, no border-radius, Material Symbols
-6. **Modular Architecture** - Separate concerns across 6 JS modules
+6. **Modular Architecture** - Separate concerns across 7 JS modules
 7. **Accessibility** - WCAG AA compliance, large touch targets, voice-only operation
 8. **PWA Ready** - Manifest.json, service worker ready, offline-capable
+9. **Undo System** - All actions can be undone (max 20 history), voice-activated
 
 ---
 

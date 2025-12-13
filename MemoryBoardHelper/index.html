@@ -1260,12 +1260,22 @@
         <source src="assets/alarm-sounds/gentle-alarm.mp3" type="audio/mpeg">
     </audio>
 
+    <!-- Undo Button (floating) -->
+    <button id="undoButton" class="undo-button" onclick="handleUndoClick()" style="display: none;">
+        <span class="material-symbols-outlined">undo</span>
+        <span class="undo-text">Annuler</span>
+    </button>
+
+    <!-- Undo Toast Notification -->
+    <div id="undoToast" class="undo-toast"></div>
+
     <!-- FullCalendar JS -->
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
     
     <script src="storage.js"></script>
     <script src="mistral-agent.js"></script>
     <script src="task-manager.js"></script>
+    <script src="undo-system.js" type="module"></script>
     <script src="alarm-system.js"></script>
     <script src="calendar-integration.js"></script>
     <script src="script.js"></script>

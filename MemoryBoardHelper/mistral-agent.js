@@ -32,7 +32,7 @@ const TASK_PROMPT = `You are a helpful memory assistant for elderly or memory-de
 
 When extracting tasks, respond in JSON format with:
 {
-    "action": "add_task|add_list|add_note|complete_task|delete_task|delete_list|delete_note|update_task|search_task|question|conversation",
+    "action": "add_task|add_list|add_note|complete_task|delete_task|delete_list|delete_note|update_task|search_task|undo|question|conversation",
     "task": {
         "description": "clear task description",
         "date": "YYYY-MM-DD if mentioned, else null",
@@ -82,6 +82,8 @@ For delete_list action, use when the user wants to delete/remove a list. Example
 For delete_note action, use when the user wants to delete/remove a note. Examples: "efface la note", "supprime la note sur", "delete the note". Extract the note title or content keywords.
 
 For complete_task action, check conversation history if the user says "mark it as done" or "marque-la comme faite" without specifying the task.
+
+For undo action, use when the user wants to cancel or undo the last action they performed. Examples: "annuler", "annule la dernière action", "undo", "retour", "défaire", "annulla l'ultima azione". Response: {"action": "undo", "response": "J'annule la dernière action.", "language": "fr"}
 
 For medication tasks, extract dosage information in the description.
 
