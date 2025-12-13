@@ -405,6 +405,21 @@ function quickAddTask() {
     showSuccess('Ajout d\'une nouvelle tâche.');
 }
 
+function quickAddRecursiveTask() {
+    openAddTaskModal();
+    showSuccess('Ajout d\'une tâche récurrente.');
+}
+
+function quickAddNote() {
+    openAddNoteModal();
+    showSuccess('Ajout d\'une nouvelle note.');
+}
+
+function quickAddList() {
+    openAddListModal();
+    showSuccess('Ajout d\'une nouvelle liste.');
+}
+
 // Commande : Afficher les tâches du jour
 function quickShowTodayTasks() {
     if (typeof changeCalendarView === 'function') {
@@ -872,6 +887,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     
     // Display tasks
     if (typeof refreshCalendar === 'function') await refreshCalendar();
+    
+    // Load notes and lists after database is initialized
+    if (typeof loadNotes === 'function') await loadNotes();
+    if (typeof loadLists === 'function') await loadLists();
     
     // Fetch last modified date
     fetchLastModified();
@@ -1357,6 +1376,18 @@ async function processUserMessage(message) {
         if (result.action === 'add_task') {
             console.log('[App] Handling add_task');
             await handleAddTask(result);
+        } else if (result.action === 'add_list') {
+            console.log('[App] Handling add_list');
+            await handleAddList(result);
+        } else if (result.action === 'add_note') {
+            console.log('[App] Handling add_note');
+            await handleAddNote(result);
+        } else if (result.action === 'delete_list') {
+            console.log('[App] Handling delete_list');
+            await handleDeleteList(result);
+        } else if (result.action === 'delete_note') {
+            console.log('[App] Handling delete_note');
+            await handleDeleteNote(result);
         } else if (result.action === 'complete_task') {
             console.log('[App] Handling complete_task');
             await handleCompleteTask(result, currentTasks);
@@ -1699,6 +1730,232 @@ async function createTaskFromConfirmation(taskData, language) {
         }
     } else {
         showError(getLocalizedText('taskCreationFailed'));
+    }
+}
+
+// Handle add list action
+async function handleAddList(result) {
+    if (!result.list || !result.list.items || result.list.items.length === 0) {
+        showError('Aucun élément trouvé dans la liste');
+        return;
+    }
+    
+    const listData = {
+        title: result.list.title || 'Nouvelle liste',
+        items: result.list.items.map(item => ({ text: item, completed: false })),
+        category: result.list.category || 'general'
+    };
+    
+    try {
+        await createList(listData);
+        
+        const confirmMessages = {
+            fr: `J'ai créé la liste "${listData.title}" avec ${listData.items.length} élément${listData.items.length > 1 ? 's' : ''}.`,
+            it: `Ho creato la lista "${listData.title}" con ${listData.items.length} elemento${listData.items.length > 1 ? 'i' : ''}.`,
+            en: `I created the list "${listData.title}" with ${listData.items.length} item${listData.items.length > 1 ? 's' : ''}.`
+        };
+        const confirmMsg = confirmMessages[result.language] || confirmMessages.fr;
+        showSuccess(confirmMsg);
+        speakResponse(confirmMsg);
+        
+        // Rafraîchir l'affichage des listes
+        await loadLists();
+        
+        // Scroller vers la section des listes
+        const listsSection = document.querySelector('.lists-section');
+        if (listsSection) {
+            listsSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    } catch (error) {
+        console.error('[App] Error creating list:', error);
+        showError('Erreur lors de la création de la liste');
+    }
+}
+
+// Handle add note action
+async function handleAddNote(result) {
+    if (!result.note || !result.note.content) {
+        showError('Aucun contenu trouvé pour la note');
+        return;
+    }
+    
+    const noteData = {
+        title: result.note.title || 'Nouvelle note',
+        content: result.note.content,
+        category: result.note.category || 'general',
+        color: '#2a2a2a',
+        pinned: false
+    };
+    
+    try {
+        await createNote(noteData);
+        
+        const confirmMessages = {
+            fr: `J'ai créé la note "${noteData.title}".`,
+            it: `Ho creato la nota "${noteData.title}".`,
+            en: `I created the note "${noteData.title}".`
+        };
+        const confirmMsg = confirmMessages[result.language] || confirmMessages.fr;
+        showSuccess(confirmMsg);
+        speakResponse(confirmMsg);
+        
+        // Rafraîchir l'affichage des notes
+        await loadNotes();
+        
+        // Scroller vers la section des notes
+        const notesSection = document.querySelector('.notes-section');
+        if (notesSection) {
+            notesSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    } catch (error) {
+        console.error('[App] Error creating note:', error);
+        showError('Erreur lors de la création de la note');
+    }
+}
+
+// Handle delete list action
+async function handleDeleteList(result) {
+    try {
+        const allLists = await getAllLists();
+        
+        if (!allLists || allLists.length === 0) {
+            const messages = {
+                fr: 'Vous n\'avez aucune liste à supprimer.',
+                it: 'Non hai liste da cancellare.',
+                en: 'You don\'t have any lists to delete.'
+            };
+            const msg = messages[result.language] || messages.fr;
+            showResponse(msg);
+            speakResponse(msg);
+            return;
+        }
+        
+        // Rechercher la liste correspondante
+        let listToDelete = null;
+        const searchTerm = result.list?.title?.toLowerCase() || '';
+        
+        // Recherche par titre exact ou partiel
+        if (searchTerm) {
+            listToDelete = allLists.find(l => l.title.toLowerCase().includes(searchTerm) || searchTerm.includes(l.title.toLowerCase()));
+        }
+        
+        // Si "dernière liste" ou "last list"
+        if (!listToDelete && (searchTerm.includes('dernière') || searchTerm.includes('dernier') || searchTerm.includes('last'))) {
+            // Trier par date de modification et prendre la plus récente
+            allLists.sort((a, b) => (b.lastModified || b.timestamp) - (a.lastModified || a.timestamp));
+            listToDelete = allLists[0];
+        }
+        
+        if (!listToDelete && allLists.length === 1) {
+            // S'il n'y a qu'une seule liste, la supprimer
+            listToDelete = allLists[0];
+        }
+        
+        if (!listToDelete) {
+            const messages = {
+                fr: 'Je n\'ai pas trouvé la liste que vous voulez supprimer. Pouvez-vous préciser ?',
+                it: 'Non ho trovato la lista che vuoi cancellare. Puoi specificare?',
+                en: 'I couldn\'t find the list you want to delete. Can you be more specific?'
+            };
+            const msg = messages[result.language] || messages.fr;
+            showResponse(msg);
+            speakResponse(msg);
+            return;
+        }
+        
+        // Supprimer la liste
+        await deleteList(listToDelete.id);
+        
+        const confirmMessages = {
+            fr: `J'ai supprimé la liste "${listToDelete.title}".`,
+            it: `Ho cancellato la lista "${listToDelete.title}".`,
+            en: `I deleted the list "${listToDelete.title}".`
+        };
+        const confirmMsg = confirmMessages[result.language] || confirmMessages.fr;
+        showSuccess(confirmMsg);
+        speakResponse(confirmMsg);
+        
+        // Rafraîchir l'affichage
+        await loadLists();
+        
+    } catch (error) {
+        console.error('[App] Error deleting list:', error);
+        showError('Erreur lors de la suppression de la liste');
+    }
+}
+
+// Handle delete note action
+async function handleDeleteNote(result) {
+    try {
+        const allNotes = await getAllNotes();
+        
+        if (!allNotes || allNotes.length === 0) {
+            const messages = {
+                fr: 'Vous n\'avez aucune note à supprimer.',
+                it: 'Non hai note da cancellare.',
+                en: 'You don\'t have any notes to delete.'
+            };
+            const msg = messages[result.language] || messages.fr;
+            showResponse(msg);
+            speakResponse(msg);
+            return;
+        }
+        
+        // Rechercher la note correspondante
+        let noteToDelete = null;
+        const searchTerm = result.note?.title?.toLowerCase() || result.note?.content?.toLowerCase() || '';
+        
+        // Recherche par titre ou contenu
+        if (searchTerm) {
+            noteToDelete = allNotes.find(n => 
+                n.title.toLowerCase().includes(searchTerm) || 
+                searchTerm.includes(n.title.toLowerCase()) ||
+                n.content.toLowerCase().includes(searchTerm)
+            );
+        }
+        
+        // Si "dernière note" ou "last note"
+        if (!noteToDelete && (searchTerm.includes('dernière') || searchTerm.includes('dernier') || searchTerm.includes('last'))) {
+            // Trier par date de modification et prendre la plus récente
+            allNotes.sort((a, b) => (b.lastModified || b.timestamp) - (a.lastModified || a.timestamp));
+            noteToDelete = allNotes[0];
+        }
+        
+        if (!noteToDelete && allNotes.length === 1) {
+            // S'il n'y a qu'une seule note, la supprimer
+            noteToDelete = allNotes[0];
+        }
+        
+        if (!noteToDelete) {
+            const messages = {
+                fr: 'Je n\'ai pas trouvé la note que vous voulez supprimer. Pouvez-vous préciser ?',
+                it: 'Non ho trovato la nota che vuoi cancellare. Puoi specificare?',
+                en: 'I couldn\'t find the note you want to delete. Can you be more specific?'
+            };
+            const msg = messages[result.language] || messages.fr;
+            showResponse(msg);
+            speakResponse(msg);
+            return;
+        }
+        
+        // Supprimer la note
+        await deleteNote(noteToDelete.id);
+        
+        const confirmMessages = {
+            fr: `J'ai supprimé la note "${noteToDelete.title}".`,
+            it: `Ho cancellato la nota "${noteToDelete.title}".`,
+            en: `I deleted the note "${noteToDelete.title}".`
+        };
+        const confirmMsg = confirmMessages[result.language] || confirmMessages.fr;
+        showSuccess(confirmMsg);
+        speakResponse(confirmMsg);
+        
+        // Rafraîchir l'affichage
+        await loadNotes();
+        
+    } catch (error) {
+        console.error('[App] Error deleting note:', error);
+        showError('Erreur lors de la suppression de la note');
     }
 }
 
@@ -3061,6 +3318,9 @@ function clearLogs() {
 
 // Export quick command functions globally
 window.quickAddTask = quickAddTask;
+window.quickAddRecursiveTask = quickAddRecursiveTask;
+window.quickAddNote = quickAddNote;
+window.quickAddList = quickAddList;
 window.quickShowTodayTasks = quickShowTodayTasks;
 window.quickShowWeekTasks = quickShowWeekTasks;
 window.quickShowMonthTasks = quickShowMonthTasks;
@@ -3085,4 +3345,426 @@ window.playValidationSound = playValidationSound;
 window.playListeningSound = playListeningSound;
 
 console.log('[Script] Quick command functions exported:', typeof window.quickAddTask);
+
+// ===== NOTES MANAGEMENT =====
+let selectedNoteColor = '#2a2a2a';
+let editingNoteId = null;
+
+function openAddNoteModal() {
+    document.getElementById('addNoteModal').style.display = 'flex';
+    document.getElementById('noteTitle').value = '';
+    document.getElementById('noteContent').value = '';
+    document.getElementById('noteCategory').value = 'general';
+    document.getElementById('notePinned').checked = false;
+    selectedNoteColor = '#2a2a2a';
+    editingNoteId = null;
+    updateSelectedColor();
+}
+
+function closeAddNoteModal() {
+    document.getElementById('addNoteModal').style.display = 'none';
+    editingNoteId = null;
+}
+
+function selectNoteColor(color) {
+    selectedNoteColor = color;
+    updateSelectedColor();
+}
+
+function updateSelectedColor() {
+    document.querySelectorAll('.color-option').forEach(btn => {
+        btn.classList.remove('selected');
+        if (btn.getAttribute('data-color') === selectedNoteColor) {
+            btn.classList.add('selected');
+        }
+    });
+}
+
+async function saveNewNote() {
+    const title = document.getElementById('noteTitle').value.trim();
+    const content = document.getElementById('noteContent').value.trim();
+    const category = document.getElementById('noteCategory').value;
+    const pinned = document.getElementById('notePinned').checked;
+    
+    if (!content) {
+        showError('Le contenu de la note ne peut pas être vide');
+        return;
+    }
+    
+    const noteData = {
+        title: title || 'Sans titre',
+        content: content,
+        category: category,
+        color: selectedNoteColor,
+        pinned: pinned
+    };
+    
+    try {
+        if (editingNoteId) {
+            noteData.id = editingNoteId;
+            await updateNote(noteData);
+            showSuccess('Note mise à jour avec succès');
+        } else {
+            await createNote(noteData);
+            showSuccess('Note créée avec succès');
+        }
+        closeAddNoteModal();
+        await loadNotes();
+    } catch (error) {
+        console.error('[Notes] Error saving note:', error);
+        showError('Erreur lors de l\'enregistrement de la note');
+    }
+}
+
+async function loadNotes() {
+    try {
+        const notes = await getAllNotes();
+        const container = document.getElementById('notesContainer');
+        
+        if (!notes || notes.length === 0) {
+            container.innerHTML = '<p class="empty-message">Aucune note pour le moment</p>';
+            return;
+        }
+        
+        // Tri: notes épinglées en premier, puis par date
+        notes.sort((a, b) => {
+            if (a.pinned && !b.pinned) return -1;
+            if (!a.pinned && b.pinned) return 1;
+            return b.lastModified - a.lastModified;
+        });
+        
+        container.innerHTML = notes.map(note => {
+            const date = new Date(note.lastModified || note.timestamp);
+            const formattedDate = date.toLocaleDateString('fr-FR', { 
+                day: '2-digit', 
+                month: 'short',
+                year: 'numeric'
+            });
+            
+            return `
+                <div class="note-card ${note.pinned ? 'pinned' : ''}" style="background-color: ${note.color};" onclick="viewNote(${note.id})">
+                    <div class="note-card-header">
+                        <h3 class="note-card-title">${escapeHtml(note.title)}</h3>
+                        <div class="note-card-actions">
+                            <button onclick="event.stopPropagation(); editNote(${note.id})" title="Modifier">✏️</button>
+                            <button class="btn-delete-note" onclick="event.stopPropagation(); confirmDeleteNote(${note.id})" title="Supprimer">🗑️</button>
+                        </div>
+                    </div>
+                    <div class="note-card-content">${escapeHtml(note.content)}</div>
+                    <div class="note-card-footer">
+                        <span class="note-category-badge">${getCategoryName(note.category)}</span>
+                        <span>${formattedDate}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (error) {
+        console.error('[Notes] Error loading notes:', error);
+        showError('Erreur lors du chargement des notes');
+    }
+}
+
+async function editNote(id) {
+    try {
+        const note = await getNoteById(id);
+        if (!note) {
+            showError('Note introuvable');
+            return;
+        }
+        
+        editingNoteId = id;
+        document.getElementById('noteTitle').value = note.title;
+        document.getElementById('noteContent').value = note.content;
+        document.getElementById('noteCategory').value = note.category;
+        document.getElementById('notePinned').checked = note.pinned;
+        selectedNoteColor = note.color || '#2a2a2a';
+        updateSelectedColor();
+        
+        document.getElementById('addNoteModal').style.display = 'flex';
+        document.getElementById('addNoteModalTitle').textContent = 'Modifier la note';
+    } catch (error) {
+        console.error('[Notes] Error editing note:', error);
+        showError('Erreur lors de l\'édition de la note');
+    }
+}
+
+function viewNote(id) {
+    editNote(id);
+}
+
+async function confirmDeleteNote(id) {
+    if (confirm('Êtes-vous sûr de vouloir supprimer cette note ?')) {
+        try {
+            await deleteNote(id);
+            showSuccess('Note supprimée');
+            await loadNotes();
+        } catch (error) {
+            console.error('[Notes] Error deleting note:', error);
+            showError('Erreur lors de la suppression de la note');
+        }
+    }
+}
+
+function getCategoryName(category) {
+    const categories = {
+        general: 'Général',
+        personal: 'Personnel',
+        work: 'Travail',
+        ideas: 'Idées',
+        reminder: 'Rappel',
+        shopping: 'Courses',
+        todo: 'À faire',
+        goals: 'Objectifs'
+    };
+    return categories[category] || category;
+}
+
+// ===== LISTS MANAGEMENT =====
+let editingListId = null;
+
+function openAddListModal() {
+    document.getElementById('addListModal').style.display = 'flex';
+    document.getElementById('listTitle').value = '';
+    document.getElementById('listCategory').value = 'general';
+    document.getElementById('listItemsContainer').innerHTML = `
+        <div class="list-item-input">
+            <input type="text" placeholder="Élément 1" class="list-item-field">
+            <button class="btn-remove-item" onclick="removeListItem(this)" style="display: none;">×</button>
+        </div>
+    `;
+    editingListId = null;
+}
+
+function closeAddListModal() {
+    document.getElementById('addListModal').style.display = 'none';
+    editingListId = null;
+}
+
+function addListItem() {
+    const container = document.getElementById('listItemsContainer');
+    const itemCount = container.querySelectorAll('.list-item-input').length + 1;
+    
+    const itemDiv = document.createElement('div');
+    itemDiv.className = 'list-item-input';
+    itemDiv.innerHTML = `
+        <input type="text" placeholder="Élément ${itemCount}" class="list-item-field">
+        <button class="btn-remove-item" onclick="removeListItem(this)">×</button>
+    `;
+    
+    container.appendChild(itemDiv);
+    
+    // Afficher les boutons de suppression si plus d'un élément
+    updateRemoveButtons();
+}
+
+function removeListItem(button) {
+    const container = document.getElementById('listItemsContainer');
+    const items = container.querySelectorAll('.list-item-input');
+    
+    if (items.length > 1) {
+        button.closest('.list-item-input').remove();
+        updateRemoveButtons();
+    }
+}
+
+function updateRemoveButtons() {
+    const container = document.getElementById('listItemsContainer');
+    const items = container.querySelectorAll('.list-item-input');
+    const removeButtons = container.querySelectorAll('.btn-remove-item');
+    
+    removeButtons.forEach(btn => {
+        btn.style.display = items.length > 1 ? 'block' : 'none';
+    });
+}
+
+async function saveNewList() {
+    const title = document.getElementById('listTitle').value.trim();
+    const category = document.getElementById('listCategory').value;
+    const itemFields = document.querySelectorAll('.list-item-field');
+    
+    const items = Array.from(itemFields)
+        .map(field => field.value.trim())
+        .filter(text => text !== '')
+        .map(text => ({ text, completed: false }));
+    
+    if (!title) {
+        showError('Le titre de la liste ne peut pas être vide');
+        return;
+    }
+    
+    if (items.length === 0) {
+        showError('La liste doit contenir au moins un élément');
+        return;
+    }
+    
+    const listData = {
+        title: title,
+        items: items,
+        category: category
+    };
+    
+    try {
+        if (editingListId) {
+            listData.id = editingListId;
+            await updateList(listData);
+            showSuccess('Liste mise à jour avec succès');
+        } else {
+            await createList(listData);
+            showSuccess('Liste créée avec succès');
+        }
+        closeAddListModal();
+        await loadLists();
+    } catch (error) {
+        console.error('[Lists] Error saving list:', error);
+        showError('Erreur lors de l\'enregistrement de la liste');
+    }
+}
+
+async function loadLists() {
+    try {
+        const lists = await getAllLists();
+        const container = document.getElementById('listsContainer');
+        
+        if (!lists || lists.length === 0) {
+            container.innerHTML = '<p class="empty-message">Aucune liste pour le moment</p>';
+            return;
+        }
+        
+        // Tri par date de modification
+        lists.sort((a, b) => b.lastModified - a.lastModified);
+        
+        container.innerHTML = lists.map(list => {
+            const date = new Date(list.lastModified || list.timestamp);
+            const formattedDate = date.toLocaleDateString('fr-FR', { 
+                day: '2-digit', 
+                month: 'short',
+                year: 'numeric'
+            });
+            
+            const completedCount = list.items.filter(item => item.completed).length;
+            const totalCount = list.items.length;
+            const progress = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
+            
+            return `
+                <div class="list-card" onclick="viewList(${list.id})">
+                    <div class="list-card-header">
+                        <h3 class="list-card-title">${escapeHtml(list.title)}</h3>
+                        <div class="list-card-actions">
+                            <button onclick="event.stopPropagation(); editList(${list.id})" title="Modifier">✏️</button>
+                            <button class="btn-delete-list" onclick="event.stopPropagation(); confirmDeleteList(${list.id})" title="Supprimer">🗑️</button>
+                        </div>
+                    </div>
+                    <ul class="list-items">
+                        ${list.items.slice(0, 5).map(item => `
+                            <li class="${item.completed ? 'completed' : ''}">
+                                <input type="checkbox" ${item.completed ? 'checked' : ''} onclick="event.stopPropagation(); toggleListItem(${list.id}, '${escapeHtml(item.text)}')">
+                                <span>${escapeHtml(item.text)}</span>
+                            </li>
+                        `).join('')}
+                        ${list.items.length > 5 ? `<li style="color: var(--text-muted); font-style: italic;">... et ${list.items.length - 5} autres</li>` : ''}
+                    </ul>
+                    <div class="list-card-footer">
+                        <span class="list-category-badge">${getCategoryName(list.category)}</span>
+                        <div class="list-progress">
+                            <span>${completedCount}/${totalCount}</span>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${progress}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (error) {
+        console.error('[Lists] Error loading lists:', error);
+        showError('Erreur lors du chargement des listes');
+    }
+}
+
+async function editList(id) {
+    try {
+        const list = await getListById(id);
+        if (!list) {
+            showError('Liste introuvable');
+            return;
+        }
+        
+        editingListId = id;
+        document.getElementById('listTitle').value = list.title;
+        document.getElementById('listCategory').value = list.category;
+        
+        const container = document.getElementById('listItemsContainer');
+        container.innerHTML = list.items.map((item, index) => `
+            <div class="list-item-input">
+                <input type="text" placeholder="Élément ${index + 1}" class="list-item-field" value="${escapeHtml(item.text)}">
+                <button class="btn-remove-item" onclick="removeListItem(this)" style="display: ${list.items.length > 1 ? 'block' : 'none'};">×</button>
+            </div>
+        `).join('');
+        
+        document.getElementById('addListModal').style.display = 'flex';
+        document.getElementById('addListModalTitle').textContent = 'Modifier la liste';
+    } catch (error) {
+        console.error('[Lists] Error editing list:', error);
+        showError('Erreur lors de l\'édition de la liste');
+    }
+}
+
+function viewList(id) {
+    editList(id);
+}
+
+async function toggleListItem(listId, itemText) {
+    try {
+        const list = await getListById(listId);
+        if (!list) return;
+        
+        const item = list.items.find(i => i.text === itemText);
+        if (item) {
+            item.completed = !item.completed;
+            await updateList(list);
+            await loadLists();
+        }
+    } catch (error) {
+        console.error('[Lists] Error toggling item:', error);
+        showError('Erreur lors de la mise à jour de l\'élément');
+    }
+}
+
+async function confirmDeleteList(id) {
+    if (confirm('Êtes-vous sûr de vouloir supprimer cette liste ?')) {
+        try {
+            await deleteList(id);
+            showSuccess('Liste supprimée');
+            await loadLists();
+        } catch (error) {
+            console.error('[Lists] Error deleting list:', error);
+            showError('Erreur lors de la suppression de la liste');
+        }
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Exporter les fonctions globalement
+window.openAddNoteModal = openAddNoteModal;
+window.closeAddNoteModal = closeAddNoteModal;
+window.selectNoteColor = selectNoteColor;
+window.saveNewNote = saveNewNote;
+window.editNote = editNote;
+window.viewNote = viewNote;
+window.confirmDeleteNote = confirmDeleteNote;
+
+window.openAddListModal = openAddListModal;
+window.closeAddListModal = closeAddListModal;
+window.addListItem = addListItem;
+window.removeListItem = removeListItem;
+window.saveNewList = saveNewList;
+window.editList = editList;
+window.viewList = viewList;
+window.toggleListItem = toggleListItem;
+window.confirmDeleteList = confirmDeleteList;
 

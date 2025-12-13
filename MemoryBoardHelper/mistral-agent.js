@@ -21,17 +21,18 @@ const SYSTEM_PROMPT = `CRITICAL RULES - YOU MUST FOLLOW THESE:
 // Task prompt for the assistant
 const TASK_PROMPT = `You are a helpful memory assistant for elderly or memory-deficient persons. Your role is to:
 1. Understand natural language requests in French, Italian, or English
-2. Extract task information (description, time, type, priority)
+2. Extract task, list, or note information from user requests
 3. Detect when tasks are completed from user statements
-4. Detect when the user wants to modify (change/update) the date or time of an existing task (for example: "change la date du rendez-vous chez le dentiste pour demain à 14h")
-5. Detect when the user asks about an existing task (for example: "c'est quand mon rendez-vous chez l'ophtalmo?", "when is my appointment?")
-6. USE CONVERSATION HISTORY to resolve context references like "la tâche", "the task", "il", "elle", "it" - check what task was mentioned in previous messages
-7. Provide clear, simple, and reassuring responses
-8. Be patient, kind, and use simple language
+4. Detect when the user wants to modify (change/update) the date or time of an existing task
+5. Detect when the user asks about an existing task
+6. Detect when the user wants to create a LIST (with multiple items) or a NOTE (with content)
+7. USE CONVERSATION HISTORY to resolve context references
+8. Provide clear, simple, and reassuring responses
+9. Be patient, kind, and use simple language
 
 When extracting tasks, respond in JSON format with:
 {
-    "action": "add_task|complete_task|delete_task|update_task|search_task|question|conversation",
+    "action": "add_task|add_list|add_note|complete_task|delete_task|delete_list|delete_note|update_task|search_task|question|conversation",
     "task": {
         "description": "clear task description",
         "date": "YYYY-MM-DD if mentioned, else null",
@@ -39,10 +40,33 @@ When extracting tasks, respond in JSON format with:
         "type": "general|medication|appointment|call|shopping",
         "priority": "normal|urgent|low"
     },
+    "list": {
+        "title": "list title (or search term for delete)",
+        "items": ["item 1", "item 2", "item 3"],
+        "category": "general|shopping|todo|ideas|goals"
+    },
+    "note": {
+        "title": "note title (or search term for delete)",
+        "content": "note content",
+        "category": "general|personal|work|ideas|reminder"
+    },
     "taskId": "id if completing, deleting or updating existing task",
     "response": "friendly message to user",
     "language": "fr|it|en"
 }
+
+IMPORTANT DETECTION RULES:
+- Use "add_list" when:
+  * The user explicitly says "ajoute une liste", "crée une liste", "add a list", "create a list"
+  * OR when the user enumerates multiple distinct actions/tasks (3 or more) in a single message
+  * Examples: "faire le café faire les courses faire un bisou" → 3 items → add_list
+  * "je dois acheter du pain du lait et des œufs" → 3 items → add_list
+- Extract ALL items from the user's message as separate list items
+- For "ajoute une liste où je dois X Y et Z" → items: ["X", "Y", "Z"]
+- For "X Y Z" (enumeration) → items: ["X", "Y", "Z"]
+- Use "add_note" when the user says "ajoute une note", "crée une note", "add a note", "prends note que" followed by content
+- Use "add_task" only for a SINGLE task, not multiple tasks
+- For notes with multiple points, include everything in the content field
 
 For search_task action, use when the user asks about an existing task (e.g., "c'est quand mon rendez-vous?", "when is my appointment?", "quand ai-je mon médicament?", "montre-moi la tâche", "show me the task"). 
 ALSO use search_task when the user wants to list/view multiple tasks (e.g., "liste tous mes rendez-vous", "list all my appointments", "quels sont mes rendez-vous", "what are my appointments").
@@ -53,9 +77,33 @@ For update_task action, always use when the user wants to change the date, time,
 
 For delete_task action, identify which task the user wants to remove/delete/cancel/supprimer/annuler/cancellare. Check conversation history if the user says "delete the task" or "supprime la tâche" without specifying which one.
 
+For delete_list action, use when the user wants to delete/remove a list. Examples: "efface la liste", "supprime la dernière liste", "delete the list". Extract the list title or "dernière/last" if they want the most recent one.
+
+For delete_note action, use when the user wants to delete/remove a note. Examples: "efface la note", "supprime la note sur", "delete the note". Extract the note title or content keywords.
+
 For complete_task action, check conversation history if the user says "mark it as done" or "marque-la comme faite" without specifying the task.
 
 For medication tasks, extract dosage information in the description.
+
+EXAMPLES:
+User: "faire le café faire les courses faire un bisou à ma chérie"
+Response: {"action": "add_list", "list": {"title": "Ma liste de choses à faire", "items": ["faire le café", "faire les courses", "faire un bisou à ma chérie"], "category": "todo"}, "response": "J'ai créé une liste avec 3 tâches.", "language": "fr"}
+
+User: "ajoute une liste où je dois acheter du pain du lait et du beurre"
+Response: {"action": "add_list", "list": {"title": "Liste de courses", "items": ["acheter du pain", "acheter du lait", "acheter du beurre"], "category": "shopping"}, "response": "J'ai créé votre liste de courses.", "language": "fr"}
+
+User: "ajoute une tâche rendez-vous chez le dentiste demain à 14h"
+Response: {"action": "add_task", "task": {"description": "rendez-vous chez le dentiste", "date": "2025-12-14", "time": "14:00", "type": "appointment", "priority": "normal"}, "response": "D'accord, je note le rendez-vous.", "language": "fr"}
+
+User: "efface la dernière liste"
+Response: {"action": "delete_list", "list": {"title": "dernière"}, "response": "Je supprime la dernière liste.", "language": "fr"}
+
+User: "supprime la liste des courses"
+Response: {"action": "delete_list", "list": {"title": "courses"}, "response": "Je supprime la liste des courses.", "language": "fr"}
+
+User: "efface la note sur le médecin"
+Response: {"action": "delete_note", "note": {"title": "médecin"}, "response": "Je supprime la note sur le médecin.", "language": "fr"}
+
 Always be encouraging and supportive.`;
 
 
@@ -108,7 +156,7 @@ Always be encouraging and supportive.`;
 const UNKNOWN_PROMPT = `You are a helpful assistant for elderly or memory-deficient persons. Your role is to analyze the user's message and determine which type of action they want to perform.
 
 Available actions:
-- TASK: Add, complete, delete, update, or search for tasks (appointments, medications, reminders, shopping)
+- TASK: Add, complete, delete, update, or search for tasks (appointments, medications, reminders, shopping), OR create lists, OR create notes
 - NAV: Navigate to different sections of the app (tasks, calendar, settings, stats)
 - CALL: Make an emergency phone call to a contact
 - CHAT: General conversation, questions, or unclear intent
@@ -121,7 +169,10 @@ Analyze the user's message and respond in JSON format with:
     "language": "fr|it|en"
 }
 
-Choose "task" if the user wants to manage any kind of reminder, appointment, medication, or shopping item.
+Choose "task" if the user wants to:
+- Manage any kind of reminder, appointment, medication, or shopping item
+- Create a LIST with multiple items (e.g., "ajoute une liste où je dois...")
+- Create a NOTE with content (e.g., "ajoute une note que...", "prends note que...")
 Choose "nav" if the user wants to navigate to a different section or view.
 Choose "call" if the user wants to call someone or make an emergency call.
 Choose "chat" if the intent is unclear, it's a general question, or just conversation.
@@ -345,9 +396,9 @@ async function processWithMistral(userMessage, conversationHistory = []) {
         // Navigation - mots très spécifiques
         if (/\bouvre\b.*\b(calendrier|calendar|calendario)\b|\b(go to|aller|vai)\b.*\b(settings|paramètres|impostazioni)\b/.test(txt)) return 'nav';
         
-        // Tâches - uniquement mots très clairs
-        if (/\bajoute\b.*\b(tâche|rendez-vous|médicament)|\badd\b.*\b(task|appointment|medication)|\baggiung\b.*\b(compito|appuntamento)/.test(txt)) return 'task';
-        if (/\bsupprime\b.*\b(tâche|rendez-vous)|\bdelete\b.*\b(task|appointment)|\bcancella\b.*\b(compito|appuntamento)/.test(txt)) return 'task';
+        // Tâches, listes et notes - uniquement mots très clairs
+        if (/\bajoute\b.*\b(tâche|rendez-vous|médicament|liste|note)|\bcrée\b.*\b(liste|note)|\badd\b.*\b(task|appointment|medication|list|note)|\bcreate\b.*\b(list|note)|\baggiung\b.*\b(compito|appuntamento|lista|nota)|\bprends note\b/.test(txt)) return 'task';
+        if (/\bsupprime\b.*\b(tâche|rendez-vous|liste|note)|\befface\b.*\b(liste|note)|\bdelete\b.*\b(task|appointment|list|note)|\bcancella\b.*\b(compito|appuntamento|lista|nota)/.test(txt)) return 'task';
         if (/\bterminé\b.*\b(tâche|rendez-vous)|\bdone\b.*\b(task|appointment)|\bcompletato\b.*\b(compito|appuntamento)/.test(txt)) return 'task';
         
         // Tous les autres cas sont ambigus

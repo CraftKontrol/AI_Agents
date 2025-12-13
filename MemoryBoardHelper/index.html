@@ -361,6 +361,40 @@
             </button>
         </section>
 
+        <!-- Notes Section -->
+        <section class="notes-section">
+            <div class="section-header">
+                <h2>
+                    <span class="material-symbols-outlined">note</span>
+                    <span id="notesTitle">Mes Notes</span>
+                </h2>
+                <button class="btn-add" onclick="openAddNoteModal()">
+                    <span class="material-symbols-outlined">add</span>
+                    <span id="addNoteBtnText">Nouvelle note</span>
+                </button>
+            </div>
+            <div id="notesContainer" class="notes-grid">
+                <p class="empty-message" id="emptyNotesMessage">Aucune note pour le moment</p>
+            </div>
+        </section>
+
+        <!-- Lists Section -->
+        <section class="lists-section">
+            <div class="section-header">
+                <h2>
+                    <span class="material-symbols-outlined">checklist</span>
+                    <span id="listsTitle">Mes Listes</span>
+                </h2>
+                <button class="btn-add" onclick="openAddListModal()">
+                    <span class="material-symbols-outlined">add</span>
+                    <span id="addListBtnText">Nouvelle liste</span>
+                </button>
+            </div>
+            <div id="listsContainer" class="lists-grid">
+                <p class="empty-message" id="emptyListsMessage">Aucune liste pour le moment</p>
+            </div>
+        </section>
+
         <section class="quick-commands">
             <h3 id="commandsTitle">Commandes rapides</h3>
             <div class="commands-grid">
@@ -369,6 +403,20 @@
                     <span class="material-symbols-outlined">add_circle</span>
                     <span>Ajouter une tâche</span>
                 </button>
+                <button class="command-btn" onclick="quickAddRecursiveTask()">
+                    <span class="material-symbols-outlined">add_circle</span>
+                    <span>Ajouter une tâche récurrente</span>
+                </button>
+                <button class="command-btn" onclick="quickAddNote()">
+                    <span class="material-symbols-outlined">add_circle</span>
+                    <span>Ajouter une note</span>
+                </button>
+                <button class="command-btn" onclick="quickAddList()">
+                    <span class="material-symbols-outlined">add_circle</span>
+                    <span>Ajouter une liste</span>
+                </button>   
+
+
                 <button class="command-btn" onclick="quickShowTodayTasks()">
                     <span class="material-symbols-outlined">event</span>
                     <span>Mes tâches aujourd'hui</span>
@@ -687,18 +735,6 @@
                                 <option value="fr-FR-Standard-D" data-gender="male">Standard-D (Homme)</option>
                                 <option value="fr-FR-Standard-E" data-gender="female">Standard-E (Femme)</option>
                             </optgroup>
-                            <optgroup label="Français Canada - Neural2">
-                                <option value="fr-CA-Neural2-A" data-gender="female">Neural2-A (Femme)</option>
-                                <option value="fr-CA-Neural2-B" data-gender="male">Neural2-B (Homme)</option>
-                                <option value="fr-CA-Neural2-C" data-gender="female">Neural2-C (Femme)</option>
-                                <option value="fr-CA-Neural2-D" data-gender="male">Neural2-D (Homme)</option>
-                            </optgroup>
-                            <optgroup label="Français Canada - Wavenet">
-                                <option value="fr-CA-Wavenet-A" data-gender="female">Wavenet-A (Femme)</option>
-                                <option value="fr-CA-Wavenet-B" data-gender="male">Wavenet-B (Homme)</option>
-                                <option value="fr-CA-Wavenet-C" data-gender="female">Wavenet-C (Femme)</option>
-                                <option value="fr-CA-Wavenet-D" data-gender="male">Wavenet-D (Homme)</option>
-                            </optgroup>
                             <optgroup label="Italien (Italian) - Neural2">
                                 <option value="it-IT-Neural2-A" data-gender="female">Neural2-A (Femme)</option>
                                 <option value="it-IT-Neural2-C" data-gender="male">Neural2-C (Homme)</option>
@@ -749,134 +785,6 @@
                                 <option value="en-US-Standard-H" data-gender="female">Standard-H (Female)</option>
                                 <option value="en-US-Standard-I" data-gender="male">Standard-I (Male)</option>
                                 <option value="en-US-Standard-J" data-gender="male">Standard-J (Male)</option>
-                            </optgroup>
-                            <optgroup label="Anglais UK - Neural2">
-                                <option value="en-GB-Neural2-A" data-gender="female">Neural2-A (Female)</option>
-                                <option value="en-GB-Neural2-B" data-gender="male">Neural2-B (Male)</option>
-                                <option value="en-GB-Neural2-C" data-gender="female">Neural2-C (Female)</option>
-                                <option value="en-GB-Neural2-D" data-gender="male">Neural2-D (Male)</option>
-                                <option value="en-GB-Neural2-F" data-gender="female">Neural2-F (Female)</option>
-                            </optgroup>
-                            <optgroup label="Anglais UK - Wavenet">
-                                <option value="en-GB-Wavenet-A" data-gender="female">Wavenet-A (Female)</option>
-                                <option value="en-GB-Wavenet-B" data-gender="male">Wavenet-B (Male)</option>
-                                <option value="en-GB-Wavenet-C" data-gender="female">Wavenet-C (Female)</option>
-                                <option value="en-GB-Wavenet-D" data-gender="male">Wavenet-D (Male)</option>
-                                <option value="en-GB-Wavenet-F" data-gender="female">Wavenet-F (Female)</option>
-                            </optgroup>
-                            <optgroup label="Espagnol Spain - Neural2">
-                                <option value="es-ES-Neural2-A" data-gender="female">Neural2-A (Mujer)</option>
-                                <option value="es-ES-Neural2-B" data-gender="male">Neural2-B (Hombre)</option>
-                                <option value="es-ES-Neural2-C" data-gender="female">Neural2-C (Mujer)</option>
-                                <option value="es-ES-Neural2-D" data-gender="female">Neural2-D (Mujer)</option>
-                                <option value="es-ES-Neural2-E" data-gender="female">Neural2-E (Mujer)</option>
-                                <option value="es-ES-Neural2-F" data-gender="male">Neural2-F (Hombre)</option>
-                            </optgroup>
-                            <optgroup label="Espagnol Spain - Wavenet">
-                                <option value="es-ES-Wavenet-B" data-gender="male">Wavenet-B (Hombre)</option>
-                                <option value="es-ES-Wavenet-C" data-gender="female">Wavenet-C (Mujer)</option>
-                                <option value="es-ES-Wavenet-D" data-gender="female">Wavenet-D (Mujer)</option>
-                            </optgroup>
-                            <optgroup label="Allemand - Neural2">
-                                <option value="de-DE-Neural2-A" data-gender="female">Neural2-A (Frau)</option>
-                                <option value="de-DE-Neural2-B" data-gender="male">Neural2-B (Mann)</option>
-                                <option value="de-DE-Neural2-C" data-gender="female">Neural2-C (Frau)</option>
-                                <option value="de-DE-Neural2-D" data-gender="male">Neural2-D (Mann)</option>
-                                <option value="de-DE-Neural2-F" data-gender="female">Neural2-F (Frau)</option>
-                            </optgroup>
-                            <optgroup label="Allemand - Wavenet">
-                                <option value="de-DE-Wavenet-A" data-gender="female">Wavenet-A (Frau)</option>
-                                <option value="de-DE-Wavenet-B" data-gender="male">Wavenet-B (Mann)</option>
-                                <option value="de-DE-Wavenet-C" data-gender="female">Wavenet-C (Frau)</option>
-                                <option value="de-DE-Wavenet-D" data-gender="male">Wavenet-D (Mann)</option>
-                                <option value="de-DE-Wavenet-E" data-gender="male">Wavenet-E (Mann)</option>
-                                <option value="de-DE-Wavenet-F" data-gender="female">Wavenet-F (Frau)</option>
-                            </optgroup>
-                            <optgroup label="Portugais Brazil - Neural2">
-                                <option value="pt-BR-Neural2-A" data-gender="female">Neural2-A (Feminino)</option>
-                                <option value="pt-BR-Neural2-B" data-gender="male">Neural2-B (Masculino)</option>
-                                <option value="pt-BR-Neural2-C" data-gender="female">Neural2-C (Feminino)</option>
-                            </optgroup>
-                            <optgroup label="Portugais Brazil - Wavenet">
-                                <option value="pt-BR-Wavenet-A" data-gender="female">Wavenet-A (Feminino)</option>
-                                <option value="pt-BR-Wavenet-B" data-gender="male">Wavenet-B (Masculino)</option>
-                                <option value="pt-BR-Wavenet-C" data-gender="female">Wavenet-C (Feminino)</option>
-                            </optgroup>
-                            <optgroup label="Japonais - Neural2">
-                                <option value="ja-JP-Neural2-B" data-gender="female">Neural2-B (女性)</option>
-                                <option value="ja-JP-Neural2-C" data-gender="male">Neural2-C (男性)</option>
-                                <option value="ja-JP-Neural2-D" data-gender="male">Neural2-D (男性)</option>
-                            </optgroup>
-                            <optgroup label="Japonais - Wavenet">
-                                <option value="ja-JP-Wavenet-A" data-gender="female">Wavenet-A (女性)</option>
-                                <option value="ja-JP-Wavenet-B" data-gender="female">Wavenet-B (女性)</option>
-                                <option value="ja-JP-Wavenet-C" data-gender="male">Wavenet-C (男性)</option>
-                                <option value="ja-JP-Wavenet-D" data-gender="male">Wavenet-D (男性)</option>
-                            </optgroup>
-                            <optgroup label="Coréen - Neural2">
-                                <option value="ko-KR-Neural2-A" data-gender="female">Neural2-A (여성)</option>
-                                <option value="ko-KR-Neural2-B" data-gender="female">Neural2-B (여성)</option>
-                                <option value="ko-KR-Neural2-C" data-gender="male">Neural2-C (남성)</option>
-                            </optgroup>
-                            <optgroup label="Coréen - Wavenet">
-                                <option value="ko-KR-Wavenet-A" data-gender="female">Wavenet-A (여성)</option>
-                                <option value="ko-KR-Wavenet-B" data-gender="female">Wavenet-B (여성)</option>
-                                <option value="ko-KR-Wavenet-C" data-gender="male">Wavenet-C (남성)</option>
-                                <option value="ko-KR-Wavenet-D" data-gender="male">Wavenet-D (남성)</option>
-                            </optgroup>
-                            <optgroup label="Chinois Mandarin - Neural2">
-                                <option value="cmn-CN-Neural2-A" data-gender="female">Neural2-A (女)</option>
-                                <option value="cmn-CN-Neural2-B" data-gender="male">Neural2-B (男)</option>
-                                <option value="cmn-CN-Neural2-C" data-gender="male">Neural2-C (男)</option>
-                                <option value="cmn-CN-Neural2-D" data-gender="female">Neural2-D (女)</option>
-                            </optgroup>
-                            <optgroup label="Chinois Mandarin - Wavenet">
-                                <option value="cmn-CN-Wavenet-A" data-gender="female">Wavenet-A (女)</option>
-                                <option value="cmn-CN-Wavenet-B" data-gender="male">Wavenet-B (男)</option>
-                                <option value="cmn-CN-Wavenet-C" data-gender="male">Wavenet-C (男)</option>
-                                <option value="cmn-CN-Wavenet-D" data-gender="female">Wavenet-D (女)</option>
-                            </optgroup>
-                            <optgroup label="Néerlandais - Neural2">
-                                <option value="nl-NL-Neural2-A" data-gender="female">Neural2-A (Vrouw)</option>
-                                <option value="nl-NL-Neural2-B" data-gender="male">Neural2-B (Man)</option>
-                                <option value="nl-NL-Neural2-C" data-gender="male">Neural2-C (Man)</option>
-                                <option value="nl-NL-Neural2-D" data-gender="female">Neural2-D (Vrouw)</option>
-                                <option value="nl-NL-Neural2-E" data-gender="female">Neural2-E (Vrouw)</option>
-                            </optgroup>
-                            <optgroup label="Néerlandais - Wavenet">
-                                <option value="nl-NL-Wavenet-A" data-gender="female">Wavenet-A (Vrouw)</option>
-                                <option value="nl-NL-Wavenet-B" data-gender="male">Wavenet-B (Man)</option>
-                                <option value="nl-NL-Wavenet-C" data-gender="male">Wavenet-C (Man)</option>
-                                <option value="nl-NL-Wavenet-D" data-gender="female">Wavenet-D (Vrouw)</option>
-                                <option value="nl-NL-Wavenet-E" data-gender="female">Wavenet-E (Vrouw)</option>
-                            </optgroup>
-                            <optgroup label="Polonais - Neural2">
-                                <option value="pl-PL-Neural2-A" data-gender="female">Neural2-A (Kobieta)</option>
-                                <option value="pl-PL-Neural2-B" data-gender="male">Neural2-B (Mężczyzna)</option>
-                                <option value="pl-PL-Neural2-C" data-gender="male">Neural2-C (Mężczyzna)</option>
-                                <option value="pl-PL-Neural2-D" data-gender="female">Neural2-D (Kobieta)</option>
-                                <option value="pl-PL-Neural2-E" data-gender="female">Neural2-E (Kobieta)</option>
-                            </optgroup>
-                            <optgroup label="Polonais - Wavenet">
-                                <option value="pl-PL-Wavenet-A" data-gender="female">Wavenet-A (Kobieta)</option>
-                                <option value="pl-PL-Wavenet-B" data-gender="male">Wavenet-B (Mężczyzna)</option>
-                                <option value="pl-PL-Wavenet-C" data-gender="male">Wavenet-C (Mężczyzna)</option>
-                                <option value="pl-PL-Wavenet-D" data-gender="female">Wavenet-D (Kobieta)</option>
-                                <option value="pl-PL-Wavenet-E" data-gender="female">Wavenet-E (Kobieta)</option>
-                            </optgroup>
-                            <optgroup label="Russe - Neural2">
-                                <option value="ru-RU-Neural2-A" data-gender="female">Neural2-A (Женский)</option>
-                                <option value="ru-RU-Neural2-B" data-gender="male">Neural2-B (Мужской)</option>
-                                <option value="ru-RU-Neural2-C" data-gender="female">Neural2-C (Женский)</option>
-                                <option value="ru-RU-Neural2-D" data-gender="male">Neural2-D (Мужской)</option>
-                                <option value="ru-RU-Neural2-E" data-gender="female">Neural2-E (Женский)</option>
-                            </optgroup>
-                            <optgroup label="Russe - Wavenet">
-                                <option value="ru-RU-Wavenet-A" data-gender="female">Wavenet-A (Женский)</option>
-                                <option value="ru-RU-Wavenet-B" data-gender="male">Wavenet-B (Мужской)</option>
-                                <option value="ru-RU-Wavenet-C" data-gender="female">Wavenet-C (Женский)</option>
-                                <option value="ru-RU-Wavenet-D" data-gender="male">Wavenet-D (Мужской)</option>
-                                <option value="ru-RU-Wavenet-E" data-gender="female">Wavenet-E (Женский)</option>
                             </optgroup>
                         </select>
                         <p class="tts-hint" id="voiceHint">Choisissez la voix pour la lecture des annonces</p>
@@ -1118,6 +1026,100 @@
             <div class="modal-footer">
                 <button class="btn-secondary" onclick="closeAddTaskModal()" id="cancelTaskBtn">Annuler</button>
                 <button class="btn-primary" onclick="saveNewTask()" id="saveTaskBtn">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Note Modal -->
+    <div id="addNoteModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="addNoteModalTitle">Ajouter une note</h2>
+                <button class="close-btn" onclick="closeAddNoteModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group">
+                    <label for="noteTitle" id="noteTitleLabel">Titre:</label>
+                    <input type="text" id="noteTitle" placeholder="Titre de la note">
+                </div>
+                <div class="input-group">
+                    <label for="noteContent" id="noteContentLabel">Contenu:</label>
+                    <textarea id="noteContent" rows="8" placeholder="Écrivez votre note ici..."></textarea>
+                </div>
+                <div class="input-group">
+                    <label for="noteCategory" id="noteCategoryLabel">Catégorie:</label>
+                    <select id="noteCategory">
+                        <option value="general">Général</option>
+                        <option value="personal">Personnel</option>
+                        <option value="work">Travail</option>
+                        <option value="ideas">Idées</option>
+                        <option value="reminder">Rappel</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label for="noteColor" id="noteColorLabel">Couleur:</label>
+                    <div class="color-picker">
+                        <button class="color-option" data-color="#2a2a2a" style="background: #2a2a2a;" onclick="selectNoteColor('#2a2a2a')"></button>
+                        <button class="color-option" data-color="#1a3a4a" style="background: #1a3a4a;" onclick="selectNoteColor('#1a3a4a')"></button>
+                        <button class="color-option" data-color="#3a2a1a" style="background: #3a2a1a;" onclick="selectNoteColor('#3a2a1a')"></button>
+                        <button class="color-option" data-color="#2a1a3a" style="background: #2a1a3a;" onclick="selectNoteColor('#2a1a3a')"></button>
+                        <button class="color-option" data-color="#1a3a2a" style="background: #1a3a2a;" onclick="selectNoteColor('#1a3a2a')"></button>
+                        <button class="color-option" data-color="#3a1a1a" style="background: #3a1a1a;" onclick="selectNoteColor('#3a1a1a')"></button>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="notePinned">
+                        <span id="notePinnedLabel">Épingler cette note</span>
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeAddNoteModal()" id="cancelNoteBtn">Annuler</button>
+                <button class="btn-primary" onclick="saveNewNote()" id="saveNoteBtn">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add List Modal -->
+    <div id="addListModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="addListModalTitle">Ajouter une liste</h2>
+                <button class="close-btn" onclick="closeAddListModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group">
+                    <label for="listTitle" id="listTitleLabel">Titre:</label>
+                    <input type="text" id="listTitle" placeholder="Titre de la liste">
+                </div>
+                <div class="input-group">
+                    <label for="listCategory" id="listCategoryLabel">Catégorie:</label>
+                    <select id="listCategory">
+                        <option value="general">Général</option>
+                        <option value="shopping">Courses</option>
+                        <option value="todo">À faire</option>
+                        <option value="ideas">Idées</option>
+                        <option value="goals">Objectifs</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label id="listItemsLabel">Éléments de la liste:</label>
+                    <div id="listItemsContainer">
+                        <div class="list-item-input">
+                            <input type="text" placeholder="Élément 1" class="list-item-field">
+                            <button class="btn-remove-item" onclick="removeListItem(this)" style="display: none;">×</button>
+                        </div>
+                    </div>
+                    <button class="btn-add-item" onclick="addListItem()">
+                        <span class="material-symbols-outlined">add</span>
+                        <span id="addItemBtnText">Ajouter un élément</span>
+                    </button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeAddListModal()" id="cancelListBtn">Annuler</button>
+                <button class="btn-primary" onclick="saveNewList()" id="saveListBtn">Enregistrer</button>
             </div>
         </div>
     </div>
