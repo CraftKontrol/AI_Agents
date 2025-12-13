@@ -81,9 +81,10 @@
 
 .mistral-settings-section h2 {
     display: flex;
+    justify-content: space-between;
     align-items: center;
     gap: 10px;
-    color: #fff;
+    color: #ffffff;
     font-size: 20px;
     margin-bottom: 15px;
 }
@@ -217,9 +218,10 @@
 }
 .tts-section h2 {
     display: flex;
+    justify-content: space-between;
     align-items: center;
     gap: 10px;
-    color: #fff;
+    color: #ffffff;
     font-size: 20px;
     margin-bottom: 15px;
 }
@@ -659,10 +661,10 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 10px;
-    margin-top: 10px;
-    font-size: 18px;
-    color: var(--text-color);
+    gap: 10px;
+    margin-bottom: 15px;
+    color: #ffffff;
+    font-size: 20px;
 }
 
 .section-toggle {
@@ -798,11 +800,12 @@ body {
 
 .wake-word-section h2 {
     display: flex;
+    justify-content: space-between;
     align-items: center;
-    gap: 15px;
-    margin-bottom: 5px;
-    font-size: 22px;
-    color: var(--text-color);
+    gap: 10px;
+    margin-bottom: 15px;
+    color: #ffffff;
+    font-size: 20px;
 }
 
 .wake-word-content {
@@ -1019,6 +1022,16 @@ body {
     margin-bottom: 30px;
 }
 
+.time-display h2 {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    color: #ffffff;
+    font-size: 20px;
+    margin-bottom: 15px;
+}
+
 .current-time {
     display: flex;
     align-items: center;
@@ -1052,6 +1065,16 @@ body {
     background-color: var(--surface-color);
     padding: 30px;
     margin-bottom: 30px;
+}
+
+.voice-interaction h2 {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    color: #ffffff;
+    font-size: 20px;
+    margin-bottom: 15px;
 }
 
 .voice-status {
@@ -1209,9 +1232,13 @@ body {
 }
 
 .quick-commands h3 {
-    font-size: 28px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    color: #ffffff;
+    font-size: 20px;
     margin-bottom: 25px;
-    color: var(--text-color);
 }
 
 .commands-grid {
@@ -1861,7 +1888,7 @@ body {
     align-items: center;
     gap: 10px;
     color: #ffffff;
-    font-size: 24px;
+    font-size: 20px;
     margin: 0;
 }
 
@@ -2282,7 +2309,7 @@ body {
     align-items: center;
     gap: 10px;
     color: #ffffff;
-    font-size: 22px;
+    font-size: 20px;
     margin: 0;
 }
 
@@ -2430,7 +2457,7 @@ body {
     align-items: center;
     gap: 10px;
     color: #ffffff;
-    font-size: 22px;
+    font-size: 20px;
     margin: 0;
 }
 
