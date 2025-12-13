@@ -4,6 +4,9 @@
 
 A voice-first AI assistant powered by Mistral AI that helps manage daily tasks, medications, and appointments with compassion and simplicity.
 
+> **📚 Note:** This file contains user guide and setup instructions only.
+> For technical architecture and development details, refer to AI_CONTEXT.md.
+
 ---
 
 ## 🌟 Key Features
@@ -162,58 +165,39 @@ The app works as a Progressive Web App:
 
 ---
 
-## 🎨 Design System
+## 🎨 Visual Design
 
-### **Color Palette**
-- Primary Blue: #4a9eff
-- Emergency Red: #ff2244
-- Success Green: #44ff88
-- Warning Orange: #ffaa44
-- Background Dark: #1a1a1a
-- Text White: #ffffff
+### **Colors Used**
+The app uses a dark theme with high contrast for easy reading:
+- **Blue**: Primary actions and links
+- **Red**: Emergency contacts and urgent tasks
+- **Green**: Completed tasks and success messages
+- **Orange**: Warnings and medication reminders
+- **Dark background**: Reduces eye strain
 
-### **Typography**
-- Body: 20px minimum
-- Headings: 32px+
-- Font: System sans-serif stack
-
-### **Touch Targets**
-- Minimum 60px for all interactive elements
-- Large buttons with clear labels
-- High contrast borders
+### **Large Text & Buttons**
+- All text is extra-large for easy reading (minimum 20px)
+- Buttons are big and easy to tap (60px+)
+- High contrast for better visibility
+- Simple, clear layout without clutter
 
 ---
 
-## 🛠️ Technical Details
+## � Browser Compatibility
 
-### **Technologies**
-- Pure HTML/CSS/JavaScript (no frameworks)
-- IndexedDB for data persistence
-- Web Speech API (browser STT/TTS)
-- Google Cloud APIs (optional enhancement)
-- Mistral AI API (natural language processing)
+### **Supported Browsers**
+- **Chrome/Edge**: Version 90 or later (recommended)
+- **Firefox**: Version 88 or later
+- **Safari**: Version 14 or later
+- **Opera**: Version 76 or later
 
-### **Browser Compatibility**
-- Chrome/Edge 90+
-- Firefox 88+
-- Safari 14+
-- Opera 76+
+### **Required Browser Features**
+- Microphone access
+- JavaScript enabled
+- IndexedDB support
+- Notification permissions (for alarms)
 
-### **File Structure**
-```
-MemoryBoardHelper/
-├── index.html          # Main UI
-├── style.css           # Accessible styling
-├── script.js           # Main controller
-├── mistral-agent.js    # AI processing
-├── task-manager.js     # Task operations
-├── alarm-system.js     # Time & alarms
-├── storage.js          # Data persistence
-├── manifest.json       # PWA configuration
-├── README.md           # This file
-└── assets/
-    └── alarm-sounds/   # Alert audio files
-```
+**Note**: For best experience, use Chrome or Edge with the latest version.
 
 ---
 

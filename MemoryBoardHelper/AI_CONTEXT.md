@@ -2,33 +2,38 @@
 
 **Version:** 1.0  
 **Last Updated:** 2025-12-13  
-**Purpose:** Quick reference for AI assistants to understand the codebase without reading all files
+**Purpose:** Technical architecture documentation for AI assistants and developers
+
+> **⚠️ Note:** This file contains ONLY technical structure, code patterns, and architecture details.
+> For user-facing information (setup, usage, features), refer to README.md.
 
 ---
 
-## 📋 Application Overview
+## 📋 Technical Overview
 
-**Memory Board Helper** is a voice-first AI assistant designed for elderly and memory-deficient persons. It helps manage daily tasks, medications, appointments, and emergency contacts using natural language processing powered by Mistral AI.
+**Memory Board Helper** - Voice-first AI assistant architecture.
 
-### Core Technologies
-- **Frontend:** Vanilla JavaScript, HTML5, CSS3
-- **AI Engine:** Mistral AI API (mistral-small-latest)
-- **Speech:** Web Speech API (fallback to Google Cloud TTS/STT)
-- **Storage:** IndexedDB + localStorage fallback
-- **Calendar:** FullCalendar 6.1.10
-- **Design System:** CraftKontrol Dark Theme
+### Core Technologies Stack
+- **Frontend:** Vanilla JavaScript (ES6+), HTML5, CSS3 (no frameworks)
+- **AI Engine:** Mistral AI API (`mistral-small-latest` model)
+- **Speech Recognition:** Web Speech API (SpeechRecognition)
+- **Speech Synthesis:** Web Speech API (SpeechSynthesis) + Google Cloud TTS
+- **Storage Layer:** IndexedDB (primary) + localStorage (fallback)
+- **Calendar Engine:** FullCalendar v6.1.10
+- **Design System:** CraftKontrol Dark Theme (CSS variables)
 - **PWA:** Progressive Web App with manifest.json
+- **Icons:** Google Material Symbols Outlined
 
-### Key Features
-- 🎤 Dual listening modes (manual/always-on)
-- 🤖 Mistral AI agent for NLP task extraction
-- ✅ Task management (max 3-5 tasks displayed)
-- 📅 Calendar integration with FullCalendar
-- ⏰ Smart alarm system with audio + voice
-- 🚨 Emergency contacts quick-dial
-- 🎭 Advanced SSML speech synthesis
-- ♿ Accessibility-first (large text, high contrast)
-- 🌍 Multi-language (French, Italian, English)
+### Technical Features
+- Dual listening modes (manual/continuous recognition)
+- Mistral AI NLP pipeline for intent classification and entity extraction
+- Task management with max 5 items display constraint
+- FullCalendar integration with drag-drop and event rendering
+- Alarm system with 30s polling interval and 15min pre-reminders
+- Emergency contacts system with quick-dial
+- SSML-enhanced speech synthesis with prosody control
+- WCAG AA accessibility compliance
+- i18n support (fr, it, en) with runtime detection
 
 ---
 
@@ -437,44 +442,41 @@ function getAlarmSoundForTaskType(type) {
 
 ## 🧪 Testing Considerations
 
-### Voice Commands Examples
+### Voice Command Test Vectors
 
-**Adding Tasks:**
-- "Ajoute une tâche: prendre mes médicaments à 14h"
-- "Add an appointment tomorrow at 3pm"
-- "Aggiungi un promemoria per domani"
+**Intent Classification Tests:**
+```javascript
+// Task Creation
+"Ajoute une tâche: prendre mes médicaments à 14h" → action: add_task
+"Add an appointment tomorrow at 3pm" → action: add_task
+"Aggiungi un promemoria per domani" → action: add_task
 
-**Adding Lists:**
-- "Ajoute une liste où je dois acheter du pain du lait et des œufs"
-- "faire le café faire les courses faire un bisou" (3+ items → auto-list)
+// List Detection (3+ items trigger list)
+"acheter pain lait œufs" → action: add_list
+"faire café courses bisou" → action: add_list
 
-**Adding Notes:**
-- "Ajoute une note: le médecin a dit de boire plus d'eau"
-- "Prends note que j'ai rendez-vous la semaine prochaine"
+// Note Creation
+"Ajoute une note: le médecin a dit..." → action: add_note
+"Prends note que..." → action: add_note
 
-**Completing Tasks:**
-- "J'ai pris mes médicaments"
-- "Marque la tâche comme faite"
+// Task Completion
+"J'ai pris mes médicaments" → action: complete_task (context-dependent)
+"Marque la tâche comme faite" → action: complete_task
 
-**Searching Tasks:**
-- "C'est quand mon rendez-vous chez le dentiste?"
-- "Quels sont mes rendez-vous?"
-- "Liste toutes mes tâches"
+// Task Search
+"C'est quand mon rendez-vous?" → action: search_task
+"Liste mes tâches" → action: search_task
 
-**Navigation:**
-- "Ouvre le calendrier"
-- "Va aux paramètres"
-- "Montre-moi les statistiques"
+// Navigation
+"Ouvre le calendrier" → action: goto_section, section: "calendar"
+"Va aux paramètres" → action: goto_section, section: "settings"
 
-**Emergency Calls:**
-- "Appelle Arnaud"
-- "Téléphone au docteur"
+// Emergency
+"Appelle Arnaud" → action: call, contactName: "Arnaud"
 
-**Undo Commands:**
-- "Annuler" / "Annule"
-- "Undo"
-- "Retour" / "Défaire"
-- "Annulla" (Italian)
+// Undo
+"Annuler|Undo|Retour|Défaire|Annulla" → action: undo
+```
 
 ---
 
