@@ -10,8 +10,7 @@
  * - Supports voice commands ("annuler", "undo", "annulla")
  */
 
-import { addToStore, getFromStore, deleteFromStore, updateInStore, getAllFromStore } from './storage.js';
-import { STORES } from './storage.js';
+// Note: Requires storage.js to be loaded first for storage functions and STORES
 
 // Maximum number of actions to keep in history
 const MAX_HISTORY_SIZE = 20;
@@ -385,14 +384,6 @@ async function clearHistory() {
     }
 }
 
-// Export functions
-export {
-    ACTION_TYPES,
-    recordAction,
-    undoLastAction,
-    showUndoButton,
-    hideUndoButton,
-    showToast,
-    getLastActionId,
-    clearHistory
-};
+// Functions are globally available (no exports needed for non-module scripts)
+// ACTION_TYPES, recordAction, undoLastAction, showUndoButton, hideUndoButton,
+// showToast, getLastActionId, clearHistory

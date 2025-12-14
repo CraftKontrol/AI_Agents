@@ -186,13 +186,23 @@ private fun StandaloneWebView(
                 )
                 
                 // Configure WebView with JavaScript interface
+                val alarmScheduler = com.craftkontrol.ckgenericapp.util.AlarmScheduler(ctx)
+                
                 val jsInterface = com.craftkontrol.ckgenericapp.webview.WebViewJavaScriptInterface(
                     context = ctx,
                     onNotification = { title, message ->
                         Timber.d("Notification from ${app.name}: $title - $message")
                         // Send to monitoring service
                     },
-                    apiKeysPreferences = null // Not needed as we inject via JavaScript
+                    apiKeysPreferences = null, // Not needed as we inject via JavaScript
+                    onScheduleAlarm = { alarmId, title, timestamp, taskType ->
+                        Timber.i("Scheduling alarm from ${app.name}: $alarmId - $title at $timestamp")
+                        alarmScheduler.scheduleAlarm(alarmId, title, timestamp, taskType)
+                    },
+                    onCancelAlarm = { alarmId ->
+                        Timber.i("Cancelling alarm from ${app.name}: $alarmId")
+                        alarmScheduler.cancelAlarm(alarmId)
+                    }
                 )
                 
                 com.craftkontrol.ckgenericapp.webview.WebViewConfigurator.configure(

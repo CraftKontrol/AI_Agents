@@ -35,6 +35,12 @@ function initializeAlarmSystem() {
     // Request notification permission
     requestNotificationPermission();
     
+    // Schedule Android alarms for all pending tasks
+    if (isRunningInCKGenericApp()) {
+        console.log('[AlarmSystem] Running in CKGenericApp - scheduling Android alarms');
+        scheduleAllPendingAlarms();
+    }
+    
     console.log('[AlarmSystem] Initialized');
 }
 
@@ -88,6 +94,83 @@ function startAlarmChecking() {
     
     // Then check periodically
     alarmCheckInterval = setInterval(checkForAlarms, ALARM_CHECK_FREQUENCY);
+}
+
+// Check if running inside CKGenericApp Android wrapper
+function isRunningInCKGenericApp() {
+    return typeof CKAndroid !== 'undefined' && CKAndroid.scheduleAlarm;
+}
+
+// Schedule alarm via Android AlarmManager when available
+function scheduleAndroidAlarm(task) {
+    if (!isRunningInCKGenericApp()) return false;
+    
+    try {
+        // Convert task time to timestamp
+        const now = new Date();
+        const [hours, minutes] = task.time.split(':').map(Number);
+        const alarmTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0);
+        
+        // If time has passed today, schedule for tomorrow
+        if (alarmTime < now) {
+            alarmTime.setDate(alarmTime.getDate() + 1);
+        }
+        
+        const timestamp = alarmTime.getTime();
+        
+        // Schedule via Android bridge
+        CKAndroid.scheduleAlarm(
+            task.id,
+            task.description,
+            timestamp,
+            task.type || 'general'
+        );
+        
+        console.log(`[AlarmSystem] Android alarm scheduled: ${task.id} at ${alarmTime.toLocaleString()}`);
+        return true;
+    } catch (error) {
+        console.error('[AlarmSystem] Error scheduling Android alarm:', error);
+        return false;
+    }
+}
+
+// Cancel Android alarm when task is completed or deleted
+function cancelAndroidAlarm(taskId) {
+    if (!isRunningInCKGenericApp()) return false;
+    
+    try {
+        CKAndroid.cancelAlarm(taskId);
+        console.log(`[AlarmSystem] Android alarm cancelled: ${taskId}`);
+        return true;
+    } catch (error) {
+        console.error('[AlarmSystem] Error cancelling Android alarm:', error);
+        return false;
+    }
+}
+
+// Schedule alarms for all today's pending tasks (on app load)
+async function scheduleAllPendingAlarms() {
+    if (!isRunningInCKGenericApp()) {
+        console.log('[AlarmSystem] Not running in CKGenericApp, using browser alarms only');
+        return;
+    }
+    
+    try {
+        const tasks = await getTodayTasks();
+        const pendingTasks = tasks.filter(task => 
+            task.status === 'pending' && 
+            task.time && 
+            !task.snoozedUntil
+        );
+        
+        console.log(`[AlarmSystem] Scheduling ${pendingTasks.length} alarms via Android`);
+        
+        for (const task of pendingTasks) {
+            scheduleAndroidAlarm(task);
+        }
+    } catch (error) {
+        console.error('[AlarmSystem] Error scheduling pending alarms:', error);
+    }
 }
 
 // Check for tasks that need alarms

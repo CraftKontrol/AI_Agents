@@ -5,6 +5,8 @@
     <string name="notification_channel_monitoring_description">Monitors alarms, appointments, and tasks</string>
     <string name="notification_channel_alerts_name">Alerts</string>
     <string name="notification_channel_alerts_description">Important notifications from your apps</string>
+    <string name="notification_channel_alarms_name">Alarms</string>
+    <string name="notification_channel_alarms_description">Task and appointment alarms with sound</string>
     <string name="monitoring_service_running">Monitoring your apps in background</string>
     <string name="permission_camera">Camera permission is required for video calls</string>
     <string name="permission_microphone">Microphone permission is required for audio</string>

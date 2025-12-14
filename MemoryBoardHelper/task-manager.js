@@ -1,7 +1,6 @@
 // Task-Manager.js - Task CRUD operations
 // Manages tasks with max 3-5 displayed, medication tracking, manual reset via Mistral
-
-import { recordAction, ACTION_TYPES } from './undo-system.js';
+// Note: Requires undo-system.js to be loaded first for recordAction and ACTION_TYPES
 
 const MAX_DISPLAYED_TASKS = 5;
 
@@ -29,6 +28,11 @@ async function createTask(taskData) {
         const id = await saveTask(task);
         task.id = id;
         console.log('[TaskManager] Task created:', task);
+        
+        // Schedule Android alarm if running in CKGenericApp and task has time
+        if (task.time && typeof scheduleAndroidAlarm === 'function') {
+            scheduleAndroidAlarm(task);
+        }
         
         // Record action for undo
         await recordAction(ACTION_TYPES.ADD_TASK, { taskId: id });
@@ -145,6 +149,11 @@ async function completeTask(taskId) {
         await saveTask(task);
         console.log('[TaskManager] Task completed:', taskId);
         
+        // Cancel Android alarm if running in CKGenericApp
+        if (typeof cancelAndroidAlarm === 'function') {
+            cancelAndroidAlarm(taskId);
+        }
+        
         // Record action for undo
         await recordAction(ACTION_TYPES.COMPLETE_TASK, { taskId, previousState });
         
@@ -232,6 +241,11 @@ async function deleteTask(taskId) {
     try {
         // Get task before deleting for undo
         const task = await getTask(taskId);
+        
+        // Cancel Android alarm if running in CKGenericApp
+        if (typeof cancelAndroidAlarm === 'function') {
+            cancelAndroidAlarm(taskId);
+        }
         
         await deleteFromStore(STORES.TASKS, taskId);
         console.log('[TaskManager] Task deleted:', taskId);

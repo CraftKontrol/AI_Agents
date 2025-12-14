@@ -167,7 +167,112 @@ mixedContentMode = MIXED_CONTENT_ALWAYS_ALLOW
 - Receives scheduled alarm intents
 - Triggers notifications or actions
 
-### 7. Dependency Injection (`di/`)
+### 7. Alarm System (`util/AlarmScheduler.kt`, `receiver/AlarmReceiver.kt`)
+
+**Purpose**: Schedule and trigger alarms for tasks from web applications (especially Memory Helper)
+
+#### AlarmScheduler
+**Location**: `util/AlarmScheduler.kt`
+
+**Methods**:
+- `scheduleAlarm(alarmId, title, timestamp, taskType)` - Schedule exact alarm using AlarmManager
+- `cancelAlarm(alarmId)` - Cancel scheduled alarm
+- `canScheduleExactAlarms()` - Check if exact alarms permission granted
+
+**Features**:
+- Uses `setExactAndAllowWhileIdle()` for precise timing even in Doze mode
+- Fallback to inexact alarms if exact alarms not permitted (Android 12+)
+- Unique PendingIntent per alarm using alarmId.hashCode()
+- Handles Android version differences (API 23, 31+)
+
+**Permissions Required**:
+- `SCHEDULE_EXACT_ALARM` (Android 12+)
+- `USE_EXACT_ALARM` (Android 12+)
+
+#### AlarmReceiver
+**Location**: `receiver/AlarmReceiver.kt`
+
+**Trigger**: Receives broadcast when alarm time reached
+
+**Actions**:
+1. Extract alarm data (alarmId, title, taskType)
+2. Create high-priority notification with:
+   - Task-specific emoji/icon (💊 medication, 📅 appointment, etc.)
+   - Alarm sound (RingtoneManager.TYPE_ALARM)
+   - Vibration pattern
+   - Full-screen intent for heads-up display
+3. Open app when notification tapped
+
+**Notification Channel**: Creates "ck_alarms_channel" with HIGH importance
+
+#### JavaScript Bridge Integration
+
+**WebViewJavaScriptInterface Methods**:
+```kotlin
+@JavascriptInterface
+fun scheduleAlarm(alarmId: String, title: String, timestamp: Long, taskType: String)
+
+@JavascriptInterface
+fun cancelAlarm(alarmId: String)
+```
+
+**JavaScript Usage (from Memory Helper)**:
+```javascript
+// Check if running in CKGenericApp
+if (typeof CKAndroid !== 'undefined') {
+    // Schedule alarm
+    CKAndroid.scheduleAlarm(taskId, taskDescription, timestampMs, taskType);
+    
+    // Cancel alarm
+    CKAndroid.cancelAlarm(taskId);
+}
+```
+
+#### Data Flow
+
+**Task Creation → Alarm Scheduling**:
+1. User creates task in Memory Helper web app
+2. JavaScript detects CKAndroid bridge available
+3. Calls `CKAndroid.scheduleAlarm(id, title, timestamp, type)`
+4. WebViewJavaScriptInterface receives call
+5. AlarmScheduler.scheduleAlarm() registers with AlarmManager
+6. PendingIntent created for AlarmReceiver
+
+**Alarm Trigger → Notification**:
+1. AlarmManager fires at scheduled time
+2. AlarmReceiver.onReceive() invoked
+3. Creates notification with sound/vibration
+4. User taps notification → Opens app to task
+
+**Task Completion → Alarm Cancellation**:
+1. User completes/deletes task in Memory Helper
+2. JavaScript calls `CKAndroid.cancelAlarm(taskId)`
+3. AlarmScheduler.cancelAlarm() removes from AlarmManager
+4. Notification won't be shown
+
+#### Integration Points
+
+**ShortcutActivity Setup**:
+```kotlin
+val alarmScheduler = AlarmScheduler(context)
+
+val jsInterface = WebViewJavaScriptInterface(
+    context = context,
+    onScheduleAlarm = { id, title, timestamp, type ->
+        alarmScheduler.scheduleAlarm(id, title, timestamp, type)
+    },
+    onCancelAlarm = { id ->
+        alarmScheduler.cancelAlarm(id)
+    }
+)
+```
+
+**Memory Helper JS**:
+- `alarm-system.js`: Detection and Android bridge calls
+- `task-manager.js`: Schedule on create, cancel on complete/delete
+- Automatic scheduling of all pending tasks on app load
+
+### 8. Dependency Injection (`di/`)
 
 **Technology**: Hilt (Dagger-based)
 
@@ -239,6 +344,30 @@ class CKGenericApplication : Application()
 5. Creates notification in alerts channel
 
 ## Key Patterns
+
+### Alarm Scheduling Pattern
+```kotlin
+// 1. JavaScript detects Android bridge
+if (typeof CKAndroid !== 'undefined') {
+    CKAndroid.scheduleAlarm(taskId, title, timestamp, taskType);
+}
+
+// 2. Bridge receives call
+@JavascriptInterface
+fun scheduleAlarm(alarmId: String, title: String, timestamp: Long, taskType: String) {
+    onScheduleAlarm?.invoke(alarmId, title, timestamp, taskType)
+}
+
+// 3. AlarmScheduler schedules
+val pendingIntent = createPendingIntent(alarmId, intent)
+alarmManager.setExactAndAllowWhileIdle(RTC_WAKEUP, timestamp, pendingIntent)
+
+// 4. AlarmReceiver handles trigger
+override fun onReceive(context: Context, intent: Intent) {
+    val alarmId = intent.getStringExtra(EXTRA_ALARM_ID)
+    showAlarmNotification(context, alarmId, title, taskType)
+}
+```
 
 ### Reactive Data Flow
 ```kotlin

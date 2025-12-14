@@ -134,7 +134,9 @@ class CKWebChromeClient(
 class WebViewJavaScriptInterface(
     private val context: Context,
     private val onNotification: (String, String) -> Unit,
-    private val apiKeysPreferences: com.craftkontrol.ckgenericapp.data.local.preferences.ApiKeysPreferences? = null
+    private val apiKeysPreferences: com.craftkontrol.ckgenericapp.data.local.preferences.ApiKeysPreferences? = null,
+    private val onScheduleAlarm: ((String, String, Long, String) -> Unit)? = null,
+    private val onCancelAlarm: ((String) -> Unit)? = null
 ) {
     
     @JavascriptInterface
@@ -147,6 +149,18 @@ class WebViewJavaScriptInterface(
     fun showNotification(title: String, message: String) {
         Timber.d("Notification request: $title - $message")
         onNotification(title, message)
+    }
+    
+    @JavascriptInterface
+    fun scheduleAlarm(alarmId: String, title: String, timestamp: Long, taskType: String = "general") {
+        Timber.d("Alarm scheduling request: id=$alarmId, title=$title, time=$timestamp, type=$taskType")
+        onScheduleAlarm?.invoke(alarmId, title, timestamp, taskType)
+    }
+    
+    @JavascriptInterface
+    fun cancelAlarm(alarmId: String) {
+        Timber.d("Alarm cancellation request: $alarmId")
+        onCancelAlarm?.invoke(alarmId)
     }
     
     @JavascriptInterface
