@@ -31,6 +31,9 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     
+    <!-- Shortcut creation -->
+    <uses-permission android:name="com.android.launcher.permission.INSTALL_SHORTCUT" />
+    
     <!-- Background and Foreground Services -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
@@ -83,6 +86,48 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" />
                 <data android:scheme="http" />
+            </intent-filter>
+        </activity>
+        
+        <!-- Shortcut Activity - Launched from home screen shortcuts -->
+        <!-- Multiple instances allowed, one per app type -->
+        <activity
+            android:name=".presentation.shortcut.ShortcutActivity"
+            android:exported="true"
+            android:theme="@style/Theme.CKGenericApp"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:windowSoftInputMode="adjustResize"
+            android:launchMode="standard"
+            android:documentLaunchMode="always"
+            android:excludeFromRecents="false"
+            android:persistableMode="persistNever">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.craftkontrol.ckgenericapp.OPEN_APP.ai_search" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.craftkontrol.ckgenericapp.OPEN_APP.astral_compute" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.craftkontrol.ckgenericapp.OPEN_APP.local_food" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.craftkontrol.ckgenericapp.OPEN_APP.memory_board" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.craftkontrol.ckgenericapp.OPEN_APP.meteo" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.craftkontrol.ckgenericapp.OPEN_APP.news" />
+                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
         

@@ -18,7 +18,8 @@ import javax.inject.Inject
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val webAppRepository: WebAppRepository,
-    private val preferencesManager: PreferencesManager
+    private val preferencesManager: PreferencesManager,
+    private val apiKeysPreferences: com.craftkontrol.ckgenericapp.data.local.preferences.ApiKeysPreferences
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(MainUiState())
@@ -112,4 +113,45 @@ class MainViewModel @Inject constructor(
     fun clearError() {
         _uiState.update { it.copy(error = null) }
     }
+    
+    fun selectApp(appId: String) {
+        viewModelScope.launch {
+            val app = webAppRepository.getAppById(appId)
+            if (app != null) {
+                setCurrentApp(app)
+            } else {
+                Timber.w("App with id $appId not found")
+            }
+        }
+    }
+    
+    fun createShortcut(app: WebApp) {
+        viewModelScope.launch {
+            _uiState.update { 
+                it.copy(shortcutCreationRequested = app.id) 
+            }
+        }
+    }
+    
+    fun clearShortcutRequest() {
+        _uiState.update { 
+            it.copy(shortcutCreationRequested = null) 
+        }
+    }
+    
+    fun saveApiKey(keyName: String, keyValue: String) {
+        viewModelScope.launch {
+            try {
+                apiKeysPreferences.saveApiKey(keyName, keyValue)
+                Timber.d("API key '$keyName' saved successfully")
+            } catch (e: Exception) {
+                Timber.e(e, "Error saving API key '$keyName'")
+                _uiState.update { it.copy(error = "Failed to save API key") }
+            }
+        }
+    }
+    
+    fun getApiKey(keyName: String) = apiKeysPreferences.getApiKey(keyName)
+    
+    fun getAllApiKeys() = apiKeysPreferences.getAllApiKeys()
 }

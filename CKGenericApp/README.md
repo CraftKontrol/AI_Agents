@@ -1,324 +1,299 @@
-# CKGenericApp
+# CKGenericApp - Hub de Configuration pour Applications Web Android
 
-**A powerful Android WebView browser for CraftKontrol AI Agent applications**
+Application Android moderne servant de **centre de gestion et de configuration** pour vos applications web. Créez des raccourcis personnalisés qui ouvrent directement vos applications dans des WebViews dédiées, sans l'interface CKGenericApp.
 
-CKGenericApp is a feature-rich Android application designed to host and manage multiple web-based AI agent applications with full hardware access, background monitoring, and push notifications support.
+## 🎯 Concept
 
-## Features
+CKGenericApp transforme votre écran d'accueil en un portail vers vos applications web préférées :
 
-### 🌐 **Full-Featured WebView Browser**
-- Complete JavaScript support with DOM storage
-- Hardware acceleration enabled
-- File upload/download support
-- Mixed content handling
-- Custom user agent
+1. **Configuration centralisée** - Gérez toutes vos apps et clés API depuis un seul endroit
+2. **Raccourcis indépendants** - Chaque app s'ouvre dans sa propre instance dédiée
+3. **Injection automatique des clés API** - Vos clés sont automatiquement disponibles dans toutes les applications
+4. **Instances multiples** - Lancez plusieurs apps en parallèle
 
-### 📱 **Collapsible Top Menu**
-- App selector dropdown
-- Navigation controls (Back/Forward/Refresh)
-- Settings access
-- Collapsible design for fullscreen experience
-- Persistent menu state
+## ✨ Caractéristiques
 
-### 🔐 **Comprehensive Permission Handling**
-- **Camera** - Video calls and image capture
-- **Microphone** - Audio recording and voice input
-- **Location** - GPS and geolocation services
-- **Notifications** - Push notifications and alerts
-- **Storage** - File access and downloads
-- **Calendar** - Appointments integration
+### Centre de Gestion (MainActivity)
+- **Liste des applications disponibles** avec création de raccourcis
+- **Gestion centralisée des clés API** (OpenAI, Anthropic, Google, Perplexity, etc.)
+- **Interface Material 3** moderne et intuitive
+- **Aucune WebView** - Uniquement configuration
 
-### 🔔 **Background Monitoring Service**
-- Runs as foreground service
-- Monitors alarms and appointments
-- Checks for news updates
-- Task management integration
-- Automatic restart on device boot
+### Raccourcis (ShortcutActivity)
+- **WebView plein écran** sans interface CKGenericApp
+- **Injection automatique des clés API** via JavaScript
+- **Instances indépendantes** - Chaque raccourci lance sa propre instance
+- **Support des permissions** - Caméra, microphone, localisation
 
-### 📲 **Push Notifications**
-- Firebase Cloud Messaging integration
-- Custom notification channels
-- Alert management
-- Background notification handling
+## 📱 Applications Pré-configurées
 
-### 💾 **Local Data Storage**
-- Room database for app management
-- DataStore for user preferences
-- WebView cache and storage
-- Last visited app memory
+1. **AI Search Agregator** - Recherche agrégée d'IA
+2. **Astral Compute** - Calculs astronomiques
+3. **Local Food Products** - Produits alimentaires locaux
+4. **Memory Board Helper** - Assistant de mémorisation
+5. **Meteo Agregator** - Agrégateur météo
+6. **News Agregator** - Agrégateur d'actualités
 
-### 🎨 **Material Design 3**
-- CraftKontrol branded theme
-- Dark/Light mode support
-- Dynamic color (Android 12+)
-- Smooth animations
+## 🔑 Gestion des Clés API
 
-## Pre-configured Apps
+### Configuration
 
-The app comes with 6 AI Agent applications:
+1. Ouvrez l'application principale CKGenericApp
+2. Faites défiler jusqu'à la section "Clés API"
+3. Entrez vos clés pour chaque service (OpenAI, Anthropic, etc.)
+4. Cliquez sur l'icône de sauvegarde
 
-1. **AI Search Aggregator** - Multi-platform AI search
-2. **Astral Compute** - Advanced computation tools
-3. **Local Food Products** - Local food finder with location
-4. **Memory Board Helper** - Task & memory management
-5. **Meteo Aggregator** - Weather information
-6. **News Aggregator** - Multi-source news reader
+### Clés API Personnalisées
 
-## Requirements
+Vous pouvez également ajouter vos propres clés API personnalisées :
+- Entrez un nom (ex: `weather_api`)
+- Entrez la valeur de la clé
+- Cliquez sur "Ajouter"
 
-- **Android SDK**: 26+ (Android 8.0+)
-- **Target SDK**: 34 (Android 14)
-- **Java**: JDK 17+
-- **Gradle**: 8.2+
-- **Firebase**: Account and project setup
+### Utilisation dans les Applications Web
 
-## Setup Instructions
+Les clés API sont automatiquement injectées dans chaque WebView via JavaScript :
 
-### 1. Clone/Download the Project
+```javascript
+// Récupérer une clé API
+const openaiKey = window.CKGenericApp.getApiKey('openai');
+const customKey = window.CKGenericApp.getApiKey('weather_api');
+
+// Vérifier toutes les clés disponibles
+console.log(window.CKGenericApp.apiKeys);
+```
+
+## 🚀 Utilisation
+
+### 1. Configuration Initiale
+
+1. Installez CKGenericApp
+2. Lancez l'application
+3. Attendez que les 6 applications par défaut se chargent
+4. Configurez vos clés API si nécessaire
+
+### 2. Créer des Raccourcis
+
+1. Dans la liste "Applications Disponibles"
+2. Cliquez sur l'icône **+** à côté de l'app souhaitée
+3. Un raccourci coloré avec les initiales de l'app apparaît sur votre écran d'accueil
+
+### 3. Lancer une Application
+
+1. Tapez sur le raccourci créé
+2. L'application s'ouvre dans un WebView dédié
+3. Les clés API sont automatiquement disponibles
+4. Vous pouvez lancer plusieurs instances en parallèle
+
+## 🛠️ Technologies Utilisées
+
+- **Kotlin 1.9.20** - Langage principal
+- **Jetpack Compose** - UI moderne et déclarative
+- **Material 3** - Design system
+- **Android SDK**: Min 26, Target 34
+- **Architecture**: MVVM + Clean Architecture
+- **Hilt** - Dependency Injection
+- **Room** - Base de données locale
+- **DataStore** - Stockage des clés API et préférences
+- **WebView** - Rendu des applications web
+- **Timber** - Logging
+
+## 📦 Installation
+
+### Prérequis
+
+- Android Studio Hedgehog | 2023.1.1 ou supérieur
+- Android SDK 34
+- JDK 17
+- Gradle 8.2+
+
+### Build
 
 ```bash
-cd d:\CraftKontrol\AI_Agents\CKGenericApp
-```
+# Cloner le dépôt
+cd D:\CraftKontrol\AI_Agents\CKGenericApp
 
-### 2. Configure Firebase
-
-1. Go to [Firebase Console](https://console.firebase.google.com/)
-2. Create a new project or select existing
-3. Add Android app with package name: `com.craftkontrol.ckgenericapp`
-4. Download `google-services.json`
-5. Place it in `app/` directory
-
-### 3. Update Web App URLs
-
-Edit the default apps in [WebAppRepositoryImpl.kt](app/src/main/java/com/craftkontrol/ckgenericapp/data/repository/WebAppRepositoryImpl.kt):
-
-```kotlin
-val defaultApps = listOf(
-    WebApp(
-        id = "ai_search",
-        name = "AI Search Aggregator",
-        url = "https://YOUR_DOMAIN.com/ai-agents/AiSearchAgregator/",
-        // ...
-    ),
-    // Update all URLs to your actual domain
-)
-```
-
-### 4. Build the Project
-
-#### Using Android Studio:
-1. Open the project in Android Studio
-2. Sync Gradle files
-3. Build > Build Bundle(s) / APK(s) > Build APK(s)
-
-#### Using Command Line (VS Code):
-
-```powershell
 # Build debug APK
-./gradlew assembleDebug
+.\gradlew assembleDebug
 
 # Build release APK
-./gradlew assembleRelease
-
-# Install on connected device
-./gradlew installDebug
+.\gradlew assembleRelease
 ```
 
-### 5. Generate Signing Key (for Release)
+### Installation sur un appareil
 
-```powershell
-keytool -genkey -v -keystore ck-generic-app.keystore -alias ckgenericapp -keyalg RSA -keysize 2048 -validity 10000
+```bash
+# Via ADB
+adb install app/build/outputs/apk/debug/app-debug.apk
+
+# Ou via Android Studio
+# Run > Run 'app'
 ```
 
-Add to `app/build.gradle.kts`:
+## 🔐 Permissions
 
-```kotlin
-android {
-    signingConfigs {
-        create("release") {
-            storeFile = file("../ck-generic-app.keystore")
-            storePassword = "your_password"
-            keyAlias = "ckgenericapp"
-            keyPassword = "your_password"
-        }
+L'application demande les permissions suivantes :
+
+- `INTERNET` - Accès réseau pour les applications web
+- `CAMERA` - Pour les applications nécessitant la caméra
+- `RECORD_AUDIO` - Pour l'enregistrement audio
+- `ACCESS_FINE_LOCATION` - Localisation précise
+- `ACCESS_COARSE_LOCATION` - Localisation approximative
+- `POST_NOTIFICATIONS` - Notifications push (Android 13+)
+- `FOREGROUND_SERVICE` - Service en arrière-plan
+
+## 📐 Architecture
+
+```
+app/
+├── data/
+│   ├── local/
+│   │   ├── dao/              # Room DAO
+│   │   ├── database/         # Room Database
+│   │   └── preferences/      # DataStore (API keys, settings)
+│   └── repository/           # Implémentations des repositories
+├── domain/
+│   ├── model/                # Modèles de données (WebApp)
+│   └── repository/           # Interfaces des repositories
+├── di/                       # Modules Hilt
+├── presentation/
+│   ├── main/                 # Centre de configuration
+│   │   ├── MainScreen.kt     # UI de gestion
+│   │   └── MainViewModel.kt  # Logique métier
+│   ├── shortcut/             # Activité des raccourcis
+│   │   ├── ShortcutActivity.kt     # Point d'entrée des raccourcis
+│   │   ├── ShortcutViewModel.kt    # Chargement des apps
+│   │   └── ApiKeyInjectingWebViewClient.kt
+│   ├── navigation/           # Navigation Compose
+│   └── theme/                # Thème Material 3
+├── util/
+│   └── ShortcutHelper.kt     # Création des raccourcis
+├── webview/                  # Configuration WebView
+│   ├── WebViewConfigurator.kt
+│   ├── WebViewManager.kt
+│   └── WebViewJavaScriptInterface.kt
+└── service/                  # Service de monitoring (notifications)
+```
+
+## 🔌 Interface JavaScript
+
+### API Disponible
+
+```javascript
+// Récupérer une clé API
+window.CKGenericApp.getApiKey('openai')
+// Retourne: "sk-..."
+
+// Afficher une notification
+window.CKGenericApp.showNotification("Titre", "Message");
+
+// Poster un message
+window.CKGenericApp.postMessage("mon message");
+
+// Obtenir la version de l'app
+window.CKGenericApp.getAppVersion();
+// Retourne: "1.0.0"
+
+// Accéder à toutes les clés
+window.CKGenericApp.apiKeys
+// Retourne: { openai: "sk-...", anthropic: "sk-...", ... }
+```
+
+### Exemple d'Utilisation
+
+```javascript
+// Dans votre application web
+async function callOpenAI(prompt) {
+    const apiKey = window.CKGenericApp.getApiKey('openai');
+    
+    if (!apiKey) {
+        console.error('OpenAI API key not configured');
+        return;
     }
+    
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+            model: 'gpt-4',
+            messages: [{ role: 'user', content: prompt }]
+        })
+    });
+    
+    return await response.json();
 }
 ```
 
-## Project Structure
+## 🎨 Icônes des Raccourcis
 
-```
-app/src/main/java/com/craftkontrol/ckgenericapp/
-├── data/
-│   ├── local/
-│   │   ├── dao/          # Room DAOs
-│   │   ├── database/     # Room Database
-│   │   ├── entity/       # Database entities
-│   │   └── preferences/  # DataStore preferences
-│   ├── mapper/           # Entity ↔ Domain mappers
-│   └── repository/       # Repository implementations
-├── di/                   # Hilt dependency injection
-├── domain/
-│   ├── model/            # Domain models
-│   └── repository/       # Repository interfaces
-├── presentation/
-│   ├── main/             # Main screen (WebView)
-│   ├── settings/         # Settings screen
-│   ├── navigation/       # Navigation graph
-│   └── theme/            # Material 3 theme
-├── receiver/             # Broadcast receivers
-├── service/              # Background services
-├── util/                 # Utilities
-├── webview/              # WebView configuration
-├── CKGenericApplication.kt
-└── MainActivity.kt
-```
+Chaque raccourci génère automatiquement une icône colorée unique avec les initiales de l'application :
 
-## Usage
+- **AI Search Agregator** - Orange avec "AS"
+- **Astral Compute** - Violet avec "AC"
+- **Local Food Products** - Vert avec "LF"
+- **Memory Board Helper** - Bleu avec "MB"
+- **Meteo Agregator** - Cyan avec "ME"
+- **News Agregator** - Rose avec "NE"
 
-### Running the App
+## 🔄 Gestion des Instances
 
-1. **Launch** - Opens last visited app
-2. **Select App** - Tap app name in top bar
-3. **Navigate** - Use back/forward buttons
-4. **Refresh** - Reload current page
-5. **Settings** - Configure monitoring & preferences
-6. **Fullscreen** - Tap menu icon to collapse toolbar
+### Comportement
+- `MainActivity` : **singleTask** - Une seule instance de l'app principale
+- `ShortcutActivity` : **standard + documentLaunchMode="always"**
+  - Permet plusieurs instances d'une même app
+  - Chaque instance apparaît séparément dans le gestionnaire de tâches
 
-### Managing Background Monitoring
+### Exemple
+Vous pouvez avoir :
+- 3 instances de "AI Search" ouvertes en parallèle
+- 2 instances de "News Agregator"
+- 1 instance de "Meteo"
+- Toutes avec leurs propres états indépendants
 
-Go to **Settings** to:
-- Enable/disable background monitoring
-- Toggle notifications
-- Switch dark mode
-- Enable fullscreen mode
+## 🐛 Debugging
 
-### WebView JavaScript Interface
+### Logcat
 
-Web apps can communicate with the Android app:
+```bash
+# Filtrer les logs de CKGenericApp
+adb logcat | findstr "CKGenericApp"
 
-```javascript
-// Post message to Android
-CKAndroid.postMessage("Hello from web");
+# Voir les injections de clés API
+adb logcat | findstr "API keys injected"
 
-// Show notification
-CKAndroid.showNotification("Title", "Message");
-
-// Get app version
-const version = CKAndroid.getAppVersion();
+# Voir les chargements d'applications
+adb logcat | findstr "Loading app"
 ```
 
-## Permissions
+### Console JavaScript
 
-The app requests these permissions on first launch:
+Les logs JavaScript sont visibles dans Logcat avec le tag "Console".
 
-- Camera & Microphone - For video calls
-- Location - For location-based services
-- Notifications - For alerts (Android 13+)
-- Storage - For file access (Android 12-)
+## 🤝 Contribution
 
-Additional permissions in manifest:
-- Internet & Network State
-- Foreground Service
-- Boot Completed (auto-start)
-- Calendar Read/Write
-- Wake Lock
+Les contributions sont les bienvenues ! Veuillez suivre ces étapes :
 
-## Troubleshooting
+1. Fork le projet
+2. Créer une branche (`git checkout -b feature/AmazingFeature`)
+3. Commit vos changements (`git commit -m 'Add AmazingFeature'`)
+4. Push vers la branche (`git push origin feature/AmazingFeature`)
+5. Ouvrir une Pull Request
 
-### APK Build Issues
+## 📝 License
 
-```powershell
-# Clean build
-./gradlew clean
+Ce projet est sous licence MIT - voir le fichier [LICENSE](LICENSE) pour plus de détails.
 
-# Rebuild with fresh dependencies
-./gradlew clean build --refresh-dependencies
-```
+## 👨‍💻 Auteur
 
-### WebView Not Loading
+**CraftKontrol** - *Arnaud Cassone / Artcraft Visuals*
 
-1. Check internet connection
-2. Verify URL is accessible
-3. Check LogCat for errors:
-```powershell
-adb logcat | Select-String "CKGenericApp"
-```
+## 📧 Support
 
-### Permissions Not Working
+Pour toute question ou problème, ouvrez une issue sur GitHub ou contactez-nous.
 
-1. Go to Android Settings > Apps > CKGenericApp > Permissions
-2. Manually grant required permissions
-3. Restart the app
-
-### Service Not Running
-
-1. Check battery optimization settings
-2. Allow background activity
-3. Restart device if needed
-
-## Development
-
-### Adding New Apps
-
-Edit [WebAppRepositoryImpl.kt](app/src/main/java/com/craftkontrol/ckgenericapp/data/repository/WebAppRepositoryImpl.kt):
-
-```kotlin
-WebApp(
-    id = "new_app",
-    name = "New App Name",
-    url = "https://yoursite.com/app/",
-    description = "App description",
-    order = 7,
-    requiresLocation = false,
-    requiresCamera = false,
-    requiresMicrophone = false,
-    supportsNotifications = true
-)
-```
-
-### Debugging
-
-Enable WebView debugging in [WebViewConfigurator.kt](app/src/main/java/com/craftkontrol/ckgenericapp/webview/WebViewConfigurator.kt):
-
-```kotlin
-WebView.setWebContentsDebuggingEnabled(true)
-```
-
-Then access via Chrome: `chrome://inspect/#devices`
-
-### Logs
-
-View logs in terminal:
-
-```powershell
-# All logs
-adb logcat
-
-# CKGenericApp only
-adb logcat | Select-String "CKGenericApp"
-
-# Clear logs
-adb logcat -c
-```
-
-## Technologies
-
-- **Language**: Kotlin 2.0
-- **UI**: Jetpack Compose + Material 3
-- **Architecture**: MVVM + Clean Architecture
-- **DI**: Hilt
-- **Database**: Room
-- **Preferences**: DataStore
-- **Networking**: Firebase Cloud Messaging
-- **Logging**: Timber
-
-## License
+---
 
 © 2025 CraftKontrol - Arnaud Cassone / Artcraft Visuals
-
-All rights reserved.
-
-## Support
-
-For issues or questions, please contact support through CraftKontrol channels.

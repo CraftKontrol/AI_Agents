@@ -1,303 +1,497 @@
 package com.craftkontrol.ckgenericapp.presentation.main
 
-import android.Manifest
-import android.content.pm.PackageManager
-import android.view.ViewGroup
-import android.webkit.WebView
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.craftkontrol.ckgenericapp.domain.model.WebApp
-import com.craftkontrol.ckgenericapp.webview.*
 import timber.log.Timber
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
-    viewModel: MainViewModel = hiltViewModel(),
-    onNavigateToSettings: () -> Unit
+    viewModel: MainViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    var webView: WebView? by remember { mutableStateOf(null) }
-    var showAppSelector by remember { mutableStateOf(false) }
     
-    // Permission launcher
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        permissions.entries.forEach {
-            Timber.d("Permission ${it.key} granted: ${it.value}")
-        }
-        viewModel.clearPermissionRequest()
-    }
-    
-    // Request permissions if needed
-    LaunchedEffect(uiState.permissionsNeeded) {
-        if (uiState.permissionsNeeded.isNotEmpty()) {
-            permissionLauncher.launch(uiState.permissionsNeeded.toTypedArray())
+    // Handle shortcut creation
+    LaunchedEffect(uiState.shortcutCreationRequested) {
+        val appId = uiState.shortcutCreationRequested
+        if (appId != null) {
+            val app = uiState.apps.find { it.id == appId }
+            if (app != null) {
+                val success = com.craftkontrol.ckgenericapp.util.ShortcutHelper.createShortcut(context, app)
+                // Show feedback to user
+                Timber.d("Shortcut creation for ${app.name}: ${if (success) "success" else "failed"}")
+            }
+            viewModel.clearShortcutRequest()
         }
     }
     
     Scaffold(
         topBar = {
-            AnimatedVisibility(
-                visible = !uiState.isMenuCollapsed,
-                enter = slideInVertically(),
-                exit = slideOutVertically()
-            ) {
-                TopBar(
-                    currentApp = uiState.currentApp,
-                    canGoBack = uiState.canGoBack,
-                    canGoForward = uiState.canGoForward,
-                    onAppSelectorClick = { showAppSelector = true },
-                    onBackClick = { webView?.goBack() },
-                    onForwardClick = { webView?.goForward() },
-                    onRefreshClick = { webView?.reload() },
-                    onSettingsClick = onNavigateToSettings,
-                    onMenuToggle = { viewModel.toggleMenu() }
+            TopAppBar(
+                title = { 
+                    Text(
+                        "CKGenericApp - Centre de gestion",
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
-            }
+            )
         }
     ) { paddingValues ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(
-                    if (uiState.isMenuCollapsed) PaddingValues(0.dp) 
-                    else paddingValues
-                )
+                .padding(paddingValues)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp)
         ) {
-            when {
-                uiState.isLoading -> {
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center)
+            // Header Description
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(32.dp)
                     )
-                }
-                uiState.currentApp != null -> {
-                    WebViewContainer(
-                        url = uiState.currentApp!!.url,
-                        onWebViewCreated = { wv ->
-                            webView = wv
-                        },
-                        onNavigationStateChanged = { canGoBack, canGoForward ->
-                            viewModel.updateNavigationState(canGoBack, canGoForward)
-                        },
-                        onPermissionRequest = { permissions ->
-                            viewModel.requestPermissions(permissions.toList())
-                        }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Configuration et Raccourcis",
+                        style = MaterialTheme.typography.titleMedium
                     )
-                }
-                else -> {
-                    EmptyState(modifier = Modifier.align(Alignment.Center))
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Créez des raccourcis pour accéder directement à vos applications web. Configurez vos clés API pour qu'elles soient automatiquement disponibles dans toutes les applications.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
             
-            // Floating menu toggle button when collapsed
-            if (uiState.isMenuCollapsed) {
-                FloatingActionButton(
-                    onClick = { viewModel.toggleMenu() },
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(16.dp)
-                ) {
-                    Icon(Icons.Default.Menu, contentDescription = "Show menu")
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            when {
+                uiState.isLoading -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
+                uiState.apps.isEmpty() -> {
+                    EmptyState()
+                }
+                else -> {
+                    // Apps Section
+                    AppsManagementSection(
+                        apps = uiState.apps,
+                        onCreateShortcut = { app ->
+                            viewModel.createShortcut(app)
+                        }
+                    )
+                    
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Divider()
+                    Spacer(modifier = Modifier.height(24.dp))
+                    
+                    // API Keys Section
+                    ApiKeysSection(
+                        viewModel = viewModel
+                    )
                 }
             }
         }
     }
-    
-    // App selector dialog
-    if (showAppSelector && uiState.apps.isNotEmpty()) {
-        AppSelectorDialog(
-            apps = uiState.apps,
-            currentApp = uiState.currentApp,
-            onAppSelected = { app ->
-                viewModel.setCurrentApp(app)
-                showAppSelector = false
-            },
-            onDismiss = { showAppSelector = false }
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun TopBar(
-    currentApp: WebApp?,
-    canGoBack: Boolean,
-    canGoForward: Boolean,
-    onAppSelectorClick: () -> Unit,
-    onBackClick: () -> Unit,
-    onForwardClick: () -> Unit,
-    onRefreshClick: () -> Unit,
-    onSettingsClick: () -> Unit,
-    onMenuToggle: () -> Unit
-) {
-    TopAppBar(
-        title = {
-            TextButton(onClick = onAppSelectorClick) {
-                Text(
-                    text = currentApp?.name ?: "Select App",
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Icon(
-                    imageVector = Icons.Default.ArrowDropDown,
-                    contentDescription = "Select app",
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-        },
-        navigationIcon = {
-            IconButton(onClick = onMenuToggle) {
-                Icon(Icons.Default.Menu, contentDescription = "Toggle menu")
-            }
-        },
-        actions = {
-            IconButton(
-                onClick = onBackClick,
-                enabled = canGoBack
-            ) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-            }
-            IconButton(
-                onClick = onForwardClick,
-                enabled = canGoForward
-            ) {
-                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Forward")
-            }
-            IconButton(onClick = onRefreshClick) {
-                Icon(Icons.Default.Refresh, contentDescription = "Refresh")
-            }
-            IconButton(onClick = onSettingsClick) {
-                Icon(Icons.Default.Settings, contentDescription = "Settings")
-            }
-        }
-    )
 }
 
 @Composable
-fun WebViewContainer(
-    url: String,
-    onWebViewCreated: (WebView) -> Unit,
-    onNavigationStateChanged: (Boolean, Boolean) -> Unit,
-    onPermissionRequest: (Array<String>) -> Unit
+fun AppsManagementSection(
+    apps: List<WebApp>,
+    onCreateShortcut: (WebApp) -> Unit
 ) {
     val context = LocalContext.current
     
-    AndroidView(
-        factory = { ctx ->
-            WebView(ctx).apply {
-                layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT
-                )
-                
-                // Configure WebView
-                val jsInterface = WebViewJavaScriptInterface(ctx) { title, message ->
-                    Timber.d("Notification: $title - $message")
-                    // Handle notifications
-                }
-                WebViewConfigurator.configure(this, ctx, jsInterface)
-                
-                // Set clients
-                webViewClient = CKWebViewClient()
-                webChromeClient = CKWebChromeClient(
-                    activity = ctx as android.app.Activity,
-                    onPermissionRequest = onPermissionRequest
-                )
-                
-                onWebViewCreated(this)
-                loadUrl(url)
-            }
-        },
-        update = { webView ->
-            if (webView.url != url) {
-                webView.loadUrl(url)
-            }
-            onNavigationStateChanged(webView.canGoBack(), webView.canGoForward())
-        },
-        modifier = Modifier.fillMaxSize()
-    )
+    Column {
+        Text(
+            text = "Applications Disponibles",
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "Cliquez sur l'icône + pour créer un raccourci sur votre écran d'accueil",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        apps.forEach { app ->
+            AppCard(
+                app = app,
+                onCreateShortcut = { onCreateShortcut(app) }
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+    }
 }
 
 @Composable
-fun AppSelectorDialog(
-    apps: List<WebApp>,
-    currentApp: WebApp?,
-    onAppSelected: (WebApp) -> Unit,
-    onDismiss: () -> Unit
+fun AppCard(
+    app: WebApp,
+    onCreateShortcut: () -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Select App") },
-        text = {
-            Column {
-                apps.forEach { app ->
-                    TextButton(
-                        onClick = { onAppSelected(app) },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = app.name,
-                                    style = MaterialTheme.typography.titleMedium
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = app.name,
+                    style = MaterialTheme.typography.titleMedium
+                )
+                app.description?.let {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = app.url,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.secondary,
+                    maxLines = 1
+                )
+            }
+            
+            IconButton(
+                onClick = onCreateShortcut,
+                modifier = Modifier.padding(start = 8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.AddToHomeScreen,
+                    contentDescription = "Créer un raccourci",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun ApiKeysSection(
+    viewModel: MainViewModel
+) {
+    // Load saved API keys - use collectAsStateWithLifecycle for proper state management
+    val savedKeys by viewModel.getAllApiKeys().collectAsStateWithLifecycle(initialValue = emptyMap())
+    
+    // State for edited values - initialized from savedKeys
+    var mistralKey by remember(savedKeys) { mutableStateOf(savedKeys["mistral"] ?: "") }
+    var openWeatherKey by remember(savedKeys) { mutableStateOf(savedKeys["openweathermap"] ?: "") }
+    var weatherApiKey by remember(savedKeys) { mutableStateOf(savedKeys["weatherapi"] ?: "") }
+    var tavilyKey by remember(savedKeys) { mutableStateOf(savedKeys["tavily"] ?: "") }
+    var scrapingBeeKey by remember(savedKeys) { mutableStateOf(savedKeys["scrapingbee"] ?: "") }
+    var scraperApiKey by remember(savedKeys) { mutableStateOf(savedKeys["scraperapi"] ?: "") }
+    var brightDataKey by remember(savedKeys) { mutableStateOf(savedKeys["brightdata"] ?: "") }
+    var scrapFlyKey by remember(savedKeys) { mutableStateOf(savedKeys["scrapfly"] ?: "") }
+    var googleTtsKey by remember(savedKeys) { mutableStateOf(savedKeys["google_tts"] ?: "") }
+    var googleSttKey by remember(savedKeys) { mutableStateOf(savedKeys["google_stt"] ?: "") }
+    
+    // Visibility toggles
+    var showMistral by remember { mutableStateOf(false) }
+    var showOpenWeather by remember { mutableStateOf(false) }
+    var showWeatherApi by remember { mutableStateOf(false) }
+    var showTavily by remember { mutableStateOf(false) }
+    var showScrapingBee by remember { mutableStateOf(false) }
+    var showScraperApi by remember { mutableStateOf(false) }
+    var showBrightData by remember { mutableStateOf(false) }
+    var showScrapFly by remember { mutableStateOf(false) }
+    var showGoogleTts by remember { mutableStateOf(false) }
+    var showGoogleStt by remember { mutableStateOf(false) }
+    
+    // Debug log
+    LaunchedEffect(savedKeys) {
+        Timber.d("API Keys loaded from DataStore: ${savedKeys.keys.joinToString()}")
+    }
+    
+    Column {
+        Text(
+            text = "Clés API",
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "Configurez vos clés API. Elles seront automatiquement disponibles dans toutes les applications via JavaScript.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // IA & TEXTE
+        Text(
+            text = "🤖 IA & Texte",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        ApiKeyField(
+            label = "Mistral AI (AI Search, Memory Board, Astral Compute)",
+            value = mistralKey,
+            onValueChange = { mistralKey = it },
+            isVisible = showMistral,
+            onVisibilityToggle = { showMistral = !showMistral },
+            onSave = { viewModel.saveApiKey("mistral", mistralKey) }
+        )
+        
+        Spacer(modifier = Modifier.height(20.dp))
+        
+        // MÉTÉO
+        Text(
+            text = "🌤️ Météo",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        ApiKeyField(
+            label = "OpenWeatherMap (Meteo Agregator)",
+            value = openWeatherKey,
+            onValueChange = { openWeatherKey = it },
+            isVisible = showOpenWeather,
+            onVisibilityToggle = { showOpenWeather = !showOpenWeather },
+            onSave = { viewModel.saveApiKey("openweathermap", openWeatherKey) }
+        )
+        
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        ApiKeyField(
+            label = "WeatherAPI (Meteo Agregator)",
+            value = weatherApiKey,
+            onValueChange = { weatherApiKey = it },
+            isVisible = showWeatherApi,
+            onVisibilityToggle = { showWeatherApi = !showWeatherApi },
+            onSave = { viewModel.saveApiKey("weatherapi", weatherApiKey) }
+        )
+        
+        Spacer(modifier = Modifier.height(20.dp))
+        
+        // RECHERCHE WEB
+        Text(
+            text = "🔍 Recherche Web",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        ApiKeyField(
+            label = "Tavily (AI Search Agregator)",
+            value = tavilyKey,
+            onValueChange = { tavilyKey = it },
+            isVisible = showTavily,
+            onVisibilityToggle = { showTavily = !showTavily },
+            onSave = { viewModel.saveApiKey("tavily", tavilyKey) }
+        )
+        
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        ApiKeyField(
+            label = "ScrapingBee (AI Search Agregator)",
+            value = scrapingBeeKey,
+            onValueChange = { scrapingBeeKey = it },
+            isVisible = showScrapingBee,
+            onVisibilityToggle = { showScrapingBee = !showScrapingBee },
+            onSave = { viewModel.saveApiKey("scrapingbee", scrapingBeeKey) }
+        )
+        
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        ApiKeyField(
+            label = "ScraperAPI (AI Search Agregator)",
+            value = scraperApiKey,
+            onValueChange = { scraperApiKey = it },
+            isVisible = showScraperApi,
+            onVisibilityToggle = { showScraperApi = !showScraperApi },
+            onSave = { viewModel.saveApiKey("scraperapi", scraperApiKey) }
+        )
+        
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        ApiKeyField(
+            label = "Bright Data (AI Search Agregator)",
+            value = brightDataKey,
+            onValueChange = { brightDataKey = it },
+            isVisible = showBrightData,
+            onVisibilityToggle = { showBrightData = !showBrightData },
+            onSave = { viewModel.saveApiKey("brightdata", brightDataKey) }
+        )
+        
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        ApiKeyField(
+            label = "ScrapFly (AI Search Agregator)",
+            value = scrapFlyKey,
+            onValueChange = { scrapFlyKey = it },
+            isVisible = showScrapFly,
+            onVisibilityToggle = { showScrapFly = !showScrapFly },
+            onSave = { viewModel.saveApiKey("scrapfly", scrapFlyKey) }
+        )
+        
+        Spacer(modifier = Modifier.height(20.dp))
+        
+        // GOOGLE SERVICES
+        Text(
+            text = "🎤 Google Services",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        ApiKeyField(
+            label = "Google Cloud TTS (AI Search, Memory Board)",
+            value = googleTtsKey,
+            onValueChange = { googleTtsKey = it },
+            isVisible = showGoogleTts,
+            onVisibilityToggle = { showGoogleTts = !showGoogleTts },
+            onSave = { viewModel.saveApiKey("google_tts", googleTtsKey) }
+        )
+        
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        ApiKeyField(
+            label = "Google Cloud STT (Memory Board)",
+            value = googleSttKey,
+            onValueChange = { googleSttKey = it },
+            isVisible = showGoogleStt,
+            onVisibilityToggle = { showGoogleStt = !showGoogleStt },
+            onSave = { viewModel.saveApiKey("google_stt", googleSttKey) }
+        )
+        
+        Spacer(modifier = Modifier.height(20.dp))
+        
+        // Info Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer
+            )
+        ) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = "Les clés API sont stockées localement et accessibles via window.CKGenericApp.getApiKey('nom_de_la_cle')",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun ApiKeyField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    isVisible: Boolean,
+    onVisibilityToggle: () -> Unit,
+    onSave: () -> Unit
+) {
+    OutlinedCard(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                OutlinedTextField(
+                    value = value,
+                    onValueChange = onValueChange,
+                    label = { Text(label) },
+                    modifier = Modifier.fillMaxWidth(),
+                    visualTransformation = if (isVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    trailingIcon = {
+                        Row {
+                            IconButton(onClick = onVisibilityToggle) {
+                                Icon(
+                                    imageVector = if (isVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                    contentDescription = if (isVisible) "Masquer" else "Afficher"
                                 )
-                                app.description?.let {
-                                    Text(
-                                        text = it,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                            }
+                            if (value.isNotBlank()) {
+                                IconButton(onClick = onSave) {
+                                    Icon(
+                                        imageVector = Icons.Default.Save,
+                                        contentDescription = "Sauvegarder",
+                                        tint = MaterialTheme.colorScheme.primary
                                     )
                                 }
                             }
-                            if (app.id == currentApp?.id) {
-                                Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = "Selected",
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                            }
                         }
-                    }
-                    Divider()
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Close")
+                    },
+                    singleLine = true
+                )
             }
         }
-    )
+    }
 }
 
 @Composable
-fun EmptyState(modifier: Modifier = Modifier) {
+fun EmptyState() {
     Column(
-        modifier = modifier.padding(32.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Icon(
@@ -308,12 +502,12 @@ fun EmptyState(modifier: Modifier = Modifier) {
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "No apps available",
+            text = "Aucune application disponible",
             style = MaterialTheme.typography.titleLarge
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "Add web apps in settings",
+            text = "Les applications se chargeront automatiquement au démarrage",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

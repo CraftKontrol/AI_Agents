@@ -10,5 +10,6 @@ data class MainUiState(
     val canGoBack: Boolean = false,
     val canGoForward: Boolean = false,
     val error: String? = null,
-    val permissionsNeeded: List<String> = emptyList()
+    val permissionsNeeded: List<String> = emptyList(),
+    val shortcutCreationRequested: String? = null
 )

@@ -127,11 +127,21 @@ class MonitoringService : Service() {
         Timber.d("Checking for news updates")
     }
     
-    fun showAlert(title: String, message: String) {
-        val intent = Intent(this, MainActivity::class.java)
+    fun showAlert(title: String, message: String, appId: String? = null) {
+        val intent = if (appId != null) {
+            // Open specific app via shortcut activity
+            Intent(this, com.craftkontrol.ckgenericapp.presentation.shortcut.ShortcutActivity::class.java).apply {
+                putExtra(com.craftkontrol.ckgenericapp.presentation.shortcut.ShortcutActivity.EXTRA_APP_ID, appId)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+        } else {
+            // Open main activity
+            Intent(this, MainActivity::class.java)
+        }
+        
         val pendingIntent = PendingIntent.getActivity(
             this,
-            0,
+            System.currentTimeMillis().toInt(), // Unique request code for each notification
             intent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
@@ -145,7 +155,7 @@ class MonitoringService : Service() {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .build()
         
-        notificationManager.notify(Constants.ALERT_NOTIFICATION_ID, notification)
+        notificationManager.notify(System.currentTimeMillis().toInt(), notification)
     }
     
     companion object {

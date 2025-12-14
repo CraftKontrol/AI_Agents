@@ -18,11 +18,7 @@ fun AppNavGraph(
         startDestination = startDestination
     ) {
         composable(Screen.Main.route) {
-            MainScreen(
-                onNavigateToSettings = {
-                    navController.navigate(Screen.Settings.route)
-                }
-            )
+            MainScreen()
         }
         
         composable(Screen.Settings.route) {

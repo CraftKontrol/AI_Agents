@@ -133,7 +133,8 @@ class CKWebChromeClient(
 
 class WebViewJavaScriptInterface(
     private val context: Context,
-    private val onNotification: (String, String) -> Unit
+    private val onNotification: (String, String) -> Unit,
+    private val apiKeysPreferences: com.craftkontrol.ckgenericapp.data.local.preferences.ApiKeysPreferences? = null
 ) {
     
     @JavascriptInterface
@@ -156,5 +157,29 @@ class WebViewJavaScriptInterface(
         } catch (e: Exception) {
             "1.0.0"
         }
+    }
+    
+    @JavascriptInterface
+    fun getApiKey(keyName: String): String? {
+        if (apiKeysPreferences == null) {
+            Timber.w("ApiKeysPreferences not available in WebView")
+            return null
+        }
+        
+        return try {
+            // Note: This is synchronous access which is not ideal for production
+            // For production, consider using a callback mechanism or CompletableFuture
+            // For now, we'll need to handle this differently in ShortcutActivity
+            Timber.d("API key request for: $keyName")
+            null // Will be handled via callback mechanism in ShortcutActivity
+        } catch (e: Exception) {
+            Timber.e(e, "Error getting API key: $keyName")
+            null
+        }
+    }
+    
+    @JavascriptInterface
+    fun hasApiKey(keyName: String): Boolean {
+        return apiKeysPreferences != null
     }
 }
