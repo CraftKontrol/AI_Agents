@@ -1,6 +1,25 @@
 // --- Confirmation State for Important Actions ---
 let pendingConfirmation = null; // Will store { action, data, language, confirmationMessage }
 
+// Helper function to get API key from CKGenericApp or localStorage
+function getApiKey(keyName, localStorageKey = null) {
+    // Try CKGenericApp first (Android WebView)
+    if (typeof window.CKGenericApp !== 'undefined' && typeof window.CKGenericApp.getApiKey === 'function') {
+        const key = window.CKGenericApp.getApiKey(keyName);
+        if (key) {
+            console.log(`[API] Using ${keyName} key from CKGenericApp`);
+            return key;
+        }
+    }
+    // Fallback to localStorage
+    const storageKey = localStorageKey || keyName;
+    const key = localStorage.getItem(storageKey);
+    if (key) {
+        console.log(`[API] Using ${keyName} key from localStorage`);
+    }
+    return key;
+}
+
 // --- TTS Settings Logic ---
 const DEFAULT_TTS_SETTINGS = {
     voice: 'fr-FR-Neural2-A',
@@ -854,6 +873,16 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Load saved API keys
     await loadSavedApiKeys();
     
+    // Listen for CKGenericApp API keys injection (Android WebView)
+    console.log('[EventListener] Registering ckgenericapp_keys_ready listener...');
+    window.addEventListener('ckgenericapp_keys_ready', async function(event) {
+        console.log('[EventListener] CKGenericApp keys ready event received:', event.detail.keys);
+        // Reload API keys now that CKGenericApp is available
+        await loadSavedApiKeys();
+        console.log('[EventListener] Keys reloaded after event');
+    });
+    console.log('[EventListener] Listener registered successfully');
+    
     // Load wake word settings
     loadWakeWordSettings();
     
@@ -1284,7 +1313,7 @@ function handleSpeechEnd() {
 
 // Fallback to Google Cloud STT API
 async function fallbackToGoogleSTT() {
-    const apiKey = localStorage.getItem('googleSTTApiKey');
+    const apiKey = getApiKey('google_stt', 'googleSTTApiKey');
     if (!apiKey) {
         showError(getLocalizedText('sttApiKeyMissing'));
         return;
@@ -2577,7 +2606,7 @@ async function commandWhatTime() {
 
 // Speak response using TTS
 async function speakResponse(text) {
-    const ttsApiKey = localStorage.getItem('googleTTSApiKey');
+    const ttsApiKey = getApiKey('google_tts', 'googleTTSApiKey');
     
     if (ttsApiKey) {
         try {
@@ -2797,9 +2826,9 @@ function getLocalizedText(key) {
 
 // API Keys Management
 async function loadSavedApiKeys() {
-    const mistralKey = localStorage.getItem('mistralApiKey');
-    const googleSTTKey = localStorage.getItem('googleSTTApiKey');
-    const googleTTSKey = localStorage.getItem('googleTTSApiKey');
+    const mistralKey = getApiKey('mistral', 'mistralApiKey');
+    const googleSTTKey = getApiKey('google_stt', 'googleSTTApiKey');
+    const googleTTSKey = getApiKey('google_tts', 'googleTTSApiKey');
     
     if (mistralKey) document.getElementById('mistralApiKey').value = mistralKey;
     if (googleSTTKey) document.getElementById('googleSTTApiKey').value = googleSTTKey;
@@ -2842,9 +2871,9 @@ async function deleteApiKey(service) {
 }
 
 function checkApiKeysAndHideSection() {
-    const hasKeys = localStorage.getItem('mistralApiKey') || 
-                    localStorage.getItem('googleSTTApiKey') || 
-                    localStorage.getItem('googleTTSApiKey');
+    const hasKeys = getApiKey('mistral', 'mistralApiKey') || 
+                    getApiKey('google_stt', 'googleSTTApiKey') || 
+                    getApiKey('google_tts', 'googleTTSApiKey');
     
     if (hasKeys) {
         const content = document.getElementById('apiKeysContent');

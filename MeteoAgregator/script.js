@@ -1,3 +1,22 @@
+// Helper function to get API key from CKGenericApp or localStorage
+function getApiKey(keyName, localStorageKey = null) {
+    // Try CKGenericApp first (Android WebView)
+    if (typeof window.CKGenericApp !== 'undefined' && typeof window.CKGenericApp.getApiKey === 'function') {
+        const key = window.CKGenericApp.getApiKey(keyName);
+        if (key) {
+            console.log(`[API] Using ${keyName} key from CKGenericApp`);
+            return key;
+        }
+    }
+    // Fallback to localStorage
+    const storageKey = localStorageKey || keyName;
+    const key = localStorage.getItem(storageKey);
+    if (key) {
+        console.log(`[API] Using ${keyName} key from localStorage`);
+    }
+    return key;
+}
+
 // Translation system
 const translations = {
     en: {
@@ -277,6 +296,14 @@ document.addEventListener('DOMContentLoaded', function() {
     fetchLastModified();
     loadSavedApiKey();
     loadMainApiKeys();
+    
+    // Listen for CKGenericApp API keys injection (Android WebView)
+    window.addEventListener('ckgenericapp_keys_ready', function(event) {
+        console.log('CKGenericApp keys ready event received:', event.detail.keys);
+        // Reload API keys now that CKGenericApp is available
+        loadSavedApiKey();
+        loadMainApiKeys();
+    });
 });
 
 // Fetch last modified date
@@ -307,8 +334,8 @@ async function fetchLastModified() {
 
 // Load API keys into main section
 function loadMainApiKeys() {
-    const savedApiKey = localStorage.getItem('meteoAggregatorApiKey');
-    const savedWeatherApiKey = localStorage.getItem('meteoAggregatorWeatherApiKey');
+    const savedApiKey = getApiKey('openweathermap', 'meteoAggregatorApiKey');
+    const savedWeatherApiKey = getApiKey('weatherapi', 'meteoAggregatorWeatherApiKey');
     
     if (savedApiKey) {
         document.getElementById('apiKeyMain').value = savedApiKey;
@@ -363,8 +390,8 @@ function deleteApiKey(service) {
 
 // Load saved API key from localStorage (for initial setup screen)
 function loadSavedApiKey() {
-    const savedApiKey = localStorage.getItem('meteoAggregatorApiKey');
-    const savedWeatherApiKey = localStorage.getItem('meteoAggregatorWeatherApiKey');
+    const savedApiKey = getApiKey('openweathermap', 'meteoAggregatorApiKey');
+    const savedWeatherApiKey = getApiKey('weatherapi', 'meteoAggregatorWeatherApiKey');
     
     if (savedApiKey || savedWeatherApiKey) {
         if (savedApiKey) {

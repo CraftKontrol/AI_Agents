@@ -2,6 +2,25 @@
 let currentLanguage = 'fr';
 let ephemerisData = null;
 
+// Helper function to get API key from CKGenericApp or localStorage
+function getApiKey(keyName, localStorageKey = null) {
+    // Try CKGenericApp first (Android WebView)
+    if (typeof window.CKGenericApp !== 'undefined' && typeof window.CKGenericApp.getApiKey === 'function') {
+        const key = window.CKGenericApp.getApiKey(keyName);
+        if (key) {
+            console.log(`[API] Using ${keyName} key from CKGenericApp`);
+            return key;
+        }
+    }
+    // Fallback to localStorage
+    const storageKey = localStorageKey || keyName;
+    const key = localStorage.getItem(storageKey);
+    if (key) {
+        console.log(`[API] Using ${keyName} key from localStorage`);
+    }
+    return key;
+}
+
 // Translations
 const translations = {
     fr: {
@@ -109,13 +128,26 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('dateInput').valueAsDate = today;
     
     // Load saved API key
-    const savedApiKey = localStorage.getItem('mistralApiKey');
+    const savedApiKey = getApiKey('mistral', 'mistralApiKey');
     if (savedApiKey) {
         document.getElementById('apiKey').value = savedApiKey;
         document.getElementById('rememberKey').checked = true;
         updateSavedKeyIndicator(true);
         hideApiKeySection();
     }
+    
+    // Listen for CKGenericApp API keys injection (Android WebView)
+    window.addEventListener('ckgenericapp_keys_ready', function(event) {
+        console.log('CKGenericApp keys ready event received:', event.detail.keys);
+        // Reload API key now that CKGenericApp is available
+        const apiKey = getApiKey('mistral', 'mistralApiKey');
+        if (apiKey) {
+            document.getElementById('apiKey').value = apiKey;
+            document.getElementById('rememberKey').checked = true;
+            updateSavedKeyIndicator(true);
+            hideApiKeySection();
+        }
+    });
     
     // Fetch last modified date
     fetchLastModified();

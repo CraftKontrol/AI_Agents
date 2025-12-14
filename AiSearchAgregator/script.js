@@ -1,6 +1,25 @@
 // AI Search Aggregator - CraftKontrol
 // Multi-source intelligent search with AI extraction
 
+// Helper function to get API key from CKGenericApp or localStorage
+function getApiKey(keyName, localStorageKey = null) {
+    // Try CKGenericApp first (Android WebView)
+    if (typeof window.CKGenericApp !== 'undefined' && typeof window.CKGenericApp.getApiKey === 'function') {
+        const key = window.CKGenericApp.getApiKey(keyName);
+        if (key) {
+            console.log(`[API] Using ${keyName} key from CKGenericApp`);
+            return key;
+        }
+    }
+    // Fallback to localStorage
+    const storageKey = localStorageKey || `apiKey_${keyName}`;
+    const key = localStorage.getItem(storageKey);
+    if (key) {
+        console.log(`[API] Using ${keyName} key from localStorage`);
+    }
+    return key;
+}
+
 let currentLanguage = 'fr';
 let allResults = [];
 let filteredResults = [];
@@ -278,8 +297,15 @@ document.addEventListener('DOMContentLoaded', function() {
     setupSpeechRecognition();
     loadSearchHistory();
     
+    // Listen for CKGenericApp API keys injection (Android WebView)
+    window.addEventListener('ckgenericapp_keys_ready', function(event) {
+        console.log('CKGenericApp keys ready event received:', event.detail.keys);
+        // Reload API keys now that CKGenericApp is available
+        loadSavedApiKeys();
+    });
+    
     // Hide API section if keys are saved
-    const mistralKey = localStorage.getItem('apiKey_mistral');
+    const mistralKey = getApiKey('mistral');
     if (mistralKey) {
         const apiContent = document.getElementById('apiKeysContent');
         const apiToggleBtn = document.getElementById('apiToggleBtn');
@@ -324,7 +350,7 @@ function updateLanguage() {
 function loadSavedApiKeys() {
     const keys = ['mistral', 'tavily', 'scrapingbee', 'scraperapi', 'brightdata', 'scrapfly', 'googletts'];
     keys.forEach(key => {
-        const savedKey = localStorage.getItem(`apiKey_${key}`);
+        const savedKey = getApiKey(key === 'googletts' ? 'google_tts' : key);
         if (savedKey) {
             const inputId = key === 'googletts' ? 'apiKeyGoogleTTS' : `apiKey${key.charAt(0).toUpperCase() + key.slice(1).replace('api', 'API')}`;
             const input = document.getElementById(inputId);
@@ -648,7 +674,7 @@ function updateTTSVoice(voice) {
 }
 
 async function synthesizeSpeech(text) {
-    const apiKey = document.getElementById('apiKeyGoogleTTS').value.trim() || localStorage.getItem('apiKey_googletts');
+    const apiKey = document.getElementById('apiKeyGoogleTTS').value.trim() || getApiKey('google_tts', 'apiKey_googletts');
     
     if (!apiKey) {
         console.warn('[TTS] No Google Cloud TTS API key found');
@@ -1748,7 +1774,7 @@ Write in a natural, flowing style. Respond ONLY with the summary text, no additi
         
         // Auto-play TTS if enabled
         const autoPlayTTS = document.getElementById('autoPlayTTS');
-        const ttsApiKey = document.getElementById('apiKeyGoogleTTS').value.trim() || localStorage.getItem('apiKey_googletts');
+        const ttsApiKey = document.getElementById('apiKeyGoogleTTS').value.trim() || getApiKey('google_tts', 'apiKey_googletts');
         
         if (autoPlayTTS && autoPlayTTS.checked && ttsApiKey) {
             console.log('[TTS] Auto-playing summary');
