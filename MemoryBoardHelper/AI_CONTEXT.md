@@ -41,14 +41,28 @@
 - `script-task-popup.js` - Task modal UI
 - `undo-system.js` - Action history (max 20)
 
+**STT Functions (in script.js):**
+- `initializeSpeechRecognition()` - Setup browser or Google STT
+- `fallbackToGoogleSTT()` - Start Google Cloud STT recording
+- `startGoogleSTTRecording(apiKey)` - MediaRecorder setup & start
+- `stopGoogleSTTRecording(apiKey)` - Stop recording & process
+- `sendAudioToGoogleSTT(audioBlob, apiKey)` - API call & transcript
+- `blobToBase64(blob)` - Convert audio to base64
+
 ---
 
 ## 🧠 Critical Architecture Patterns
 
 ### 1. Data Flow
 
+**Browser Speech Recognition:**
 ```
 User Speech → Web Speech API → Mistral AI Agent → Task Extraction → Storage (IndexedDB) → UI Update
+```
+
+**Google Cloud STT:**
+```
+User Speech → MediaRecorder → Audio Blob → Base64 → Google Cloud Speech-to-Text API → Transcript → Mistral AI Agent → Task Extraction → Storage (IndexedDB) → UI Update
 ```
 
 ### 2. Listening Modes
@@ -114,6 +128,32 @@ The app uses **multiple prompts** for different intents:
 
 ---
 
+## 🎤 Speech-to-Text (STT)
+
+**Methods:** Browser Web Speech API (primary) or Google Cloud STT (fallback/optional)
+
+**Browser STT:**
+- Uses `webkitSpeechRecognition` or `SpeechRecognition`
+- Continuous mode, no interim results
+- Auto-restart in always-listening mode
+- Languages: fr-FR, it-IT, en-US
+
+**Google Cloud STT:**
+- Endpoint: `https://speech.googleapis.com/v1/speech:recognize?key={API_KEY}`
+- Audio format: WEBM_OPUS (fallback: OGG_OPUS, WAV)
+- Sample rate: 16000 Hz
+- Audio captured via MediaRecorder API
+- Max recording: 10 seconds auto-stop
+- Click button again to stop recording manually
+- Automatic punctuation enabled
+
+**Integration Flow:**
+1. Check if browser STT available → use it (sttMethod = 'browser')
+2. If unavailable or fails → fallback to Google STT (sttMethod = 'google')
+3. Google STT requires API key stored in `googleSTTApiKey`
+4. Audio converted to base64 and sent to API
+5. Transcript returned and processed like browser STT result
+
 ## 🎤 Mistral AI
 
 **Endpoint:** `https://api.mistral.ai/v1/chat/completions`
@@ -175,9 +215,14 @@ The app uses **multiple prompts** for different intents:
 ## 🔐 API Keys
 
 **Storage:** localStorage (client-side)
-**Keys:** mistralApiKey, googleSpeechApiKey, googleTtsApiKey
-**Required:** Mistral AI (https://console.mistral.ai/)
-**Optional:** Google Cloud TTS/STT (browser fallback available)
+**Keys:** 
+- `mistralApiKey` - Mistral AI (REQUIRED)
+- `googleSTTApiKey` - Google Cloud Speech-to-Text (OPTIONAL - browser STT fallback)
+- `googleTtsApiKey` - Google Cloud Text-to-Speech (OPTIONAL - browser TTS available)
+
+**Get Keys:**
+- Mistral: https://console.mistral.ai/
+- Google Cloud: https://console.cloud.google.com/ (enable Speech-to-Text API & Text-to-Speech API)
 
 ---
 

@@ -1090,6 +1090,25 @@ async function handleVoiceInteraction() {
     const voiceBtn = document.getElementById('voiceBtn');
     
     if (listeningMode === 'manual') {
+        // Check if Google STT is currently recording
+        if (isRecording && sttMethod === 'google') {
+            console.log('[App] Stopping Google STT recording');
+            const apiKey = getApiKey('google_stt', 'googleSTTApiKey');
+            await stopGoogleSTTRecording(apiKey);
+            return;
+        }
+        
+        // Check if browser recognition is active
+        if (isRecognitionActive && sttMethod === 'browser') {
+            console.log('[App] Stopping browser recognition');
+            if (recognition) {
+                recognition.stop();
+            }
+            voiceBtn.classList.remove('recording');
+            showListeningIndicator(false);
+            return;
+        }
+        
         // Start recording
         voiceBtn.classList.add('recording');
         showListeningIndicator(true);
@@ -1312,6 +1331,11 @@ function handleSpeechEnd() {
 }
 
 // Fallback to Google Cloud STT API
+// --- Google STT Implementation ---
+let mediaRecorder = null;
+let audioChunks = [];
+let isRecording = false;
+
 async function fallbackToGoogleSTT() {
     const apiKey = getApiKey('google_stt', 'googleSTTApiKey');
     if (!apiKey) {
@@ -1319,9 +1343,219 @@ async function fallbackToGoogleSTT() {
         return;
     }
     
-    // This would require getUserMedia and audio recording
-    // For simplicity, showing error for now
-    showError('Google STT fallback not yet implemented in this version');
+    try {
+        console.log('[GoogleSTT] Starting Google Cloud Speech-to-Text recording');
+        await startGoogleSTTRecording(apiKey);
+    } catch (error) {
+        console.error('[GoogleSTT] Error with Google STT:', error);
+        showError(getLocalizedText('sttRecordingError') || 'Error recording audio');
+    }
+}
+
+// Start recording audio for Google STT
+async function startGoogleSTTRecording(apiKey) {
+    if (isRecording) {
+        console.log('[GoogleSTT] Already recording, stopping previous recording');
+        await stopGoogleSTTRecording(apiKey);
+        return;
+    }
+    
+    try {
+        // Request microphone access
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+            audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true,
+                sampleRate: 16000
+            } 
+        });
+        
+        // Configure MediaRecorder for LINEAR16 format (preferred by Google STT)
+        const options = {
+            mimeType: 'audio/webm;codecs=opus',
+            audioBitsPerSecond: 16000
+        };
+        
+        // Fallback to other formats if webm is not supported
+        if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+            options.mimeType = 'audio/ogg;codecs=opus';
+            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                options.mimeType = 'audio/wav';
+            }
+        }
+        
+        mediaRecorder = new MediaRecorder(stream, options);
+        audioChunks = [];
+        
+        mediaRecorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+                audioChunks.push(event.data);
+            }
+        };
+        
+        mediaRecorder.onstop = async () => {
+            console.log('[GoogleSTT] Recording stopped, processing audio');
+            isRecording = false;
+            
+            // Stop all tracks to release microphone
+            stream.getTracks().forEach(track => track.stop());
+            
+            // Update UI for manual mode
+            if (listeningMode === 'manual') {
+                const voiceBtn = document.getElementById('voiceBtn');
+                if (voiceBtn) voiceBtn.classList.remove('recording');
+                showListeningIndicator(false);
+            }
+            
+            // Convert audio chunks to base64
+            const audioBlob = new Blob(audioChunks, { type: options.mimeType });
+            await sendAudioToGoogleSTT(audioBlob, apiKey);
+        };
+        
+        mediaRecorder.onerror = (error) => {
+            console.error('[GoogleSTT] MediaRecorder error:', error);
+            isRecording = false;
+            stream.getTracks().forEach(track => track.stop());
+            
+            // Update UI for manual mode
+            if (listeningMode === 'manual') {
+                const voiceBtn = document.getElementById('voiceBtn');
+                if (voiceBtn) voiceBtn.classList.remove('recording');
+                showListeningIndicator(false);
+            }
+            
+            showError('Error recording audio');
+        };
+        
+        // Start recording
+        mediaRecorder.start();
+        isRecording = true;
+        playListeningSound();
+        console.log('[GoogleSTT] Recording started');
+        
+        // Auto-stop after 10 seconds (adjust as needed)
+        setTimeout(() => {
+            if (isRecording && mediaRecorder && mediaRecorder.state === 'recording') {
+                console.log('[GoogleSTT] Auto-stopping recording after timeout');
+                stopGoogleSTTRecording(apiKey);
+            }
+        }, 10000);
+        
+    } catch (error) {
+        console.error('[GoogleSTT] Error accessing microphone:', error);
+        isRecording = false;
+        
+        // Update UI for manual mode
+        if (listeningMode === 'manual') {
+            const voiceBtn = document.getElementById('voiceBtn');
+            if (voiceBtn) voiceBtn.classList.remove('recording');
+            showListeningIndicator(false);
+        }
+        
+        if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+            showError(getLocalizedText('microphonePermissionDenied'));
+        } else {
+            showError('Error accessing microphone: ' + error.message);
+        }
+    }
+}
+
+// Stop recording and process audio
+async function stopGoogleSTTRecording(apiKey) {
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+    }
+}
+
+// Convert audio blob to base64 and send to Google STT API
+async function sendAudioToGoogleSTT(audioBlob, apiKey) {
+    try {
+        console.log('[GoogleSTT] Converting audio to base64');
+        
+        // Convert blob to base64
+        const base64Audio = await blobToBase64(audioBlob);
+        
+        // Remove data URL prefix
+        const audioContent = base64Audio.split(',')[1];
+        
+        // Determine language code based on current language
+        const lang = getCurrentLanguage();
+        const languageCodes = {
+            fr: 'fr-FR',
+            it: 'it-IT',
+            en: 'en-US'
+        };
+        const languageCode = languageCodes[lang] || 'fr-FR';
+        
+        console.log('[GoogleSTT] Sending audio to Google Cloud Speech-to-Text API');
+        
+        // Send to Google Cloud Speech-to-Text API
+        const response = await fetch(`https://speech.googleapis.com/v1/speech:recognize?key=${apiKey}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                config: {
+                    encoding: 'WEBM_OPUS',
+                    sampleRateHertz: 16000,
+                    languageCode: languageCode,
+                    enableAutomaticPunctuation: true,
+                    model: 'default'
+                },
+                audio: {
+                    content: audioContent
+                }
+            })
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error('[GoogleSTT] API error:', errorData);
+            
+            if (response.status === 400) {
+                showError('Invalid audio format or API request');
+            } else if (response.status === 401 || response.status === 403) {
+                showError('Invalid API key or insufficient permissions');
+            } else {
+                showError(`Google STT API error: ${response.status}`);
+            }
+            return;
+        }
+        
+        const data = await response.json();
+        console.log('[GoogleSTT] API response:', data);
+        
+        if (data.results && data.results.length > 0 && data.results[0].alternatives) {
+            const transcript = data.results[0].alternatives[0].transcript;
+            console.log('[GoogleSTT] Transcription:', transcript);
+            
+            // Process the transcript like browser speech recognition
+            const event = {
+                results: [[{ transcript: transcript }]],
+                resultIndex: 0
+            };
+            await handleSpeechResult(event);
+        } else {
+            console.log('[GoogleSTT] No transcription results');
+            showError(getLocalizedText('noSpeechDetected'));
+        }
+        
+    } catch (error) {
+        console.error('[GoogleSTT] Error sending audio to API:', error);
+        showError('Error processing audio: ' + error.message);
+    }
+}
+
+// Convert blob to base64
+function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
 }
 
 // Wake word detection
@@ -2811,6 +3045,7 @@ function getLocalizedText(key) {
         microphonePermissionDenied: { fr: 'Permission microphone refusée', it: 'Permesso microfono negato', en: 'Microphone permission denied' },
         recognitionFailed: { fr: 'La reconnaissance vocale a échoué. Basculement en mode manuel.', it: 'Il riconoscimento vocale è fallito. Passaggio alla modalità manuale.', en: 'Speech recognition failed. Switching to manual mode.' },
         sttApiKeyMissing: { fr: 'Clé API STT manquante', it: 'Chiave API STT mancante', en: 'STT API key missing' },
+        sttRecordingError: { fr: 'Erreur d\'enregistrement audio', it: 'Errore di registrazione audio', en: 'Audio recording error' },
         taskExtractionFailed: { fr: 'Impossible d\'extraire la tâche', it: 'Impossibile estrarre il compito', en: 'Could not extract task' },
         taskCreationFailed: { fr: 'Erreur lors de la création', it: 'Errore durante la creazione', en: 'Creation error' },
         show: { fr: 'Afficher', it: 'Mostra', en: 'Show' },

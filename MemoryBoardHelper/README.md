@@ -19,8 +19,15 @@
 
 ## 🔑 API Keys
 
-**Required:** Mistral AI (free tier) - https://console.mistral.ai/
-**Optional:** Google Cloud TTS/STT (browser fallback available)
+**Required:** 
+- Mistral AI (free tier) - https://console.mistral.ai/
+
+**Optional (enhances experience):**
+- Google Cloud Speech-to-Text API - https://console.cloud.google.com/
+  - Used when browser speech recognition unavailable
+  - Better accuracy in noisy environments
+  - Enable "Speech-to-Text API" in Google Cloud Console
+- Google Cloud Text-to-Speech API (browser TTS available as fallback)
 
 ---
 
@@ -28,9 +35,17 @@
 
 1. Open `index.html` in browser (Chrome/Edge recommended)
 2. Add Mistral API key in "Gestion des clés API" → Check "Mémoriser" → Save
-3. Allow microphone and notifications
-4. (Optional) Add emergency contacts in "Urgence"
-5. Choose Manual or Always-Listening mode
+3. (Optional) Add Google Cloud STT API key for enhanced speech recognition
+4. Allow microphone and notifications when prompted
+5. (Optional) Add emergency contacts in "Urgence"
+6. Choose Manual or Always-Listening mode
+
+### Getting Google Cloud STT API Key:
+1. Go to https://console.cloud.google.com/
+2. Create a new project or select existing
+3. Enable "Cloud Speech-to-Text API"
+4. Go to "Credentials" → "Create Credentials" → "API Key"
+5. Copy the key and paste in app settings
 
 ---
 
@@ -70,7 +85,14 @@ All data stored locally | No cloud sync | API keys in browser localStorage only
 
 ## 🐛 Issues?
 
-**Mic:** Check permissions, refresh | **Voice:** Add Google API or speak clearly | **Save:** Clear cache (auto-fallback) | **Alarms:** Keep tab open, allow notifications | **API:** Verify key (no spaces), check quota
+**Mic:** Check permissions, refresh browser
+**Voice not working:** 
+- Browser speech recognition may not be available → Add Google Cloud STT API key
+- Speak clearly and wait for beep sound
+- Click microphone again to stop recording manually
+**Save issues:** Clear cache (auto-fallback to localStorage)
+**Alarms:** Keep tab open, allow notifications
+**API errors:** Verify key (no spaces/extra characters), check Google Cloud billing/quota
 
 ---
 
