@@ -11,9 +11,6 @@ let touchStartX = 0;
 let touchEndX = 0;
 let readArticles = new Set();
 let articleHistory = [];
-let longPressTimer = null;
-let contextMenuVisible = false;
-let currentContextMenuArticle = null;
 let alternativeSourcesData = null;
 let currentAlternativeCategory = 'presse_standard';
 let alternativeSourcesFilter = '';
@@ -64,6 +61,11 @@ const translations = {
         alternatif: 'Alternative Press',
         presse_region: 'Regional Press',
         spiritualite: 'Spirituality & Religions',
+        gastronomie: 'Gastronomy',
+        humour: 'Humor',
+        arts: 'Arts',
+        feminin: 'Women',
+        people: 'Celebrities',
         resetReadArticles: 'Reset read articles',
         articlesReset: 'Read articles have been reset',
         noFilter: 'No filter',
@@ -115,6 +117,11 @@ const translations = {
         alternatif: 'Presse Alternative',
         presse_region: 'Presse Régionale',
         spiritualite: 'Spiritualité & Religions',
+        gastronomie: 'Gastronomie',
+        humour: 'Humour',
+        arts: 'Arts',
+        feminin: 'Féminin',
+        people: 'People',
         resetReadArticles: 'Réinitialiser les articles lus',
         articlesReset: 'Les articles lus ont été réinitialisés',
         noFilter: 'Aucun filtre',
@@ -209,18 +216,25 @@ document.addEventListener('DOMContentLoaded', async function() {
     refreshAllFeeds();
     initSwipeGestures();
     initArticleClickHandlers();
-    initContextMenu();
+    
+    // Initialize alternative sources content if sources section is already visible
+    const sourcesWrapper = document.getElementById('sourcesContentWrapper');
+    if (sourcesWrapper && sourcesWrapper.style.display !== 'none') {
+        renderSourcesContent();
+    }
 });
 
 // Load alternative sources from JSON file
 async function loadAlternativeSources() {
+    console.log('🔄 Loading alternative sources from JSON...');
     try {
         // Try local file first, then fallback to GitHub
         let response;
         try {
             response = await fetch('rss-sources-complete.json');
+            console.log('✓ Loading from local file...');
         } catch (localError) {
-            console.log('Local file not found, loading from GitHub...');
+            console.log('⚠️ Local file not found, loading from GitHub...');
             response = await fetch('https://raw.githubusercontent.com/CraftKontrol/AI_Agents/main/NewsAgregator/rss-sources-complete.json');
         }
         
@@ -228,9 +242,25 @@ async function loadAlternativeSources() {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         alternativeSourcesData = await response.json();
-        console.log('Alternative sources loaded:', Object.keys(alternativeSourcesData.categories).length, 'categories');
+        console.log('✓ Alternative sources loaded:', Object.keys(alternativeSourcesData.categories).length, 'categories');
+        
+        // Count total sources
+        let totalSources = 0;
+        Object.keys(alternativeSourcesData.categories).forEach(catKey => {
+            const cat = alternativeSourcesData.categories[catKey];
+            if (cat.sources) {
+                totalSources += cat.sources.length;
+            }
+        });
+        console.log(`📰 Total sources available: ${totalSources}`);
+        
+        // Update the UI if the sources section is already open
+        const sourcesWrapper = document.getElementById('sourcesContentWrapper');
+        if (sourcesWrapper && sourcesWrapper.style.display !== 'none' && currentSourcesTab === 'alternative') {
+            renderSourcesContent();
+        }
     } catch (error) {
-        console.warn('Could not load alternative sources:', error.message);
+        console.error('✗ Could not load alternative sources:', error.message);
         // Create empty structure so the app still works
         alternativeSourcesData = {
             metadata: { title: 'Sources alternatives', description: 'Non disponibles' },
@@ -998,11 +1028,17 @@ function renderNewsGrid() {
                         <span class="category-count">(${articlesByCategory[category].length})</span>
                     </h3>
                     ${articlesByCategory[category].map(article => renderNewsCard(article)).join('')}
+                    <button class="back-to-column" onclick="scrollToColumn(this)" title="Back to top">
+                        <span class="material-symbols-outlined">arrow_upward</span>
+                    </button>
                 </div>
             `).join('');
         
         // Update mobile view
         updateMobileView();
+        
+        // Initialize column scroll listeners
+        initializeColumnScrollListeners();
     }
 }
 
@@ -1039,6 +1075,9 @@ function renderNewsCard(article, showCategory = false) {
                     <div class="news-source">${article.source}</div>
                     ${categoryBadge}
                     <div class="news-date">${formattedDate}</div>
+                    <button class="btn-delete-source" onclick="deleteSourceFromArticle(event, '${article.source}')" title="Delete this source">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
                 </div>
                 <h4 class="news-title">${article.title}</h4>
                 <p class="news-excerpt">${article.excerpt}...</p>
@@ -1186,6 +1225,7 @@ function navigateCategory(direction) {
     }
     
     updateMobileView();
+    initializeColumnScrollListeners();
 }
 
 function updateMobileView() {
@@ -1395,115 +1435,25 @@ function quickResetReadArticles() {
     console.log('✅ Read articles cleared. Refreshing view...');
 }
 
-// Context menu for articles (long press)
-function initContextMenu() {
-    // Create context menu element
-    const contextMenu = document.createElement('div');
-    contextMenu.id = 'contextMenu';
-    contextMenu.className = 'context-menu';
-    contextMenu.style.display = 'none';
-    contextMenu.innerHTML = `
-        <div class="context-menu-item" onclick="deleteArticleSource()">
-            <span class="material-symbols-outlined">delete</span>
-            <span data-lang="deleteThisSource">Supprimer cette source</span>
-        </div>
-    `;
-    document.body.appendChild(contextMenu);
+// Delete source directly from article card
+function deleteSourceFromArticle(event, sourceName) {
+    event.preventDefault();
+    event.stopPropagation();
     
-    // Close context menu when clicking outside
-    document.addEventListener('click', (e) => {
-        if (contextMenuVisible && !e.target.closest('.context-menu') && !e.target.closest('.news-card')) {
-            hideContextMenu();
-        }
-    });
+    const sourceIndex = sources.findIndex(s => s.name === sourceName);
+    if (sourceIndex === -1) return;
     
-    // Delegate events for news cards
-    document.addEventListener('mousedown', handleLongPressStart);
-    document.addEventListener('touchstart', handleLongPressStart);
-    document.addEventListener('mouseup', handleLongPressEnd);
-    document.addEventListener('touchend', handleLongPressEnd);
-    document.addEventListener('mouseleave', handleLongPressEnd);
-}
-
-function handleLongPressStart(e) {
-    const newsCard = e.target.closest('.news-card');
-    if (!newsCard) return;
-    
-    const link = newsCard.querySelector('.news-link');
-    if (!link) return;
-    
-    longPressTimer = setTimeout(() => {
-        const data = JSON.parse(link.dataset.articleData);
-        // Find source for this article
-        const articleSource = sources.find(s => s.name === data.source);
-        if (!articleSource) return;
-        
-        currentContextMenuArticle = {
-            ...data,
-            sourceUrl: articleSource.url,
-            sourceIndex: sources.indexOf(articleSource)
-        };
-        
-        showContextMenu(e);
-    }, 1000); // 1 second
-}
-
-function handleLongPressEnd(e) {
-    if (longPressTimer) {
-        clearTimeout(longPressTimer);
-        longPressTimer = null;
-    }
-}
-
-function showContextMenu(e) {
-    e.preventDefault();
-    const contextMenu = document.getElementById('contextMenu');
-    
-    let x, y;
-    if (e.touches && e.touches.length > 0) {
-        x = e.touches[0].pageX;
-        y = e.touches[0].pageY;
-    } else {
-        x = e.pageX;
-        y = e.pageY;
-    }
-    
-    contextMenu.style.left = x + 'px';
-    contextMenu.style.top = y + 'px';
-    contextMenu.style.display = 'block';
-    contextMenuVisible = true;
-    
-    // Update language
-    contextMenu.querySelectorAll('[data-lang]').forEach(element => {
-        const key = element.getAttribute('data-lang');
-        if (translations[currentLanguage][key]) {
-            element.textContent = translations[currentLanguage][key];
-        }
-    });
-}
-
-function hideContextMenu() {
-    const contextMenu = document.getElementById('contextMenu');
-    if (contextMenu) {
-        contextMenu.style.display = 'none';
-    }
-    contextMenuVisible = false;
-    currentContextMenuArticle = null;
-}
-
-function deleteArticleSource() {
-    if (!currentContextMenuArticle) return;
-    
-    if (confirm(`${translations[currentLanguage].deleteThisSource}: "${currentContextMenuArticle.source}"?`)) {
-        sources.splice(currentContextMenuArticle.sourceIndex, 1);
+    if (confirm(`${translations[currentLanguage].deleteThisSource}: "${sourceName}"?`)) {
+        sources.splice(sourceIndex, 1);
         saveSources();
         renderSourcesList();
         refreshAllFeeds();
         showSuccess(translations[currentLanguage].sourceDeleted);
     }
-    
-    hideContextMenu();
 }
+
+// Context menu for articles (long press) - REMOVED
+// All long press functionality replaced with direct delete button on article cards
 
 // Alternative sources management
 let currentSourcesTab = 'default'; // 'default' or 'alternative'
@@ -1573,6 +1523,23 @@ function renderSourcesContent() {
         
         container.innerHTML = `
             <div class="alternative-sources-wrapper">
+               
+               <!-- Search filter -->
+                <div class="alt-search-filter">
+                    <span class="material-symbols-outlined">search</span>
+                    <input type="text" 
+                           id="altSourcesSearch" 
+                           placeholder="${translations[currentLanguage].searchSources}"
+                           value="${alternativeSourcesFilter}"
+                           oninput="filterAlternativeSources(this.value)" />
+                    ${alternativeSourcesFilter ? `
+                        <button class="clear-search-btn" onclick="clearAlternativeFilter()">
+                            <span class="material-symbols-outlined">close</span>
+                        </button>
+                    ` : ''}
+                </div>
+               
+               
                 <!-- Category tabs -->
                 <div class="alt-category-tabs">
                     ${categories.map(catKey => {
@@ -1588,20 +1555,7 @@ function renderSourcesContent() {
                     }).join('')}
                 </div>
 
-                <!-- Search filter -->
-                <div class="alt-search-filter">
-                    <span class="material-symbols-outlined">search</span>
-                    <input type="text" 
-                           id="altSourcesSearch" 
-                           placeholder="${translations[currentLanguage].searchSources}"
-                           value="${alternativeSourcesFilter}"
-                           oninput="filterAlternativeSources(this.value)" />
-                    ${alternativeSourcesFilter ? `
-                        <button class="clear-search-btn" onclick="clearAlternativeFilter()">
-                            <span class="material-symbols-outlined">close</span>
-                        </button>
-                    ` : ''}
-                </div>
+                
 
                 <!-- Sources grid -->
                 <div class="alt-sources-grid">
@@ -1614,46 +1568,192 @@ function renderSourcesContent() {
     updateLanguage();
 }
 
+// Extract domain from URL for grouping
+function extractDomain(url) {
+    try {
+        const urlObj = new URL(url);
+        let domain = urlObj.hostname;
+        // Remove 'www.' prefix
+        domain = domain.replace(/^www\./i, '');
+        return domain;
+    } catch (e) {
+        return 'autres';
+    }
+}
+
+// Get display name for domain
+function getDomainDisplayName(domain, sources) {
+    // Use the domain name directly as title
+    return domain;
+}
+
 function renderAlternativeSourcesGrid() {
-    if (!alternativeSourcesData || !alternativeSourcesData.categories[currentAlternativeCategory]) {
+    if (!alternativeSourcesData || !alternativeSourcesData.categories) {
         return '<p class="no-sources">Aucune source disponible</p>';
     }
 
-    const currentCat = alternativeSourcesData.categories[currentAlternativeCategory];
-    let sourcesToShow = currentCat.sources || [];
+    // Domains to exclude (social media, video platforms, etc.)
+    const excludedDomains = [
+        'youtube.com', 'youtu.be',
+        'twitter.com', 'x.com',
+        'facebook.com', 'fb.com',
+        'instagram.com',
+        'tiktok.com',
+        'linkedin.com',
+        'reddit.com',
+        'pinterest.com',
+        'snapchat.com',
+        'bsky.app', 'bluesky.social',
+        'telegram.org', 't.me',
+        'whatsapp.com',
+        'discord.com', 'discord.gg',
+        'twitch.tv',
+        'vimeo.com',
+        'dailymotion.com',
+        'mastodon.social'
 
+    ];
+
+    let sourcesToShow = [];
+    
     // Apply filter
     if (alternativeSourcesFilter) {
+        // Search across ALL categories when filter is active
         const filterLower = alternativeSourcesFilter.toLowerCase();
-        sourcesToShow = sourcesToShow.filter(source => 
-            source.name.toLowerCase().includes(filterLower) ||
-            source.url.toLowerCase().includes(filterLower)
-        );
+        
+        Object.keys(alternativeSourcesData.categories).forEach(catKey => {
+            const cat = alternativeSourcesData.categories[catKey];
+            if (cat.sources) {
+                cat.sources.forEach(source => {
+                    // Check if domain is excluded
+                    const domain = extractDomain(source.url);
+                    if (excludedDomains.includes(domain)) {
+                        return; // Skip this source
+                    }
+                    
+                    if (source.name.toLowerCase().includes(filterLower) ||
+                        source.url.toLowerCase().includes(filterLower)) {
+                        sourcesToShow.push({
+                            ...source,
+                            categoryKey: catKey,
+                            categoryName: cat.name
+                        });
+                    }
+                });
+            }
+        });
+    } else {
+        // No filter - show only current category
+        if (!alternativeSourcesData.categories[currentAlternativeCategory]) {
+            return '<p class="no-sources">Aucune source disponible</p>';
+        }
+        
+        const currentCat = alternativeSourcesData.categories[currentAlternativeCategory];
+        sourcesToShow = (currentCat.sources || [])
+            .filter(source => {
+                const domain = extractDomain(source.url);
+                return !excludedDomains.includes(domain);
+            })
+            .map(source => ({
+                ...source,
+                categoryKey: currentAlternativeCategory,
+                categoryName: currentCat.name
+            }));
     }
 
     if (sourcesToShow.length === 0) {
         return `<p class="no-sources">Aucune source trouvée pour "${alternativeSourcesFilter}"</p>`;
     }
 
-    return sourcesToShow.map(source => {
-        const isAdded = sources.some(s => s.url === source.url);
-        const safeName = (source.name || 'Sans nom').replace(/'/g, "\\'").replace(/"/g, '&quot;');
-        const safeUrl = (source.url || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    // Group sources by domain
+    const groupedByDomain = {};
+    sourcesToShow.forEach(source => {
+        const domain = extractDomain(source.url);
+        if (!groupedByDomain[domain]) {
+            groupedByDomain[domain] = [];
+        }
+        groupedByDomain[domain].push(source);
+    });
+
+    // Sort domains: those with multiple sources first
+    const sortedDomains = Object.keys(groupedByDomain).sort((a, b) => {
+        const countA = groupedByDomain[a].length;
+        const countB = groupedByDomain[b].length;
+        if (countA !== countB) {
+            return countB - countA; // More sources first
+        }
+        return a.localeCompare(b); // Then alphabetically
+    });
+
+    let html = '';
+    
+    sortedDomains.forEach(domain => {
+        const domainSources = groupedByDomain[domain];
+        const displayName = getDomainDisplayName(domain, domainSources);
         
-        return `
-            <div class="alt-source-card ${isAdded ? 'added' : ''}">
-                <div class="alt-source-info">
-                    <h4>${source.name || 'Sans nom'}</h4>
-                    <div class="alt-source-url" title="${source.url}">${source.url || 'URL manquante'}</div>
+        if (domainSources.length > 1) {
+            // Multiple sources: create collapsible group
+            const groupId = `domain-${domain.replace(/\./g, '-')}`;
+            html += `
+                <div class="domain-group">
+                    <div class="domain-group-header" onclick="toggleDomainGroup('${groupId}')">
+                        <div class="domain-info">
+                            <h3>${displayName}</h3>
+                            <span class="domain-count">${domainSources.length} sources</span>
+                        </div>
+                        <span class="material-symbols-outlined toggle-icon">expand_more</span>
+                    </div>
+                    <div id="${groupId}" class="domain-group-content" style="display: none;">
+                        ${domainSources.map(source => renderSourceCard(source)).join('')}
+                    </div>
                 </div>
-                <button class="btn-alt-action ${isAdded ? 'btn-remove' : 'btn-add'}" 
-                        onclick="${isAdded ? `removeAlternativeSource('${safeUrl}')` : `addAlternativeSource('${safeName}', '${safeUrl}', '${currentAlternativeCategory}')`}">
-                    <span class="material-symbols-outlined">${isAdded ? 'remove' : 'add'}</span>
-                    <span data-lang="${isAdded ? 'removeSource' : 'addToMySources'}">${translations[currentLanguage][isAdded ? 'removeSource' : 'addToMySources']}</span>
-                </button>
+            `;
+        } else {
+            // Single source: render directly
+            html += renderSourceCard(domainSources[0]);
+        }
+    });
+
+    return html;
+}
+
+function renderSourceCard(source) {
+    const isAdded = sources.some(s => s.url === source.url);
+    const safeName = (source.name || 'Sans nom').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    const safeUrl = (source.url || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    
+    // Show category badge when searching across categories
+    const categoryBadge = alternativeSourcesFilter ? 
+        `<span class="alt-source-category">${translations[currentLanguage][source.categoryKey] || source.categoryName}</span>` : '';
+    
+    return `
+        <div class="alt-source-card ${isAdded ? 'added' : ''}">
+            <div class="alt-source-info">
+                <h4>${source.name || 'Sans nom'}</h4>
+                ${categoryBadge}
+                <div class="alt-source-url" title="${source.url}">${source.url || 'URL manquante'}</div>
             </div>
-        `;
-    }).join('');
+            <button class="btn-alt-action ${isAdded ? 'btn-remove' : 'btn-add'}" 
+                    onclick="${isAdded ? `removeAlternativeSource('${safeUrl}')` : `addAlternativeSource('${safeName}', '${safeUrl}', '${source.categoryKey}')`}">
+                <span class="material-symbols-outlined">${isAdded ? 'remove' : 'add'}</span>
+                <span data-lang="${isAdded ? 'removeSource' : 'addToMySources'}">${translations[currentLanguage][isAdded ? 'removeSource' : 'addToMySources']}</span>
+            </button>
+        </div>
+    `;
+}
+
+function toggleDomainGroup(groupId) {
+    const content = document.getElementById(groupId);
+    const header = content.previousElementSibling;
+    const icon = header.querySelector('.toggle-icon');
+    
+    if (content.style.display === 'none' || !content.style.display) {
+        content.style.display = 'block';
+        icon.textContent = 'expand_less';
+    } else {
+        content.style.display = 'none';
+        icon.textContent = 'expand_more';
+    }
 }
 
 function switchAlternativeCategory(categoryKey) {
@@ -1669,15 +1769,16 @@ function filterAlternativeSources(filterText) {
         grid.innerHTML = renderAlternativeSourcesGrid();
     }
     
-    // Update clear button visibility
+    // Update clear button visibility without losing focus
     const wrapper = document.querySelector('.alt-search-filter');
     const existingClearBtn = wrapper.querySelector('.clear-search-btn');
     if (filterText && !existingClearBtn) {
-        wrapper.innerHTML += `
+        // Use insertAdjacentHTML to avoid reconstructing the entire wrapper
+        wrapper.insertAdjacentHTML('beforeend', `
             <button class="clear-search-btn" onclick="clearAlternativeFilter()">
                 <span class="material-symbols-outlined">close</span>
             </button>
-        `;
+        `);
     } else if (!filterText && existingClearBtn) {
         existingClearBtn.remove();
     }
@@ -1732,3 +1833,71 @@ function removeAlternativeSource(url) {
         refreshAllFeeds();
     }
 }
+// Back to Column Button Functionality
+function scrollToColumn(button) {
+    const column = button.closest('.news-column');
+    if (column) {
+        const columnHeader = column.querySelector('h3');
+        if (columnHeader) {
+            // Scroll within the column to the header
+            column.scrollTop = 0;
+        }
+    }
+}
+
+function updateColumnBackButtons() {
+    const columns = document.querySelectorAll('.news-column');
+    columns.forEach(column => {
+        const backButton = column.querySelector('.back-to-column');
+        if (!backButton) return;
+        
+        // Check if column content is scrolled down
+        if (column.scrollTop > 200) {
+            backButton.classList.add('visible');
+        } else {
+            backButton.classList.remove('visible');
+        }
+    });
+}
+
+// Initialize column scroll listeners
+function initializeColumnScrollListeners() {
+    const columns = document.querySelectorAll('.news-column');
+    columns.forEach(column => {
+        // Remove old listener if exists
+        column.removeEventListener('scroll', updateColumnBackButtons);
+        // Add new listener
+        column.addEventListener('scroll', updateColumnBackButtons, { passive: true });
+    });
+}
+
+// Back to Top Button Functionality
+function scrollToTop() {
+    const newsContainerWrapper = document.querySelector('.news-container-wrapper');
+    if (newsContainerWrapper) {
+        newsContainerWrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+}
+
+function updateBackToTopButton() {
+    const backToTopBtn = document.getElementById('backToTopBtn');
+    if (!backToTopBtn) return;
+    
+    const scrollPosition = window.scrollY || document.documentElement.scrollTop;
+    
+    if (scrollPosition > 1000) {
+        backToTopBtn.classList.add('visible');
+    } else {
+        backToTopBtn.classList.remove('visible');
+    }
+}
+
+// Add scroll event listener for back to top button
+window.addEventListener('scroll', updateBackToTopButton, { passive: true });
+
+// Initialize back to top button state on page load
+document.addEventListener('DOMContentLoaded', () => {
+    updateBackToTopButton();
+});

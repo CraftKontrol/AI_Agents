@@ -654,6 +654,33 @@ body {
     font-size: 12px;
 }
 
+.btn-delete-source {
+    background: none;
+    border: none;
+    color: var(--error-color);
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    font-size: 20px;
+}
+
+.btn-delete-source:hover {
+    color: #ff6666;
+    transform: scale(1.1);
+}
+
+.btn-delete-source:active {
+    transform: scale(0.95);
+}
+
+.btn-delete-source .material-symbols-outlined {
+    font-size: 20px;
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
 .news-title {
     color: #ffffff;
     font-size: 16px;
@@ -1010,34 +1037,7 @@ body {
     }
 }
 
-/* Context Menu */
-.context-menu {
-    position: absolute;
-    background-color: var(--surface-elevated);
-    border: 1px solid var(--border-color);
-    border-radius: 0;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-    z-index: 1000;
-    min-width: 200px;
-}
-
-.context-menu-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 12px 15px;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-    color: var(--text-color);
-}
-
-.context-menu-item:hover {
-    background-color: var(--surface-color);
-}
-
-.context-menu-item .material-symbols-outlined {
-    color: var(--error-color);
-}
+/* Context Menu - REMOVED (replaced with delete button on article cards) */
 
 /* Alternative Sources - Category Tabs */
 .alternative-sources-wrapper {
@@ -1137,13 +1137,72 @@ body {
 
 /* Alternative Sources - Grid */
 .alt-sources-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    display: flex;
+    flex-direction: column;
     gap: 15px;
 }
 
-.alt-source-card {
+/* Domain group styles */
+.domain-group {
+    background-color: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 0;
+    overflow: hidden;
+}
+
+.domain-group-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background-color: var(--surface-elevated);
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    user-select: none;
+}
+
+.domain-group-header:hover {
+    background-color: rgba(74, 158, 255, 0.1);
+}
+
+.domain-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.domain-info h3 {
+    color: var(--text-color);
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.domain-count {
+    padding: 3px 10px;
+    background-color: var(--primary-color);
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 0;
+}
+
+.toggle-icon {
+    color: var(--text-color);
+    font-size: 24px;
+    transition: transform 0.2s ease;
+}
+
+.domain-group-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 15px;
+    padding: 15px;
     background-color: var(--background-color);
+}
+
+.alt-source-card {
+    background-color: var(--surface-color);
     border: 1px solid var(--border-color);
     padding: 15px;
     border-radius: 0;
@@ -1169,6 +1228,17 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.alt-source-category {
+    display: inline-block;
+    padding: 3px 8px;
+    background-color: var(--surface-elevated);
+    color: var(--primary-color);
+    font-size: 11px;
+    margin-bottom: 5px;
+    border-radius: 0;
+    font-weight: 500;
 }
 
 .alt-source-url {
@@ -1227,8 +1297,27 @@ body {
         font-size: 13px;
     }
 
-    .alt-sources-grid {
+    .domain-group-content {
         grid-template-columns: 1fr;
+        padding: 10px;
+    }
+    
+    .domain-group-header {
+        padding: 12px;
+    }
+    
+    .domain-info {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    .domain-info h3 {
+        font-size: 14px;
+    }
+    
+    .domain-count {
+        font-size: 11px;
+        padding: 2px 8px;
     }
 }
 
@@ -1374,4 +1463,110 @@ body {
 
 .news-card:active {
     opacity: 0.9;
+}
+
+/* Back to Column Button */
+.back-to-column {
+    position: sticky;
+    bottom: 15px;
+    right: 15px;
+    width: 50px;
+    height: 50px;
+    background-color: var(--primary-color);
+    color: #ffffff;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(74, 158, 255, 0.3);
+    z-index: 999;
+    padding: 0;
+    font-size: 24px;
+    margin: 0 auto 15px;
+}
+
+.back-to-column.visible {
+    display: flex;
+    opacity: 1;
+    visibility: visible;
+}
+
+.back-to-column:hover {
+    background-color: var(--primary-dark);
+    box-shadow: 0 6px 16px rgba(74, 158, 255, 0.5);
+    transform: translateY(-2px);
+}
+
+.back-to-column:active {
+    transform: translateY(0);
+}
+
+.back-to-column .material-symbols-outlined {
+    font-size: 24px;
+}
+
+
+/* Back to Top Button */
+.back-to-top {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 50px;
+    height: 50px;
+    background-color: var(--primary-color);
+    color: #ffffff;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(74, 158, 255, 0.3);
+    z-index: 1000;
+    padding: 0;
+    font-size: 24px;
+}
+
+.back-to-top.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.back-to-top:hover {
+    background-color: var(--primary-dark);
+    box-shadow: 0 6px 16px rgba(74, 158, 255, 0.5);
+    transform: translateY(-2px);
+}
+
+.back-to-top:active {
+    transform: translateY(0);
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .back-to-top {
+        bottom: 20px;
+        right: 20px;
+        width: 45px;
+        height: 45px;
+        font-size: 20px;
+    }
+}
+
+@media (max-width: 480px) {
+    .back-to-top {
+        bottom: 15px;
+        right: 15px;
+        width: 40px;
+        height: 40px;
+        font-size: 18px;
+    }
 }
