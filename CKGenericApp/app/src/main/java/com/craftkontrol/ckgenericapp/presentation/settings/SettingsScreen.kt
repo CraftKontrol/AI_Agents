@@ -1,5 +1,6 @@
 package com.craftkontrol.ckgenericapp.presentation.settings
 
+import com.craftkontrol.ckgenericapp.BuildConfig
 import com.craftkontrol.ckgenericapp.R
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -184,7 +185,7 @@ fun SettingsScreen(
                             style = MaterialTheme.typography.titleLarge
                         )
                         Text(
-                            text = "Version 1.0.0",
+                            text = "Version ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
