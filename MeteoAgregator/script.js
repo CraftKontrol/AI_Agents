@@ -298,6 +298,12 @@ document.addEventListener('DOMContentLoaded', function() {
     loadMainApiKeys();
     initAutoPositioning();
 
+    // Auto-collapse api-management-section and settings-section at start
+    var apiKeysContent = document.getElementById('apiKeysContent');
+    if (apiKeysContent) apiKeysContent.style.display = 'none';
+    var settingsContent = document.getElementById('settingsContent');
+    if (settingsContent) settingsContent.style.display = 'none';
+
     // Ensure main UI is visible (previous setup section removed)
     const sec = document.getElementById('securityNotice');
     if (sec) sec.style.display = 'block';
