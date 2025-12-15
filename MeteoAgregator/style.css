@@ -73,6 +73,40 @@ body {
     gap: 15px;
 }
 
+.position-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.position-label {
+    color: var(--text-muted);
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* Floating main content when positioned */
+#mainContent.fixed {
+    position: fixed;
+    z-index: 9999;
+    cursor: move;
+    width: 90vw;
+    max-width: 1000px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+}
+
+@media (max-width: 768px) {
+    #mainContent.fixed {
+        position: static;
+        width: auto;
+        box-shadow: none;
+        cursor: default;
+    }
+}
+
 .language-selector select {
     background-color: var(--background-color);
     color: var(--text-color);

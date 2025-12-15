@@ -30,7 +30,65 @@
         </div>
     </header>
 
-    <!-- API Keys Management Section -->
+
+
+
+    <!-- Main Content -->
+    <main class="main-content" id="mainContent" style="display: none;">
+        <div id="errorMessage" class="error-message" style="display: none;"></div>
+        
+        <!-- Search Section -->
+        <section class="settings-section">
+            <h2>
+                <span data-lang="search">Search</span>
+                <button class="section-toggle" onclick="toggleSection('searchContent')" data-lang="hide">Hide</button>
+            </h2>
+            
+            <div id="searchContent" class="section-content">
+            <div class="input-group">
+                <label for="location" data-lang="locationLabel">Location:</label>
+                <input type="text" id="location" data-lang-placeholder="locationPlaceholder" placeholder="Enter city name (e.g., Paris, London, New York)" value="Paris" />
+            </div>
+
+            <div class="input-group">
+                <button class="btn-secondary" id="autoPositionMomentaryBtn" type="button">Auto position</button>
+            </div>
+
+            <div class="input-group">
+                <label for="timeRange" data-lang="forecastRangeLabel">Forecast Range:</label>
+                <select id="timeRange">
+                    <option value="current" data-lang="currentWeather">Current Weather</option>
+                    <option value="4hours" data-lang="4HoursForecast">4 Hours Forecast</option>
+                    <option value="8hours" data-lang="8HoursForecast">8 Hours Forecast</option>
+                    <option value="3days" selected data-lang="3DaysForecast">3 Days Forecast</option>
+                    <option value="5days" data-lang="5DaysForecast">5 Days Forecast</option>
+                </select>
+            </div>
+
+            <button class="btn-primary" id="fetchBtn" onclick="fetchWeatherData()" data-lang="getWeatherForecast">Get Weather Forecast</button>
+            </div>
+        </section>
+
+          <!-- Statistics Section -->
+        <section class="statistics-section" id="statisticsSection" style="display: none;">
+            <h2>
+                <span data-lang="weatherStatistics">Weather Statistics</span>
+                <button class="section-toggle" onclick="toggleSection('weatherStats')" data-lang="hide">Hide</button>
+            </h2>
+            <div id="weatherStats" class="weather-stats section-content"></div>
+        </section>
+
+        <!-- Results Section -->
+        <section class="results-section" id="resultsSection" style="display: none;">
+            <h2>
+                <span data-lang="weatherComparison">Weather Comparison</span>
+                <button class="section-toggle" onclick="toggleSection('weatherResults')" data-lang="hide">Hide</button>
+            </h2>
+            <div id="weatherResults" class="weather-results section-content"></div>
+        </section>
+    </main>
+
+            <!-- API Keys Management Section -->
     <section class="api-management-section">
         <h2>
             <span data-lang="apiKeysManagement">API Keys Management</span>
@@ -75,73 +133,6 @@
         </div>
         </div>
     </section>
-
-    <!-- API Key Section -->
-    <section class="api-key-section" id="apiKeySection">
-        <h2 data-lang="apiKeysConfiguration">API Keys Configuration</h2>
-        
-        <div class="api-key-group">
-            <h3>OpenWeatherMap</h3>
-            <label for="apiKey" data-lang="apiKeyLabel">API Key:</label>
-            <input type="password" id="apiKey" data-lang-placeholder="enterOpenWeatherMapKey" placeholder="Enter your OpenWeatherMap API key..." />
-            <span class="hint" data-lang="getApiKeyFromOpenWeatherMap">Get your API key from <a href="https://openweathermap.org/api" target="_blank">OpenWeatherMap</a></span>
-        </div>
-
-        <div class="api-key-group">
-            <h3>WeatherAPI.com</h3>
-            <label for="weatherApiKey" data-lang="apiKeyLabel">API Key:</label>
-            <input type="password" id="weatherApiKey" data-lang-placeholder="enterWeatherApiKey" placeholder="Enter your WeatherAPI.com API key..." />
-            <span class="hint" data-lang="getFreeApiKeyFromWeatherApi">Get your free API key from <a href="https://www.weatherapi.com/" target="_blank">WeatherAPI.com</a></span>
-        </div>
-
-        <div class="api-key-controls">
-            <label class="remember-key-label">
-                <input type="checkbox" id="rememberKey" />
-                <span data-lang="rememberApiKeys">Remember API Keys</span>
-            </label>
-            <button class="clear-key-button" id="clearKeyBtn" onclick="clearSavedApiKey()" data-lang="clearSavedKeys">Clear Saved Keys</button>
-        </div>
-        <span class="saved-key-indicator" id="savedKeyIndicator" data-lang="usingSavedKeys">✓ Using saved keys</span>
-        <span class="hint" data-lang="openMeteoNoApiKey">Note: Open-Meteo doesn't require an API key</span>
-        <button class="btn-primary" onclick="saveApiKey()" data-lang="continue">Continue</button>
-    </section>
-
-    <div class="security-notice" id="securityNotice" style="display: none;">
-        <p data-lang="securityNotice"><strong>🔒 Security Notice:</strong> Your API key is stored locally in your browser's localStorage.</p>
-    </div>
-
-    <!-- Main Content -->
-    <main class="main-content" id="mainContent" style="display: none;">
-        <div id="errorMessage" class="error-message" style="display: none;"></div>
-        
-        <!-- Search Section -->
-        <section class="settings-section">
-            <h2>
-                <span data-lang="search">Search</span>
-                <button class="section-toggle" onclick="toggleSection('searchContent')" data-lang="hide">Hide</button>
-            </h2>
-            
-            <div id="searchContent" class="section-content">
-            <div class="input-group">
-                <label for="location" data-lang="locationLabel">Location:</label>
-                <input type="text" id="location" data-lang-placeholder="locationPlaceholder" placeholder="Enter city name (e.g., Paris, London, New York)" value="Paris" />
-            </div>
-
-            <div class="input-group">
-                <label for="timeRange" data-lang="forecastRangeLabel">Forecast Range:</label>
-                <select id="timeRange">
-                    <option value="current" data-lang="currentWeather">Current Weather</option>
-                    <option value="4hours" data-lang="4HoursForecast">4 Hours Forecast</option>
-                    <option value="8hours" data-lang="8HoursForecast">8 Hours Forecast</option>
-                    <option value="3days" selected data-lang="3DaysForecast">3 Days Forecast</option>
-                    <option value="5days" data-lang="5DaysForecast">5 Days Forecast</option>
-                </select>
-            </div>
-
-            <button class="btn-primary" id="fetchBtn" onclick="fetchWeatherData()" data-lang="getWeatherForecast">Get Weather Forecast</button>
-            </div>
-        </section>
-
         <!-- Weather Settings Section -->
         <section class="settings-section">
             <h2>
@@ -175,24 +166,7 @@
             <p data-lang="fetchingWeatherData">Fetching weather data...</p>
         </div>
 
-        <!-- Statistics Section -->
-        <section class="statistics-section" id="statisticsSection" style="display: none;">
-            <h2>
-                <span data-lang="weatherStatistics">Weather Statistics</span>
-                <button class="section-toggle" onclick="toggleSection('weatherStats')" data-lang="hide">Hide</button>
-            </h2>
-            <div id="weatherStats" class="weather-stats section-content"></div>
-        </section>
-
-        <!-- Results Section -->
-        <section class="results-section" id="resultsSection" style="display: none;">
-            <h2>
-                <span data-lang="weatherComparison">Weather Comparison</span>
-                <button class="section-toggle" onclick="toggleSection('weatherResults')" data-lang="hide">Hide</button>
-            </h2>
-            <div id="weatherResults" class="weather-results section-content"></div>
-        </section>
-    </main>
+      
 
     <!-- Footer -->
     <footer class="footer">

@@ -296,6 +296,15 @@ document.addEventListener('DOMContentLoaded', function() {
     fetchLastModified();
     loadSavedApiKey();
     loadMainApiKeys();
+    initAutoPositioning();
+
+    // Ensure main UI is visible (previous setup section removed)
+    const sec = document.getElementById('securityNotice');
+    if (sec) sec.style.display = 'block';
+    const main = document.getElementById('mainContent');
+    if (main) main.style.display = 'block';
+    // Apply saved position if any
+    applySavedPosition();
     
     // Listen for CKGenericApp API keys injection (Android WebView)
     window.addEventListener('ckgenericapp_keys_ready', function(event) {
@@ -394,23 +403,36 @@ function loadSavedApiKey() {
     const savedWeatherApiKey = getApiKey('weatherapi', 'meteoAggregatorWeatherApiKey');
     
     if (savedApiKey || savedWeatherApiKey) {
+        // populate the management inputs
         if (savedApiKey) {
-            document.getElementById('apiKey').value = savedApiKey;
+            const el = document.getElementById('apiKeyMain');
+            if (el) el.value = savedApiKey;
         }
         if (savedWeatherApiKey) {
-            document.getElementById('weatherApiKey').value = savedWeatherApiKey;
+            const el = document.getElementById('weatherApiKeyMain');
+            if (el) el.value = savedWeatherApiKey;
         }
-        document.getElementById('rememberKey').checked = true;
+        const remember = document.getElementById('rememberKeyMain');
+        if (remember) remember.checked = true;
         updateSavedKeyIndicator(true);
-        hideApiKeySection();
+        // ensure main UI is visible (check for existence)
+        var sec = document.getElementById('securityNotice');
+        if (sec) sec.style.display = 'block';
+        var main = document.getElementById('mainContent');
+        if (main) main.style.display = 'block';
+        applySavedPosition();
     }
 }
 
 // Save API key and continue
 function saveApiKey() {
-    const apiKey = document.getElementById('apiKey').value.trim();
-    const weatherApiKey = document.getElementById('weatherApiKey').value.trim();
-    const rememberKey = document.getElementById('rememberKey').checked;
+    // Copy values from management inputs (if present) to saved storage and show main UI
+    const apiKeyEl = document.getElementById('apiKeyMain');
+    const weatherEl = document.getElementById('weatherApiKeyMain');
+    const rememberEl = document.getElementById('rememberKeyMain');
+    const apiKey = apiKeyEl ? apiKeyEl.value.trim() : '';
+    const weatherApiKey = weatherEl ? weatherEl.value.trim() : '';
+    const rememberKey = rememberEl ? rememberEl.checked : false;
     
     // At least one API key should be provided (or user can use Open-Meteo without keys)
     if (!apiKey && !weatherApiKey) {
@@ -428,27 +450,30 @@ function saveApiKey() {
             localStorage.setItem('meteoAggregatorWeatherApiKey', weatherApiKey);
         }
     }
-    
     updateSavedKeyIndicator(true);
-    hideApiKeySection();
+    document.getElementById('securityNotice').style.display = 'block';
+    document.getElementById('mainContent').style.display = 'block';
+    applySavedPosition();
 }
 
 // Clear saved API key
 function clearSavedApiKey() {
     localStorage.removeItem('meteoAggregatorApiKey');
     localStorage.removeItem('meteoAggregatorWeatherApiKey');
-    document.getElementById('apiKey').value = '';
-    document.getElementById('weatherApiKey').value = '';
-    document.getElementById('rememberKey').checked = false;
+    const apiMain = document.getElementById('apiKeyMain');
+    const weatherMain = document.getElementById('weatherApiKeyMain');
+    const rememberMain = document.getElementById('rememberKeyMain');
+    if (apiMain) apiMain.value = '';
+    if (weatherMain) weatherMain.value = '';
+    if (rememberMain) rememberMain.checked = false;
     updateSavedKeyIndicator(false);
-    showApiKeySection();
 }
 
 // Update saved key indicator
 function updateSavedKeyIndicator(hasSavedKey) {
     const indicator = document.getElementById('savedKeyIndicator');
     const clearBtn = document.getElementById('clearKeyBtn');
-    
+    if (!indicator || !clearBtn) return; // management UI may not include these
     if (hasSavedKey) {
         indicator.style.display = 'inline';
         clearBtn.style.display = 'inline-block';
@@ -460,17 +485,21 @@ function updateSavedKeyIndicator(hasSavedKey) {
 
 // Hide API key section and show main content
 function hideApiKeySection() {
-    document.getElementById('apiKeySection').style.display = 'none';
-    document.getElementById('securityNotice').style.display = 'block';
-    document.getElementById('mainContent').style.display = 'block';
+    // Ensure main UI is visible (apiKeySection removed)
+    const sec = document.getElementById('securityNotice');
+    if (sec) sec.style.display = 'block';
+    const main = document.getElementById('mainContent');
+    if (main) main.style.display = 'block';
+    applySavedPosition();
 }
 
 // Show API key section and hide main content
 function showApiKeySection() {
-    document.getElementById('apiKeySection').style.display = 'block';
-    document.getElementById('securityNotice').style.display = 'none';
-    document.getElementById('mainContent').style.display = 'none';
-    document.getElementById('resultsSection').style.display = 'none';
+    // No-op: initial setup screen removed; keep main UI visible
+    const sec = document.getElementById('securityNotice');
+    if (sec) sec.style.display = 'block';
+    const main = document.getElementById('mainContent');
+    if (main) main.style.display = 'block';
 }
 
 // Show error message
@@ -1516,4 +1545,256 @@ function createWeatherCard(result) {
     }
     
     return card;
+}
+
+// ==========================
+// Auto-position / Dragging
+// ==========================
+function initAutoPositioning() {
+    const momentaryBtn = document.getElementById('autoPositionMomentaryBtn');
+    const resetBtn = document.getElementById('resetPositionBtn');
+
+    if (momentaryBtn) {
+        momentaryBtn.addEventListener('click', function() {
+            // On click, get geolocation and update location field
+            if (navigator.geolocation) {
+                momentaryBtn.disabled = true;
+                momentaryBtn.textContent = 'Locating...';
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const lat = position.coords.latitude.toFixed(6);
+                        const lng = position.coords.longitude.toFixed(6);
+                        const loc = document.getElementById('location');
+                        if (loc) loc.value = `${lat},${lng}`;
+                        momentaryBtn.disabled = false;
+                        momentaryBtn.textContent = 'Auto position';
+                    },
+                    (error) => {
+                        const loc = document.getElementById('location');
+                        if (loc) loc.value = 'geolocation_error';
+                        momentaryBtn.disabled = false;
+                        momentaryBtn.textContent = 'Auto position';
+                    }
+                );
+            } else {
+                const loc = document.getElementById('location');
+                if (loc) loc.value = 'geolocation_unsupported';
+            }
+        });
+    }
+
+    if (resetBtn) {
+        resetBtn.addEventListener('click', function() {
+            localStorage.removeItem('meteoAggregatorPosition');
+            applySavedPosition(true);
+        });
+    }
+
+    // Apply if main is already visible
+    if (document.getElementById('mainContent').style.display !== 'none') {
+        applySavedPosition();
+    }
+}
+
+function applySavedPosition(forceCenter = false) {
+    const main = document.getElementById('mainContent');
+    // Always allow drag/positioning, but don't update location field automatically
+    if (window.innerWidth <= 768) {
+        main.classList.remove('fixed');
+        main.style.left = '';
+        main.style.top = '';
+        return;
+    }
+
+    const posRaw = localStorage.getItem('meteoAggregatorPosition');
+    if (!posRaw || forceCenter) {
+        main.classList.add('fixed');
+        main.style.left = (window.innerWidth - Math.min(window.innerWidth * 0.9, 1000)) / 2 + 'px';
+        main.style.top = Math.max(20, window.scrollY + 40) + 'px';
+        attachDragHandlers(main);
+        return;
+    }
+
+    try {
+        const pos = JSON.parse(posRaw);
+        main.classList.add('fixed');
+        main.style.left = pos.left + 'px';
+        main.style.top = pos.top + 'px';
+        attachDragHandlers(main);
+    } catch (e) {
+        console.warn('Failed to parse saved position', e);
+        applySavedPosition(true);
+    }
+}
+
+function attachDragHandlers(el) {
+    // prevent multiple bindings
+    if (el._dragInitialized) return;
+    el._dragInitialized = true;
+
+    let isDragging = false;
+    let startX = 0;
+    let startY = 0;
+    let origLeft = 0;
+    let origTop = 0;
+
+    function onDown(e) {
+        if (e.type === 'touchstart') {
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+        } else {
+            startX = e.clientX;
+            startY = e.clientY;
+        }
+        const rect = el.getBoundingClientRect();
+        origLeft = rect.left;
+        origTop = rect.top;
+        isDragging = true;
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+        document.addEventListener('touchmove', onMove, { passive: false });
+        document.addEventListener('touchend', onUp);
+        e.preventDefault();
+    }
+
+    function onMove(e) {
+        if (!isDragging) return;
+        let clientX = e.type.startsWith('touch') ? e.touches[0].clientX : e.clientX;
+        let clientY = e.type.startsWith('touch') ? e.touches[0].clientY : e.clientY;
+
+        const dx = clientX - startX;
+        const dy = clientY - startY;
+
+        let newLeft = Math.max(8, Math.min(window.innerWidth - el.offsetWidth - 8, origLeft + dx));
+        let newTop = Math.max(8, origTop + dy);
+
+        el.style.left = newLeft + 'px';
+        el.style.top = newTop + 'px';
+
+        // prevent page scroll while dragging on touch
+        if (e.cancelable) e.preventDefault();
+    }
+
+    function onUp() {
+        if (!isDragging) return;
+        isDragging = false;
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        document.removeEventListener('touchmove', onMove);
+        document.removeEventListener('touchend', onUp);
+
+        // save position
+        try {
+            const left = parseInt(el.style.left, 10) || el.getBoundingClientRect().left;
+            const top = parseInt(el.style.top, 10) || el.getBoundingClientRect().top;
+            localStorage.setItem('meteoAggregatorPosition', JSON.stringify({ left, top }));
+            // if auto-position is enabled, reflect geolocation in location field
+            if (localStorage.getItem('meteoAggregatorAutoPosition') === 'true') {
+                updateLocationWithPosition();
+            }
+        } catch (e) {
+            console.warn('Failed to save position', e);
+        }
+    }
+
+    el.addEventListener('mousedown', onDown);
+    el.addEventListener('touchstart', onDown, { passive: false });
+}
+
+function updateLocationWithPosition(left, top) {
+    // No-op: replaced by momentary button logic
+}
+
+
+// ============================================================================
+// LOCATION MANAGEMENT
+// ============================================================================
+
+function getCurrentLocation() {
+    log('Requesting geolocation...', 'INFO');
+    
+    if (!navigator.geolocation) {
+        showError(translations[currentLanguage].errorGeolocation);
+        log('Geolocation not supported', 'ERROR');
+        return;
+    }
+    
+    const btn = document.getElementById('geolocateBtn');
+    btn.disabled = true;
+    
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            userLocation = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude
+            };
+            
+            log(`Geolocation successful: ${userLocation.lat}, ${userLocation.lng}`, 'SUCCESS');
+            
+            // Update map center
+            map.setView([userLocation.lat, userLocation.lng], 13);
+            
+            // Show current location indicator
+            showCurrentLocation();
+            
+            btn.disabled = false;
+        },
+        (error) => {
+            log(`Geolocation error: ${error.message}`, 'ERROR');
+            showError(translations[currentLanguage].errorGeolocation);
+            btn.disabled = false;
+        }
+    );
+}
+
+async function geocodeAddress() {
+    const address = document.getElementById('addressInput').value.trim();
+    
+    if (!address) {
+        showError('Please enter an address');
+        return;
+    }
+    
+    log(`Geocoding address: ${address}`, 'INFO');
+    
+    try {
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`);
+        const data = await response.json();
+        
+        if (data && data.length > 0) {
+            userLocation = {
+                lat: parseFloat(data[0].lat),
+                lng: parseFloat(data[0].lon)
+            };
+            
+            log(`Geocoding successful: ${userLocation.lat}, ${userLocation.lng}`, 'SUCCESS');
+            
+            map.setView([userLocation.lat, userLocation.lng], 13);
+            showCurrentLocation();
+        } else {
+            log('Geocoding failed: no results', 'WARN');
+            showError(translations[currentLanguage].errorGeocode);
+        }
+    } catch (error) {
+        log(`Geocoding error: ${error.message}`, 'ERROR');
+        showError(translations[currentLanguage].errorGeocode);
+    }
+}
+
+function showCurrentLocation() {
+    const locationDiv = document.getElementById('currentLocation');
+    const locationText = document.getElementById('locationText');
+    
+    locationText.textContent = `${userLocation.lat.toFixed(6)}, ${userLocation.lng.toFixed(6)}`;
+    locationDiv.style.display = 'flex';
+    
+    // Add marker on map
+    L.marker([userLocation.lat, userLocation.lng], {
+        icon: L.divIcon({
+            className: 'user-location-marker',
+            html: '<span class="material-symbols-outlined" style="color: #4a9eff; font-size: 32px;">person_pin_circle</span>',
+            iconSize: [32, 32],
+            iconAnchor: [16, 32]
+        })
+    }).addTo(map).bindPopup('Votre position / Your location');
 }
