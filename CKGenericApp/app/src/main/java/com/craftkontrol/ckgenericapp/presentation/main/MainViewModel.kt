@@ -47,10 +47,12 @@ class MainViewModel @Inject constructor(
             combine(
                 webAppRepository.getAllEnabledApps(),
                 preferencesManager.currentAppId,
-                preferencesManager.menuCollapsed
-            ) { apps, currentAppId, menuCollapsed ->
-                Triple(apps, currentAppId, menuCollapsed)
-            }.collect { (apps, currentAppId, menuCollapsed) ->
+                preferencesManager.menuCollapsed,
+                preferencesManager.welcomeCardHidden
+            ) { apps, currentAppId, menuCollapsed, welcomeCardHidden ->
+                Pair(Triple(apps, currentAppId, menuCollapsed), welcomeCardHidden)
+            }.collect { (data, welcomeCardHidden) ->
+                val (apps, currentAppId, menuCollapsed) = data
                 val currentApp = if (currentAppId != null) {
                     apps.find { it.id == currentAppId }
                 } else {
@@ -62,7 +64,8 @@ class MainViewModel @Inject constructor(
                         isLoading = false,
                         apps = apps,
                         currentApp = currentApp,
-                        isMenuCollapsed = menuCollapsed
+                        isMenuCollapsed = menuCollapsed,
+                        welcomeCardHidden = welcomeCardHidden
                     )
                 }
                 
@@ -152,6 +155,12 @@ class MainViewModel @Inject constructor(
     }
     
     fun getApiKey(keyName: String) = apiKeysPreferences.getApiKey(keyName)
+    
+    fun hideWelcomeCard() {
+        viewModelScope.launch {
+            preferencesManager.setWelcomeCardHidden(true)
+        }
+    }
     
     fun getAllApiKeys() = apiKeysPreferences.getAllApiKeys()
 }

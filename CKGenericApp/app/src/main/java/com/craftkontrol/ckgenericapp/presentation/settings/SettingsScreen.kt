@@ -1,15 +1,24 @@
 package com.craftkontrol.ckgenericapp.presentation.settings
 
+import com.craftkontrol.ckgenericapp.R
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.craftkontrol.ckgenericapp.presentation.localization.AppLanguage
+import timber.log.Timber
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -18,14 +27,19 @@ fun SettingsScreen(
     onNavigateBack: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    
+    LaunchedEffect(uiState) {
+        Timber.d("SettingsScreen uiState updated: lang=${uiState.currentLanguage.code}, available=${uiState.availableLanguages.size}")
+    }
     
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings") },
+                title = { Text(stringResource(R.string.settings)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back))
                     }
                 }
             )
@@ -40,7 +54,7 @@ fun SettingsScreen(
         ) {
             item {
                 Text(
-                    text = "Background Monitoring",
+                    text = stringResource(R.string.background_monitoring),
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(vertical = 8.dp)
                 )
@@ -48,8 +62,8 @@ fun SettingsScreen(
             
             item {
                 SwitchPreference(
-                    title = "Enable Monitoring",
-                    description = "Monitor alarms, appointments, and notifications",
+                    title = stringResource(R.string.enable_monitoring),
+                    description = stringResource(R.string.monitoring_description),
                     checked = uiState.monitoringEnabled,
                     onCheckedChange = { viewModel.setMonitoringEnabled(it) }
                 )
@@ -57,8 +71,8 @@ fun SettingsScreen(
             
             item {
                 SwitchPreference(
-                    title = "Enable Notifications",
-                    description = "Show notifications from monitored apps",
+                    title = stringResource(R.string.enable_notifications),
+                    description = stringResource(R.string.notifications_description),
                     checked = uiState.notificationsEnabled,
                     onCheckedChange = { viewModel.setNotificationsEnabled(it) }
                 )
@@ -70,7 +84,7 @@ fun SettingsScreen(
             
             item {
                 Text(
-                    text = "Display",
+                    text = stringResource(R.string.display),
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(vertical = 8.dp)
                 )
@@ -78,8 +92,8 @@ fun SettingsScreen(
             
             item {
                 SwitchPreference(
-                    title = "Dark Mode",
-                    description = "Use dark theme",
+                    title = stringResource(R.string.dark_mode),
+                    description = stringResource(R.string.dark_mode_description),
                     checked = uiState.darkMode,
                     onCheckedChange = { viewModel.setDarkMode(it) }
                 )
@@ -87,11 +101,63 @@ fun SettingsScreen(
             
             item {
                 SwitchPreference(
-                    title = "Fullscreen Mode",
-                    description = "Hide system bars for immersive experience",
+                    title = stringResource(R.string.fullscreen_mode),
+                    description = stringResource(R.string.fullscreen_description),
                     checked = uiState.fullscreenMode,
                     onCheckedChange = { viewModel.setFullscreenMode(it) }
                 )
+            }
+            
+            item {
+                Divider(modifier = Modifier.padding(vertical = 16.dp))
+            }
+            
+            item {
+                Text(
+                    text = stringResource(R.string.language_settings),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            }
+            
+            item {
+                if (uiState.availableLanguages.isNotEmpty()) {
+                    LanguagePreference(
+                        currentLanguage = uiState.currentLanguage,
+                        availableLanguages = uiState.availableLanguages,
+                        onLanguageSelected = { language ->
+                            Timber.d("Language selected in SettingsScreen: ${language.code}")
+                            viewModel.setLanguage(context, language)
+                        }
+                    )
+                } else {
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            stringResource(R.string.languages_not_loaded),
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    }
+                }
+            }
+            
+            item {
+                // Debug info
+                Card(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text(
+                            text = "Current Language: ${uiState.currentLanguage.code}",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        Text(
+                            text = "Available: ${uiState.availableLanguages.size}",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
             }
             
             item {
@@ -170,6 +236,52 @@ fun SwitchPreference(
                 checked = checked,
                 onCheckedChange = onCheckedChange
             )
+        }
+    }
+}
+
+@Composable
+fun LanguagePreference(
+    currentLanguage: AppLanguage,
+    availableLanguages: List<AppLanguage>,
+    onLanguageSelected: (AppLanguage) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var expanded by remember { mutableStateOf(false) }
+    
+    Column(modifier = modifier.fillMaxWidth()) {
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Button(
+                onClick = { expanded = !expanded },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Text("${stringResource(R.string.select_language)}: ${currentLanguage.displayName}")
+            }
+        }
+        
+        if (expanded) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp)
+            ) {
+                availableLanguages.forEach { language ->
+                    Button(
+                        onClick = {
+                            Timber.d("Language button clicked: ${language.displayName} (${language.code})")
+                            onLanguageSelected(language)
+                            expanded = false
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 4.dp)
+                    ) {
+                        Text(language.displayName)
+                    }
+                }
+            }
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.craftkontrol.ckgenericapp.presentation.main
 
+import com.craftkontrol.ckgenericapp.R
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -13,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -26,10 +28,12 @@ import timber.log.Timber
 @Composable
 fun MainScreen(
     viewModel: MainViewModel = hiltViewModel(),
-    onNavigateToDeviceTest: () -> Unit = {}
+    onNavigateToDeviceTest: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    var showCloseConfirmation by remember { mutableStateOf(false) }
     
     // Handle shortcut creation
     LaunchedEffect(uiState.shortcutCreationRequested) {
@@ -49,21 +53,48 @@ fun MainScreen(
         topBar = {
             TopAppBar(
                 title = { 
-                    Text(
-                        "CKGenericApp - Centre de gestion",
-                        style = MaterialTheme.typography.titleLarge
-                    )
+                    Column {
+                        Text(
+                            stringResource(R.string.app_title),
+                            style = MaterialTheme.typography.titleLarge
+                        )
+                        val context = LocalContext.current
+                        val versionName = remember {
+                            try {
+                                val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+                                pInfo.versionName ?: ""
+                            } catch (e: Exception) {
+                                ""
+                            }
+                        }
+                        if (versionName.isNotBlank()) {
+                            Text(
+                                text = "v$versionName",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
                 },
                 actions = {
                     IconButton(
+                        onClick = onNavigateToSettings
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = stringResource(R.string.settings),
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                    IconButton(
                         onClick = {
-                            // Close the app completely
-                            android.os.Process.killProcess(android.os.Process.myPid())
+                            // Show confirmation dialog instead of closing immediately
+                            showCloseConfirmation = true
                         }
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
-                            contentDescription = "Fermer l'application",
+                            contentDescription = stringResource(R.string.close_app),
                             tint = MaterialTheme.colorScheme.error
                         )
                     }
@@ -83,34 +114,58 @@ fun MainScreen(
                 .padding(16.dp)
         ) {
             // Header Description
-            Card(
+            if (!uiState.welcomeCardHidden) {
+                Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant
                 )
             ) {
+
                 Column(modifier = Modifier.padding(16.dp)) {
                     Icon(
-                        imageVector = Icons.Default.Settings,
+                        imageVector = Icons.Default.Info,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(32.dp)
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Configuration et Raccourcis",
-                        style = MaterialTheme.typography.titleMedium
+                        text = stringResource(R.string.welcome_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Créez des raccourcis pour accéder directement à vos applications web. Configurez vos clés API pour qu'elles soient automatiquement disponibles dans toutes les applications.",
+                        text = stringResource(R.string.welcome_description),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = stringResource(R.string.how_to_title),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = stringResource(R.string.how_to_description),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = { viewModel.hideWelcomeCard() },
+                        modifier = Modifier.align(Alignment.End)
+                    ) {
+                        Text(stringResource(R.string.got_it))
+                    }
                 }
+
+             
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
             }
-            
-            Spacer(modifier = Modifier.height(16.dp))
             
             // Device Testing Button
             Card(
@@ -135,13 +190,13 @@ fun MainScreen(
                     Spacer(modifier = Modifier.width(16.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Device Testing",
+                            text = stringResource(R.string.device_testing),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Test microphone, camera, location, and sensors",
+                            text = stringResource(R.string.device_testing_description),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onTertiaryContainer
                         )
@@ -191,6 +246,38 @@ fun MainScreen(
             }
         }
     }
+    
+    // Close confirmation dialog
+    if (showCloseConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showCloseConfirmation = false },
+            title = {
+                Text(stringResource(R.string.close_dialog_title))
+            },
+            text = {
+                Text(
+                    stringResource(R.string.close_dialog_description),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        android.os.Process.killProcess(android.os.Process.myPid())
+                    }
+                ) {
+                    Text(stringResource(R.string.close))
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = { showCloseConfirmation = false }
+                ) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -202,13 +289,13 @@ fun AppsManagementSection(
     
     Column {
         Text(
-            text = "Applications Disponibles",
+            text = stringResource(R.string.available_apps),
             style = MaterialTheme.typography.titleLarge,
             color = MaterialTheme.colorScheme.primary
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "Cliquez sur l'icône + pour créer un raccourci sur votre écran d'accueil",
+            text = stringResource(R.string.shortcut_hint),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -314,13 +401,13 @@ fun ApiKeysSection(
     
     Column {
         Text(
-            text = "Clés API",
+            text = stringResource(R.string.api_keys),
             style = MaterialTheme.typography.titleLarge,
             color = MaterialTheme.colorScheme.primary
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "Configurez vos clés API. Elles seront automatiquement disponibles dans toutes les applications via JavaScript.",
+            text = stringResource(R.string.api_keys_description),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -328,7 +415,7 @@ fun ApiKeysSection(
         
         // IA & TEXTE
         Text(
-            text = "🤖 IA & Texte",
+            text = stringResource(R.string.ai_text_section),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.primary
         )
@@ -347,7 +434,7 @@ fun ApiKeysSection(
         
         // MÉTÉO
         Text(
-            text = "🌤️ Météo",
+            text = stringResource(R.string.weather_section),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.primary
         )
@@ -377,7 +464,7 @@ fun ApiKeysSection(
         
         // RECHERCHE WEB
         Text(
-            text = "🔍 Recherche Web",
+            text = stringResource(R.string.web_search_section),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.primary
         )
@@ -440,7 +527,7 @@ fun ApiKeysSection(
         
         // GOOGLE SERVICES
         Text(
-            text = "🎤 Google Services",
+            text = stringResource(R.string.google_services_section),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.primary
         )
@@ -487,7 +574,7 @@ fun ApiKeysSection(
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
-                    text = "Les clés API sont stockées localement et accessibles via window.CKGenericApp.getApiKey('nom_de_la_cle')",
+                    text = stringResource(R.string.api_info),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSecondaryContainer
                 )
@@ -563,12 +650,12 @@ fun EmptyState() {
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "Aucune application disponible",
+            text = stringResource(R.string.no_apps),
             style = MaterialTheme.typography.titleLarge
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "Les applications se chargeront automatiquement au démarrage",
+            text = stringResource(R.string.apps_load_info),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

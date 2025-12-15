@@ -28,6 +28,8 @@ class PreferencesManager @Inject constructor(
         private val FULLSCREEN_MODE = booleanPreferencesKey("fullscreen_mode")
         private val MENU_COLLAPSED = booleanPreferencesKey("menu_collapsed")
         private val DARK_MODE = booleanPreferencesKey("dark_mode")
+        private val WELCOME_CARD_HIDDEN = booleanPreferencesKey("welcome_card_hidden")
+        private val CURRENT_LANGUAGE = stringPreferencesKey("current_language")
     }
     
     val currentAppId: Flow<String?> = dataStore.data
@@ -47,6 +49,12 @@ class PreferencesManager @Inject constructor(
     
     val darkMode: Flow<Boolean> = dataStore.data
         .map { preferences -> preferences[DARK_MODE] ?: false }
+    
+    val welcomeCardHidden: Flow<Boolean> = dataStore.data
+        .map { preferences -> preferences[WELCOME_CARD_HIDDEN] ?: false }
+    
+    val currentLanguage: Flow<String?> = dataStore.data
+        .map { preferences -> preferences[CURRENT_LANGUAGE] }
     
     suspend fun setCurrentAppId(appId: String) {
         dataStore.edit { preferences ->
@@ -81,6 +89,18 @@ class PreferencesManager @Inject constructor(
     suspend fun setDarkMode(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[DARK_MODE] = enabled
+        }
+    }
+    
+    suspend fun setWelcomeCardHidden(hidden: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[WELCOME_CARD_HIDDEN] = hidden
+        }
+    }
+    
+    suspend fun setCurrentLanguage(languageCode: String) {
+        dataStore.edit { preferences ->
+            preferences[CURRENT_LANGUAGE] = languageCode
         }
     }
 }

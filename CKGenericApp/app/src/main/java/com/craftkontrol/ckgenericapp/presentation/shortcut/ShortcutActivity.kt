@@ -1,5 +1,6 @@
 package com.craftkontrol.ckgenericapp.presentation.shortcut
 
+import com.craftkontrol.ckgenericapp.R
 import android.content.Intent
 import android.os.Bundle
 import android.view.ViewGroup
@@ -12,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -76,7 +78,7 @@ class ShortcutActivity : ComponentActivity() {
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "Erreur: Application non spécifiée",
+                                text = stringResource(R.string.error_no_app),
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.error
                             )
@@ -146,7 +148,7 @@ private fun ShortcutScreen(
                         CircularProgressIndicator()
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = "Chargement de l'application...",
+                            text = stringResource(R.string.loading_app),
                             style = MaterialTheme.typography.bodyMedium
                         )
                         Spacer(modifier = Modifier.height(8.dp))
@@ -178,7 +180,7 @@ private fun ShortcutScreen(
                         verticalArrangement = Arrangement.Center
                     ) {
                         Text(
-                            text = "Application non trouvée",
+                            text = stringResource(R.string.app_not_found),
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.error
                         )

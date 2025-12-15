@@ -1,5 +1,6 @@
 package com.craftkontrol.ckgenericapp.presentation.devicetest
 
+import com.craftkontrol.ckgenericapp.R
 import android.Manifest
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -13,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
@@ -42,18 +44,18 @@ fun CameraTestContent(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         InfoCard(
-            title = "Camera Test",
-            description = "Test your device's camera functionality. View camera preview and check camera availability.",
+            title = stringResource(R.string.camera_test_title),
+            description = stringResource(R.string.camera_test_description),
             icon = Icons.Default.Camera
         )
         
         if (!cameraPermissionState.status.isGranted) {
             PermissionCard(
-                title = "Camera Permission Required",
+                title = stringResource(R.string.camera_permission_required),
                 description = if (cameraPermissionState.status.shouldShowRationale) {
-                    "Camera permission is required to test camera functionality."
+                    stringResource(R.string.camera_permission_rationale)
                 } else {
-                    "Please grant camera permission to test the camera."
+                    stringResource(R.string.camera_permission_grant)
                 },
                 onRequestPermission = { cameraPermissionState.launchPermissionRequest() }
             )
@@ -76,7 +78,7 @@ fun CameraTestContent(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Live Camera Preview",
+                            text = stringResource(R.string.camera_preview),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -91,7 +93,7 @@ fun CameraTestContent(
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = "LIVE",
+                                text = stringResource(R.string.live),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.error,
                                 fontWeight = FontWeight.Bold
@@ -117,7 +119,7 @@ fun CameraTestContent(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "Camera Controls",
+                        text = stringResource(R.string.camera_controls),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -133,7 +135,7 @@ fun CameraTestContent(
                         ) {
                             Icon(Icons.Default.Cameraswitch, null)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Switch")
+                            Text(stringResource(R.string.switch_camera))
                         }
                         
                         Button(
@@ -143,14 +145,14 @@ fun CameraTestContent(
                         ) {
                             Icon(Icons.Default.PhotoCamera, null)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Capture")
+                            Text(stringResource(R.string.capture))
                         }
                     }
                 }
             }
             
             StatusCard(
-                title = "Camera Status",
+                title = stringResource(R.string.camera_status),
                 items = listOf(
                     StatusItem("Permission", "Granted", true),
                     StatusItem("Camera Available", "Yes", true),
@@ -188,18 +190,18 @@ fun LocationTestContent(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         InfoCard(
-            title = "Location Test",
-            description = "Test your device's location services. View current coordinates, accuracy, and other location data.",
+            title = stringResource(R.string.location_test_title),
+            description = stringResource(R.string.location_test_description),
             icon = Icons.Default.LocationOn
         )
         
         if (!locationPermissionState.status.isGranted) {
             PermissionCard(
-                title = "Location Permission Required",
+                title = stringResource(R.string.location_permission_required),
                 description = if (locationPermissionState.status.shouldShowRationale) {
-                    "Location permission is required to test GPS and location services."
+                    stringResource(R.string.location_permission_rationale)
                 } else {
-                    "Please grant location permission to test location services."
+                    stringResource(R.string.location_permission_grant)
                 },
                 onRequestPermission = { locationPermissionState.launchPermissionRequest() }
             )
@@ -220,7 +222,7 @@ fun LocationTestContent(
                             modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(16.dp))
-                        Text("Getting location...")
+                        Text(stringResource(R.string.getting_location))
                     }
                 }
             }
@@ -269,7 +271,7 @@ fun LocationTestContent(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Current Location",
+                                text = stringResource(R.string.current_location),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
@@ -293,7 +295,7 @@ fun LocationTestContent(
                 
                 // Status Card
                 StatusCard(
-                    title = "Location Status",
+                    title = stringResource(R.string.location_status),
                     items = listOf(
                         StatusItem("GPS", "Active", true),
                         StatusItem("Updates", "Real-time", true),
@@ -352,8 +354,8 @@ fun SensorsTestContent(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         InfoCard(
-            title = "Sensors Test",
-            description = "Test your device's sensors including accelerometer, gyroscope, light sensor, and proximity sensor.",
+            title = stringResource(R.string.sensors_test_title),
+            description = stringResource(R.string.sensors_test_description),
             icon = Icons.Default.Sensors
         )
         
@@ -547,7 +549,7 @@ fun PermissionCard(
             ) {
                 Icon(Icons.Default.Check, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Grant Permission")
+                Text(stringResource(R.string.grant_permission))
             }
         }
     }

@@ -13,6 +13,12 @@ CKGenericApp transforme votre écran d'accueil en un portail vers vos applicatio
 
 ## ✨ Caractéristiques
 
+### Support Multilingue 🌍
+- **Langues supportées** : Français 🇫🇷, English 🇬🇧, Italiano 🇮🇹
+- **Détection automatique** - L'app détecte la langue de votre système au premier lancement
+- **Changement de langue dynamique** - Changez la langue dans les paramètres à tout moment
+- **Persistance** - Votre préférence de langue est sauvegardée
+
 ### Centre de Gestion (MainActivity)
 - **Liste des applications disponibles** avec création de raccourcis
 - **Gestion centralisée des clés API** (OpenAI, Anthropic, Google, Perplexity, etc.)
@@ -150,7 +156,7 @@ app/
 │   ├── local/
 │   │   ├── dao/              # Room DAO
 │   │   ├── database/         # Room Database
-│   │   └── preferences/      # DataStore (API keys, settings)
+│   │   └── preferences/      # DataStore (API keys, settings, language)
 │   └── repository/           # Implémentations des repositories
 ├── domain/
 │   ├── model/                # Modèles de données (WebApp)
@@ -164,6 +170,11 @@ app/
 │   │   ├── ShortcutActivity.kt     # Point d'entrée des raccourcis
 │   │   ├── ShortcutViewModel.kt    # Chargement des apps
 │   │   └── ApiKeyInjectingWebViewClient.kt
+│   ├── localization/         # 🌍 Système multilingue
+│   │   ├── LocalizationManager.kt  # Gestion des langues
+│   │   ├── AppLanguage.kt          # Enum des langues (FR, EN, IT)
+│   │   ├── LocaleHelper.kt         # Configuration du locale Android
+│   │   └── LocalizedApp.kt         # Wrapper Composable
 │   ├── navigation/           # Navigation Compose
 │   └── theme/                # Thème Material 3
 ├── util/
@@ -227,7 +238,52 @@ async function callOpenAI(prompt) {
 }
 ```
 
-## 🎨 Icônes des Raccourcis
+## � Système Multilingue
+
+### Langues Supportées
+- **Français** 🇫🇷 - Français de France
+- **English** 🇬🇧 - Anglais International
+- **Italiano** 🇮🇹 - Italien
+
+### Fonctionnalités
+
+#### Détection Automatique
+L'application détecte automatiquement la langue de votre système au premier lancement :
+- Si votre système est en français → l'app s'affiche en français
+- Si votre système est en italien → l'app s'affiche en italien
+- Sinon → l'app s'affiche en anglais (défaut)
+
+#### Changement de Langue
+Vous pouvez changer la langue à tout moment :
+1. Ouvrez **Paramètres** (Settings/Impostazioni)
+2. Allez à la section **Langue** (Langage/Lingua)
+3. Sélectionnez votre langue préférée dans le menu déroulant
+4. La langue change immédiatement dans toute l'application
+
+#### Persistance
+Votre choix de langue est sauvegardé automatiquement dans les préférences de l'appareil. La prochaine fois que vous lancerez l'application, elle utilisera la langue que vous aviez sélectionnée.
+
+### Textes Traduits
+Tous les textes de l'interface utilisateur sont traduits :
+- ✅ Titres et labels des écrans
+- ✅ Descriptions des paramètres
+- ✅ Messages de permission
+- ✅ Canaux de notification
+- ✅ Titres des boutons et menus
+
+### Architecture Multilingue
+
+**Fichiers de ressources** :
+- `res/values/strings.xml` - English (par défaut)
+- `res/values-fr/strings.xml` - Français
+- `res/values-it/strings.xml` - Italiano
+
+**Gestion du code** :
+- `LocalizationManager` - Détecte et gère les langues
+- `PreferencesManager` - Persiste le choix de l'utilisateur
+- Tous les textes utilisent `stringResource()` pour l'accès dynamique
+
+## �🎨 Icônes des Raccourcis
 
 Chaque raccourci génère automatiquement une icône colorée unique avec les initiales de l'application :
 

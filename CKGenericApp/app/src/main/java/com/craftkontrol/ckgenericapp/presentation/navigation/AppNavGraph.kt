@@ -22,6 +22,9 @@ fun AppNavGraph(
             MainScreen(
                 onNavigateToDeviceTest = {
                     navController.navigate(Screen.DeviceTest.route)
+                },
+                onNavigateToSettings = {
+                    navController.navigate(Screen.Settings.route)
                 }
             )
         }

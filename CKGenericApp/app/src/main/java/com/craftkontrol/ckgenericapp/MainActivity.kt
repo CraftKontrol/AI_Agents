@@ -1,9 +1,12 @@
 package com.craftkontrol.ckgenericapp
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
+import android.os.LocaleList
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -12,14 +15,23 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
+import com.craftkontrol.ckgenericapp.data.local.preferences.PreferencesManager
+import com.craftkontrol.ckgenericapp.presentation.localization.AppLanguage
 import com.craftkontrol.ckgenericapp.presentation.navigation.AppNavGraph
 import com.craftkontrol.ckgenericapp.presentation.theme.CKGenericAppTheme
 import com.craftkontrol.ckgenericapp.service.MonitoringService
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import timber.log.Timber
+import java.util.Locale
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    
+    @Inject
+    lateinit var preferencesManager: PreferencesManager
     
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -32,6 +44,64 @@ class MainActivity : ComponentActivity() {
         if (permissions[Manifest.permission.POST_NOTIFICATIONS] == true ||
             Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
             startMonitoringService()
+        }
+    }
+    
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(updateBaseContextLocale(newBase))
+    }
+    
+    private fun updateBaseContextLocale(context: Context): Context {
+        // Get saved language from preferences
+        val languageCode = runBlocking {
+            try {
+                val prefsManager = (context.applicationContext as CKGenericApplication).preferencesManager
+                prefsManager.currentLanguage.first()
+            } catch (e: Exception) {
+                Timber.e(e, "Error getting saved language, using system default")
+                null
+            }
+        }
+        
+        val language = if (languageCode != null) {
+            AppLanguage.fromCode(languageCode) ?: AppLanguage.ENGLISH
+        } else {
+            // Detect system language
+            val systemLocale = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                context.resources.configuration.locales[0]
+            } else {
+                @Suppress("DEPRECATION")
+                context.resources.configuration.locale
+            }
+            when (systemLocale.language) {
+                "fr" -> AppLanguage.FRENCH
+                "it" -> AppLanguage.ITALIAN
+                else -> AppLanguage.ENGLISH
+            }
+        }
+        
+        val locale = when (language) {
+            AppLanguage.FRENCH -> Locale("fr")
+            AppLanguage.ITALIAN -> Locale("it")
+            AppLanguage.ENGLISH -> Locale("en")
+        }
+        
+        Timber.d("MainActivity attachBaseContext: Applying locale ${locale.language}")
+        Locale.setDefault(locale)
+        
+        val configuration = Configuration(context.resources.configuration)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            configuration.setLocale(locale)
+            val localeList = LocaleList(locale)
+            LocaleList.setDefault(localeList)
+            configuration.setLocales(localeList)
+            return context.createConfigurationContext(configuration)
+        } else {
+            @Suppress("DEPRECATION")
+            configuration.locale = locale
+            @Suppress("DEPRECATION")
+            context.resources.updateConfiguration(configuration, context.resources.displayMetrics)
+            return context
         }
     }
     

@@ -57,6 +57,33 @@ This document provides comprehensive technical details for AI assistants working
 - **Type.kt** - Typography scale (Material 3 spec)
 - **Theme.kt** - CKGenericAppTheme with dynamic color support
 
+#### Localization (`localization/`)
+**Multi-language support**: Français, English, Italiano
+
+**Components**:
+- **AppLanguage.kt** - Enum for supported languages (FRENCH, ENGLISH, ITALIAN) with codes and display names
+- **LocalizationManager** - Core manager for language handling
+  - `detectSystemLanguage()` - Auto-detect device language preference
+  - `getCurrentLanguageFlow()` - Reactive flow of current language
+  - `setLanguage(language)` - Change app language (persisted via PreferencesManager)
+  - `getAvailableLanguages()` - List all supported languages
+- **LocaleHelper** - Android locale configuration
+  - `setAppLocale()` - Updates device locale at runtime
+  - Uses `Configuration.setLocale()` for API 24+
+- **LocalizationComposables** - Compose integration
+  - `LocalAppLanguage` - CompositionLocal for language access in UI
+
+**String Resources**:
+- `res/values/strings.xml` - English (default)
+- `res/values-fr/strings.xml` - French
+- `res/values-it/strings.xml` - Italian
+
+**Features**:
+- Automatic detection of device language on first launch
+- Manual language selection in Settings
+- Language preference persisted in DataStore
+- All UI text uses `stringResource()` for dynamic updates
+
 **State Management Pattern**:
 ```kotlin
 StateFlow<UiState> exposed from ViewModel
@@ -100,6 +127,7 @@ StateFlow<UiState> exposed from ViewModel
   - Fullscreen mode
   - Menu collapsed state
   - Dark mode
+  - **Current language** (new) - Language preference (fr, en, it)
 
 **Pattern**: `Flow<T>` for reactive preferences, `edit {}` for updates
 

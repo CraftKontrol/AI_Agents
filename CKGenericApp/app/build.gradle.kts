@@ -7,6 +7,23 @@ plugins {
     kotlin("plugin.serialization") version "1.9.20"
 }
 
+// Function to get git commit count
+fun getGitCommitCount(): Int {
+    return try {
+        val output = ProcessBuilder("git", "rev-list", "--count", "HEAD")
+            .directory(rootDir)
+            .redirectErrorStream(true)
+            .start()
+            .inputStream
+            .bufferedReader()
+            .readText()
+            .trim()
+        output.toIntOrNull() ?: 1
+    } catch (e: Exception) {
+        1
+    }
+}
+
 android {
     namespace = "com.craftkontrol.ckgenericapp"
     compileSdk = 34
@@ -15,8 +32,8 @@ android {
         applicationId = "com.craftkontrol.ckgenericapp"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = getGitCommitCount()
+        versionName = "1.0.${getGitCommitCount()}"
         
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

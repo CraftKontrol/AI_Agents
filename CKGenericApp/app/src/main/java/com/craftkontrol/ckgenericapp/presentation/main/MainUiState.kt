@@ -11,5 +11,6 @@ data class MainUiState(
     val canGoForward: Boolean = false,
     val error: String? = null,
     val permissionsNeeded: List<String> = emptyList(),
-    val shortcutCreationRequested: String? = null
+    val shortcutCreationRequested: String? = null,
+    val welcomeCardHidden: Boolean = false
 )

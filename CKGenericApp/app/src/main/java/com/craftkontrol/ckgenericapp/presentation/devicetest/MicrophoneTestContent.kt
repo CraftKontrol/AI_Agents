@@ -1,5 +1,6 @@
 package com.craftkontrol.ckgenericapp.presentation.devicetest
 
+import com.craftkontrol.ckgenericapp.R
 import android.Manifest
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -18,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
@@ -47,15 +49,15 @@ fun MicrophoneTestContent(
     ) {
         // Info Card
         InfoCard(
-            title = "Microphone Test",
-            description = "Test your device's microphone and visualize audio input in real-time.",
+            title = stringResource(R.string.microphone_test_title),
+            description = stringResource(R.string.microphone_test_description),
             icon = Icons.Default.Mic
         )
         
         // Permission handling
         if (!microphonePermissionState.status.isGranted) {
             PermissionCard(
-                title = "Microphone Permission Required",
+                title = stringResource(R.string.microphone_permission_required),
                 description = if (microphonePermissionState.status.shouldShowRationale) {
                     "Microphone permission is required to record audio and display waveform visualization."
                 } else {
@@ -179,8 +181,7 @@ fun WaveformVisualizerCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Waveform Visualization",
-                    style = MaterialTheme.typography.titleMedium,
+                            text = stringResource(R.string.waveform_visualization),
                     fontWeight = FontWeight.Bold
                 )
                 
@@ -196,7 +197,7 @@ fun WaveformVisualizerCard(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "LIVE",
+                            text = stringResource(R.string.live),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.error,
                             fontWeight = FontWeight.Bold
@@ -285,7 +286,7 @@ fun AudioLevelCard(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "Audio Level",
+                text = stringResource(R.string.audio_level),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
