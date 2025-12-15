@@ -1688,8 +1688,35 @@ function renderAlternativeSourcesGrid() {
     let html = '';
     
     sortedDomains.forEach(domain => {
-        const domainSources = groupedByDomain[domain];
+        let domainSources = groupedByDomain[domain];
         const displayName = getDomainDisplayName(domain, domainSources);
+
+        // Sort sources within a domain so that the most "basal" (shortest path)
+        // appear first. This puts root feeds like `/rss.xml` or `/feed` above
+        // sub-section feeds like `/culture/rss.xml`.
+        function pathDepth(url) {
+            try {
+                const u = new URL(url);
+                const path = u.pathname || '/';
+                // count non-empty segments
+                return path.split('/').filter(Boolean).length;
+            } catch (e) {
+                return 999;
+            }
+        }
+
+        domainSources = domainSources.slice().sort((a, b) => {
+            const da = pathDepth(a.url);
+            const db = pathDepth(b.url);
+            if (da !== db) return da - db; // fewer segments (more basal) first
+            // tie-breaker: shorter pathname length
+            try {
+                const pa = new URL(a.url).pathname || '';
+                const pb = new URL(b.url).pathname || '';
+                if (pa.length !== pb.length) return pa.length - pb.length;
+            } catch (e) {}
+            return a.url.localeCompare(b.url);
+        });
         
         if (domainSources.length > 1) {
             // Multiple sources: create collapsible group
