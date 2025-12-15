@@ -78,36 +78,7 @@ fun SettingsScreen(
                     onCheckedChange = { viewModel.setNotificationsEnabled(it) }
                 )
             }
-            
-            item {
-                Divider(modifier = Modifier.padding(vertical = 16.dp))
-            }
-            
-            item {
-                Text(
-                    text = stringResource(R.string.display),
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-            }
-            
-            item {
-                SwitchPreference(
-                    title = stringResource(R.string.dark_mode),
-                    description = stringResource(R.string.dark_mode_description),
-                    checked = uiState.darkMode,
-                    onCheckedChange = { viewModel.setDarkMode(it) }
-                )
-            }
-            
-            item {
-                SwitchPreference(
-                    title = stringResource(R.string.fullscreen_mode),
-                    description = stringResource(R.string.fullscreen_description),
-                    checked = uiState.fullscreenMode,
-                    onCheckedChange = { viewModel.setFullscreenMode(it) }
-                )
-            }
+          
             
             item {
                 Divider(modifier = Modifier.padding(vertical = 16.dp))
