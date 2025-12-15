@@ -29,25 +29,27 @@ class AlarmReceiver : BroadcastReceiver() {
         val alarmId = intent.getStringExtra(AlarmScheduler.EXTRA_ALARM_ID) ?: "unknown"
         val title = intent.getStringExtra(AlarmScheduler.EXTRA_ALARM_TITLE) ?: "Reminder"
         val taskType = intent.getStringExtra(AlarmScheduler.EXTRA_TASK_TYPE) ?: "general"
+        val appId = intent.getStringExtra(AlarmScheduler.EXTRA_APP_ID) ?: "memory_board"
         
-        Timber.i("Alarm received: id=$alarmId, title=$title, type=$taskType")
+        Timber.i("Alarm received: id=$alarmId, title=$title, type=$taskType, appId=$appId")
         
         // Show notification with appropriate priority and sound
-        showAlarmNotification(context, alarmId, title, taskType)
+        showAlarmNotification(context, alarmId, title, taskType, appId)
     }
     
     /**
      * Show a high-priority notification for the alarm.
      */
-    private fun showAlarmNotification(context: Context, alarmId: String, title: String, taskType: String) {
+    private fun showAlarmNotification(context: Context, alarmId: String, title: String, taskType: String, appId: String) {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         
         // Create notification channel if needed
         createAlarmNotificationChannel(context, notificationManager)
         
-        // Create intent to open app when notification is tapped
-        val intent = Intent(context, MainActivity::class.java).apply {
+        // Create intent to open the specific app when notification is tapped
+        val intent = Intent(context, com.craftkontrol.ckgenericapp.presentation.shortcut.ShortcutActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(com.craftkontrol.ckgenericapp.presentation.shortcut.ShortcutActivity.EXTRA_APP_ID, appId)
             putExtra("alarmId", alarmId)
             putExtra("taskType", taskType)
         }

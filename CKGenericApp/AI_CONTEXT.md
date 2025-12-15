@@ -33,10 +33,24 @@ This document provides comprehensive technical details for AI assistants working
 - **SettingsViewModel.kt** - Manages preferences
 - **SettingsUiState.kt** - Settings state
 
+#### Device Testing Screen Flow
+- **DeviceTestScreen.kt** - Tabbed interface for hardware testing
+- **DeviceTestViewModel.kt** - Manages device sensors, audio recording, camera, location
+- **DeviceTestUiState.kt** - Testing state (recording, location data, sensor readings)
+- **MicrophoneTestContent.kt** - Audio recording with real-time waveform visualization
+- **TestContents.kt** - Camera, location, and sensors test UI
+- **CameraPreview.kt** - CameraX preview integration
+
+**Features**:
+- **Microphone Test**: Real-time waveform visualization using Canvas, audio level indicator, recording duration
+- **Camera Test**: Live camera preview with CameraX, front/back camera switch
+- **Location Test**: Native Android LocationManager, GPS coordinates, accuracy, altitude, speed
+- **Sensors Test**: Accelerometer, gyroscope, light sensor, proximity sensor with real-time readings
+
 #### Navigation
 - **AppNavGraph.kt** - Compose Navigation
 - **Screen.kt** - Sealed class for routes
-- Simple two-screen navigation: Main ↔ Settings
+- Three-screen navigation: Main ↔ Settings, Main → DeviceTest
 
 #### Theme
 - **Color.kt** - Material 3 color tokens (light/dark)
@@ -466,6 +480,7 @@ Modify importance, vibration, sound
 - DataStore 1.0.0
 - Firebase BOM 32.7.0
 - WebKit 1.9.0
+- CameraX 1.3.1 (core, camera2, lifecycle, view)
 - Accompanist Permissions 0.34.0
 - Timber 5.0.1
 

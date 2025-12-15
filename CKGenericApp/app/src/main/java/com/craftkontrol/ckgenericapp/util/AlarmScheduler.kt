@@ -150,11 +150,12 @@ class AlarmScheduler(private val context: Context) {
     /**
      * Create the intent for the alarm.
      */
-    private fun createAlarmIntent(alarmId: String, title: String, taskType: String): Intent {
+    private fun createAlarmIntent(alarmId: String, title: String, taskType: String, appId: String = "memory_board"): Intent {
         return Intent(context, AlarmReceiver::class.java).apply {
             putExtra(EXTRA_ALARM_ID, alarmId)
             putExtra(EXTRA_ALARM_TITLE, title)
             putExtra(EXTRA_TASK_TYPE, taskType)
+            putExtra(EXTRA_APP_ID, appId)
             action = ACTION_ALARM_TRIGGERED
         }
     }
@@ -177,5 +178,6 @@ class AlarmScheduler(private val context: Context) {
         const val EXTRA_ALARM_ID = "alarm_id"
         const val EXTRA_ALARM_TITLE = "alarm_title"
         const val EXTRA_TASK_TYPE = "task_type"
+        const val EXTRA_APP_ID = "app_id"
     }
 }

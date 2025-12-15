@@ -31,6 +31,7 @@ import timber.log.Timber
 class ShortcutActivity : ComponentActivity() {
     
     private var currentAppId: String? = null
+    var pendingWebViewPermissionRequest: android.webkit.PermissionRequest? = null
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -65,6 +66,7 @@ class ShortcutActivity : ComponentActivity() {
                     if (currentAppId != null) {
                         ShortcutScreen(
                             appId = currentAppId!!,
+                            activity = this@ShortcutActivity,
                             onExit = { finish() }
                         )
                     } else {
@@ -93,6 +95,7 @@ class ShortcutActivity : ComponentActivity() {
 @Composable
 private fun ShortcutScreen(
     appId: String,
+    activity: ShortcutActivity,
     onExit: () -> Unit,
     viewModel: ShortcutViewModel = viewModel()
 ) {
@@ -100,6 +103,26 @@ private fun ShortcutScreen(
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val apiKeys by viewModel.apiKeys.collectAsStateWithLifecycle()
     var webView: WebView? by remember { mutableStateOf(null) }
+    
+    // Permission launcher setup
+    val permissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        Timber.d("Permission result from Composable: $permissions")
+        
+        val allGranted = permissions.values.all { it }
+        
+        activity.pendingWebViewPermissionRequest?.let { request ->
+            if (allGranted) {
+                Timber.d("Runtime permissions granted, granting WebView request")
+                request.grant(request.resources)
+            } else {
+                Timber.d("Runtime permissions denied, denying WebView request")
+                request.deny()
+            }
+            activity.pendingWebViewPermissionRequest = null
+        }
+    }
     
     // Load the specific app directly from repository
     LaunchedEffect(appId) {
@@ -139,6 +162,8 @@ private fun ShortcutScreen(
                 StandaloneWebView(
                     app = app!!,
                     apiKeys = apiKeys,
+                    activity = activity,
+                    permissionLauncher = permissionLauncher,
                     onWebViewCreated = { webView = it }
                 )
             }
@@ -173,6 +198,8 @@ private fun ShortcutScreen(
 private fun StandaloneWebView(
     app: WebApp,
     apiKeys: Map<String, String>,
+    activity: ShortcutActivity,
+    permissionLauncher: androidx.activity.compose.ManagedActivityResultLauncher<Array<String>, Map<String, Boolean>>,
     onWebViewCreated: (WebView) -> Unit
 ) {
     val context = LocalContext.current
@@ -216,7 +243,11 @@ private fun StandaloneWebView(
                 
                 webChromeClient = com.craftkontrol.ckgenericapp.webview.CKWebChromeClient(
                     activity = ctx as android.app.Activity,
-                    onPermissionRequest = { }
+                    onPermissionRequest = { permissions, request ->
+                        Timber.d("Permission request callback: ${permissions.joinToString()}")
+                        activity.pendingWebViewPermissionRequest = request
+                        permissionLauncher.launch(permissions)
+                    }
                 )
                 
                 onWebViewCreated(this)

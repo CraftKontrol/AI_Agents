@@ -42,7 +42,7 @@ class CKWebViewClient : WebViewClient() {
 
 class CKWebChromeClient(
     private val activity: Activity,
-    private val onPermissionRequest: (Array<String>) -> Unit
+    private val onPermissionRequest: (Array<String>, PermissionRequest) -> Unit
 ) : WebChromeClient() {
     
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
@@ -54,44 +54,40 @@ class CKWebChromeClient(
     
     override fun onPermissionRequest(request: PermissionRequest?) {
         request?.let {
+            Timber.d("WebView permission request: ${it.resources.joinToString()}")
+            
             val permissions = mutableListOf<String>()
             
             it.resources.forEach { resource ->
                 when (resource) {
                     PermissionRequest.RESOURCE_VIDEO_CAPTURE -> {
+                        Timber.d("Requesting CAMERA permission")
                         permissions.add(Manifest.permission.CAMERA)
                     }
                     PermissionRequest.RESOURCE_AUDIO_CAPTURE -> {
+                        Timber.d("Requesting RECORD_AUDIO permission")
                         permissions.add(Manifest.permission.RECORD_AUDIO)
                     }
                     PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID -> {
+                        Timber.d("Requesting PROTECTED_MEDIA_ID permission")
                         // Handle protected media
                     }
                 }
             }
             
-            // Check if permissions are granted
+            // Check if permissions are already granted
             val allGranted = permissions.all { permission ->
                 ContextCompat.checkSelfPermission(activity, permission) == 
                     PackageManager.PERMISSION_GRANTED
             }
             
             if (allGranted) {
+                Timber.d("All permissions already granted, granting WebView request")
                 it.grant(it.resources)
             } else {
-                onPermissionRequest(permissions.toTypedArray())
-                // Grant after user grants permission
-                activity.runOnUiThread {
-                    val stillAllGranted = permissions.all { permission ->
-                        ContextCompat.checkSelfPermission(activity, permission) == 
-                            PackageManager.PERMISSION_GRANTED
-                    }
-                    if (stillAllGranted) {
-                        it.grant(it.resources)
-                    } else {
-                        it.deny()
-                    }
-                }
+                Timber.d("Permissions not granted, requesting runtime permissions")
+                // Pass the PermissionRequest to the callback so it can be granted later
+                onPermissionRequest(permissions.toTypedArray(), it)
             }
         }
     }
@@ -108,7 +104,8 @@ class CKWebChromeClient(
         if (hasPermission) {
             callback?.invoke(origin, true, false)
         } else {
-            onPermissionRequest(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION))
+            Timber.d("Geolocation permission not granted")
+            // For geolocation, we can't use PermissionRequest, just deny callback
             callback?.invoke(origin, false, false)
         }
     }
