@@ -594,26 +594,31 @@ async function fetchOpenWeatherMap(location, timeRange) {
     }
     
     try {
-        // First, get coordinates from city name
-        const geoUrl = `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(location)}&limit=1&appid=${apiKey}`;
-        const geoResponse = await fetch(geoUrl);
-        
-        if (!geoResponse.ok) {
-            if (geoResponse.status === 401) {
-                throw new Error('Invalid API key. Please check your OpenWeatherMap API key.');
-            } else if (geoResponse.status === 429) {
-                throw new Error('API rate limit exceeded. Please wait a moment and try again.');
+        let lat, lon;
+        // If location is in the form 'lat,lng', use directly
+        const latLngMatch = location.match(/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);
+        if (latLngMatch) {
+            lat = parseFloat(latLngMatch[1]);
+            lon = parseFloat(latLngMatch[2]);
+        } else {
+            // Otherwise, geocode as city name
+            const geoUrl = `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(location)}&limit=1&appid=${apiKey}`;
+            const geoResponse = await fetch(geoUrl);
+            if (!geoResponse.ok) {
+                if (geoResponse.status === 401) {
+                    throw new Error('Invalid API key. Please check your OpenWeatherMap API key.');
+                } else if (geoResponse.status === 429) {
+                    throw new Error('API rate limit exceeded. Please wait a moment and try again.');
+                }
+                throw new Error(`Geocoding failed (${geoResponse.status}). Please verify your API key.`);
             }
-            throw new Error(`Geocoding failed (${geoResponse.status}). Please verify your API key.`);
+            const geoData = await geoResponse.json();
+            if (!geoData || geoData.length === 0) {
+                throw new Error('Location not found');
+            }
+            lat = geoData[0].lat;
+            lon = geoData[0].lon;
         }
-        
-        const geoData = await geoResponse.json();
-        
-        if (!geoData || geoData.length === 0) {
-            throw new Error('Location not found');
-        }
-        
-        const { lat, lon } = geoData[0];
         
         if (timeRange === 'current') {
             // Fetch current weather
@@ -780,21 +785,26 @@ async function fetchWeatherAPI(location, timeRange) {
 // Fetch data from Open-Meteo (no API key required)
 async function fetchOpenMeteo(location, timeRange) {
     try {
-        // First, geocode the location using Open-Meteo's geocoding API
-        const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(location)}&count=1&language=en&format=json`;
-        const geoResponse = await fetch(geoUrl);
-        
-        if (!geoResponse.ok) {
-            throw new Error('Failed to geocode location');
+        let latitude, longitude;
+        // If location is in the form 'lat,lng', use directly
+        const latLngMatch = location.match(/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);
+        if (latLngMatch) {
+            latitude = parseFloat(latLngMatch[1]);
+            longitude = parseFloat(latLngMatch[2]);
+        } else {
+            // Otherwise, geocode as city name
+            const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(location)}&count=1&language=en&format=json`;
+            const geoResponse = await fetch(geoUrl);
+            if (!geoResponse.ok) {
+                throw new Error('Failed to geocode location');
+            }
+            const geoData = await geoResponse.json();
+            if (!geoData.results || geoData.results.length === 0) {
+                throw new Error('Location not found');
+            }
+            latitude = geoData.results[0].latitude;
+            longitude = geoData.results[0].longitude;
         }
-        
-        const geoData = await geoResponse.json();
-        
-        if (!geoData.results || geoData.results.length === 0) {
-            throw new Error('Location not found');
-        }
-        
-        const { latitude, longitude } = geoData.results[0];
         
         if (timeRange === 'current') {
             // Fetch current weather
