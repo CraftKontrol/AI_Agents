@@ -222,9 +222,6 @@ fun MainScreen(
                         CircularProgressIndicator()
                     }
                 }
-                uiState.apps.isEmpty() -> {
-                    EmptyState()
-                }
                 else -> {
                     // Apps Section
                     AppsManagementSection(
@@ -633,3 +630,5 @@ fun ApiKeyField(
         }
     }
 }
+
+
