@@ -19,6 +19,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.craftkontrol.ckgenericapp.presentation.localization.AppLanguage
+import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.FileUpload
+import androidx.compose.material.icons.filled.Info
 import timber.log.Timber
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -130,6 +133,25 @@ fun SettingsScreen(
                         )
                     }
                 }
+            }
+            
+            item {
+                Divider(modifier = Modifier.padding(vertical = 16.dp))
+            }
+            
+            item {
+                Text(
+                    text = stringResource(R.string.data_backup),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            }
+            
+            item {
+                BackupRestoreSection(
+                    onExportData = { viewModel.exportData(context) },
+                    onImportData = { viewModel.importData(context) }
+                )
             }
             
             item {
@@ -254,6 +276,78 @@ fun LanguagePreference(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun BackupRestoreSection(
+    onExportData: () -> Unit,
+    onImportData: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Info card
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(
+                    text = stringResource(R.string.backup_description),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            // Export button
+            Button(
+                onClick = onExportData,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = Icons.Default.FileDownload,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(stringResource(R.string.export_data))
+            }
+            
+            // Import button
+            OutlinedButton(
+                onClick = onImportData,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = Icons.Default.FileUpload,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(stringResource(R.string.import_data))
+            }
+            
+            // Auto-backup info
+            Text(
+                text = stringResource(R.string.auto_backup_info),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 8.dp)
+            )
         }
     }
 }

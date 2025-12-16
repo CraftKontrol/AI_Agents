@@ -2,10 +2,14 @@ package com.craftkontrol.ckgenericapp
 
 import android.Manifest
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.provider.Settings
 import android.os.LocaleList
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -15,6 +19,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
+import com.craftkontrol.ckgenericapp.backup.BackupHelper
 import com.craftkontrol.ckgenericapp.data.local.preferences.PreferencesManager
 import com.craftkontrol.ckgenericapp.presentation.localization.AppLanguage
 import com.craftkontrol.ckgenericapp.presentation.navigation.AppNavGraph
@@ -22,6 +28,7 @@ import com.craftkontrol.ckgenericapp.presentation.theme.CKGenericAppTheme
 import com.craftkontrol.ckgenericapp.service.MonitoringService
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import timber.log.Timber
 import java.util.Locale
@@ -32,6 +39,8 @@ class MainActivity : ComponentActivity() {
     
     @Inject
     lateinit var preferencesManager: PreferencesManager
+    
+    private lateinit var backupHelper: BackupHelper
     
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -110,6 +119,16 @@ class MainActivity : ComponentActivity() {
         
         Timber.d("MainActivity created")
         
+        // Initialize backup helper
+        backupHelper = BackupHelper(this)
+        
+        // Check if this is first launch after install/reinstall
+        lifecycleScope.launch {
+            checkFirstLaunch()
+            // Request periodic backup
+            backupHelper.requestBackupIfNeeded()
+        }
+        
         // Request necessary permissions
         requestPermissions()
         
@@ -122,6 +141,19 @@ class MainActivity : ComponentActivity() {
                     AppNavGraph()
                 }
             }
+        }
+    }
+    
+    private suspend fun checkFirstLaunch() {
+        try {
+            val isFirstLaunch = backupHelper.isFirstLaunchAfterInstall()
+            if (isFirstLaunch) {
+                Timber.i("First launch detected - checking for backup restoration")
+                backupHelper.logBackupStatus()
+                backupHelper.markFirstLaunchComplete()
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error checking first launch")
         }
     }
     
@@ -154,6 +186,21 @@ class MainActivity : ComponentActivity() {
             }
         }
         
+        // Storage permissions for backup/restore in Documents folder
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // Android 11+ requires MANAGE_EXTERNAL_STORAGE via settings
+            if (!Environment.isExternalStorageManager()) {
+                Timber.w("MANAGE_EXTERNAL_STORAGE not granted - backup/restore may not work")
+                requestStorageManagement()
+            }
+        } else {
+            // Android 10 and below
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) 
+                != PackageManager.PERMISSION_GRANTED) {
+                permissionsToRequest.add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            }
+        }
+        
         if (permissionsToRequest.isNotEmpty()) {
             permissionLauncher.launch(permissionsToRequest.toTypedArray())
         } else {
@@ -161,13 +208,51 @@ class MainActivity : ComponentActivity() {
         }
     }
     
+    private fun requestStorageManagement() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+                intent.data = Uri.parse("package:$packageName")
+                startActivity(intent)
+                Timber.i("Redirected to storage permission settings")
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error requesting storage management")
+            // Fallback: open app settings
+            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+            intent.data = Uri.parse("package:$packageName")
+            startActivity(intent)
+        }
+    }
+    
     private fun startMonitoringService() {
         MonitoringService.start(this)
+        
+        // Log storage permission status for debugging
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            Timber.d("Storage Manager permission: ${Environment.isExternalStorageManager()}")
+        } else {
+            val writeGranted = ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+            Timber.d("Write External Storage permission: $writeGranted")
+        }
     }
     
     override fun onBackPressed() {
         // Handle back button - let WebView handle it first
         super.onBackPressed()
+    }
+    
+    override fun onPause() {
+        super.onPause()
+        // Request backup when app goes to background
+        lifecycleScope.launch {
+            try {
+                backupHelper.requestBackup()
+                Timber.d("Backup requested on pause")
+            } catch (e: Exception) {
+                Timber.e(e, "Error requesting backup on pause")
+            }
+        }
     }
     
     override fun onDestroy() {

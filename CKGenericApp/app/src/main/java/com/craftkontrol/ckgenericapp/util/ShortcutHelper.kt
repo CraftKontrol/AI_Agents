@@ -7,6 +7,8 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
+import android.graphics.BitmapFactory
+import java.io.IOException
 import androidx.core.content.pm.ShortcutInfoCompat
 import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
@@ -28,12 +30,13 @@ object ShortcutHelper {
     ): Boolean {
         return try {
             // Create intent that opens ShortcutActivity with the specific app
-            // Each app gets its own task (separate instance)
+            // Each app gets its own task (single instance per app ID)
             val intent = Intent(context, ShortcutActivity::class.java).apply {
                 action = "com.craftkontrol.ckgenericapp.OPEN_APP.${webApp.id}"
                 putExtra(ShortcutActivity.EXTRA_APP_ID, webApp.id)
-                // Create new task for this app type
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK
+                // Use NEW_TASK to create separate task, but not MULTIPLE_TASK
+                // This ensures only one instance per action
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             }
             
             // Generate a colored icon for the app
@@ -74,10 +77,37 @@ object ShortcutHelper {
      * Generate a simple colored icon with the app's initial
      */
     private fun generateAppIcon(context: Context, webApp: WebApp): Bitmap {
-        val size = 192 // dp
-        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        // Target pixel size (use density to scale 192dp to px)
+        val sizePx = (192 * context.resources.displayMetrics.density).toInt()
+
+        // If webApp provides an icon name, try to load it from assets first, then drawable
+        webApp.icon?.let { iconName ->
+            // Try assets/icons/{iconName}.png
+            try {
+                context.assets.open("icons/$iconName.png").use { stream ->
+                    val bmp = BitmapFactory.decodeStream(stream)
+                    if (bmp != null) {
+                        return Bitmap.createScaledBitmap(bmp, sizePx, sizePx, true)
+                    }
+                }
+            } catch (e: IOException) {
+                // ignore - asset not found
+            }
+
+            // Try drawable resource by name
+            val resId = context.resources.getIdentifier(iconName, "drawable", context.packageName)
+            if (resId != 0) {
+                val bmp = BitmapFactory.decodeResource(context.resources, resId)
+                if (bmp != null) {
+                    return Bitmap.createScaledBitmap(bmp, sizePx, sizePx, true)
+                }
+            }
+        }
+
+        // Fallback: generate colored rounded icon with initials
+        val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        
+
         // Background color based on app order
         val colors = listOf(
             Color.parseColor("#4A9EFF"), // Blue
@@ -88,35 +118,35 @@ object ShortcutHelper {
             Color.parseColor("#FF9800")  // Orange
         )
         val bgColor = colors[webApp.order % colors.size]
-        
+
         // Draw rounded rectangle background
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = bgColor
             style = Paint.Style.FILL
         }
-        
-        val rect = RectF(8f, 8f, (size - 8).toFloat(), (size - 8).toFloat())
+
+        val padding = (8 * context.resources.displayMetrics.density)
+        val rect = RectF(padding, padding, (sizePx - padding), (sizePx - padding))
         canvas.drawRoundRect(rect, 24f, 24f, paint)
-        
+
         // Draw app initial(s)
         val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.WHITE
-            textSize = size * 0.5f
+            textSize = sizePx * 0.5f
             textAlign = Paint.Align.CENTER
             isFakeBoldText = true
         }
-        
-        // Get first letter(s) of app name
+
         val initial = webApp.name
             .split(" ")
             .take(2)
             .mapNotNull { it.firstOrNull()?.uppercaseChar() }
             .joinToString("")
             .take(2)
-        
-        val textY = (size / 2) - ((textPaint.descent() + textPaint.ascent()) / 2)
-        canvas.drawText(initial, size / 2f, textY, textPaint)
-        
+
+        val textY = (sizePx / 2f) - ((textPaint.descent() + textPaint.ascent()) / 2f)
+        canvas.drawText(initial, sizePx / 2f, textY, textPaint)
+
         return bitmap
     }
     

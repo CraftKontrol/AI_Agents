@@ -1,7 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Data extraction rules for Android 12+ (API 31+)
+  Ensures all data is included in cloud backup
+-->
 <data-extraction-rules>
     <cloud-backup>
+        <!-- Include all shared preferences (DataStore, etc.) -->
+        <include domain="sharedpref" path="." />
+        
+        <!-- Include all databases (Room DB) -->
+        <include domain="database" path="." />
+        
+        <!-- Include app files (WebView data, caches, etc.) -->
+        <include domain="file" path="." />
+        
+        <!-- Include external files if any -->
+        <include domain="external" path="." />
+        
+        <!-- Exclude temporary cache -->
+        <exclude domain="file" path="code_cache" />
+        <exclude domain="file" path="no_backup" />
+    </cloud-backup>
+    
+    <!-- Device transfer rules (same as cloud backup) -->
+    <device-transfer>
         <include domain="sharedpref" path="." />
         <include domain="database" path="." />
-    </cloud-backup>
+        <include domain="file" path="." />
+        <include domain="external" path="." />
+        <exclude domain="file" path="code_cache" />
+        <exclude domain="file" path="no_backup" />
+    </device-transfer>
 </data-extraction-rules>

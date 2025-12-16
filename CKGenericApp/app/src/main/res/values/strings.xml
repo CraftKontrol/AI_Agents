@@ -116,6 +116,13 @@
     <string name="app_version">Version 1.0.0</string>
     <string name="copyright">© 2025 CraftKontrol - Arnaud Cassone / Artcraft Visuals</string>
     
+    <!-- Data Backup -->
+    <string name="data_backup">Data Backup</string>
+    <string name="backup_description">Backup and restore all app data, settings, and web app storage</string>
+    <string name="export_data">Export Data</string>
+    <string name="import_data">Import Latest Backup</string>
+    <string name="auto_backup_info">Your data is automatically backed up with Google account. Manual export recommended for additional safety.</string>
+    
     <!-- Shortcut Activity -->
     <string name="error_no_app">Error: App not specified</string>
     <string name="loading_app">Loading app...</string>

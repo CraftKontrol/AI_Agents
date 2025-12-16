@@ -54,8 +54,13 @@ class ShortcutActivity : ComponentActivity() {
         val newAppId = intent.getStringExtra(EXTRA_APP_ID)
         Timber.d("ShortcutActivity onNewIntent with appId: $newAppId (current: $currentAppId)")
         
-        // Standard launch mode allows multiple instances, onNewIntent shouldn't be called
-        // unless explicitly using singleTop or similar
+        // With singleTask, if the same app is opened again, just bring to front
+        // If different app, this shouldn't happen as each app has unique action
+        if (newAppId != null && newAppId != currentAppId) {
+            currentAppId = newAppId
+            renderContent() // Re-render with new app
+        }
+        // If same app, just bring existing instance to front (no action needed)
     }
     
     private fun renderContent() {

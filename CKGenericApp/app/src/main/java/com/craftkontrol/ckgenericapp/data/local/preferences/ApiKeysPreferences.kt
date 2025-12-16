@@ -1,5 +1,6 @@
 package com.craftkontrol.ckgenericapp.data.local.preferences
 
+import android.app.backup.BackupManager
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
@@ -9,6 +10,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -19,6 +21,7 @@ class ApiKeysPreferences @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     private val dataStore = context.apiKeysDataStore
+    private val backupManager = BackupManager(context)
     
     /**
      * Save an API key with a given name
@@ -28,6 +31,8 @@ class ApiKeysPreferences @Inject constructor(
         dataStore.edit { preferences ->
             preferences[prefsKey] = keyValue
         }
+        requestBackup()
+        Timber.d("API key saved: $keyName")
     }
     
     /**
@@ -60,6 +65,8 @@ class ApiKeysPreferences @Inject constructor(
         dataStore.edit { preferences ->
             preferences.remove(prefsKey)
         }
+        requestBackup()
+        Timber.d("API key deleted: $keyName")
     }
     
     /**
@@ -72,6 +79,20 @@ class ApiKeysPreferences @Inject constructor(
             keysToRemove.forEach { key ->
                 preferences.remove(key)
             }
+        }
+        requestBackup()
+        Timber.d("All API keys cleared")
+    }
+    
+    /**
+     * Request Android backup after API key changes
+     */
+    private fun requestBackup() {
+        try {
+            backupManager.dataChanged()
+            Timber.d("Backup requested after API key change")
+        } catch (e: Exception) {
+            Timber.e(e, "Error requesting backup")
         }
     }
 }

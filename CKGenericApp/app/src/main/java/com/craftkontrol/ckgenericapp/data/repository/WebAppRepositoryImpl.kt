@@ -70,6 +70,7 @@ class WebAppRepositoryImpl @Inject constructor(
                     url = "https://craftkontrol.github.io/AI_Agents/AiSearchAgregator/",
                     description = "Search across multiple AI platforms",
                     order = 1,
+                    icon = "ic_ai_search",
                     supportsNotifications = true
                 ),
                 WebApp(
@@ -78,6 +79,7 @@ class WebAppRepositoryImpl @Inject constructor(
                     url = "https://craftkontrol.github.io/AI_Agents/AstralCompute/",
                     description = "Advanced computation tools",
                     order = 2,
+                    icon = "ic_astral_compute",
                     supportsNotifications = true
                 ),
                 WebApp(
@@ -86,6 +88,7 @@ class WebAppRepositoryImpl @Inject constructor(
                     url = "https://craftkontrol.github.io/AI_Agents/LocalFoodProducts/",
                     description = "Find local food sources",
                     order = 3,
+                    icon = "ic_local_food",
                     requiresLocation = true,
                     supportsNotifications = true
                 ),
@@ -95,6 +98,7 @@ class WebAppRepositoryImpl @Inject constructor(
                     url = "https://craftkontrol.github.io/AI_Agents/MemoryBoardHelper/",
                     description = "Task and memory management",
                     order = 4,
+                    icon = "ic_memory_board",
                     supportsNotifications = true
                 ),
                 WebApp(
@@ -103,6 +107,7 @@ class WebAppRepositoryImpl @Inject constructor(
                     url = "https://craftkontrol.github.io/AI_Agents/MeteoAgregator/",
                     description = "Weather information aggregator",
                     order = 5,
+                    icon = "ic_meteo",
                     requiresLocation = true,
                     supportsNotifications = true
                 ),
@@ -112,6 +117,7 @@ class WebAppRepositoryImpl @Inject constructor(
                     url = "https://craftkontrol.github.io/AI_Agents/NewsAgregator/",
                     description = "Latest news from multiple sources",
                     order = 6,
+                    icon = "ic_news",
                     supportsNotifications = true
                 )
             )

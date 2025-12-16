@@ -13,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -23,6 +24,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.craftkontrol.ckgenericapp.domain.model.WebApp
 import timber.log.Timber
+import android.graphics.BitmapFactory
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,6 +51,18 @@ fun MainScreen(
         }
     }
     
+    // Load CK icon from assets
+    val ckIcon = remember {
+        try {
+            context.assets.open("icons/ck_icon.png").use { inputStream ->
+                BitmapFactory.decodeStream(inputStream)?.asImageBitmap()
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to load CK icon")
+            null
+        }
+    }
+    
     Scaffold(
         topBar = {
             TopAppBar(
@@ -56,7 +70,7 @@ fun MainScreen(
                     Column {
                         Text(
                             stringResource(R.string.app_title),
-                            style = MaterialTheme.typography.titleLarge
+                            style = MaterialTheme.typography.titleMedium
                         )
                         val context = LocalContext.current
                         val versionName = remember {
@@ -74,6 +88,17 @@ fun MainScreen(
                                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                             )
                         }
+                    }
+                },
+                navigationIcon = {
+                    ckIcon?.let { icon ->
+                        androidx.compose.foundation.Image(
+                            bitmap = icon,
+                            contentDescription = "CraftKontrol Logo",
+                            modifier = Modifier
+                                .padding(start = 8.dp)
+                                .size(40.dp)
+                        )
                     }
                 },
                 actions = {
