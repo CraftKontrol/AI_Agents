@@ -46,18 +46,39 @@ body {
 }
 
 .header-title p {
-    color: var(--text-muted);
+    color: var(white--text-muted);
     font-size: 14px;
 }
 
+.header-controls {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+}
+
+.settings-btn {
+    padding: 8px 16px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #ffffff;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.settings-btn:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
 .credits {
-    color: var(--text-muted);
+    color: var(white--text-muted);
     font-size: 14px;
     margin-top: 15px;
 }
 
 .last-modified {
-    color: #666;
+    color: #000000;
     font-size: 13px;
     margin-top: 5px;
 }
@@ -191,6 +212,94 @@ body {
     100% { transform: rotate(360deg); }
 }
 
+/* Modal Styles */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.modal-content {
+    background-color: var(--surface-color);
+    max-width: 500px;
+    width: 100%;
+    border-radius: 0;
+    border: 1px solid var(--border-color);
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header h2 {
+    color: #ffffff;
+    font-size: 22px;
+    margin: 0;
+}
+
+.modal-close {
+    background: transparent;
+    border: none;
+    color: var(--text-color);
+    font-size: 32px;
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    line-height: 1;
+    transition: color 0.2s ease;
+}
+
+.modal-close:hover {
+    color: var(--error-color);
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.modal-body .input-group {
+    margin-bottom: 20px;
+}
+
+.user-info-display {
+    background-color: var(--background-color);
+    padding: 15px;
+    margin-top: 20px;
+    border: 1px solid var(--border-color);
+}
+
+.user-info-display p {
+    margin: 5px 0;
+    color: var(--text-color);
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+.modal-footer button {
+    flex: 1;
+}
+
 /* Controls Section */
 .controls-section {
     background-color: var(--surface-color);
@@ -311,6 +420,42 @@ body {
 #astroChart {
     max-width: 100%;
     height: auto;
+}
+
+.chart-legend {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    padding: 20px;
+    background-color: var(--background-color);
+    border-top: 1px solid var(--border-color);
+    margin-top: 20px;
+}
+
+.legend-section h4 {
+    color: var(--text-color);
+    font-size: 14px;
+    margin-bottom: 10px;
+    font-weight: 600;
+}
+
+.legend-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.legend-items span {
+    font-size: 20px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.legend-items span span {
+    font-size: 11px;
 }
 
 /* Data Section */
@@ -538,6 +683,11 @@ body {
     
     .chart-section {
         padding: 15px;
+    }
+    
+    .chart-legend {
+        grid-template-columns: 1fr;
+        gap: 15px;
     }
     
     #astroChart {

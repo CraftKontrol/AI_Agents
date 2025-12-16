@@ -121,11 +121,138 @@ const planetSymbols = {
 const zodiacSymbols = ['♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓'];
 const zodiacNames = ['aries', 'taurus', 'gemini', 'cancer', 'leo', 'virgo', 'libra', 'scorpio', 'sagittarius', 'capricorn', 'aquarius', 'pisces'];
 
+// User Settings Management
+function loadUserSettings() {
+    const userName = localStorage.getItem('astralUserName');
+    const userBirthDate = localStorage.getItem('astralUserBirthDate');
+    const userBirthTime = localStorage.getItem('astralUserBirthTime');
+    
+    if (userName) {
+        document.getElementById('userName').value = userName;
+    }
+    if (userBirthDate) {
+        document.getElementById('userBirthDate').value = userBirthDate;
+    }
+    if (userBirthTime) {
+        document.getElementById('userBirthTime').value = userBirthTime;
+    }
+    
+    updateUserInfoDisplay();
+}
+
+function saveUserSettings() {
+    const userName = document.getElementById('userName').value.trim();
+    const userBirthDate = document.getElementById('userBirthDate').value;
+    const userBirthTime = document.getElementById('userBirthTime').value;
+    
+    if (userName) {
+        localStorage.setItem('astralUserName', userName);
+    } else {
+        localStorage.removeItem('astralUserName');
+    }
+    
+    if (userBirthDate) {
+        localStorage.setItem('astralUserBirthDate', userBirthDate);
+    } else {
+        localStorage.removeItem('astralUserBirthDate');
+    }
+    
+    if (userBirthTime) {
+        localStorage.setItem('astralUserBirthTime', userBirthTime);
+    } else {
+        localStorage.removeItem('astralUserBirthTime');
+    }
+    
+    updateUserInfoDisplay();
+    
+    // Show success feedback
+    const saveBtn = event.target;
+    const originalText = saveBtn.textContent;
+    saveBtn.textContent = currentLanguage === 'fr' ? '✓ Enregistré' : '✓ Saved';
+    saveBtn.style.backgroundColor = 'var(--success-color)';
+    
+    setTimeout(() => {
+        saveBtn.textContent = originalText;
+        saveBtn.style.backgroundColor = '';
+        closeSettings();
+    }, 1000);
+}
+
+function clearUserSettings() {
+    if (confirm(currentLanguage === 'fr' ? 'Êtes-vous sûr de vouloir effacer votre profil ?' : 'Are you sure you want to clear your profile?')) {
+        localStorage.removeItem('astralUserName');
+        localStorage.removeItem('astralUserBirthDate');
+        localStorage.removeItem('astralUserBirthTime');
+        
+        document.getElementById('userName').value = '';
+        document.getElementById('userBirthDate').value = '';
+        document.getElementById('userBirthTime').value = '';
+        
+        updateUserInfoDisplay();
+    }
+}
+
+function updateUserInfoDisplay() {
+    const userName = localStorage.getItem('astralUserName');
+    const userBirthDate = localStorage.getItem('astralUserBirthDate');
+    const userBirthTime = localStorage.getItem('astralUserBirthTime');
+    
+    const infoDisplay = document.getElementById('userInfoDisplay');
+    const infoText = document.getElementById('savedUserInfo');
+    
+    if (userName || userBirthDate) {
+        let info = '';
+        if (userName) {
+            info += `${currentLanguage === 'fr' ? 'Nom' : 'Name'}: ${userName}<br>`;
+        }
+        if (userBirthDate) {
+            const date = new Date(userBirthDate);
+            const formattedDate = date.toLocaleDateString(currentLanguage === 'fr' ? 'fr-FR' : 'en-US');
+            info += `${currentLanguage === 'fr' ? 'Date de naissance' : 'Birth date'}: ${formattedDate}`;
+            if (userBirthTime) {
+                info += ` ${currentLanguage === 'fr' ? 'à' : 'at'} ${userBirthTime}`;
+            }
+        }
+        infoText.innerHTML = info;
+        infoDisplay.style.display = 'block';
+    } else {
+        infoDisplay.style.display = 'none';
+    }
+}
+
+function openSettings() {
+    loadUserSettings();
+    document.getElementById('settingsModal').style.display = 'flex';
+    updateLanguage(); // Update modal text with current language
+}
+
+function closeSettings() {
+    document.getElementById('settingsModal').style.display = 'none';
+}
+
+// Close modal on background click
+window.addEventListener('click', function(event) {
+    const modal = document.getElementById('settingsModal');
+    if (event.target === modal) {
+        closeSettings();
+    }
+});
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
     // Set today's date
     const today = new Date();
     document.getElementById('dateInput').valueAsDate = today;
+    
+    // Load language preference
+    const savedLanguage = localStorage.getItem('astralLanguage');
+    if (savedLanguage) {
+        currentLanguage = savedLanguage;
+        document.getElementById('languageSelect').value = currentLanguage;
+    }
+    
+    // Load user settings
+    loadUserSettings();
     
     // Load saved API key
     const savedApiKey = getApiKey('mistral', 'mistralApiKey');
@@ -156,10 +283,18 @@ document.addEventListener('DOMContentLoaded', function() {
     updateLanguage();
 });
 
-// Language Toggle
+// Language Management
+function changeLanguage() {
+    currentLanguage = document.getElementById('languageSelect').value;
+    localStorage.setItem('astralLanguage', currentLanguage);
+    updateLanguage();
+}
+
 function toggleLanguage() {
+    // Legacy function kept for compatibility
     currentLanguage = currentLanguage === 'fr' ? 'en' : 'fr';
-    document.getElementById('langToggle').textContent = currentLanguage === 'fr' ? 'EN' : 'FR';
+    document.getElementById('languageSelect').value = currentLanguage;
+    localStorage.setItem('astralLanguage', currentLanguage);
     updateLanguage();
 }
 
@@ -724,6 +859,20 @@ async function getInterpretation() {
         return;
     }
     
+    // Get user settings
+    const userName = localStorage.getItem('astralUserName');
+    const userBirthDate = localStorage.getItem('astralUserBirthDate');
+    const userBirthTime = localStorage.getItem('astralUserBirthTime');
+    
+    // Check if user profile exists
+    if (!userName && !userBirthDate) {
+        const message = currentLanguage === 'fr' 
+            ? 'Veuillez configurer votre profil (nom et date de naissance) dans les paramètres pour une interprétation personnalisée.'
+            : 'Please configure your profile (name and birth date) in settings for a personalized interpretation.';
+        showError(message);
+        return;
+    }
+    
     // Save API key if remember is checked
     saveApiKey();
     
@@ -735,9 +884,67 @@ async function getInterpretation() {
         // Prepare data summary
         const dataSummary = prepareDataSummary();
         
+        // Prepare user info
+        let userInfo = '';
+        if (userName) {
+            userInfo += currentLanguage === 'fr' ? `Nom: ${userName}\n` : `Name: ${userName}\n`;
+        }
+        if (userBirthDate) {
+            userInfo += currentLanguage === 'fr' ? `Date de naissance: ${userBirthDate}` : `Birth date: ${userBirthDate}`;
+            if (userBirthTime) {
+                userInfo += ` ${currentLanguage === 'fr' ? 'à' : 'at'} ${userBirthTime}`;
+            }
+            userInfo += '\n';
+        }
+        
+        // Get current date being analyzed
+        const dateInput = document.getElementById('dateInput').value;
+        const timeInput = document.getElementById('timeInput').value;
+        const currentDate = `${dateInput} ${timeInput} UTC`;
+        
         const prompt = currentLanguage === 'fr' 
-            ? `En tant qu'astrologue expert, fournissez une interprétation détaillée et personnalisée de cette configuration astrologique. Incluez l'analyse des positions planétaires, des aspects majeurs, et de la phase lunaire. Donnez des insights sur les énergies du moment et leurs implications potentielles.\n\nDonnées:\n${dataSummary}`
-            : `As an expert astrologer, provide a detailed and personalized interpretation of this astrological configuration. Include analysis of planetary positions, major aspects, and the moon phase. Give insights into the current energies and their potential implications.\n\nData:\n${dataSummary}`;
+            ? `En tant qu'astrologue expert, fournissez une interprétation personnalisée structurée en 3 sections distinctes:
+
+**INFORMATIONS:**
+${userInfo}
+Date analysée: ${currentDate}
+
+**DONNÉES ASTROLOGIQUES:**
+${dataSummary}
+
+**STRUCTURE DE L'INTERPRÉTATION:**
+
+1. **PRÉVISION PERSONNALISÉE DU JOUR** (3-4 phrases)
+   Basée sur la comparaison entre la date de naissance et les positions actuelles. Identifiez les transits importants affectant cette personne spécifiquement aujourd'hui.
+
+2. **INTERPRÉTATION GÉNÉRALE DES POSITIONS** (3-4 phrases)
+   Analyse brève des énergies cosmiques du moment pour tous, indépendamment de la date de naissance.
+
+3. **RÉSUMÉ SYNTHÉTIQUE** (2-3 phrases)
+   Conseil pratique et message clé à retenir pour la journée.
+
+Soyez concis, précis et bienveillant. Utilisez un langage accessible.`
+            : `As an expert astrologer, provide a personalized interpretation structured in 3 distinct sections:
+
+**INFORMATION:**
+${userInfo}
+Date analyzed: ${currentDate}
+
+**ASTROLOGICAL DATA:**
+${dataSummary}
+
+**INTERPRETATION STRUCTURE:**
+
+1. **PERSONALIZED DAY PREDICTION** (3-4 sentences)
+   Based on the comparison between birth date and current positions. Identify important transits affecting this person specifically today.
+
+2. **GENERAL INTERPRETATION OF POSITIONS** (3-4 sentences)
+   Brief analysis of current cosmic energies for everyone, regardless of birth date.
+
+3. **SYNTHETIC SUMMARY** (2-3 sentences)
+   Practical advice and key message to remember for the day.
+
+Be concise, precise, and benevolent. Use accessible language.`;
         
         const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
             method: 'POST',
@@ -754,7 +961,7 @@ async function getInterpretation() {
                     }
                 ],
                 temperature: 0.7,
-                max_tokens: 1000
+                max_tokens: 1500
             })
         });
         
