@@ -88,25 +88,6 @@ body {
     gap: 6px;
 }
 
-/* Floating main content when positioned */
-#mainContent.fixed {
-    position: fixed;
-    z-index: 9999;
-    cursor: move;
-    width: 90vw;
-    max-width: 1000px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.6);
-}
-
-@media (max-width: 768px) {
-    #mainContent.fixed {
-        position: static;
-        width: auto;
-        box-shadow: none;
-        cursor: default;
-    }
-}
-
 .language-selector select {
     background-color: var(--background-color);
     color: var(--text-color);
@@ -146,6 +127,13 @@ body {
     padding: 30px;
     margin-bottom: 30px;
     border-radius: 0;
+}
+
+/* Section header flex layout */
+.section-header-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .api-management-section h2 {

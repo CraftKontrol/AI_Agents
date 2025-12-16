@@ -304,13 +304,14 @@ document.addEventListener('DOMContentLoaded', function() {
     var settingsContent = document.getElementById('settingsContent');
     if (settingsContent) settingsContent.style.display = 'none';
 
-    // Ensure main UI is visible (previous setup section removed)
-    const sec = document.getElementById('securityNotice');
-    if (sec) sec.style.display = 'block';
+    // Ensure main UI is visible
     const main = document.getElementById('mainContent');
-    if (main) main.style.display = 'block';
+    if (main) {
+        main.style.display = 'block';
+        console.log('[Init] Main content displayed');
+    }
     // Apply saved position if any
-    applySavedPosition();
+    // applySavedPosition();
     
     // Listen for CKGenericApp API keys injection (Android WebView)
     window.addEventListener('ckgenericapp_keys_ready', function(event) {
@@ -426,7 +427,7 @@ function loadSavedApiKey() {
         if (sec) sec.style.display = 'block';
         var main = document.getElementById('mainContent');
         if (main) main.style.display = 'block';
-        applySavedPosition();
+        // applySavedPosition();
     }
 }
 
@@ -459,7 +460,7 @@ function saveApiKey() {
     updateSavedKeyIndicator(true);
     document.getElementById('securityNotice').style.display = 'block';
     document.getElementById('mainContent').style.display = 'block';
-    applySavedPosition();
+    // applySavedPosition();
 }
 
 // Clear saved API key
@@ -496,7 +497,7 @@ function hideApiKeySection() {
     if (sec) sec.style.display = 'block';
     const main = document.getElementById('mainContent');
     if (main) main.style.display = 'block';
-    applySavedPosition();
+    // applySavedPosition();
 }
 
 // Show API key section and hide main content
@@ -1448,13 +1449,11 @@ function toggleSection(sectionId) {
     const section = document.getElementById(sectionId);
     const button = event.target;
     
-    if (section.classList.contains('collapsed')) {
-        section.classList.remove('collapsed');
-        section.style.maxHeight = section.scrollHeight + 'px';
+    if (section.style.display === 'none') {
+        section.style.display = 'block';
         button.textContent = lang.hide;
     } else {
-        section.classList.add('collapsed');
-        section.style.maxHeight = '0';
+        section.style.display = 'none';
         button.textContent = lang.show;
     }
 }
@@ -1602,45 +1601,19 @@ function initAutoPositioning() {
     if (resetBtn) {
         resetBtn.addEventListener('click', function() {
             localStorage.removeItem('meteoAggregatorPosition');
-            applySavedPosition(true);
+            // applySavedPosition(true);
         });
     }
 
     // Apply if main is already visible
-    if (document.getElementById('mainContent').style.display !== 'none') {
-        applySavedPosition();
-    }
+    // if (document.getElementById('mainContent').style.display !== 'none') {
+    //     applySavedPosition();
+    // }
 }
 
 function applySavedPosition(forceCenter = false) {
-    const main = document.getElementById('mainContent');
-    // Always allow drag/positioning, but don't update location field automatically
-    if (window.innerWidth <= 768) {
-        main.classList.remove('fixed');
-        main.style.left = '';
-        main.style.top = '';
-        return;
-    }
-
-    const posRaw = localStorage.getItem('meteoAggregatorPosition');
-    if (!posRaw || forceCenter) {
-        main.classList.add('fixed');
-        main.style.left = (window.innerWidth - Math.min(window.innerWidth * 0.9, 1000)) / 2 + 'px';
-        main.style.top = Math.max(20, window.scrollY + 40) + 'px';
-        attachDragHandlers(main);
-        return;
-    }
-
-    try {
-        const pos = JSON.parse(posRaw);
-        main.classList.add('fixed');
-        main.style.left = pos.left + 'px';
-        main.style.top = pos.top + 'px';
-        attachDragHandlers(main);
-    } catch (e) {
-        console.warn('Failed to parse saved position', e);
-        applySavedPosition(true);
-    }
+    // Disabled - no fixed positioning
+    return;
 }
 
 function attachDragHandlers(el) {
