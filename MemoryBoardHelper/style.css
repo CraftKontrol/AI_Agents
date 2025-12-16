@@ -501,7 +501,11 @@ body {
 }
 
 .header {
-    background-color: var(--surface-color);
+    background-color: #3b9150;
+    background-image: url(MemoryBoard_Logo.png);
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
     padding: 25px;
     margin-bottom: 30px;
     display: flex;
@@ -509,6 +513,12 @@ body {
     align-items: flex-start;
     flex-wrap: wrap;
     gap: 20px;
+}
+
+.header-title {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .header-title h1 {
@@ -519,7 +529,7 @@ body {
 }
 
 .header-title p {
-    color: var(--text-muted);
+    color: var(white--text-muted);
     font-size: 20px;
 }
 
@@ -615,7 +625,7 @@ body {
 }
 
 .credits {
-    color: var(--text-muted);
+    color: var(white--text-muted);
     font-size: 16px;
     margin-top: 15px;
 }
@@ -1534,6 +1544,11 @@ body {
         flex-direction: column;
         padding: 20px;
     }
+    .header-title {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+}
 
     .header-title h1 {
         font-size: 28px;
