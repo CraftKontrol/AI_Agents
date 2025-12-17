@@ -113,6 +113,32 @@ async function getTasksByPeriod(period) {
     }
 }
 
+// Get overdue tasks
+async function getOverdueTasks() {
+    try {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const allTasks = await getAllTasks();
+        
+        return allTasks.filter(task => {
+            const taskDate = new Date(task.date);
+            taskDate.setHours(0, 0, 0, 0);
+            return taskDate < today && task.status === 'pending';
+        }).sort((a, b) => {
+            // Sort by date (oldest first)
+            const dateCompare = a.date.localeCompare(b.date);
+            if (dateCompare !== 0) return dateCompare;
+            
+            // Then by priority
+            const priorityOrder = { urgent: 0, normal: 1, low: 2 };
+            return priorityOrder[a.priority] - priorityOrder[b.priority];
+        });
+    } catch (error) {
+        console.error('[TaskManager] Error getting overdue tasks:', error);
+        return [];
+    }
+}
+
 // Get today's tasks (max 5)
 async function getDisplayableTasks() {
     try {
@@ -481,4 +507,6 @@ async function initializeTaskManager() {
 // Auto-initialize
 if (typeof window !== 'undefined') {
     // Note: Initialize by calling initializeTaskManager() after database is ready
+    // Export getOverdueTasks for launch greeting
+    window.getOverdueTasks = getOverdueTasks;
 }
