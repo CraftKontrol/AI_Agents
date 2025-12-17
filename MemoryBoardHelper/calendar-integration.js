@@ -33,10 +33,18 @@ async function initializeCalendar() {
 
     try {
         // Load all tasks from storage
+        console.log('[Calendar] Loading tasks from storage...');
         const tasks = await getAllTasks();
+        console.log(`[Calendar] Loaded ${tasks.length} tasks from storage`);
         
-        // Convert tasks to FullCalendar events
-        const events = tasks.map(taskToEvent);
+        if (!Array.isArray(tasks)) {
+            console.error('[Calendar] getAllTasks() did not return an array:', tasks);
+            throw new Error('Invalid data from storage');
+        }
+        
+        // Convert tasks to FullCalendar events (filter out nulls)
+        const events = tasks.map(taskToEvent).filter(e => e !== null);
+        console.log(`[Calendar] Converted to ${events.length} calendar events`);
 
         // Initialize FullCalendar
         calendar = new FullCalendar.Calendar(calendarEl, {
@@ -126,6 +134,18 @@ async function initializeCalendar() {
 
 // Convert task to FullCalendar event format
 function taskToEvent(task) {
+    // Validate task object
+    if (!task || !task.id || !task.description) {
+        console.warn('[Calendar] Invalid task object:', task);
+        return null;
+    }
+    
+    // Ensure date is valid
+    if (!task.date) {
+        console.warn('[Calendar] Task missing date:', task);
+        task.date = new Date().toISOString().split('T')[0];
+    }
+    
     const event = {
         id: task.id,
         title: task.description,
@@ -160,6 +180,17 @@ function taskToEvent(task) {
         event.classNames = ['event-completed'];
     } else if (task.status === 'snoozed') {
         event.classNames = ['event-snoozed'];
+    } else {
+        // Check if task is overdue
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const taskDate = new Date(task.date);
+        taskDate.setHours(0, 0, 0, 0);
+        
+        if (taskDate < today && task.status === 'pending') {
+            event.classNames = ['event-overdue'];
+            event.extendedProps.isOverdue = true;
+        }
     }
     
     return event;
@@ -204,9 +235,35 @@ function getTypeColor(type) {
 
 // Handle event click (open task popup)
 function handleEventClick(info) {
-    info.jsEvent.preventDefault();
-    const task = info.event.extendedProps.taskData;
-    openTaskPopup(task);
+    try {
+        info.jsEvent.preventDefault();
+        const task = info.event.extendedProps.taskData;
+        
+        if (!task) {
+            console.error('[Calendar] No task data in event:', info.event);
+            if (typeof showError === 'function') {
+                showError('Erreur: données de tâche manquantes');
+            }
+            return;
+        }
+        
+        console.log('[Calendar] Opening task popup for:', task.id);
+        
+        if (typeof openTaskPopup !== 'function') {
+            console.error('[Calendar] openTaskPopup function not found');
+            if (typeof showError === 'function') {
+                showError('Erreur: fonction d\'affichage manquante');
+            }
+            return;
+        }
+        
+        openTaskPopup(task);
+    } catch (error) {
+        console.error('[Calendar] Error handling event click:', error);
+        if (typeof showError === 'function') {
+            showError('Erreur lors de l\'ouverture de la tâche');
+        }
+    }
 }
 
 // Handle date selection (create new task)
@@ -223,14 +280,38 @@ async function handleEventDrop(info) {
     const event = info.event;
     const task = event.extendedProps.taskData;
     
+    if (!task || !task.id) {
+        console.error('[Calendar] Invalid task data on drop:', task);
+        info.revert();
+        if (typeof showError === 'function') {
+            showError('Erreur: données de tâche invalides');
+        }
+        return;
+    }
+    
+    // Store original values for rollback
+    const originalDate = task.date;
+    const originalTime = task.time;
+    
     // Update task date and time
     const newDate = event.start.toISOString().split('T')[0];
     const newTime = event.allDay ? null : event.start.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
     
+    console.log(`[Calendar] Dropping task ${task.id} from ${originalDate} ${originalTime || 'all-day'} to ${newDate} ${newTime || 'all-day'}`);
+    
     try {
         task.date = newDate;
         task.time = newTime;
-        await updateTask(task.id, task);
+        
+        // Update in storage
+        const result = await saveTask(task);
+        
+        if (!result) {
+            throw new Error('Save operation failed');
+        }
+        
+        // Update extended props with new data
+        event.setExtendedProp('taskData', task);
         
         console.log('[Calendar] Task moved:', task.id, 'to', newDate, newTime);
         showSuccess('Tâche déplacée');
@@ -466,27 +547,53 @@ function getMonthEvents() {
 }
 
 // Refresh calendar from storage
-async function refreshCalendar() {
-    if (!calendar) return;
+async function refreshCalendar(retryCount = 0) {
+    if (!calendar) {
+        console.warn('[Calendar] Cannot refresh - calendar not initialized');
+        
+        if (retryCount < 3) {
+            console.log(`[Calendar] Retry ${retryCount + 1}/3 - attempting to initialize...`);
+            await new Promise(resolve => setTimeout(resolve, 500));
+            await initializeCalendar();
+            return refreshCalendar(retryCount + 1);
+        }
+        
+        return;
+    }
     
     try {
+        console.log('[Calendar] Refreshing calendar...');
         document.getElementById('loadingCalendar').style.display = 'block';
         
         // Remove all events
         const allEvents = calendar.getEvents();
+        console.log(`[Calendar] Removing ${allEvents.length} existing events`);
         allEvents.forEach(event => event.remove());
         
         // Reload tasks from storage
         const tasks = await getAllTasks();
-        const events = tasks.map(taskToEvent);
+        console.log(`[Calendar] Loaded ${tasks.length} tasks from storage`);
+        
+        // Convert and filter valid events
+        const events = tasks.map(taskToEvent).filter(e => e !== null);
+        console.log(`[Calendar] Adding ${events.length} events to calendar`);
         
         // Add events to calendar
-        events.forEach(event => calendar.addEvent(event));
+        events.forEach(event => {
+            try {
+                calendar.addEvent(event);
+            } catch (err) {
+                console.error('[Calendar] Error adding event:', event, err);
+            }
+        });
         
-        console.log('[Calendar] Refreshed with', events.length, 'events');
+        console.log('[Calendar] Refresh complete');
         
     } catch (error) {
         console.error('[Calendar] Error refreshing:', error);
+        if (typeof showError === 'function') {
+            showError('Erreur lors du rafraîchissement du calendrier');
+        }
     } finally {
         document.getElementById('loadingCalendar').style.display = 'none';
     }
@@ -537,17 +644,82 @@ async function handleCalendarVoiceCommand(command, params) {
 // They will call calendar functions defined here
 
 // Initialize calendar on page load
-document.addEventListener('DOMContentLoaded', function() {
-    // Wait for storage to be initialized
-    setTimeout(() => {
-        initializeCalendar();
-    }, 500);
+document.addEventListener('DOMContentLoaded', async function() {
+    console.log('[Calendar] DOMContentLoaded - waiting for storage...');
+    
+    try {
+        // Ensure database is initialized
+        if (!db) {
+            console.log('[Calendar] Waiting for database initialization...');
+            await initializeDatabase();
+        }
+        
+        // Give storage a moment to settle
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        // Initialize calendar
+        console.log('[Calendar] Initializing calendar...');
+        await initializeCalendar();
+        
+        console.log('[Calendar] Initialization sequence complete');
+    } catch (error) {
+        console.error('[Calendar] Initialization failed:', error);
+        if (typeof showError === 'function') {
+            showError('Erreur lors du chargement du calendrier. Veuillez rafraîchir la page.');
+        }
+    }
 });
+
+// Health check function for debugging
+function checkCalendarHealth() {
+    const health = {
+        timestamp: new Date().toISOString(),
+        calendarInitialized: !!calendar,
+        calendarView: calendar ? calendar.view.type : null,
+        eventCount: calendar ? calendar.getEvents().length : 0,
+        containerExists: !!document.getElementById('calendarContainer'),
+        storageReady: !!db,
+        fullCalendarLoaded: typeof FullCalendar !== 'undefined'
+    };
+    
+    console.log('[Calendar] Health Check:', health);
+    
+    // Check for common issues
+    const issues = [];
+    
+    if (!health.calendarInitialized) {
+        issues.push('Calendar not initialized - call initializeCalendar()');
+    }
+    
+    if (!health.containerExists) {
+        issues.push('Calendar container #calendarContainer not found in DOM');
+    }
+    
+    if (!health.storageReady) {
+        issues.push('Storage not ready - database not initialized');
+    }
+    
+    if (!health.fullCalendarLoaded) {
+        issues.push('FullCalendar library not loaded');
+    }
+    
+    if (issues.length > 0) {
+        console.warn('[Calendar] Issues detected:', issues);
+        health.issues = issues;
+    } else {
+        console.log('[Calendar] ✅ All systems operational');
+    }
+    
+    return health;
+}
 
 // Export calendar instance for external access
 window.getCalendar = function() {
     return calendar;
 };
+
+// Export health check
+window.checkCalendarHealth = checkCalendarHealth;
 
 // Export all calendar functions globally
 window.calendarToday = calendarToday;
