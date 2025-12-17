@@ -517,6 +517,76 @@ body {
     padding-top: 8px;
 }
 
+/* Provider Selection */
+.provider-selection {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 15px;
+    margin-bottom: 25px;
+    padding: 15px;
+    background-color: var(--background-color);
+    border: 1px solid var(--border-color);
+}
+
+.provider-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.provider-card h3 {
+    color: var(--text-color);
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.provider-card select {
+    width: 100%;
+    padding: 10px;
+    background-color: var(--surface-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 0;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.provider-card select:hover {
+    border-color: var(--primary-color);
+}
+
+.provider-card select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.1);
+}
+
+.provider-hint {
+    color: var(--text-muted);
+    font-size: 12px;
+    margin: 0;
+}
+
+/* API Section Titles */
+.api-section-title {
+    color: var(--primary-color);
+    font-size: 15px;
+    margin: 20px 0 12px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.api-section-title:first-of-type {
+    margin-top: 0;
+}
+
 /* API Keys Grid */
 .api-keys-grid {
     display: grid;
@@ -1076,6 +1146,21 @@ body {
     background-color: var(--warning-color);
     color: #1a1a1a;
     animation: pulse-recording 1.5s infinite;
+}
+
+/* Spectrum VU Meter */
+.spectrum-container {
+    width: 100%;
+    margin-top: 15px;
+    padding: 15px;
+    background-color: var(--surface-color);
+    border: 1px solid var(--border-color);
+}
+
+.spectrum-canvas {
+    width: 100%;
+    height: 80px;
+    display: block;
 }
 
 @keyframes pulse {

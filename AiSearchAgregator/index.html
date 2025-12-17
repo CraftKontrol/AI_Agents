@@ -66,6 +66,11 @@
                     </button>
                 </div>
                 
+                <!-- Spectrum VU Meter -->
+                <div class="spectrum-container" id="spectrumContainer" style="display: none;">
+                    <canvas id="spectrumCanvas" class="spectrum-canvas"></canvas>
+                </div>
+                
                 <div class="search-status" id="searchStatus" style="display: none;">
                     <div class="status-item">
                         <span class="material-symbols-outlined">language</span>
@@ -265,6 +270,40 @@
             </h2>
             
             <div id="apiKeysContent" class="section-content">
+                <!-- STT/TTS Provider Selection -->
+                <div class="provider-selection">
+                    <div class="provider-card">
+                        <h3>
+                            <span class="material-symbols-outlined">mic</span>
+                            <span data-lang="sttProvider">Fournisseur STT</span>
+                        </h3>
+                        <select id="sttProvider" onchange="saveProviderSettings()">
+                            <option value="browser" selected data-lang-option="browserSTT">Navigateur (Gratuit)</option>
+                            <option value="deepgram" data-lang-option="deepgramSTT">Deepgram API</option>
+                            <option value="google" data-lang-option="googleSTT">Google Cloud STT</option>
+                        </select>
+                        <p class="provider-hint" data-lang="sttHint">Reconnaissance vocale pour la recherche</p>
+                    </div>
+                    
+                    <div class="provider-card">
+                        <h3>
+                            <span class="material-symbols-outlined">record_voice_over</span>
+                            <span data-lang="ttsProvider">Fournisseur TTS</span>
+                        </h3>
+                        <select id="ttsProvider" onchange="updateTTSProviderVoices(); saveProviderSettings();">
+                            <option value="browser" selected data-lang-option="browserTTS">Navigateur (Gratuit)</option>
+                            <option value="deepgram" data-lang-option="deepgramTTS">Deepgram API</option>
+                            <option value="google" data-lang-option="googleTTS">Google Cloud TTS</option>
+                        </select>
+                        <p class="provider-hint" data-lang="ttsHint">Synthèse vocale pour les résumés</p>
+                    </div>
+                </div>
+
+                <!-- AI & Core Services -->
+                <h3 class="api-section-title">
+                    <span class="material-symbols-outlined">psychology</span>
+                    <span data-lang="aiServices">Services IA</span>
+                </h3>
                 <div class="api-keys-grid">
                     <!-- Mistral AI (Required) -->
                     <div class="api-key-card required">
@@ -280,11 +319,60 @@
                         <a href="https://console.mistral.ai/" target="_blank" class="api-link" data-lang="getApiKey">Obtenir une clé API gratuite →</a>
                         <p class="api-description" data-lang="mistralDesc">Détection de langue et extraction de contenu IA</p>
                     </div>
+                </div>
+
+                <!-- Speech Services (STT/TTS) -->
+                <h3 class="api-section-title">
+                    <span class="material-symbols-outlined">voice_chat</span>
+                    <span data-lang="speechServices">Services Vocaux (STT/TTS)</span>
+                </h3>
+                <div class="api-keys-grid">
+                    <!-- Deepgram STT (Optional) -->
+                    <div class="api-key-card">
+                        <h3>
+                            <span class="material-symbols-outlined">mic</span>
+                            Deepgram STT
+                        </h3>
+                        <div class="api-input-wrapper">
+                            <input type="password" id="apiKeyDeepgram" placeholder="Entrez la clé API..." data-lang-placeholder="enterApiKey" />
+                            <button class="btn-delete" onclick="deleteApiKey('deepgram')" title="Supprimer la clé">×</button>
+                        </div>
+                        <a href="https://console.deepgram.com/" target="_blank" class="api-link" data-lang="getApiKey">Obtenir une clé API →</a>
+                        <p class="api-description" data-lang="deepgramDesc">Reconnaissance vocale (FR/IT/EN)</p>
+                    </div>
+
+                    <!-- Deepgram TTS (Optional) -->
+                    <div class="api-key-card">
+                        <h3>
+                            <span class="material-symbols-outlined">record_voice_over</span>
+                            Deepgram TTS
+                        </h3>
+                        <div class="api-input-wrapper">
+                            <input type="password" id="apiKeyDeepgramTTS" placeholder="Entrez la clé API..." data-lang-placeholder="enterApiKey" />
+                            <button class="btn-delete" onclick="deleteApiKey('deepgramtts')" title="Supprimer la clé">×</button>
+                        </div>
+                        <a href="https://console.deepgram.com/" target="_blank" class="api-link" data-lang="getApiKey">Obtenir une clé API →</a>
+                        <p class="api-description" data-lang="deepgramTTSDesc">Synthèse vocale (FR/IT/EN)</p>
+                    </div>
+
+                    <!-- Google Cloud STT (Optional) -->
+                    <div class="api-key-card">
+                        <h3>
+                            <span class="material-symbols-outlined">mic</span>
+                            Google Cloud STT
+                        </h3>
+                        <div class="api-input-wrapper">
+                            <input type="password" id="apiKeyGoogleSTT" placeholder="Entrez la clé API..." data-lang-placeholder="enterApiKey" />
+                            <button class="btn-delete" onclick="deleteApiKey('googlestt')" title="Supprimer la clé">×</button>
+                        </div>
+                        <a href="https://console.cloud.google.com/apis/library/speech.googleapis.com" target="_blank" class="api-link" data-lang="getApiKey">Obtenir une clé API →</a>
+                        <p class="api-description" data-lang="googleSTTDesc">Reconnaissance vocale Google (FR/IT/EN)</p>
+                    </div>
 
                     <!-- Google Cloud TTS (Optional) -->
                     <div class="api-key-card">
                         <h3>
-                            <span class="material-symbols-outlined">record_voice_over</span>
+                            <span class="material-symbols-outlined">speaker</span>
                             Google Cloud TTS
                         </h3>
                         <div class="api-input-wrapper">
@@ -294,7 +382,14 @@
                         <a href="https://console.cloud.google.com/apis/credentials" target="_blank" class="api-link" data-lang="getApiKey">Obtenir une clé API →</a>
                         <p class="api-description" data-lang="googleTTSDesc">Synthèse vocale du résumé IA</p>
                     </div>
+                </div>
 
+                <!-- Search Services -->
+                <h3 class="api-section-title">
+                    <span class="material-symbols-outlined">travel_explore</span>
+                    <span data-lang="searchServices">Services de Recherche</span>
+                </h3>
+                <div class="api-keys-grid">
                     <!-- Tavily (Optional) -->
                     <div class="api-key-card">
                         <h3>
@@ -358,34 +453,6 @@
                             <button class="btn-delete" onclick="deleteApiKey('scrapfly')" title="Supprimer la clé">×</button>
                         </div>
                         <a href="https://scrapfly.io/" target="_blank" class="api-link" data-lang="getApiKey">Obtenir une clé API →</a>
-                    </div>
-
-                    <!-- Deepgram STT (Optional) -->
-                    <div class="api-key-card">
-                        <h3>
-                            <span class="material-symbols-outlined">mic</span>
-                            Deepgram STT
-                        </h3>
-                        <div class="api-input-wrapper">
-                            <input type="password" id="apiKeyDeepgram" placeholder="Entrez la clé API..." data-lang-placeholder="enterApiKey" />
-                            <button class="btn-delete" onclick="deleteApiKey('deepgram')" title="Supprimer la clé">×</button>
-                        </div>
-                        <a href="https://console.deepgram.com/" target="_blank" class="api-link" data-lang="getApiKey">Obtenir une clé API →</a>
-                        <p class="api-description" data-lang="deepgramDesc">Reconnaissance vocale (FR/IT/EN)</p>
-                    </div>
-
-                    <!-- Deepgram TTS (Optional) -->
-                    <div class="api-key-card">
-                        <h3>
-                            <span class="material-symbols-outlined">record_voice_over</span>
-                            Deepgram TTS
-                        </h3>
-                        <div class="api-input-wrapper">
-                            <input type="password" id="apiKeyDeepgramTTS" placeholder="Entrez la clé API..." data-lang-placeholder="enterApiKey" />
-                            <button class="btn-delete" onclick="deleteApiKey('deepgramtts')" title="Supprimer la clé">×</button>
-                        </div>
-                        <a href="https://console.deepgram.com/" target="_blank" class="api-link" data-lang="getApiKey">Obtenir une clé API →</a>
-                        <p class="api-description" data-lang="deepgramTTSDesc">Synthèse vocale (FR/IT/EN)</p>
                     </div>
                 </div>
 
@@ -571,50 +638,43 @@
                             <span data-lang="selectVoice">Sélectionner une voix</span>
                         </label>
                         <select id="ttsVoice" onchange="updateTTSVoice(this.value)">
-                            <optgroup label="Deepgram - Français">
-                                <option value="aura-asteria-fr" data-provider="deepgram" selected>Aura Asteria (Femme)</option>
-                                <option value="aura-luna-fr" data-provider="deepgram">Aura Luna (Femme)</option>
-                                <option value="aura-stella-fr" data-provider="deepgram">Aura Stella (Femme)</option>
-                                <option value="aura-athena-fr" data-provider="deepgram">Aura Athena (Femme)</option>
-                                <option value="aura-hera-fr" data-provider="deepgram">Aura Hera (Femme)</option>
-                                <option value="aura-orion-fr" data-provider="deepgram">Aura Orion (Homme)</option>
-                                <option value="aura-arcas-fr" data-provider="deepgram">Aura Arcas (Homme)</option>
-                                <option value="aura-perseus-fr" data-provider="deepgram">Aura Perseus (Homme)</option>
-                                <option value="aura-angus-fr" data-provider="deepgram">Aura Angus (Homme)</option>
-                                <option value="aura-orpheus-fr" data-provider="deepgram">Aura Orpheus (Homme)</option>
+                            <optgroup label="Navigateur - Browser" data-provider="browser">
+                                <option value="browser-default" data-provider="browser" selected>Voix par défaut / Default Voice</option>
                             </optgroup>
-                            <optgroup label="Deepgram - English">
-                                <option value="aura-asteria-en" data-provider="deepgram">Aura Asteria (Female)</option>
-                                <option value="aura-luna-en" data-provider="deepgram">Aura Luna (Female)</option>
-                                <option value="aura-stella-en" data-provider="deepgram">Aura Stella (Female)</option>
-                                <option value="aura-athena-en" data-provider="deepgram">Aura Athena (Female)</option>
-                                <option value="aura-hera-en" data-provider="deepgram">Aura Hera (Female)</option>
-                                <option value="aura-orion-en" data-provider="deepgram">Aura Orion (Male)</option>
-                                <option value="aura-arcas-en" data-provider="deepgram">Aura Arcas (Male)</option>
-                                <option value="aura-perseus-en" data-provider="deepgram">Aura Perseus (Male)</option>
-                                <option value="aura-angus-en" data-provider="deepgram">Aura Angus (Male)</option>
-                                <option value="aura-orpheus-en" data-provider="deepgram">Aura Orpheus (Male)</option>
+                            <optgroup label="Deepgram - Français" data-provider="deepgram">
+                                <option value="aura-2-agathe-fr" data-provider="deepgram">Agathe (Femme)</option>
+                                <option value="aura-2-hector-fr" data-provider="deepgram">Hector (Homme)</option>
                             </optgroup>
-                            <optgroup label="Deepgram - Italiano">
-                                <option value="aura-asteria-it" data-provider="deepgram">Aura Asteria (Femmina)</option>
-                                <option value="aura-luna-it" data-provider="deepgram">Aura Luna (Femmina)</option>
-                                <option value="aura-stella-it" data-provider="deepgram">Aura Stella (Femmina)</option>
-                                <option value="aura-athena-it" data-provider="deepgram">Aura Athena (Femmina)</option>
-                                <option value="aura-hera-it" data-provider="deepgram">Aura Hera (Femmina)</option>
-                                <option value="aura-orion-it" data-provider="deepgram">Aura Orion (Maschio)</option>
-                                <option value="aura-arcas-it" data-provider="deepgram">Aura Arcas (Maschio)</option>
-                                <option value="aura-perseus-it" data-provider="deepgram">Aura Perseus (Maschio)</option>
-                                <option value="aura-angus-it" data-provider="deepgram">Aura Angus (Maschio)</option>
-                                <option value="aura-orpheus-it" data-provider="deepgram">Aura Orpheus (Maschio)</option>
+                            <optgroup label="Deepgram - English" data-provider="deepgram">
+                                <option value="aura-2-thalia-en" data-provider="deepgram">Thalia (Female)</option>
+                                <option value="aura-2-andromeda-en" data-provider="deepgram">Andromeda (Female)</option>
+                                <option value="aura-2-helena-en" data-provider="deepgram">Helena (Female)</option>
+                                <option value="aura-2-athena-en" data-provider="deepgram">Athena (Female)</option>
+                                <option value="aura-2-hera-en" data-provider="deepgram">Hera (Female)</option>
+                                <option value="aura-2-luna-en" data-provider="deepgram">Luna (Female)</option>
+                                <option value="aura-2-apollo-en" data-provider="deepgram">Apollo (Male)</option>
+                                <option value="aura-2-arcas-en" data-provider="deepgram">Arcas (Male)</option>
+                                <option value="aura-2-orion-en" data-provider="deepgram">Orion (Male)</option>
+                                <option value="aura-2-orpheus-en" data-provider="deepgram">Orpheus (Male)</option>
                             </optgroup>
-                            <optgroup label="Google Cloud - Français">
+                            <optgroup label="Deepgram - Italiano" data-provider="deepgram">
+                                <option value="aura-2-livia-it" data-provider="deepgram">Livia (Femmina)</option>
+                                <option value="aura-2-melia-it" data-provider="deepgram">Melia (Femmina)</option>
+                                <option value="aura-2-maia-it" data-provider="deepgram">Maia (Femmina)</option>
+                                <option value="aura-2-cinzia-it" data-provider="deepgram">Cinzia (Femmina)</option>
+                                <option value="aura-2-dionisio-it" data-provider="deepgram">Dionisio (Maschio)</option>
+                                <option value="aura-2-elio-it" data-provider="deepgram">Elio (Maschio)</option>
+                                <option value="aura-2-flavio-it" data-provider="deepgram">Flavio (Maschio)</option>
+                                <option value="aura-2-cesare-it" data-provider="deepgram">Cesare (Maschio)</option>
+                            </optgroup>
+                            <optgroup label="Google Cloud - Français" data-provider="google">
                                 <option value="fr-FR-Chirp-HD-D" data-provider="google">Chirp HD D (Homme)</option>
                                 <option value="fr-FR-Chirp-HD-F" data-provider="google">Chirp HD F (Femme)</option>
                                 <option value="fr-FR-Chirp-HD-O" data-provider="google">Chirp HD O (Femme)</option>
                                 <option value="fr-FR-Chirp3-HD-Achernar" data-provider="google">Chirp3 HD Achernar (Femme)</option>
                                 <option value="fr-FR-Chirp3-HD-Achird" data-provider="google">Chirp3 HD Achird (Homme)</option>
                             </optgroup>
-                            <optgroup label="Google Cloud - English">
+                            <optgroup label="Google Cloud - English" data-provider="google">
                                 <option value="Achernar" data-provider="google">Achernar (Female)</option>
                                 <option value="Achird" data-provider="google">Achird (Male)</option>
                                 <option value="Algenib" data-provider="google">Algenib (Male)</option>

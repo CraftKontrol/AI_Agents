@@ -20,6 +20,11 @@
 - `mediaRecorder` - MediaRecorder for audio capture
 - `currentAudio` - HTMLAudioElement for TTS playback
 - `isSearching`, `isRecording`, `isPlaying` - Status flags
+- `audioContext`, `analyser` - Web Audio API for visualization & VAD
+- `animationFrameId` - Spectrum animation frame reference
+- `microphoneStream` - MediaStream from microphone
+- `vadCheckInterval` - Voice Activity Detection interval
+- `silenceStart`, `soundDetected` - VAD state tracking
 
 **localStorage**:
 - API keys: `apiKey_mistral`, `apiKey_tavily`, `apiKey_scrapingbee`, `apiKey_deepgram`, `apiKey_deepgramtts`, etc.
@@ -64,9 +69,19 @@ async function detectLanguage(text) {
 
 **Deepgram STT** (Primary API):
 - MediaRecorder → WEBM audio → Deepgram API
-- Endpoint: `https://api.deepgram.com/v1/listen?model=nova-2&language={lang}&smart_format=true`
+- Endpoint: `https://api.deepgram.com/v1/listen?model=nova-2&language={lang}&smart_format=true&punctuate=true`
 - Languages: fr (French), en-US (English), it (Italian)
+- Validation: Min 1KB blob size, error handling for empty/small audio
+- Multiple transcript path fallbacks for robustness
 - Auto-fallback to Hugging Face if no API key
+
+**Voice Activity Detection (VAD)**:
+- Automatic recording stop when speech ends
+- `SILENCE_THRESHOLD`: 30 (volume level 0-255)
+- `SILENCE_DURATION`: 1500ms of silence before auto-stop
+- `MIN_RECORDING_TIME`: 500ms minimum before VAD triggers
+- Monitors audio every 100ms, stops after detecting phrase end
+- Failsafe: 30-second maximum recording duration
 
 **Hugging Face Whisper Fallback**:
 - MediaRecorder → WAV audio → Hugging Face Whisper API
@@ -268,6 +283,8 @@ const rateLimitPresets = {
 
 ### Custom Components
 - `.search-section` - Input with voice button, Material Icons
+- `.spectrum-container` - Microphone spectrum VU meter (64 bars, color gradient)
+- `.spectrum-canvas` - Canvas for real-time audio visualization (80px height)
 - `.result-card` - Score badge (0-100%), source tag, AI summary
 - `.filter-panel` - Multi-select filters, date range picker
 - `.history-panel` - Collapsible, individual item deletion

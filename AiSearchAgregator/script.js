@@ -35,6 +35,20 @@ let audioChunks = [];
 let isRecording = false;
 let sttMethod = 'browser'; // 'browser', 'deepgram', 'huggingface', 'whisper'
 
+// Audio visualization
+let audioContext = null;
+let analyser = null;
+let animationFrameId = null;
+let microphoneStream = null;
+
+// Voice Activity Detection (VAD)
+let vadCheckInterval = null;
+let silenceStart = null;
+let soundDetected = false;
+const SILENCE_THRESHOLD = 30; // Volume threshold (0-255)
+const SILENCE_DURATION = 1500; // ms of silence before stopping
+const MIN_RECORDING_TIME = 500; // Minimum recording duration in ms
+
 // Text-to-Speech variables
 let currentAudio = null;
 let isPlaying = false;
@@ -68,6 +82,21 @@ const translations = {
         mistralDesc: 'Détection de langue et extraction de contenu IA',
         deepgramDesc: 'Reconnaissance vocale (FR/IT/EN)',
         deepgramTTSDesc: 'Synthèse vocale (FR/IT/EN)',
+        sttProvider: 'Fournisseur STT',
+        ttsProvider: 'Fournisseur TTS',
+        browserSTT: 'Navigateur (Gratuit)',
+        deepgramSTT: 'Deepgram API',
+        googleSTT: 'Google Cloud STT',
+        browserTTS: 'Navigateur (Gratuit)',
+        deepgramTTS: 'Deepgram API',
+        googleTTS: 'Google Cloud TTS',
+        sttHint: 'Reconnaissance vocale pour la recherche',
+        ttsHint: 'Synthèse vocale pour les résumés',
+        googleSTTDesc: 'Reconnaissance vocale Google (FR/IT/EN)',
+        googleTTSDesc: 'Synthèse vocale Google (FR/EN)',
+        aiServices: 'Services IA',
+        speechServices: 'Services Vocaux (STT/TTS)',
+        searchServices: 'Services de Recherche',
         rememberKeys: 'Mémoriser les clés API',
         saveKeys: 'Enregistrer les clés',
         mistralSettings: 'Paramètres de conversation Mistral',
@@ -185,6 +214,21 @@ const translations = {
         mistralDesc: 'Language detection and AI content extraction',
         deepgramDesc: 'Speech recognition (FR/IT/EN)',
         deepgramTTSDesc: 'Voice synthesis (FR/IT/EN)',
+        sttProvider: 'STT Provider',
+        ttsProvider: 'TTS Provider',
+        browserSTT: 'Browser (Free)',
+        deepgramSTT: 'Deepgram API',
+        googleSTT: 'Google Cloud STT',
+        browserTTS: 'Browser (Free)',
+        deepgramTTS: 'Deepgram API',
+        googleTTS: 'Google Cloud TTS',
+        sttHint: 'Voice recognition for search',
+        ttsHint: 'Voice synthesis for summaries',
+        googleSTTDesc: 'Google Speech Recognition (FR/IT/EN)',
+        googleTTSDesc: 'Google Cloud Text-to-Speech (FR/EN)',
+        aiServices: 'AI Services',
+        speechServices: 'Speech Services (STT/TTS)',
+        searchServices: 'Search Services',
         rememberKeys: 'Remember API Keys',
         saveKeys: 'Save Keys',
         mistralSettings: 'Mistral Conversation Settings',
@@ -302,6 +346,21 @@ const translations = {
         mistralDesc: 'Rilevamento lingua ed estrazione contenuti IA',
         deepgramDesc: 'Riconoscimento vocale (FR/IT/EN)',
         deepgramTTSDesc: 'Sintesi vocale (FR/IT/EN)',
+        sttProvider: 'Fornitore STT',
+        ttsProvider: 'Fornitore TTS',
+        browserSTT: 'Browser (Gratuito)',
+        deepgramSTT: 'Deepgram API',
+        googleSTT: 'Google Cloud STT',
+        browserTTS: 'Browser (Gratuito)',
+        deepgramTTS: 'Deepgram API',
+        googleTTS: 'Google Cloud TTS',
+        sttHint: 'Riconoscimento vocale per la ricerca',
+        ttsHint: 'Sintesi vocale per i riepiloghi',
+        googleSTTDesc: 'Riconoscimento vocale Google (FR/IT/EN)',
+        googleTTSDesc: 'Sintesi vocale Google Cloud (FR/EN)',
+        aiServices: 'Servizi IA',
+        speechServices: 'Servizi Vocali (STT/TTS)',
+        searchServices: 'Servizi di Ricerca',
         rememberKeys: 'Ricorda chiavi API',
         saveKeys: 'Salva chiavi',
         mistralSettings: 'Impostazioni conversazione Mistral',
@@ -412,6 +471,7 @@ const translations = {
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
+    loadProviderSettings();
     loadSavedApiKeys();
     loadRateLimitSettings();
     fetchLastModified();
@@ -470,11 +530,23 @@ function updateLanguage() {
 
 // API Key Management
 function loadSavedApiKeys() {
-    const keys = ['mistral', 'tavily', 'scrapingbee', 'scraperapi', 'brightdata', 'scrapfly', 'googletts', 'deepgram', 'deepgramtts'];
+    const keys = ['mistral', 'tavily', 'scrapingbee', 'scraperapi', 'brightdata', 'scrapfly', 'deepgram', 'deepgramtts', 'googlestt', 'googletts'];
     keys.forEach(key => {
-        const savedKey = getApiKey(key === 'googletts' ? 'google_tts' : key);
+        let savedKey;
+        let inputId;
+        
+        if (key === 'googlestt') {
+            savedKey = getApiKey('googlestt');
+            inputId = 'apiKeyGoogleSTT';
+        } else if (key === 'googletts') {
+            savedKey = getApiKey('googletts');
+            inputId = 'apiKeyGoogleTTS';
+        } else {
+            savedKey = getApiKey(key);
+            inputId = `apiKey${key.charAt(0).toUpperCase() + key.slice(1).replace('api', 'API')}`;
+        }
+        
         if (savedKey) {
-            const inputId = key === 'googletts' ? 'apiKeyGoogleTTS' : `apiKey${key.charAt(0).toUpperCase() + key.slice(1).replace('api', 'API')}`;
             const input = document.getElementById(inputId);
             if (input) {
                 input.value = savedKey;
@@ -505,9 +577,10 @@ function saveApiKeys() {
             scraperapi: document.getElementById('apiKeyScraperAPI').value.trim(),
             brightdata: document.getElementById('apiKeyBrightData').value.trim(),
             scrapfly: document.getElementById('apiKeyScrapFly').value.trim(),
-            googletts: document.getElementById('apiKeyGoogleTTS').value.trim(),
             deepgram: document.getElementById('apiKeyDeepgram').value.trim(),
-            deepgramtts: document.getElementById('apiKeyDeepgramTTS').value.trim()
+            deepgramtts: document.getElementById('apiKeyDeepgramTTS').value.trim(),
+            googlestt: document.getElementById('apiKeyGoogleSTT').value.trim(),
+            googletts: document.getElementById('apiKeyGoogleTTS').value.trim()
         };
         
         Object.entries(keys).forEach(([name, value]) => {
@@ -523,7 +596,45 @@ function saveApiKeys() {
     
     saveTTSSettings();
     saveMistralSettings();
+    saveProviderSettings();
     showSuccess(translations[currentLanguage].apiKeysSaved);
+}
+
+// Provider Settings
+function saveProviderSettings() {
+    const sttProvider = document.getElementById('sttProvider').value;
+    const ttsProvider = document.getElementById('ttsProvider').value;
+    
+    localStorage.setItem('sttProvider', sttProvider);
+    localStorage.setItem('ttsProvider', ttsProvider);
+    
+    // Update global sttMethod
+    sttMethod = sttProvider;
+    
+    console.log('[Provider] STT provider set to:', sttProvider);
+    console.log('[Provider] TTS provider set to:', ttsProvider);
+}
+
+function loadProviderSettings() {
+    const savedSTTProvider = localStorage.getItem('sttProvider') || 'browser';
+    const savedTTSProvider = localStorage.getItem('ttsProvider') || 'browser';
+    
+    const sttSelect = document.getElementById('sttProvider');
+    const ttsSelect = document.getElementById('ttsProvider');
+    
+    if (sttSelect) {
+        sttSelect.value = savedSTTProvider;
+        sttMethod = savedSTTProvider;
+    }
+    
+    if (ttsSelect) {
+        ttsSelect.value = savedTTSProvider;
+        // Update voice selector to show only voices for selected provider
+        updateTTSProviderVoices();
+    }
+    
+    console.log('[Provider] Loaded STT provider:', savedSTTProvider);
+    console.log('[Provider] Loaded TTS provider:', savedTTSProvider);
 }
 
 function deleteApiKey(keyName) {
@@ -799,32 +910,47 @@ function updateTTSVoice(voice) {
 
 // Deepgram TTS Synthesis
 async function synthesizeWithDeepgram(text, voice) {
-    console.log('[Deepgram TTS] Starting synthesis');
-    const apiKey = getApiKey('deepgramtts', 'apiKey_deepgramtts');
+    console.log('[Deepgram TTS] Starting synthesis with voice:', voice);
+    const apiKey = getApiKey('deepgramtts');
     
     if (!apiKey) {
-        console.log('[Deepgram TTS] No API key found, falling back to Google');
+        console.log('[Deepgram TTS] No API key found');
         return null;
     }
     
-    // Parse voice to get model name and language
-    const voiceParts = voice.split('-');
-    const model = voiceParts.slice(0, 3).join('-'); // e.g., "aura-asteria-fr"
-    const lang = voiceParts[voiceParts.length - 1]; // e.g., "fr", "en", "it"
+    // Validate that the voice is a Deepgram voice (starts with "aura-")
+    if (!voice.startsWith('aura-')) {
+        console.error('[Deepgram TTS] Invalid voice for Deepgram:', voice);
+        return null;
+    }
     
-    console.log(`[Deepgram TTS] Using voice: ${model}, language: ${lang}`);
+    // Use the full voice ID as model (e.g., "aura-2-agathe-fr")
+    // Deepgram Aura 2 models use format: aura-2-[voicename]-[language]
+    const model = voice;
+    
+    console.log(`[Deepgram TTS] Using model: ${model}`);
+    
+    // Note: Deepgram doesn't support custom TTS parameters (rate, pitch, volume)
+    
+    const url = `https://api.deepgram.com/v1/speak?model=${model}`;
+    const requestBody = { text: text };
+    
+    console.log('[Deepgram TTS] Request URL:', url);
+    console.log('[Deepgram TTS] Request body:', requestBody);
+    console.log('[Deepgram TTS] Text length:', text.length, 'characters');
     
     try {
-        const response = await fetch('https://api.deepgram.com/v1/speak?model=' + model, {
+        const response = await fetch(url, {
             method: 'POST',
             headers: {
                 'Authorization': `Token ${apiKey}`,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                text: text
-            })
+            body: JSON.stringify(requestBody)
         });
+        
+        console.log('[Deepgram TTS] Response status:', response.status);
+        console.log('[Deepgram TTS] Response headers:', Object.fromEntries(response.headers.entries()));
         
         if (!response.ok) {
             const errorText = await response.text();
@@ -847,7 +973,7 @@ async function synthesizeWithDeepgram(text, voice) {
 // Google Cloud TTS Synthesis
 async function synthesizeWithGoogle(text, voice) {
     console.log('[Google TTS] Starting synthesis');
-    const apiKey = getApiKey('google_tts', 'apiKey_googletts');
+    const apiKey = getApiKey('googletts');
     
     if (!apiKey) {
         console.warn('[Google TTS] No API key found');
@@ -912,36 +1038,78 @@ async function synthesizeWithGoogle(text, voice) {
     }
 }
 
-// Main synthesis function - auto-detects provider
+// Main synthesis function - uses selected provider
 async function synthesizeSpeech(text) {
     // Remove all asterisks from the text before synthesis
     const cleanText = text.replace(/\*/g, '');
     
-    const voice = document.getElementById('ttsVoice').value;
+    const voiceElement = document.getElementById('ttsVoice');
+    let voice = voiceElement.value;
     const audioStatus = document.getElementById('audioStatus');
     
     if (audioStatus) {
         audioStatus.textContent = translations[currentLanguage].ttsGenerating;
     }
     
-    // Detect provider from voice selection
-    const voiceOption = document.querySelector(`#ttsVoice option[value="${voice}"]`);
-    const provider = voiceOption ? voiceOption.getAttribute('data-provider') : 'deepgram';
+    // Get selected TTS provider
+    const selectedProvider = localStorage.getItem('ttsProvider') || 'browser';
+    console.log(`[TTS] Using selected provider: ${selectedProvider}`);
     
-    console.log(`[TTS] Using provider: ${provider}`);
+    // Verify that the selected voice matches the provider
+    const voiceProvider = voiceElement.selectedOptions[0]?.getAttribute('data-provider');
+    if (voiceProvider !== selectedProvider) {
+        console.warn(`[TTS] Voice provider (${voiceProvider}) doesn't match TTS provider (${selectedProvider}), updating voices...`);
+        updateTTSProviderVoices();
+        voice = voiceElement.value;
+    }
     
     let audioUrl = null;
     
-    if (provider === 'deepgram') {
-        audioUrl = await synthesizeWithDeepgram(cleanText, voice);
-        // Fallback to Google if Deepgram fails
-        if (!audioUrl) {
-            console.log('[TTS] Deepgram failed, trying Google fallback');
-            // Try to find a Google voice
-            const googleVoice = 'fr-FR-Chirp-HD-F';
-            audioUrl = await synthesizeWithGoogle(cleanText, googleVoice);
+    // Browser TTS (Web Speech API)
+    if (selectedProvider === 'browser') {
+        console.log('[TTS] Using browser speech synthesis');
+        if ('speechSynthesis' in window) {
+            return new Promise((resolve) => {
+                const utterance = new SpeechSynthesisUtterance(cleanText);
+                utterance.lang = currentLanguage === 'fr' ? 'fr-FR' : currentLanguage === 'it' ? 'it-IT' : 'en-US';
+                
+                // speakingRate: 0.5-2.0 (direct value)
+                utterance.rate = parseFloat(document.getElementById('ttsSpeakingRate').value) || 1.0;
+                
+                // pitch: -20 to +20 → convert to 0-2 (Browser range)
+                const pitchValue = parseFloat(document.getElementById('ttsPitch').value) || 0;
+                utterance.pitch = (pitchValue + 20) / 20; // -20→0, 0→1, +20→2
+                
+                // volume: -16 to +16 dB → convert to 0-1 (Browser range)
+                const volumeValue = parseFloat(document.getElementById('ttsVolume').value) || 0;
+                utterance.volume = Math.max(0, Math.min(1, (volumeValue + 16) / 32)); // -16→0, 0→0.5, +16→1
+                
+                utterance.onend = () => {
+                    if (audioStatus) audioStatus.textContent = '';
+                    resolve('browser-speech-synthesis');
+                };
+                utterance.onerror = () => {
+                    console.error('[TTS] Browser synthesis failed');
+                    resolve(null);
+                };
+                
+                speechSynthesis.speak(utterance);
+            });
+        } else {
+            console.warn('[TTS] Browser speech synthesis not supported');
         }
-    } else if (provider === 'google') {
+    }
+    
+    // Deepgram TTS
+    if (selectedProvider === 'deepgram') {
+        audioUrl = await synthesizeWithDeepgram(cleanText, voice);
+        if (!audioUrl) {
+            console.log('[TTS] Deepgram failed, trying browser fallback');
+            return synthesizeSpeech(text); // Recursive call will use browser
+        }
+    } 
+    // Google Cloud TTS
+    else if (selectedProvider === 'google') {
         audioUrl = await synthesizeWithGoogle(cleanText, voice);
     }
     
@@ -1200,6 +1368,207 @@ function setupSpeechRecognition() {
     console.log('[Speech Recognition] Setup complete');
 }
 
+// Voice Activity Detection (VAD) - monitors audio level to detect end of speech
+function startVoiceActivityDetection(stream, onSilenceDetected) {
+    try {
+        console.log('[VAD] Starting voice activity detection');
+        
+        if (!audioContext || audioContext.state === 'closed') {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        
+        if (!analyser) {
+            analyser = audioContext.createAnalyser();
+            analyser.fftSize = 256;
+            analyser.smoothingTimeConstant = 0.8;
+        }
+        
+        const source = audioContext.createMediaStreamSource(stream);
+        source.connect(analyser);
+        
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        
+        silenceStart = null;
+        soundDetected = false;
+        const recordingStartTime = Date.now();
+        
+        vadCheckInterval = setInterval(() => {
+            analyser.getByteFrequencyData(dataArray);
+            
+            // Calculate average volume
+            let sum = 0;
+            for (let i = 0; i < bufferLength; i++) {
+                sum += dataArray[i];
+            }
+            const average = sum / bufferLength;
+            
+            console.log('[VAD] Average volume:', Math.round(average));
+            
+            // Check if sound is above threshold
+            if (average > SILENCE_THRESHOLD) {
+                soundDetected = true;
+                silenceStart = null;
+                console.log('[VAD] Sound detected');
+            } else {
+                // Only start counting silence after sound has been detected
+                if (soundDetected) {
+                    if (silenceStart === null) {
+                        silenceStart = Date.now();
+                        console.log('[VAD] Silence started');
+                    } else {
+                        const silenceDuration = Date.now() - silenceStart;
+                        const recordingDuration = Date.now() - recordingStartTime;
+                        
+                        // Stop if silence exceeds threshold AND minimum recording time has passed
+                        if (silenceDuration >= SILENCE_DURATION && recordingDuration >= MIN_RECORDING_TIME) {
+                            console.log('[VAD] Silence detected for', silenceDuration, 'ms - stopping recording');
+                            stopVoiceActivityDetection();
+                            if (onSilenceDetected) {
+                                onSilenceDetected();
+                            }
+                        }
+                    }
+                }
+            }
+        }, 100); // Check every 100ms
+        
+        console.log('[VAD] Voice activity detection started');
+    } catch (error) {
+        console.error('[VAD] Failed to start:', error);
+    }
+}
+
+function stopVoiceActivityDetection() {
+    if (vadCheckInterval) {
+        clearInterval(vadCheckInterval);
+        vadCheckInterval = null;
+        console.log('[VAD] Stopped');
+    }
+    silenceStart = null;
+    soundDetected = false;
+}
+
+// Audio Spectrum Visualization
+function startSpectrumVisualization(stream) {
+    try {
+        console.log('[Spectrum] Starting visualization');
+        
+        // Show spectrum container
+        const container = document.getElementById('spectrumContainer');
+        if (container) {
+            container.style.display = 'block';
+        }
+        
+        // Create audio context
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        analyser.smoothingTimeConstant = 0.8;
+        
+        // Connect microphone stream to analyser
+        const source = audioContext.createMediaStreamSource(stream);
+        source.connect(analyser);
+        
+        // Store stream reference
+        microphoneStream = stream;
+        
+        // Start drawing
+        drawSpectrum();
+        
+        console.log('[Spectrum] Visualization started');
+    } catch (error) {
+        console.error('[Spectrum] Failed to start visualization:', error);
+    }
+}
+
+function stopSpectrumVisualization() {
+    console.log('[Spectrum] Stopping visualization');
+    
+    // Cancel animation frame
+    if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+    }
+    
+    // Close audio context
+    if (audioContext) {
+        audioContext.close();
+        audioContext = null;
+    }
+    
+    analyser = null;
+    
+    // Hide spectrum container
+    const container = document.getElementById('spectrumContainer');
+    if (container) {
+        container.style.display = 'none';
+    }
+    
+    // Clear canvas
+    const canvas = document.getElementById('spectrumCanvas');
+    if (canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+}
+
+function drawSpectrum() {
+    if (!analyser) return;
+    
+    const canvas = document.getElementById('spectrumCanvas');
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    const width = canvas.offsetWidth;
+    const height = canvas.offsetHeight;
+    
+    // Set canvas resolution
+    canvas.width = width;
+    canvas.height = height;
+    
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+    
+    function draw() {
+        animationFrameId = requestAnimationFrame(draw);
+        
+        analyser.getByteFrequencyData(dataArray);
+        
+        // Clear canvas
+        ctx.fillStyle = '#2a2a2a';
+        ctx.fillRect(0, 0, width, height);
+        
+        // Draw spectrum bars
+        const barCount = 64; // Number of bars to display
+        const barWidth = width / barCount;
+        const step = Math.floor(bufferLength / barCount);
+        
+        for (let i = 0; i < barCount; i++) {
+            // Get average value for this bar
+            let sum = 0;
+            for (let j = 0; j < step; j++) {
+                sum += dataArray[i * step + j];
+            }
+            const avg = sum / step;
+            
+            const barHeight = (avg / 255) * height;
+            const x = i * barWidth;
+            const y = height - barHeight;
+            
+            // Color gradient based on frequency (low freq = blue, high freq = red)
+            const hue = 200 + (i / barCount) * 60; // 200 (blue) to 260 (purple/red)
+            const saturation = 70 + (avg / 255) * 30; // More intense when louder
+            const lightness = 40 + (avg / 255) * 20;
+            
+            ctx.fillStyle = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+            ctx.fillRect(x, y, barWidth - 2, barHeight);
+        }
+    }
+    
+    draw();
+}
+
 // Initialize MediaRecorder for API-based STT
 async function initMediaRecorder() {
     try {
@@ -1219,6 +1588,12 @@ async function initMediaRecorder() {
         });
         
         console.log('[MediaRecorder] Microphone access granted');
+        
+        // Store stream for later use
+        microphoneStream = stream;
+        
+        // Start spectrum visualization
+        startSpectrumVisualization(stream);
         
         // Check supported mime types
         let mimeType = 'audio/webm;codecs=opus';
@@ -1248,19 +1623,42 @@ async function initMediaRecorder() {
         mediaRecorder.onstop = async () => {
             console.log('[MediaRecorder] Recording stopped');
             const voiceBtn = document.getElementById('voiceBtn');
-            voiceBtn.classList.remove('listening', 'recording');
+            if (voiceBtn) {
+                voiceBtn.classList.remove('listening', 'recording');
+            }
+            
+            // Stop VAD
+            stopVoiceActivityDetection();
+            
+            // Stop spectrum visualization
+            stopSpectrumVisualization();
+            
             showInfo(translations[currentLanguage].voiceProcessing);
             
             const audioBlob = new Blob(audioChunks, { type: mimeType || 'audio/webm' });
-            console.log('[MediaRecorder] Audio blob created:', audioBlob.size, 'bytes');
+            console.log('[MediaRecorder] Audio blob created:', audioBlob.size, 'bytes', 'type:', audioBlob.type);
+            
+            // Reset audio chunks
             audioChunks = [];
             isRecording = false;
             
-            // Send to STT API
-            await processAudioWithAPI(audioBlob);
+            // Validate blob before processing
+            if (audioBlob.size > 0) {
+                // Send to STT API
+                await processAudioWithAPI(audioBlob);
+            } else {
+                console.error('[MediaRecorder] Audio blob is empty');
+                hideInfo();
+                showError({
+                    'fr': 'Erreur d\'enregistrement audio. Veuillez réessayer.',
+                    'en': 'Audio recording error. Please try again.',
+                    'it': 'Errore di registrazione audio. Riprova.'
+                }[currentLanguage]);
+            }
             
             // Stop all tracks
             stream.getTracks().forEach(track => track.stop());
+            microphoneStream = null;
         };
         
         console.log('[MediaRecorder] Initialized successfully');
@@ -1301,12 +1699,44 @@ async function initMediaRecorder() {
 
 // Process audio with Deepgram API
 async function processAudioWithDeepgram(audioBlob) {
-    console.log('[Deepgram STT] Starting transcription');
     try {
+        console.log('[Deepgram STT] Starting transcription');
+        console.log('[Deepgram STT] Audio blob size:', audioBlob.size, 'bytes');
+        
+        // Validate audio blob
+        if (!audioBlob || audioBlob.size === 0) {
+            console.error('[Deepgram STT] Invalid audio blob - size is 0');
+            showError({
+                'fr': 'Aucun audio enregistré. Veuillez réessayer.',
+                'en': 'No audio recorded. Please try again.',
+                'it': 'Nessun audio registrato. Riprova.'
+            }[currentLanguage]);
+            hideInfo();
+            return;
+        }
+        
+        // Check minimum size (at least 1KB for valid audio)
+        if (audioBlob.size < 1000) {
+            console.warn('[Deepgram STT] Audio blob too small:', audioBlob.size, 'bytes');
+            showError({
+                'fr': 'Audio trop court. Parlez plus longtemps.',
+                'en': 'Audio too short. Please speak longer.',
+                'it': 'Audio troppo breve. Parla più a lungo.'
+            }[currentLanguage]);
+            hideInfo();
+            return;
+        }
+        
         const apiKey = getApiKey('deepgram', 'apiKey_deepgram');
         if (!apiKey) {
-            console.log('[Deepgram STT] No API key found, falling back to Hugging Face');
-            return await processAudioWithHuggingFace(audioBlob);
+            console.log('[Deepgram STT] No API key found');
+            showError({
+                'fr': 'Clé API Deepgram requise',
+                'en': 'Deepgram API key required',
+                'it': 'Chiave API Deepgram richiesta'
+            }[currentLanguage]);
+            hideInfo();
+            return;
         }
         
         // Map current language to Deepgram language codes
@@ -1318,13 +1748,14 @@ async function processAudioWithDeepgram(audioBlob) {
         const deepgramLang = languageMap[currentLanguage] || 'en-US';
         
         console.log(`[Deepgram STT] Using language: ${deepgramLang}`);
+        console.log(`[Deepgram STT] Audio blob type: ${audioBlob.type}`);
         
         // Deepgram supports direct audio/webm
-        const response = await fetch(`https://api.deepgram.com/v1/listen?model=nova-2&language=${deepgramLang}&smart_format=true`, {
+        const response = await fetch(`https://api.deepgram.com/v1/listen?model=nova-2&language=${deepgramLang}&smart_format=true&punctuate=true`, {
             method: 'POST',
             headers: {
                 'Authorization': `Token ${apiKey}`,
-                'Content-Type': 'audio/webm'
+                'Content-Type': audioBlob.type || 'audio/webm'
             },
             body: audioBlob
         });
@@ -1332,78 +1763,165 @@ async function processAudioWithDeepgram(audioBlob) {
         if (!response.ok) {
             const errorText = await response.text();
             console.error('[Deepgram STT] API error:', response.status, errorText);
-            throw new Error(`Deepgram API error: ${response.status}`);
+            
+            let errorMessage;
+            if (response.status === 401) {
+                errorMessage = {
+                    'fr': 'Clé API Deepgram invalide',
+                    'en': 'Invalid Deepgram API key',
+                    'it': 'Chiave API Deepgram non valida'
+                }[currentLanguage];
+            } else if (response.status === 400) {
+                errorMessage = {
+                    'fr': 'Format audio non supporté',
+                    'en': 'Audio format not supported',
+                    'it': 'Formato audio non supportato'
+                }[currentLanguage];
+            } else {
+                errorMessage = `Deepgram API error: ${response.status}`;
+            }
+            
+            throw new Error(errorMessage);
         }
         
         const result = await response.json();
-        console.log('[Deepgram STT] Response received:', result);
+        console.log('[Deepgram STT] Full response:', JSON.stringify(result, null, 2));
         
-        const transcript = result?.results?.channels?.[0]?.alternatives?.[0]?.transcript || '';
+        // Check for multiple paths to transcript
+        const transcript = result?.results?.channels?.[0]?.alternatives?.[0]?.transcript || 
+                          result?.results?.utterances?.[0]?.transcript || 
+                          result?.channel?.alternatives?.[0]?.transcript || '';
+        
+        console.log('[Deepgram STT] Extracted transcript:', transcript);
         
         if (transcript && transcript.trim()) {
-            console.log('[Deepgram STT] Transcript:', transcript);
-            document.getElementById('searchInput').value = transcript;
+            console.log('[Deepgram STT] Success - Transcript:', transcript);
+            document.getElementById('searchInput').value = transcript.trim();
             hideInfo();
             performSearch();
         } else {
-            throw new Error('No transcript received from Deepgram');
+            console.warn('[Deepgram STT] No speech detected in audio');
+            showError({
+                'fr': 'Aucune parole détectée. Veuillez réessayer.',
+                'en': 'No speech detected. Please try again.',
+                'it': 'Nessun parlato rilevato. Riprova.'
+            }[currentLanguage]);
+            hideInfo();
         }
     } catch (error) {
         console.error('[Deepgram STT] Error:', error);
-        console.log('[Deepgram STT] Falling back to Hugging Face');
-        // Fallback to Hugging Face
-        await processAudioWithHuggingFace(audioBlob);
+        hideInfo();
+        showError(error.message || translations[currentLanguage].voiceError);
     }
 }
 
-// Process audio with Hugging Face Whisper API
-async function processAudioWithHuggingFace(audioBlob) {
+// Process audio with Google Cloud Speech-to-Text API
+async function processAudioWithGoogle(audioBlob) {
     try {
-        console.log('[Hugging Face STT] Starting transcription');
-        // Convert webm to wav for better compatibility
+        console.log('[Google STT] Starting transcription');
+        const apiKey = getApiKey('googlestt');
+        
+        if (!apiKey) {
+            console.log('[Google STT] No API key found');
+            showError({
+                'fr': 'Clé API Google Cloud STT requise',
+                'en': 'Google Cloud STT API key required',
+                'it': 'Chiave API Google Cloud STT richiesta'
+            }[currentLanguage]);
+            hideInfo();
+            return;
+        }
+        
+        // Convert webm to WAV for better compatibility with Google Cloud
+        console.log('[Google STT] Converting audio to WAV format...');
         const wavBlob = await convertToWav(audioBlob);
         
-        // Try Hugging Face Whisper API (free)
-        const response = await fetch('https://api-inference.huggingface.co/models/openai/whisper-large-v3', {
+        // Convert WAV to base64
+        const base64Audio = await blobToBase64(wavBlob);
+        
+        // Map language codes
+        const langMap = {'fr': 'fr-FR', 'en': 'en-US', 'it': 'it-IT'};
+        const languageCode = langMap[currentLanguage] || 'en-US';
+        
+        console.log(`[Google STT] Using language: ${languageCode}`);
+        
+        const response = await fetch(`https://speech.googleapis.com/v1/speech:recognize?key=${apiKey}`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'audio/wav'
+                'Content-Type': 'application/json'
             },
-            body: wavBlob
+            body: JSON.stringify({
+                config: {
+                    encoding: 'LINEAR16',
+                    languageCode: languageCode,
+                    enableAutomaticPunctuation: true,
+                    model: 'default'
+                },
+                audio: {
+                    content: base64Audio
+                }
+            })
         });
         
         if (!response.ok) {
-            throw new Error('STT API request failed');
+            const errorData = await response.json();
+            console.error('[Google STT] API error:', errorData);
+            throw new Error(`Google STT API error: ${response.status}`);
         }
         
         const result = await response.json();
-        const transcript = result.text || '';
+        console.log('[Google STT] API response:', result);
+        
+        const transcript = result.results?.[0]?.alternatives?.[0]?.transcript || '';
         
         if (transcript) {
-            console.log('[Hugging Face STT] Transcript:', transcript);
+            console.log('[Google STT] Transcript:', transcript);
             document.getElementById('searchInput').value = transcript;
             hideInfo();
             performSearch();
         } else {
             throw new Error('No transcript received');
         }
+        
     } catch (error) {
-        console.error('[Hugging Face STT] Error:', error);
+        console.error('[Google STT] Error:', error);
         hideInfo();
         showError(translations[currentLanguage].voiceError);
     }
 }
 
+// Helper function to convert blob to base64
+async function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const base64String = reader.result.split(',')[1];
+            resolve(base64String);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+}
+
 // Process audio with API (main entry point)
 async function processAudioWithAPI(audioBlob) {
-    const deepgramKey = getApiKey('deepgram', 'apiKey_deepgram');
+    // Get selected STT provider
+    const selectedSTTProvider = localStorage.getItem('sttProvider') || 'browser';
+    console.log(`[STT] Using selected provider: ${selectedSTTProvider}`);
     
-    if (deepgramKey) {
+    if (selectedSTTProvider === 'deepgram') {
         console.log('[STT] Using Deepgram API');
         await processAudioWithDeepgram(audioBlob);
+    } else if (selectedSTTProvider === 'google') {
+        console.log('[STT] Using Google Cloud STT API');
+        await processAudioWithGoogle(audioBlob);
     } else {
-        console.log('[STT] Using Hugging Face API');
-        await processAudioWithHuggingFace(audioBlob);
+        console.warn('[STT] No valid API provider selected. Please configure Deepgram or Google Cloud STT.');
+        showError({
+            'fr': 'Veuillez configurer Deepgram ou Google Cloud STT',
+            'en': 'Please configure Deepgram or Google Cloud STT',
+            'it': 'Configura Deepgram o Google Cloud STT'
+        }[currentLanguage]);
     }
 }
 
@@ -1624,16 +2142,28 @@ async function startVoiceSearch() {
         mediaRecorder.start();
         console.log('[Voice Search] MediaRecorder started');
         
-        // Auto-stop after 10 seconds
+        // Start Voice Activity Detection to auto-stop on silence
+        if (microphoneStream) {
+            startVoiceActivityDetection(microphoneStream, () => {
+                if (mediaRecorder && mediaRecorder.state === 'recording') {
+                    console.log('[Voice Search] VAD triggered - stopping recording');
+                    mediaRecorder.stop();
+                }
+            });
+        }
+        
+        // Failsafe: Auto-stop after 30 seconds maximum
         setTimeout(() => {
             if (mediaRecorder && mediaRecorder.state === 'recording') {
-                console.log('[Voice Search] Auto-stopping after 10s');
+                console.log('[Voice Search] Failsafe auto-stop after 30s');
+                stopVoiceActivityDetection();
                 mediaRecorder.stop();
             }
-        }, 10000);
+        }, 30000);
     } catch (error) {
         console.error('Failed to start recording:', error);
         voiceBtn.classList.remove('listening', 'recording');
+        stopVoiceActivityDetection();
         hideInfo();
         showError(translations[currentLanguage].voiceError);
     }
@@ -2986,6 +3516,46 @@ function clearAllHistory() {
         localStorage.removeItem('searchHistory');
         loadSearchHistory();
         showSuccess(translations[currentLanguage].historyCleared);
+    }
+}
+
+// Update TTS voice selector based on selected provider
+function updateTTSProviderVoices() {
+    const selectedProvider = document.getElementById('ttsProvider').value;
+    const voiceSelect = document.getElementById('ttsVoice');
+    
+    if (!voiceSelect) return;
+    
+    // Get all optgroups and options
+    const allOptgroups = voiceSelect.querySelectorAll('optgroup');
+    const allOptions = voiceSelect.querySelectorAll('option');
+    
+    console.log(`[TTS] Updating voice selector for provider: ${selectedProvider}`);
+    
+    // Hide all optgroups first
+    allOptgroups.forEach(optgroup => {
+        optgroup.style.display = 'none';
+    });
+    
+    // Show only optgroups matching the selected provider
+    allOptgroups.forEach(optgroup => {
+        const provider = optgroup.getAttribute('data-provider');
+        if (provider === selectedProvider) {
+            optgroup.style.display = '';
+        }
+    });
+    
+    // Select first visible option matching the provider
+    const firstVisibleOption = Array.from(allOptions).find(option => {
+        const provider = option.getAttribute('data-provider');
+        return provider === selectedProvider;
+    });
+    
+    if (firstVisibleOption) {
+        voiceSelect.value = firstVisibleOption.value;
+        console.log(`[TTS] Selected voice: ${firstVisibleOption.value} for provider: ${selectedProvider}`);
+    } else {
+        console.warn(`[TTS] No voice found for provider: ${selectedProvider}`);
     }
 }
 
