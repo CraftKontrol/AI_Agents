@@ -109,7 +109,8 @@ function getPriorityLabel(priority) {
         default: return 'Normal';
     }
 }
-function getRecurrenceOptions(selected) {
+function getRecurrenceOptions(recurrence) {
+    const selected = recurrence && recurrence.frequency ? recurrence.frequency : '';
     const recs = [
         { value: '', label: 'Aucune (Ponctuelle)' },
         { value: 'daily', label: 'Quotidienne' },
@@ -119,7 +120,8 @@ function getRecurrenceOptions(selected) {
     return recs.map(r => `<option value='${r.value}'${selected===r.value?' selected':''}>${r.label}</option>`).join('');
 }
 function getRecurrenceLabel(recurrence) {
-    switch(recurrence) {
+    const frequency = recurrence && recurrence.frequency ? recurrence.frequency : '';
+    switch(frequency) {
         case 'daily': return 'Quotidienne';
         case 'weekly': return 'Hebdomadaire';
         case 'monthly': return 'Mensuelle';
@@ -182,7 +184,13 @@ async function saveTaskPopupEdit() {
         currentTaskPopup.time = document.getElementById('popupEditTime').value;
         currentTaskPopup.type = document.getElementById('popupEditType').value;
         currentTaskPopup.priority = document.getElementById('popupEditPriority').value;
-        currentTaskPopup.recurrence = document.getElementById('popupEditRecurrence').value;
+        
+        // Handle recurrence as object
+        const recurrenceFrequency = document.getElementById('popupEditRecurrence').value;
+        currentTaskPopup.recurrence = recurrenceFrequency ? {
+            frequency: recurrenceFrequency,
+            interval: 1
+        } : null;
         
         // Use calendar integration if available
         if (typeof updateEventInCalendar === 'function') {
@@ -191,11 +199,12 @@ async function saveTaskPopupEdit() {
             await updateTask(currentTaskPopup.id, currentTaskPopup);
         }
         
-        setTaskPopupFields(currentTaskPopup, false);
-        
         // Supprimer le bouton "Enregistrer"
         const saveBtn = document.getElementById('popupSaveBtn');
         if (saveBtn) saveBtn.remove();
+        
+        // Close popup after save
+        closeTaskPopup();
         
         showSuccess('Tâche mise à jour');
     } catch (error) {
