@@ -1,3 +1,9 @@
+/* --- Launch Greeting Overlay --- */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
 /* --- Floating Voice Button --- */
 .btn-voice-floating {
     position: fixed;
@@ -1962,6 +1968,30 @@ body {
     box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.1);
 }
 
+/* Overdue task styling */
+.fc-event.event-overdue {
+    background: repeating-linear-gradient(
+        45deg,
+        #ff4444,
+        #ff4444 10px,
+        #cc3333 10px,
+        #cc3333 20px
+    ) !important;
+    border-left: 4px solid #ff0000 !important;
+    opacity: 0.95;
+    animation: pulse-overdue 2s ease-in-out infinite;
+}
+
+@keyframes pulse-overdue {
+    0%, 100% { opacity: 0.95; }
+    50% { opacity: 1; }
+}
+
+.fc-event.event-overdue .fc-event-title::before {
+    content: '⚠️ ';
+    margin-right: 5px;
+}
+
 /* FullCalendar Override Styles - CraftKontrol Theme */
 #calendarContainer {
     background-color: var(--background-color);
@@ -2855,6 +2885,151 @@ body {
     
     .undo-toast.show {
         transform: translateX(0) translateY(0);
+    }
+}
+
+/* ===== STT/TTS PROVIDER SELECTION ===== */
+.provider-selection {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+    margin-bottom: 25px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.provider-card {
+    background-color: var(--surface-elevated);
+    padding: 15px;
+    border: 1px solid var(--border-color);
+}
+
+.provider-card h3 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-color);
+    margin-bottom: 10px;
+    font-size: 16px;
+}
+
+.provider-card select {
+    width: 100%;
+    padding: 10px;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.provider-card select:hover {
+    border-color: var(--primary-color);
+}
+
+.provider-card select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.1);
+}
+
+.provider-hint {
+    color: var(--text-muted);
+    font-size: 12px;
+    margin-top: 8px;
+}
+
+/* ===== SPECTRUM VISUALIZATION ===== */
+.spectrum-container {
+    width: 100%;
+    max-width: 600px;
+    margin: 15px auto;
+    padding: 10px;
+    background-color: var(--surface-color);
+    border: 1px solid var(--border-color);
+}
+
+.spectrum-canvas {
+    width: 100%;
+    height: 80px;
+    display: block;
+}
+
+/* ===== ENHANCED API KEY MANAGEMENT ===== */
+.api-description {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 5px;
+}
+
+.required-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    background-color: rgba(255, 68, 68, 0.2);
+    color: var(--error-color);
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin-left: 8px;
+}
+
+/* ===== RECORDING STATE ENHANCEMENTS ===== */
+.btn-voice-large.recording {
+    background: linear-gradient(135deg, var(--error-color), #ff6666);
+    animation: recordingPulse 1.5s ease-in-out infinite;
+    box-shadow: 0 0 20px rgba(255, 68, 68, 0.5);
+}
+
+@keyframes recordingPulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 20px rgba(255, 68, 68, 0.5);
+    }
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 0 30px rgba(255, 68, 68, 0.8);
+    }
+}
+
+.btn-voice-large.recording .material-symbols-outlined {
+    animation: micPulse 1s ease-in-out infinite;
+}
+
+@keyframes micPulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.2);
+    }
+}
+
+/* ===== TTS VOICES ENHANCEMENT ===== */
+.tts-card select option[data-provider]:not([data-provider="browser"]) {
+    padding-left: 20px;
+}
+
+.tts-card select optgroup[data-provider="deepgram"] {
+    background-color: rgba(74, 158, 255, 0.05);
+}
+
+.tts-card select optgroup[data-provider="google"] {
+    background-color: rgba(68, 255, 136, 0.05);
+}
+
+/* ===== RESPONSIVE ENHANCEMENTS ===== */
+@media (max-width: 768px) {
+    .provider-selection {
+        grid-template-columns: 1fr;
+    }
+    
+    .spectrum-container {
+        margin: 10px 0;
+    }
+    
+    .spectrum-canvas {
+        height: 60px;
     }
 }
 
