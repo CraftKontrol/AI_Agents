@@ -12,7 +12,7 @@
 **Flow**: Input (Text/Voice) → Language Detection → Multi-API Search → AI Extraction → Display → TTS (Optional)
 
 **Global State**:
-- `currentLanguage` - 'fr'|'en'
+- `currentLanguage` - 'fr'|'en'|'it'
 - `allResults`, `filteredResults` - Search results arrays
 - `currentView` - 'list'|'grid'
 - `detectedSearchLanguage` - Auto-detected from query
@@ -22,7 +22,7 @@
 - `isSearching`, `isRecording`, `isPlaying` - Status flags
 
 **localStorage**:
-- API keys: `mistralApiKey`, `tavilyApiKey`, `scrapingbeeApiKey`, etc.
+- API keys: `apiKey_mistral`, `apiKey_tavily`, `apiKey_scrapingbee`, `apiKey_deepgram`, `apiKey_deepgramtts`, etc.
 - Settings: `searchHistory`, `ttsSettings`, `rateLimitSettings`
 
 ---
@@ -55,45 +55,56 @@ async function detectLanguage(text) {
 ```
 
 ### 3. Speech-to-Text (STT)
-**Three methods**: Browser API → Hugging Face → Whisper
+**Four methods**: Browser API → Deepgram → Hugging Face → Whisper
 
 **Browser STT**:
 - `webkitSpeechRecognition` or `SpeechRecognition`
-- Language auto-set from `currentLanguage`
+- Language auto-set from `currentLanguage` (fr-FR, en-US, it-IT)
 - Continuous: false, interimResults: false
 
-**Google Cloud STT Fallback**:
-- MediaRecorder → WEBM/OGG audio → Base64 → Google API
-- Endpoint: `https://speech.googleapis.com/v1/speech:recognize`
+**Deepgram STT** (Primary API):
+- MediaRecorder → WEBM audio → Deepgram API
+- Endpoint: `https://api.deepgram.com/v1/listen?model=nova-2&language={lang}&smart_format=true`
+- Languages: fr (French), en-US (English), it (Italian)
+- Auto-fallback to Hugging Face if no API key
+
+**Hugging Face Whisper Fallback**:
+- MediaRecorder → WAV audio → Hugging Face Whisper API
+- Endpoint: `https://api-inference.huggingface.co/models/openai/whisper-large-v3`
 
 ### 4. Text-to-Speech (TTS)
-**Google Cloud TTS API**
+**Dual Provider**: Deepgram TTS (Primary) → Google Cloud TTS (Fallback)
 
-**Voice Configuration**:
+**Deepgram TTS** (Primary):
+- 30 Aura voices (10 FR, 10 EN, 10 IT)
+- Models: Asteria, Luna, Stella, Athena, Hera, Orion, Arcas, Perseus, Angus, Orpheus
+- Direct audio streaming (no base64 conversion)
+- Natural prosody and intonation
+- Endpoint: `https://api.deepgram.com/v1/speak?model={voice}`
+
+**Google Cloud TTS** (Fallback):
 - 10 voices (5 FR, 5 EN)
 - Parameters: rate (0.5-2.0), pitch (-20 to +20), volume (-16 to +16 dB)
+- Base64 audio encoding
+
+**Voice Configuration**:
 - Auto-play option for summaries
+- Provider auto-detected from voice selection
+- Automatic fallback on API failure
 
 **Implementation**:
 ```javascript
-async function speakText(text, voiceConfig) {
-    const response = await fetch(
-        `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`,
-        {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                input: {text},
-                voice: {languageCode, name: voiceConfig.name},
-                audioConfig: {
-                    audioEncoding: 'MP3',
-                    speakingRate, pitch, volumeGainDb
-                }
-            })
-        }
-    );
-    const audio = new Audio('data:audio/mp3;base64,' + data.audioContent);
-    audio.play();
+async function synthesizeWithDeepgram(text, voice) {
+    const response = await fetch('https://api.deepgram.com/v1/speak?model=' + model, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Token ${apiKey}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({text})
+    });
+    const audioBlob = await response.blob();
+    return URL.createObjectURL(audioBlob);
 }
 ```
 
@@ -172,6 +183,27 @@ Return JSON only.
 ---
 
 ## API Integration Details
+
+### Deepgram STT API
+**Endpoint**: `https://api.deepgram.com/v1/listen`
+**Features**: Multi-language (FR/IT/EN), Nova-2 model, smart formatting
+**Authentication**: Token in Authorization header
+**Response**: `{results: {channels: [{alternatives: [{transcript}]}]}}`
+**Supported Languages**: 
+- French: `fr`
+- English: `en-US`
+- Italian: `it`
+
+### Deepgram TTS API
+**Endpoint**: `https://api.deepgram.com/v1/speak`
+**Features**: 30 Aura voices, multi-language (FR/IT/EN), natural prosody
+**Authentication**: Token in Authorization header
+**Request**: `{text: String}`
+**Response**: Audio blob (direct streaming)
+**Supported Voices**:
+- French: aura-asteria-fr, aura-luna-fr, aura-stella-fr, aura-athena-fr, aura-hera-fr, aura-orion-fr, aura-arcas-fr, aura-perseus-fr, aura-angus-fr, aura-orpheus-fr
+- English: aura-asteria-en, aura-luna-en, aura-stella-en, aura-athena-en, aura-hera-en, aura-orion-en, aura-arcas-en, aura-perseus-en, aura-angus-en, aura-orpheus-en
+- Italian: aura-asteria-it, aura-luna-it, aura-stella-it, aura-athena-it, aura-hera-it, aura-orion-it, aura-arcas-it, aura-perseus-it, aura-angus-it, aura-orpheus-it
 
 ### Tavily API
 **Endpoint**: `https://api.tavily.com/search`
