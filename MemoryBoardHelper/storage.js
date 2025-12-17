@@ -587,6 +587,11 @@ function isDatabaseReady() {
     return db !== null;
 }
 
+// Export STORES for testing
+if (typeof window !== 'undefined') {
+    window.STORES = STORES;
+}
+
 // Initialize on load
 initializeDatabase().catch(error => {
     console.error('[Storage] Failed to initialize database, using localStorage fallback:', error);
