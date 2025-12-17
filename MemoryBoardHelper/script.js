@@ -228,12 +228,26 @@ function toggleSSMLControls(enabled) {
 document.addEventListener('DOMContentLoaded', function() {
     loadTTSSettings();
     loadSSMLSettings();
+    loadProviderSettings();
     initFloatingVoiceButton();
+    
     // Save on change
     ['ttsVoice','ttsSpeakingRate','ttsPitch','ttsVolume','autoPlayTTS'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.addEventListener('change', saveTTSSettings);
     });
+    
+    // Add listeners for provider changes
+    const sttProviderSelect = document.getElementById('sttProvider');
+    const ttsProviderSelect = document.getElementById('ttsProvider');
+    
+    if (sttProviderSelect) {
+        sttProviderSelect.addEventListener('change', saveProviderSettings);
+    }
+    
+    if (ttsProviderSelect) {
+        ttsProviderSelect.addEventListener('change', saveProviderSettings);
+    }
 });
 
 // --- Patch TTS usage to use settings ---
@@ -539,6 +553,191 @@ function quickShowYearTasks() {
     }
 }
 
+// Delete old tasks (before today)
+async function deleteOldTasks() {
+    try {
+        const tasks = await getAllTasks();
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        // Filter tasks that are before today
+        const oldTasks = tasks.filter(task => {
+            if (!task.date) return false;
+            const taskDate = new Date(task.date);
+            taskDate.setHours(0, 0, 0, 0);
+            return taskDate < today;
+        });
+        
+        if (oldTasks.length === 0) {
+            showSuccess('Aucune tâche ancienne à supprimer.');
+            return;
+        }
+        
+        const confirmMsg = `Supprimer ${oldTasks.length} tâche(s) antérieure(s) à aujourd'hui ?`;
+        if (!confirm(confirmMsg)) {
+            return;
+        }
+        
+        // Delete each old task
+        for (const task of oldTasks) {
+            await deleteTask(task.id);
+        }
+        
+        // Refresh calendar
+        if (typeof initializeCalendar === 'function') {
+            await initializeCalendar();
+        }
+        
+        showSuccess(`${oldTasks.length} tâche(s) ancienne(s) supprimée(s).`);
+        
+    } catch (error) {
+        console.error('[DeleteOldTasks] Error:', error);
+        showError('Erreur lors de la suppression des anciennes tâches.');
+    }
+}
+
+// Delete completed tasks
+async function deleteDoneTasks() {
+    try {
+        const tasks = await getAllTasks();
+        
+        // Filter completed tasks
+        const doneTasks = tasks.filter(task => task.status === 'completed');
+        
+        if (doneTasks.length === 0) {
+            showSuccess('Aucune tâche terminée à supprimer.');
+            return;
+        }
+        
+        const confirmMsg = `Supprimer ${doneTasks.length} tâche(s) terminée(s) ?`;
+        if (!confirm(confirmMsg)) {
+            return;
+        }
+        
+        // Delete each completed task
+        for (const task of doneTasks) {
+            await deleteTask(task.id);
+        }
+        
+        // Refresh calendar
+        if (typeof initializeCalendar === 'function') {
+            await initializeCalendar();
+        }
+        
+        showSuccess(`${doneTasks.length} tâche(s) terminée(s) supprimée(s).`);
+        
+    } catch (error) {
+        console.error('[DeleteDoneTasks] Error:', error);
+        showError('Erreur lors de la suppression des tâches terminées.');
+    }
+}
+
+// Delete task by description (for testing purposes)
+async function deleteTaskByDescription(description) {
+    try {
+        const tasks = await getAllTasks();
+        const task = tasks.find(t => t.description && t.description.toLowerCase().includes(description.toLowerCase()));
+        
+        if (!task) {
+            console.log(`[DeleteTask] No task found with description: ${description}`);
+            return false;
+        }
+        
+        await deleteTask(task.id);
+        
+        // Refresh calendar
+        if (typeof initializeCalendar === 'function') {
+            await initializeCalendar();
+        }
+        
+        console.log(`[DeleteTask] Deleted task: ${task.description} (ID: ${task.id})`);
+        return true;
+        
+    } catch (error) {
+        console.error('[DeleteTask] Error:', error);
+        return false;
+    }
+}
+
+// Search task by description (for testing purposes)
+async function searchTaskByDescription(description) {
+    try {
+        const allTasks = await getAllTasks();
+        const futureTasks = allTasks.filter(t => t.status !== 'completed');
+        
+        const foundTasks = futureTasks.filter(t => 
+            t.description.toLowerCase().includes(description.toLowerCase())
+        );
+        
+        if (foundTasks.length === 0) {
+            const msg = `Aucune tâche trouvée avec "${description}"`;
+            showResponse(msg);
+            console.log(`[SearchTask] No task found with description: ${description}`);
+            return false;
+        }
+        
+        // Sort by date
+        foundTasks.sort((a, b) => {
+            if (!a.date && !b.date) return 0;
+            if (!a.date) return 1;
+            if (!b.date) return -1;
+            const dateCompare = new Date(a.date) - new Date(b.date);
+            if (dateCompare !== 0) return dateCompare;
+            if (!a.time && !b.time) return 0;
+            if (!a.time) return 1;
+            if (!b.time) return -1;
+            return a.time.localeCompare(b.time);
+        });
+        
+        if (foundTasks.length === 1) {
+            const task = foundTasks[0];
+            const dateStr = task.date ? new Date(task.date).toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : '';
+            const timeStr = task.time || '';
+            const msg = `Votre tâche "${task.description}" est prévue ${dateStr ? 'le ' + dateStr : ''} ${timeStr ? 'à ' + timeStr : ''}.`;
+            showSuccess(msg);
+            
+            // Navigate to task date
+            if (task.date) {
+                const taskDate = new Date(task.date);
+                const now = new Date();
+                
+                if (taskDate.toDateString() === now.toDateString()) {
+                    if (typeof changeCalendarView === 'function') { changeCalendarView('timeGridDay'); calendarToday(); }
+                } else {
+                    const weekStart = new Date(now);
+                    weekStart.setDate(now.getDate() - now.getDay());
+                    weekStart.setHours(0, 0, 0, 0);
+                    const weekEnd = new Date(weekStart);
+                    weekEnd.setDate(weekStart.getDate() + 7);
+                    
+                    if (taskDate >= weekStart && taskDate < weekEnd) {
+                        if (typeof changeCalendarView === 'function') changeCalendarView('timeGridWeek');
+                    } else {
+                        if (typeof changeCalendarView === 'function') changeCalendarView('dayGridMonth');
+                    }
+                }
+            }
+        } else {
+            const taskList = foundTasks.slice(0, 10).map((t, index) => {
+                const dateStr = t.date ? new Date(t.date).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }) : '';
+                const timeStr = t.time || '';
+                return `${index + 1}. "${t.description}" ${dateStr ? 'le ' + dateStr : ''} ${timeStr ? 'à ' + timeStr : ''}`;
+            }).join('. ');
+            
+            const msg = `Voici vos ${foundTasks.length} tâches : ${taskList}`;
+            showResponse(msg);
+        }
+        
+        console.log(`[SearchTask] Found ${foundTasks.length} task(s)`);
+        return true;
+        
+    } catch (error) {
+        console.error('[SearchTask] Error:', error);
+        showError('Erreur lors de la recherche de tâche');
+        return false;
+    }
+}
+
 // Commande : Ajouter un médicament
 async function quickAddMedication() {
     openAddTaskModal();
@@ -831,8 +1030,8 @@ let conversationHistory = [];
 const MAX_CONVERSATION_HISTORY = 10;
 let currentPeriod = 'today'; // 'today', 'week', 'month', 'year'
 
-// Speech recognition setup
-let sttMethod = 'browser'; // 'browser' or 'google'
+// Speech recognition setup (REMOVED - now defined in STT/TTS provider section around line 1335)
+// let sttMethod = 'browser'; // 'browser' or 'google'
 let recognitionRestartAttempts = 0;
 const MAX_RESTART_ATTEMPTS = 3;
 let isRecognitionActive = false;
@@ -846,6 +1045,231 @@ const COMMAND_TIMEOUT_MS = 10000; // 10 seconds to give command after wake word
 
 // Ajout du flag global pour bloquer le réaffichage du bandeau d'erreur micro
 let microPermissionDenied = false;
+
+// Launch greeting with overdue task check
+async function launchGreeting() {
+    console.log('[App] Starting launch greeting sequence...');
+    
+    try {
+        // Ensure functions are available
+        if (typeof window.getOverdueTasks !== 'function') {
+            console.error('[App] getOverdueTasks function not available yet');
+            return;
+        }
+        
+        // Get overdue tasks
+        const overdueTasks = await window.getOverdueTasks();
+        const todayTasks = await getTodayTasks();
+        
+        // Build context for Mistral
+        const now = new Date();
+        // Detect language from localStorage or use default 'fr'
+        const userLanguage = localStorage.getItem('appLanguage') || 'fr';
+        const locale = userLanguage === 'fr' ? 'fr-FR' : (userLanguage === 'it' ? 'it-IT' : 'en-US');
+        const timeStr = now.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+        const dateStr = now.toLocaleDateString(locale, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        
+        let contextMessage = `Current time: ${timeStr}\nDate: ${dateStr}\n\n`;
+        
+        if (overdueTasks.length > 0) {
+            contextMessage += `OVERDUE TASKS (${overdueTasks.length}):\n`;
+            overdueTasks.forEach((task, i) => {
+                contextMessage += `${i + 1}. "${task.description}" - Due: ${task.date} ${task.time || ''}\n`;
+            });
+            contextMessage += '\n';
+        }
+        
+        if (todayTasks.length > 0) {
+            contextMessage += `TODAY'S TASKS (${todayTasks.length}):\n`;
+            todayTasks.forEach((task, i) => {
+                contextMessage += `${i + 1}. "${task.description}" - ${task.time || 'No time set'}\n`;
+            });
+        }
+        
+        // Get Mistral API key
+        const mistralApiKey = localStorage.getItem('mistralApiKey');
+        if (!mistralApiKey) {
+            console.log('[App] No Mistral API key, skipping launch greeting');
+            return;
+        }
+        
+        // Call Mistral for greeting
+        const response = await fetch(MISTRAL_API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${mistralApiKey}`
+            },
+            body: JSON.stringify({
+                model: 'mistral-small-latest',
+                messages: [
+                    { role: 'system', content: LAUNCH_GREETING_PROMPT },
+                    { role: 'user', content: contextMessage }
+                ],
+                temperature: 0.7,
+                max_tokens: 500
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Mistral API error: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        let messageContent = data.choices[0]?.message?.content;
+        
+        if (!messageContent) {
+            throw new Error('No response from Mistral');
+        }
+        
+        // Strip markdown code blocks if present
+        messageContent = messageContent.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+        
+        // Parse JSON response
+        let greetingData;
+        try {
+            greetingData = JSON.parse(messageContent);
+        } catch {
+            // If not JSON, use raw message
+            greetingData = { greeting: messageContent, language: userLanguage };
+        }
+        
+        console.log('[App] Launch greeting generated:', greetingData);
+        
+        // Build full greeting message
+        let fullGreeting = greetingData.greeting || '';
+        
+        // If greeting field contains nested JSON, parse it again
+        if (fullGreeting.includes('```json') || (fullGreeting.startsWith('{') && fullGreeting.includes('"greeting"'))) {
+            try {
+                const cleanedGreeting = fullGreeting.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+                const nestedData = JSON.parse(cleanedGreeting);
+                fullGreeting = nestedData.greeting || fullGreeting;
+            } catch {
+                // Keep original if parsing fails
+            }
+        }
+        
+        if (overdueTasks.length > 0) {
+            fullGreeting += '\n\n' + (greetingData.overdueSummary || '');
+            
+            // Add action options for each overdue task
+            fullGreeting += '\n\n';
+            if (userLanguage === 'fr') {
+                fullGreeting += 'Dites "compléter" ou "supprimer" suivi du numéro de la tâche.';
+            } else if (userLanguage === 'it') {
+                fullGreeting += 'Dì "completa" o "elimina" seguito dal numero dell\'attività.';
+            } else {
+                fullGreeting += 'Say "complete" or "delete" followed by the task number.';
+            }
+        }
+        
+        if (todayTasks.length > 0) {
+            fullGreeting += '\n\n' + (greetingData.todaySummary || '');
+        }
+        
+        // Check if TTS is enabled
+        const ttsSettings = JSON.parse(localStorage.getItem('ttsSettings') || 'null');
+        const shouldSpeak = ttsSettings && ttsSettings.autoPlay;
+        
+        // Display greeting in UI (will play audio on user interaction)
+        displayLaunchGreeting(fullGreeting, overdueTasks.length, todayTasks.length, userLanguage, shouldSpeak);
+        
+        // Store overdue tasks for quick actions
+        window.currentOverdueTasks = overdueTasks;
+        
+    } catch (error) {
+        console.error('[App] Error generating launch greeting:', error);
+    }
+}
+
+// Display launch greeting in UI
+function displayLaunchGreeting(message, overdueCount, todayCount, userLanguage = 'fr', shouldSpeak = false) {
+    // Create greeting overlay
+    const overlay = document.createElement('div');
+    overlay.id = 'launchGreetingOverlay';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.9);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: fadeIn 0.3s ease;
+    `;
+    
+    const card = document.createElement('div');
+    card.style.cssText = `
+        background: #2a2a2a;
+        padding: 30px;
+        max-width: 600px;
+        max-height: 80vh;
+        overflow-y: auto;
+        border: 2px solid #4a9eff;
+        color: #e0e0e0;
+        line-height: 1.6;
+        white-space: pre-wrap;
+    `;
+    
+    const title = document.createElement('h2');
+    title.style.cssText = 'color: #4a9eff; margin-bottom: 20px; font-size: 24px;';
+    title.textContent = '👋 Memory Board Helper';
+    
+    const stats = document.createElement('div');
+    stats.style.cssText = 'margin-top: 20px; padding-top: 20px; border-top: 1px solid #3a3a3a;';
+    
+    if (overdueCount > 0) {
+        const overdueSpan = document.createElement('span');
+        overdueSpan.style.cssText = 'color: #ff4444; margin-right: 20px; font-weight: bold;';
+        overdueSpan.textContent = `⚠️ ${overdueCount} tâche(s) en retard`;
+        stats.appendChild(overdueSpan);
+    }
+    
+    if (todayCount > 0) {
+        const todaySpan = document.createElement('span');
+        todaySpan.style.cssText = 'color: #44ff88; font-weight: bold;';
+        todaySpan.textContent = `📅 ${todayCount} tâche(s) aujourd'hui`;
+        stats.appendChild(todaySpan);
+    }
+    
+    const closeBtn = document.createElement('button');
+    closeBtn.style.cssText = `
+        margin-top: 30px;
+        padding: 12px 24px;
+        background: #4a9eff;
+        color: white;
+        border: none;
+        cursor: pointer;
+        font-size: 16px;
+        width: 100%;
+    `;
+    closeBtn.textContent = userLanguage === 'fr' ? 'Commencer' : (userLanguage === 'it' ? 'Inizia' : 'Start');
+    closeBtn.onclick = () => {
+        // Play audio on user interaction (satisfies browser autoplay policy)
+        if (shouldSpeak) {
+            console.log('[App] Playing greeting audio after user interaction');
+            synthesizeSpeech(message);
+        }
+        overlay.remove();
+    };
+    
+    card.appendChild(title);
+    card.appendChild(stats);
+    card.appendChild(closeBtn);
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+    
+    // Auto-dismiss after 30 seconds
+    setTimeout(() => {
+        if (overlay.parentNode) {
+            overlay.remove();
+        }
+    }, 30000);
+}
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', async function() {
@@ -928,6 +1352,11 @@ document.addEventListener('DOMContentLoaded', async function() {
     checkApiKeysAndHideSection();
     
     console.log('[App] Initialization complete');
+    
+    // Show launch greeting after a short delay
+    setTimeout(() => {
+        launchGreeting();
+    }, 2000);
 });
 
 // Handle undo button click
@@ -1090,11 +1519,10 @@ async function handleVoiceInteraction() {
     const voiceBtn = document.getElementById('voiceBtn');
     
     if (listeningMode === 'manual') {
-        // Check if Google STT is currently recording
-        if (isRecording && sttMethod === 'google') {
-            console.log('[App] Stopping Google STT recording');
-            const apiKey = getApiKey('google_stt', 'googleSTTApiKey');
-            await stopGoogleSTTRecording(apiKey);
+        // Check if API-based STT is currently recording
+        if (isRecording && (sttMethod === 'google' || sttMethod === 'deepgram')) {
+            console.log(`[App] Stopping ${sttMethod} STT recording`);
+            await stopAPISTTRecording();
             return;
         }
         
@@ -1118,10 +1546,10 @@ async function handleVoiceInteraction() {
                 recognition.start();
             } catch (error) {
                 console.error('[App] Error starting recognition:', error);
-                await fallbackToGoogleSTT();
+                await startAPISTT();
             }
         } else {
-            await fallbackToGoogleSTT();
+            await startAPISTT();
         }
     }
 }
@@ -1181,6 +1609,7 @@ async function handleSpeechResult(event) {
     // Process the command
     showTranscript(transcript);
     await processSpeechTranscript(transcript);
+}
 
 // Execute confirmed action
 async function executeConfirmedAction(confirmation) {
@@ -1239,14 +1668,14 @@ async function processSpeechTranscript(transcript) {
     }
     // Sinon, traitement normal (Mistral, ajout de tâche, etc.)
     await processUserMessage(transcript);
-}
     
+    // Clean up UI after processing
     if (listeningMode === 'manual') {
         const voiceBtn = document.getElementById('voiceBtn');
-        voiceBtn.classList.remove('recording');
+        if (voiceBtn) voiceBtn.classList.remove('recording');
         showListeningIndicator(false);
         // Stop recognition after manual input
-        if (isRecognitionActive) {
+        if (isRecognitionActive && recognition) {
             recognition.stop();
         }
     }
@@ -1331,6 +1760,692 @@ function handleSpeechEnd() {
 }
 
 // Fallback to Google Cloud STT API
+// --- STT/TTS Provider System ---
+let sttMethod = 'browser'; // 'browser', 'deepgram', 'google'
+let ttsProvider = 'browser'; // 'browser', 'deepgram', 'google'
+
+// Audio visualization
+let audioContext = null;
+let analyser = null;
+let animationFrameId = null;
+let microphoneStream = null;
+
+// Voice Activity Detection (VAD)
+let vadCheckInterval = null;
+let silenceStart = null;
+let soundDetected = false;
+const SILENCE_THRESHOLD = 30; // Volume threshold (0-255)
+const SILENCE_DURATION = 1500; // ms of silence before stopping
+const MIN_RECORDING_TIME = 500; // Minimum recording duration in ms
+let recordingStartTime = 0;
+
+// --- Provider Settings Management ---
+function saveProviderSettings() {
+    const sttProvider = document.getElementById('sttProvider')?.value || 'browser';
+    const ttsProviderValue = document.getElementById('ttsProvider')?.value || 'browser';
+    
+    localStorage.setItem('sttProvider', sttProvider);
+    localStorage.setItem('ttsProvider', ttsProviderValue);
+    
+    sttMethod = sttProvider;
+    ttsProvider = ttsProviderValue;
+    
+    console.log(`[Providers] STT: ${sttProvider}, TTS: ${ttsProviderValue}`);
+    
+    // Update voice selector when TTS provider changes
+    updateTTSProviderVoices();
+}
+
+function loadProviderSettings() {
+    const sttProvider = localStorage.getItem('sttProvider') || 'browser';
+    const ttsProviderValue = localStorage.getItem('ttsProvider') || 'browser';
+    
+    const sttSelect = document.getElementById('sttProvider');
+    const ttsSelect = document.getElementById('ttsProvider');
+    
+    if (sttSelect) sttSelect.value = sttProvider;
+    if (ttsSelect) ttsSelect.value = ttsProviderValue;
+    
+    sttMethod = sttProvider;
+    ttsProvider = ttsProviderValue;
+    
+    // Update voice selector to match loaded TTS provider
+    updateTTSProviderVoices();
+}
+
+function updateTTSProviderVoices() {
+    const ttsSelect = document.getElementById('ttsProvider');
+    const voiceSelect = document.getElementById('ttsVoice');
+    
+    if (!ttsSelect || !voiceSelect) return;
+    
+    const selectedProvider = ttsSelect.value;
+    
+    // Show only voices for the selected provider
+    const options = voiceSelect.querySelectorAll('option, optgroup');
+    options.forEach(opt => {
+        const provider = opt.getAttribute('data-provider');
+        if (!provider || provider === selectedProvider) {
+            opt.style.display = '';
+            opt.disabled = false;
+        } else {
+            opt.style.display = 'none';
+            opt.disabled = true;
+        }
+    });
+    
+    // Select first valid option for the provider
+    const firstValidOption = voiceSelect.querySelector(`option[data-provider="${selectedProvider}"]`);
+    if (firstValidOption) {
+        voiceSelect.value = firstValidOption.value;
+        // Save TTS settings with the new voice
+        saveTTSSettings();
+    }
+    
+    // Show/hide SSML section (only available for Google TTS)
+    toggleSSMLSection(selectedProvider === 'google');
+}
+
+function toggleSSMLSection(show) {
+    const ssmlSection = document.querySelector('.ssml-section');
+    if (ssmlSection) {
+        ssmlSection.style.display = show ? 'block' : 'none';
+    }
+}
+
+// --- Spectrum Visualization ---
+function startSpectrumVisualization(stream) {
+    try {
+        console.log('[Spectrum] Starting visualization');
+        
+        // Show spectrum container
+        const container = document.getElementById('spectrumContainer');
+        if (container) {
+            container.style.display = 'block';
+        }
+        
+        // Create audio context
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        analyser.smoothingTimeConstant = 0.8;
+        
+        // Connect microphone stream to analyser
+        const source = audioContext.createMediaStreamSource(stream);
+        source.connect(analyser);
+        
+        // Store stream reference
+        microphoneStream = stream;
+        
+        // Start drawing
+        drawSpectrum();
+        
+        console.log('[Spectrum] Visualization started');
+    } catch (error) {
+        console.error('[Spectrum] Failed to start visualization:', error);
+    }
+}
+
+function stopSpectrumVisualization() {
+    console.log('[Spectrum] Stopping visualization');
+    
+    // Cancel animation frame
+    if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+    }
+    
+    // Close audio context
+    if (audioContext) {
+        audioContext.close();
+        audioContext = null;
+    }
+    
+    analyser = null;
+    
+    // Hide spectrum container
+    const container = document.getElementById('spectrumContainer');
+    if (container) {
+        container.style.display = 'none';
+    }
+    
+    // Clear canvas
+    const canvas = document.getElementById('spectrumCanvas');
+    if (canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+}
+
+function drawSpectrum() {
+    if (!analyser) return;
+    
+    const canvas = document.getElementById('spectrumCanvas');
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    const width = canvas.offsetWidth;
+    const height = canvas.offsetHeight;
+    
+    // Set canvas resolution
+    canvas.width = width;
+    canvas.height = height;
+    
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+    
+    function draw() {
+        animationFrameId = requestAnimationFrame(draw);
+        
+        analyser.getByteFrequencyData(dataArray);
+        
+        // Clear canvas
+        ctx.fillStyle = '#2a2a2a';
+        ctx.fillRect(0, 0, width, height);
+        
+        // Draw spectrum bars
+        const barCount = 64; // Number of bars to display
+        const barWidth = width / barCount;
+        const step = Math.floor(bufferLength / barCount);
+        
+        for (let i = 0; i < barCount; i++) {
+            // Get average value for this bar
+            let sum = 0;
+            for (let j = 0; j < step; j++) {
+                sum += dataArray[i * step + j];
+            }
+            const avg = sum / step;
+            
+            const barHeight = (avg / 255) * height;
+            const x = i * barWidth;
+            const y = height - barHeight;
+            
+            // Color gradient based on frequency (low freq = blue, high freq = red)
+            const hue = 200 + (i / barCount) * 60; // 200 (blue) to 260 (purple/red)
+            const saturation = 70 + (avg / 255) * 30; // More intense when louder
+            const lightness = 40 + (avg / 255) * 20;
+            
+            ctx.fillStyle = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+            ctx.fillRect(x, y, barWidth - 2, barHeight);
+        }
+    }
+    
+    draw();
+}
+
+// --- Voice Activity Detection (VAD) ---
+function startVoiceActivityDetection(stream, onSilenceDetected) {
+    try {
+        if (!analyser) {
+            console.error('[VAD] Analyser not initialized');
+            return;
+        }
+        
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        
+        recordingStartTime = Date.now();
+        soundDetected = false;
+        silenceStart = null;
+        
+        vadCheckInterval = setInterval(() => {
+            if (!analyser) {
+                stopVoiceActivityDetection();
+                return;
+            }
+            
+            analyser.getByteFrequencyData(dataArray);
+            
+            // Calculate average volume
+            let sum = 0;
+            for (let i = 0; i < bufferLength; i++) {
+                sum += dataArray[i];
+            }
+            const average = sum / bufferLength;
+            
+            // Check if sound is above threshold
+            if (average > SILENCE_THRESHOLD) {
+                soundDetected = true;
+                silenceStart = null;
+            } else {
+                // Only start counting silence after sound has been detected
+                if (soundDetected) {
+                    if (silenceStart === null) {
+                        silenceStart = Date.now();
+                    } else {
+                        const silenceDuration = Date.now() - silenceStart;
+                        const recordingDuration = Date.now() - recordingStartTime;
+                        
+                        // Stop if silence exceeds threshold AND minimum recording time has passed
+                        if (silenceDuration >= SILENCE_DURATION && recordingDuration >= MIN_RECORDING_TIME) {
+                            console.log('[VAD] Silence detected for', silenceDuration, 'ms - stopping recording');
+                            stopVoiceActivityDetection();
+                            if (onSilenceDetected) {
+                                onSilenceDetected();
+                            }
+                        }
+                    }
+                }
+            }
+        }, 100); // Check every 100ms
+        
+        console.log('[VAD] Voice activity detection started');
+    } catch (error) {
+        console.error('[VAD] Failed to start:', error);
+    }
+}
+
+function stopVoiceActivityDetection() {
+    if (vadCheckInterval) {
+        clearInterval(vadCheckInterval);
+        vadCheckInterval = null;
+        console.log('[VAD] Stopped');
+    }
+    silenceStart = null;
+    soundDetected = false;
+}
+
+// --- Unified API STT Handler ---
+async function startAPISTT() {
+    const selectedProvider = localStorage.getItem('sttProvider') || 'browser';
+    console.log(`[STT] Starting API-based STT with provider: ${selectedProvider}`);
+    
+    if (selectedProvider === 'deepgram') {
+        await fallbackToDeepgramSTT();
+    } else if (selectedProvider === 'google') {
+        await fallbackToGoogleSTT();
+    } else {
+        console.warn('[STT] No valid API provider selected');
+        showError('Veuillez configurer un fournisseur STT (Deepgram ou Google)');
+    }
+}
+
+async function stopAPISTTRecording() {
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+    }
+}
+
+async function fallbackToDeepgramSTT() {
+    const apiKey = getApiKey('deepgram', 'apiKey_deepgram');
+    if (!apiKey) {
+        showError('Clé API Deepgram requise');
+        return;
+    }
+    
+    try {
+        console.log('[Deepgram STT] Starting recording');
+        await startMediaRecording('deepgram');
+    } catch (error) {
+        console.error('[Deepgram STT] Error:', error);
+        showError('Erreur lors de l\'enregistrement audio');
+    }
+}
+
+async function startMediaRecording(provider) {
+    if (isRecording) {
+        console.log('[MediaRecorder] Already recording, stopping previous recording');
+        await stopAPISTTRecording();
+        return;
+    }
+    
+    try {
+        // Request microphone access
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+            audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true,
+                sampleRate: 16000
+            } 
+        });
+        
+        // Start spectrum visualization
+        startSpectrumVisualization(stream);
+        
+        // Configure MediaRecorder
+        const options = {
+            mimeType: 'audio/webm;codecs=opus',
+            audioBitsPerSecond: 16000
+        };
+        
+        // Fallback to other formats if webm is not supported
+        if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+            options.mimeType = 'audio/ogg;codecs=opus';
+            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                options.mimeType = 'audio/wav';
+            }
+        }
+        
+        mediaRecorder = new MediaRecorder(stream, options);
+        audioChunks = [];
+        
+        mediaRecorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+                audioChunks.push(event.data);
+            }
+        };
+        
+        mediaRecorder.onstop = async () => {
+            console.log(`[${provider} STT] Recording stopped, processing audio`);
+            isRecording = false;
+            
+            // Stop spectrum and VAD
+            stopSpectrumVisualization();
+            stopVoiceActivityDetection();
+            
+            // Stop all tracks to release microphone
+            stream.getTracks().forEach(track => track.stop());
+            
+            // Update UI for manual mode
+            if (listeningMode === 'manual') {
+                const voiceBtn = document.getElementById('voiceBtn');
+                if (voiceBtn) voiceBtn.classList.remove('recording');
+                showListeningIndicator(false);
+            }
+            
+            // Process audio based on provider
+            const audioBlob = new Blob(audioChunks, { type: options.mimeType });
+            
+            if (provider === 'deepgram') {
+                await processAudioWithDeepgram(audioBlob);
+            } else if (provider === 'google') {
+                await sendAudioToGoogleSTT(audioBlob, getApiKey('google_stt', 'googleSTTApiKey'));
+            }
+            
+            // Reset
+            audioChunks = [];
+        };
+        
+        mediaRecorder.onerror = (error) => {
+            console.error('[MediaRecorder] error:', error);
+            isRecording = false;
+            stream.getTracks().forEach(track => track.stop());
+            
+            stopSpectrumVisualization();
+            stopVoiceActivityDetection();
+            
+            if (listeningMode === 'manual') {
+                const voiceBtn = document.getElementById('voiceBtn');
+                if (voiceBtn) voiceBtn.classList.remove('recording');
+                showListeningIndicator(false);
+            }
+            
+            showError('Erreur lors de l\'enregistrement audio');
+        };
+        
+        // Start recording
+        mediaRecorder.start();
+        isRecording = true;
+        playListeningSound();
+        console.log(`[${provider} STT] Recording started`);
+        
+        // Start Voice Activity Detection to auto-stop on silence
+        if (stream) {
+            startVoiceActivityDetection(stream, () => {
+                if (mediaRecorder && mediaRecorder.state === 'recording') {
+                    console.log(`[${provider} STT] VAD triggered - stopping recording`);
+                    mediaRecorder.stop();
+                }
+            });
+        }
+        
+        // Failsafe: Auto-stop after 30 seconds maximum
+        setTimeout(() => {
+            if (isRecording && mediaRecorder && mediaRecorder.state === 'recording') {
+                console.log(`[${provider} STT] Failsafe auto-stop after 30s`);
+                stopVoiceActivityDetection();
+                mediaRecorder.stop();
+            }
+        }, 30000);
+        
+    } catch (error) {
+        console.error('[MediaRecorder] Failed to initialize:', error);
+        isRecording = false;
+        
+        if (listeningMode === 'manual') {
+            const voiceBtn = document.getElementById('voiceBtn');
+            if (voiceBtn) voiceBtn.classList.remove('recording');
+            showListeningIndicator(false);
+        }
+        
+        if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+            showError('Permission microphone refusée');
+        } else {
+            showError('Erreur d\'accès au microphone: ' + error.message);
+        }
+    }
+}
+
+// --- Deepgram STT ---
+async function processAudioWithDeepgram(audioBlob) {
+    try {
+        console.log('[Deepgram STT] Starting transcription');
+        console.log('[Deepgram STT] Audio blob size:', audioBlob.size, 'bytes');
+        
+        // Validate audio blob
+        if (!audioBlob || audioBlob.size === 0) {
+            console.error('[Deepgram STT] Invalid audio blob - size is 0');
+            showError('Aucun audio enregistré. Veuillez réessayer.');
+            return;
+        }
+        
+        // Check minimum size (at least 1KB for valid audio)
+        if (audioBlob.size < 1000) {
+            console.warn('[Deepgram STT] Audio blob too small:', audioBlob.size, 'bytes');
+            showError('Audio trop court. Parlez plus longtemps.');
+            return;
+        }
+        
+        const apiKey = getApiKey('deepgram', 'apiKey_deepgram');
+        if (!apiKey) {
+            console.log('[Deepgram STT] No API key found');
+            showError('Clé API Deepgram requise');
+            return;
+        }
+        
+        // Map current language to Deepgram language codes
+        const lang = getCurrentLanguage();
+        const languageMap = {
+            'fr': 'fr',
+            'en': 'en-US',
+            'it': 'it'
+        };
+        const deepgramLang = languageMap[lang] || 'fr';
+        
+        console.log(`[Deepgram STT] Using language: ${deepgramLang}`);
+        console.log(`[Deepgram STT] Audio blob type: ${audioBlob.type}`);
+        
+        // Deepgram supports direct audio/webm
+        const response = await fetch(`https://api.deepgram.com/v1/listen?model=nova-2&language=${deepgramLang}&smart_format=true&punctuate=true`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Token ${apiKey}`,
+                'Content-Type': audioBlob.type || 'audio/webm'
+            },
+            body: audioBlob
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('[Deepgram STT] API error:', response.status, errorText);
+            
+            let errorMessage;
+            if (response.status === 401) {
+                errorMessage = 'Clé API Deepgram invalide';
+            } else if (response.status === 400) {
+                errorMessage = 'Format audio non supporté';
+            } else {
+                errorMessage = `Deepgram API error: ${response.status}`;
+            }
+            
+            throw new Error(errorMessage);
+        }
+        
+        const result = await response.json();
+        console.log('[Deepgram STT] Response:', JSON.stringify(result, null, 2));
+        
+        // Check for multiple paths to transcript
+        const transcript = result?.results?.channels?.[0]?.alternatives?.[0]?.transcript || 
+                          result?.results?.utterances?.[0]?.transcript || 
+                          result?.channel?.alternatives?.[0]?.transcript || '';
+        
+        console.log('[Deepgram STT] Extracted transcript:', transcript);
+        
+        if (transcript && transcript.trim()) {
+            console.log('[Deepgram STT] Success - Transcript:', transcript);
+            // Process the transcript through speech processing system
+            await processSpeechTranscript(transcript.trim());
+        } else {
+            console.warn('[Deepgram STT] No speech detected in audio');
+            showError('Aucune parole détectée. Veuillez réessayer.');
+        }
+    } catch (error) {
+        console.error('[Deepgram STT] Error:', error);
+        showError(error.message || 'Erreur lors de la reconnaissance vocale');
+    }
+}
+
+// --- Deepgram TTS ---
+async function synthesizeWithDeepgram(text, voice) {
+    console.log('[Deepgram TTS] Starting synthesis with voice:', voice);
+    const apiKey = getApiKey('deepgramtts', 'apiKey_deepgramtts');
+    
+    if (!apiKey) {
+        console.log('[Deepgram TTS] No API key found');
+        return null;
+    }
+    
+    // Validate that the voice is a Deepgram voice (starts with "aura-")
+    if (!voice.startsWith('aura-')) {
+        console.error('[Deepgram TTS] Invalid voice for Deepgram:', voice);
+        return null;
+    }
+    
+    // Use the full voice ID as model
+    const model = voice;
+    
+    console.log(`[Deepgram TTS] Using model: ${model}`);
+    
+    const url = `https://api.deepgram.com/v1/speak?model=${model}`;
+    const requestBody = { text: text };
+    
+    console.log('[Deepgram TTS] Request URL:', url);
+    console.log('[Deepgram TTS] Text length:', text.length, 'characters');
+    
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Token ${apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestBody)
+        });
+        
+        console.log('[Deepgram TTS] Response status:', response.status);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('[Deepgram TTS] API error:', response.status, errorText);
+            throw new Error(`Deepgram TTS API error: ${response.status}`);
+        }
+        
+        const audioBlob = await response.blob();
+        const audioUrl = URL.createObjectURL(audioBlob);
+        
+        console.log('[Deepgram TTS] Synthesis successful');
+        return audioUrl;
+        
+    } catch (error) {
+        console.error('[Deepgram TTS] Error:', error);
+        return null;
+    }
+}
+
+// --- Enhanced TTS with Provider Support ---
+async function synthesizeSpeech(text) {
+    const cleanText = text.replace(/\*/g, '');
+    const voiceElement = document.getElementById('ttsVoice');
+    let voice = voiceElement?.value || 'browser-default';
+    
+    // Get selected TTS provider
+    const selectedProvider = localStorage.getItem('ttsProvider') || 'browser';
+    console.log(`[TTS] Using selected provider: ${selectedProvider}`);
+    
+    let audioUrl = null;
+    
+    // Browser TTS (Web Speech API)
+    if (selectedProvider === 'browser' || !selectedProvider) {
+        console.log('[TTS] Using browser speech synthesis');
+        if ('speechSynthesis' in window) {
+            return new Promise((resolve) => {
+                const utterance = new SpeechSynthesisUtterance(cleanText);
+                const lang = getCurrentLanguage();
+                utterance.lang = lang === 'fr' ? 'fr-FR' : lang === 'it' ? 'it-IT' : 'en-US';
+                
+                const ttsSettings = JSON.parse(localStorage.getItem('ttsSettings') || 'null') || DEFAULT_TTS_SETTINGS;
+                utterance.rate = ttsSettings.speakingRate || 0.9;
+                utterance.pitch = (ttsSettings.pitch + 20) / 20;
+                utterance.volume = Math.max(0, Math.min(1, (ttsSettings.volume + 16) / 32));
+                
+                utterance.onend = () => resolve('browser-speech-synthesis');
+                utterance.onerror = () => resolve(null);
+                
+                speechSynthesis.speak(utterance);
+            });
+        }
+    }
+    
+    // Deepgram TTS
+    if (selectedProvider === 'deepgram') {
+        audioUrl = await synthesizeWithDeepgram(cleanText, voice);
+        if (!audioUrl) {
+            console.log('[TTS] Deepgram failed, trying browser fallback');
+            return synthesizeSpeech(text); // Recursive call will use browser
+        }
+    }
+    // Google Cloud TTS
+    else if (selectedProvider === 'google') {
+        const lang = getCurrentLanguage();
+        const languageCode = lang === 'fr' ? 'fr-FR' : lang === 'it' ? 'it-IT' : 'en-US';
+        const apiKey = getApiKey('google_tts', 'googleTTSApiKey');
+        if (apiKey) {
+            try {
+                await speakWithGoogleTTS(cleanText, languageCode, apiKey);
+                return 'google-tts-complete';
+            } catch (error) {
+                console.error('[TTS] Google TTS failed:', error);
+                return null;
+            }
+        }
+    }
+    
+    // Play audio if URL was returned
+    if (audioUrl) {
+        console.log('[TTS] Playing audio from URL:', audioUrl);
+        return new Promise((resolve) => {
+            const audio = new Audio(audioUrl);
+            audio.addEventListener('ended', () => {
+                console.log('[TTS] Audio playback ended');
+                resolve('audio-complete');
+            });
+            audio.addEventListener('error', (e) => {
+                console.error('[TTS] Audio playback error:', e);
+                resolve(null);
+            });
+            audio.play().then(() => {
+                console.log('[TTS] Audio playback started successfully');
+            }).catch((err) => {
+                console.error('[TTS] Audio play() failed:', err);
+                resolve(null);
+            });
+        });
+    }
+    
+    return audioUrl;
+}
+
 // --- Google STT Implementation ---
 let mediaRecorder = null;
 let audioChunks = [];
@@ -1388,6 +2503,9 @@ async function startGoogleSTTRecording(apiKey) {
         mediaRecorder = new MediaRecorder(stream, options);
         audioChunks = [];
         
+        // Start spectrum visualization
+        startSpectrumVisualization(stream);
+        
         mediaRecorder.ondataavailable = (event) => {
             if (event.data.size > 0) {
                 audioChunks.push(event.data);
@@ -1397,6 +2515,10 @@ async function startGoogleSTTRecording(apiKey) {
         mediaRecorder.onstop = async () => {
             console.log('[GoogleSTT] Recording stopped, processing audio');
             isRecording = false;
+            
+            // Stop spectrum and VAD
+            stopSpectrumVisualization();
+            stopVoiceActivityDetection();
             
             // Stop all tracks to release microphone
             stream.getTracks().forEach(track => track.stop());
@@ -1434,13 +2556,24 @@ async function startGoogleSTTRecording(apiKey) {
         playListeningSound();
         console.log('[GoogleSTT] Recording started');
         
-        // Auto-stop after 10 seconds (adjust as needed)
+        // Start Voice Activity Detection to auto-stop on silence
+        if (microphoneStream) {
+            startVoiceActivityDetection(stream, () => {
+                if (mediaRecorder && mediaRecorder.state === 'recording') {
+                    console.log('[GoogleSTT] VAD triggered - stopping recording');
+                    mediaRecorder.stop();
+                }
+            });
+        }
+        
+        // Failsafe: Auto-stop after 30 seconds maximum
         setTimeout(() => {
             if (isRecording && mediaRecorder && mediaRecorder.state === 'recording') {
-                console.log('[GoogleSTT] Auto-stopping recording after timeout');
+                console.log('[GoogleSTT] Failsafe auto-stop after 30s');
+                stopVoiceActivityDetection();
                 stopGoogleSTTRecording(apiKey);
             }
-        }, 10000);
+        }, 30000);
         
     } catch (error) {
         console.error('[GoogleSTT] Error accessing microphone:', error);
@@ -1635,6 +2768,7 @@ function hideWakeWordDetected() {
 }
 
 // Process user message with Mistral
+// UPDATED: Dec 2025 - Routes through unified wrapper system with GUARANTEED TTS
 async function processUserMessage(message) {
     if (isProcessing) return;
     
@@ -1645,88 +2779,68 @@ async function processUserMessage(message) {
     window.lastUserMessage = message;
     
     try {
-        // Détection commande activation/désactivation mode automatique
+        // Check for mode toggle commands first
         const msgLower = message.toLowerCase();
         if (msgLower.includes('mets-toi en mode automatique') || msgLower.includes('active le mode automatique') || msgLower.includes('mode écoute active')) {
             if (listeningMode !== 'always-listening') {
                 listeningMode = 'always-listening';
                 startAlwaysListening();
                 updateModeUI();
-                showSuccess('Mode automatique activé.');
+                displayAndSpeakResponse('Mode automatique activé.', 'success');
+                return;
             }
         } else if (msgLower.includes('désactive le mode automatique') || msgLower.includes('arrête le mode automatique') || msgLower.includes('mode manuel')) {
             if (listeningMode !== 'manual') {
                 listeningMode = 'manual';
                 stopAlwaysListening();
                 updateModeUI();
-                showSuccess('Mode automatique désactivé.');
+                displayAndSpeakResponse('Mode automatique désactivé.', 'success');
+                return;
             }
         }
 
         // Get recent conversation history and clean duplicates
         let recentHistory = conversationHistory.slice(-MAX_CONVERSATION_HISTORY);
         recentHistory = cleanDuplicatesFromHistory(recentHistory);
-        // Limit to 5 exchanges max (10 messages)
-        recentHistory = recentHistory.slice(-10);
+        recentHistory = recentHistory.slice(-10); // Limit to 5 exchanges max (10 messages)
+        
         console.log('[App] Using cleaned history with', recentHistory.length, 'messages');
-        // Get current tasks for context
-        const currentTasks = await getTodayTasks();
-        // Check what type of request this is
+        
+        // Process with Mistral AI
         const result = await processWithMistral(message, recentHistory);
         if (!result) {
             throw new Error('No response from Mistral');
         }
+        
         console.log('[App] Mistral result action:', result.action);
         console.log('[App] Full result:', JSON.stringify(result));
         
-        // Handle different actions
-        if (result.action === 'add_task') {
-            console.log('[App] Handling add_task');
-            await handleAddTask(result);
-        } else if (result.action === 'add_list') {
-            console.log('[App] Handling add_list');
-            await handleAddList(result);
-        } else if (result.action === 'add_note') {
-            console.log('[App] Handling add_note');
-            await handleAddNote(result);
-        } else if (result.action === 'delete_list') {
-            console.log('[App] Handling delete_list');
-            await handleDeleteList(result);
-        } else if (result.action === 'delete_note') {
-            console.log('[App] Handling delete_note');
-            await handleDeleteNote(result);
-        } else if (result.action === 'complete_task') {
-            console.log('[App] Handling complete_task');
-            await handleCompleteTask(result, currentTasks);
-        } else if (result.action === 'delete_task') {
-            console.log('[App] Handling delete_task');
-            await handleDeleteTask(result, currentTasks);
-        } else if (result.action === 'update_task') {
-            console.log('[App] Handling update_task');
-            await handleUpdateTask(result, currentTasks);
-        } else if (result.action === 'search_task') {
-            console.log('[App] Handling search_task');
-            await handleSearchTask(result, currentTasks, message);
-        } else if (result.action === 'question') {
-            console.log('[App] Handling question');
-            await handleQuestion(result, currentTasks, message);
-        } else if (result.action === 'goto_section' || result.action === 'nav') {
-            console.log('[App] Handling goto_section/nav');
-            await handleGotoSection(result);
-        } else if (result.action === 'call') {
-            console.log('[App] Handling call');
-            await handleCall(message);
-        } else if (result.action === 'undo') {
-            console.log('[App] Handling undo');
-            await handleUndoClick();
-        } else {
-            console.log('[App] Handling general conversation');
-            // General conversation
-            showResponse(result.response);
-            speakResponse(result.response);
-        }
-        // Log la réponse reçue de Mistral (only once per user request, after all actions)
-        logMistralResponse(message, result);
+        // ========================================================
+        // NEW: Route ALL actions through unified wrapper system
+        // This GUARANTEES TTS for every response
+        // ========================================================
+        await processMistralResultUnified(result, message);
+        
+        // Note: processMistralResultUnified() handles:
+        // - Action execution via action-wrapper.js
+        // - Response display via showResponse/showSuccess/showError
+        // - TTS via speakResponse (GUARANTEED)
+        // - Logging via logMistralResponse
+        // - Conversation history via saveConversation
+        
+    } catch (error) {
+        console.error('[App] Error processing message:', error);
+        displayAndSpeakResponse(error.message, 'error');
+    } finally {
+        isProcessing = false;
+        showLoading(false);
+    }
+}
+
+// ============================================================================
+// DEPRECATED HANDLER FUNCTIONS - Kept for backward compatibility
+// DO NOT CALL DIRECTLY - All actions now route through action-wrapper.js
+// ============================================================================
 // Gère la modification d'une tâche existante (date/heure)
 async function handleUpdateTask(result, tasks) {
     if (!result.task) {
@@ -1914,25 +3028,6 @@ async function updateTaskFromConfirmation(data, language) {
     }
 }
 
-        // Save conversation
-        await saveConversation(message, result.response, result.language);
-        // Store the full JSON response in history for better context
-        conversationHistory.push({ 
-            userMessage: message, 
-            assistantResponse: JSON.stringify(result)
-        });
-        // Limit in-memory history to MAX_CONVERSATION_HISTORY
-        if (conversationHistory.length > MAX_CONVERSATION_HISTORY) {
-            conversationHistory = conversationHistory.slice(-MAX_CONVERSATION_HISTORY);
-        }
-
-    } catch (error) {
-        console.error('[App] Error processing message:', error);
-        showError(error.message);
-    } finally {
-        isProcessing = false;
-        showLoading(false);
-    }
 // Log la réponse reçue de Mistral dans un fichier local (MemoryBoardHelper.log)
 function logMistralResponse(userMessage, mistralResult) {
     try {
@@ -1964,8 +3059,8 @@ function saveLogFile(logs) {
     a.click();
     URL.revokeObjectURL(url);
 }
-}
 
+// @DEPRECATED - Use action-wrapper.js executeAction('add_task') instead
 // Handle add task action
 async function handleAddTask(result) {
     if (!result.task) {
@@ -2043,6 +3138,7 @@ async function createTaskFromConfirmation(taskData, language) {
     }
 }
 
+// @DEPRECATED - Use action-wrapper.js executeAction('add_list') instead
 // Handle add list action
 async function handleAddList(result) {
     if (!result.list || !result.list.items || result.list.items.length === 0) {
@@ -2082,6 +3178,7 @@ async function handleAddList(result) {
     }
 }
 
+// @DEPRECATED - Use action-wrapper.js executeAction('add_note') instead
 // Handle add note action
 async function handleAddNote(result) {
     if (!result.note || !result.note.content) {
@@ -2123,6 +3220,7 @@ async function handleAddNote(result) {
     }
 }
 
+// @DEPRECATED - Use action-wrapper.js executeAction('delete_list') instead
 // Handle delete list action
 async function handleDeleteList(result) {
     try {
@@ -2194,6 +3292,7 @@ async function handleDeleteList(result) {
     }
 }
 
+// @DEPRECATED - Use action-wrapper.js executeAction('delete_note') instead
 // Handle delete note action
 async function handleDeleteNote(result) {
     try {
@@ -2269,6 +3368,154 @@ async function handleDeleteNote(result) {
     }
 }
 
+// @DEPRECATED - Use action-wrapper.js executeAction('update_list') instead
+// Handle update list action (add items to existing list)
+async function handleUpdateList(result) {
+    try {
+        const allLists = await getAllLists();
+        
+        if (!allLists || allLists.length === 0) {
+            // Aucune liste existante, créer une nouvelle
+            await handleAddList(result);
+            return;
+        }
+        
+        // Rechercher la liste correspondante
+        let listToUpdate = null;
+        const searchTerm = result.list?.title?.toLowerCase() || '';
+        
+        // Recherche par titre exact ou partiel
+        if (searchTerm) {
+            listToUpdate = allLists.find(l => l.title.toLowerCase().includes(searchTerm) || searchTerm.includes(l.title.toLowerCase()));
+        }
+        
+        // Si "dernière liste" ou "last list" ou si une seule liste existe
+        if (!listToUpdate && (searchTerm.includes('dernière') || searchTerm.includes('dernier') || searchTerm.includes('last') || allLists.length === 1)) {
+            // Trier par date de modification et prendre la plus récente
+            allLists.sort((a, b) => (b.lastModified || b.timestamp) - (a.lastModified || a.timestamp));
+            listToUpdate = allLists[0];
+        }
+        
+        if (!listToUpdate) {
+            // Créer une nouvelle liste si aucune trouvée
+            await handleAddList(result);
+            return;
+        }
+        
+        // Ajouter les nouveaux items à la liste existante
+        const newItems = result.list?.items || [];
+        if (newItems.length === 0) {
+            const messages = {
+                fr: 'Que voulez-vous ajouter à votre liste ?',
+                it: 'Cosa vuoi aggiungere alla tua lista?',
+                en: 'What do you want to add to your list?'
+            };
+            const msg = messages[result.language] || messages.fr;
+            showResponse(msg);
+            speakResponse(msg);
+            return;
+        }
+        
+        // Mettre à jour la liste avec les nouveaux items
+        const updatedItems = [...listToUpdate.items, ...newItems];
+        await updateList(listToUpdate.id, {
+            ...listToUpdate,
+            items: updatedItems,
+            lastModified: Date.now()
+        });
+        
+        const confirmMessages = {
+            fr: `J'ai ajouté ${newItems.length} élément${newItems.length > 1 ? 's' : ''} à votre liste "${listToUpdate.title}".`,
+            it: `Ho aggiunto ${newItems.length} elemento${newItems.length > 1 ? 'i' : ''} alla tua lista "${listToUpdate.title}".`,
+            en: `I added ${newItems.length} item${newItems.length > 1 ? 's' : ''} to your list "${listToUpdate.title}".`
+        };
+        const confirmMsg = confirmMessages[result.language] || confirmMessages.fr;
+        showSuccess(confirmMsg);
+        speakResponse(confirmMsg);
+        
+        // Rafraîchir l'affichage
+        await loadLists();
+        
+    } catch (error) {
+        console.error('[App] Error updating list:', error);
+        showError('Erreur lors de la mise à jour de la liste');
+    }
+}
+
+// @DEPRECATED - Use action-wrapper.js executeAction('update_note') instead
+// Handle update note action (add content to existing note)
+async function handleUpdateNote(result) {
+    try {
+        const allNotes = await getAllNotes();
+        
+        if (!allNotes || allNotes.length === 0) {
+            // Aucune note existante, créer une nouvelle
+            await handleAddNote(result);
+            return;
+        }
+        
+        // Rechercher la note correspondante
+        let noteToUpdate = null;
+        const searchTerm = result.note?.title?.toLowerCase() || '';
+        
+        // Recherche par titre
+        if (searchTerm) {
+            noteToUpdate = allNotes.find(n => n.title.toLowerCase().includes(searchTerm) || searchTerm.includes(n.title.toLowerCase()));
+        }
+        
+        // Si "dernière note" ou "last note" ou si une seule note existe
+        if (!noteToUpdate && (searchTerm.includes('dernière') || searchTerm.includes('dernier') || searchTerm.includes('last') || allNotes.length === 1)) {
+            // Trier par date de modification et prendre la plus récente
+            allNotes.sort((a, b) => (b.lastModified || b.timestamp) - (a.lastModified || a.timestamp));
+            noteToUpdate = allNotes[0];
+        }
+        
+        if (!noteToUpdate) {
+            // Créer une nouvelle note si aucune trouvée
+            await handleAddNote(result);
+            return;
+        }
+        
+        // Ajouter le nouveau contenu à la note existante
+        const newContent = result.note?.content || '';
+        if (!newContent) {
+            const messages = {
+                fr: 'Que voulez-vous ajouter à votre note ?',
+                it: 'Cosa vuoi aggiungere alla tua nota?',
+                en: 'What do you want to add to your note?'
+            };
+            const msg = messages[result.language] || messages.fr;
+            showResponse(msg);
+            speakResponse(msg);
+            return;
+        }
+        
+        // Mettre à jour la note avec le nouveau contenu
+        const updatedContent = noteToUpdate.content + '\n\n' + newContent;
+        await updateNote(noteToUpdate.id, {
+            ...noteToUpdate,
+            content: updatedContent,
+            lastModified: Date.now()
+        });
+        
+        const confirmMessages = {
+            fr: `J'ai ajouté le contenu à votre note "${noteToUpdate.title}".`,
+            it: `Ho aggiunto il contenuto alla tua nota "${noteToUpdate.title}".`,
+            en: `I added the content to your note "${noteToUpdate.title}".`
+        };
+        const confirmMsg = confirmMessages[result.language] || confirmMessages.fr;
+        showSuccess(confirmMsg);
+        speakResponse(confirmMsg);
+        
+        // Rafraîchir l'affichage
+        await loadNotes();
+        
+    } catch (error) {
+        console.error('[App] Error updating note:', error);
+        showError('Erreur lors de la mise à jour de la note');
+    }
+}
+
 // Helper function to format date for display
 function formatDateForDisplay(dateStr, language) {
     if (!dateStr) return '';
@@ -2278,6 +3525,7 @@ function formatDateForDisplay(dateStr, language) {
     return date.toLocaleDateString(locale, options);
 }
 
+// @DEPRECATED - Use action-wrapper.js executeAction('complete_task') instead
 // Handle complete task action
 async function handleCompleteTask(result, tasks) {
     const completionResult = await checkTaskCompletion(result.task?.description || '', tasks, conversationHistory);
@@ -2338,6 +3586,7 @@ async function completeTaskFromConfirmation(data, language) {
     }
 }
 
+// @DEPRECATED - Use action-wrapper.js executeAction('delete_task') instead
 // Handle delete task action
 async function handleDeleteTask(result, tasks) {
     if (!result.task) {
@@ -2349,6 +3598,44 @@ async function handleDeleteTask(result, tasks) {
     const description = result.task.description.toLowerCase();
     const targetTime = result.task.time;
     let taskToDelete = null;
+    
+    // Check for vague/generic terms that require clarification
+    const vagueTriggers = ['toutes', 'anciennes', 'les', 'tout', 'all', 'old', 'tutte', 'vecchie'];
+    const isVagueRequest = vagueTriggers.some(trigger => description.includes(trigger));
+    
+    if (isVagueRequest && !targetTime) {
+        // Get all tasks to show user
+        const allTasks = await getAllTasks();
+        const pendingTasks = allTasks.filter(t => t.status === 'pending');
+        
+        if (pendingTasks.length === 0) {
+            const noTaskMessages = {
+                fr: 'Vous n\'avez aucune tâche à supprimer.',
+                it: 'Non hai compiti da cancellare.',
+                en: 'You have no tasks to delete.'
+            };
+            const msg = noTaskMessages[result.language] || noTaskMessages.fr;
+            showResponse(msg);
+            speakResponse(msg);
+            return;
+        }
+        
+        // Build task list for user to choose
+        const taskList = pendingTasks.slice(0, 10).map((t, i) => 
+            `${i + 1}. "${t.description}"${t.time ? ' à ' + t.time : ''}${t.date ? ' le ' + t.date : ''}`
+        ).join('\n');
+        
+        const clarifyMessages = {
+            fr: `J'ai trouvé ${pendingTasks.length} tâche(s) en attente. Veuillez préciser quelle(s) tâche(s) supprimer :\n\n${taskList}\n\nDites le numéro ou le nom de la tâche à supprimer.`,
+            it: `Ho trovato ${pendingTasks.length} compito/i in attesa. Per favore specifica quale/i cancellare:\n\n${taskList}\n\nDici il numero o il nome del compito da cancellare.`,
+            en: `I found ${pendingTasks.length} pending task(s). Please specify which task(s) to delete:\n\n${taskList}\n\nSay the number or name of the task to delete.`
+        };
+        
+        const msg = clarifyMessages[result.language] || clarifyMessages.fr;
+        showResponse(msg);
+        speakResponse(msg);
+        return;
+    }
 
     // Recherche d'abord dans la période courante
     function findTaskInList(list) {
@@ -2452,6 +3739,7 @@ async function deleteTaskFromConfirmation(data, language) {
     }
 }
 
+// @DEPRECATED - Use action-wrapper.js executeAction('search_task') instead
 // Handle search task action
 async function handleSearchTask(result, tasks, userMessage) {
     console.log('[App][SearchTask] Searching for task:', result.task?.description);
@@ -2621,6 +3909,7 @@ async function handleSearchTask(result, tasks, userMessage) {
     }
 }
 
+// @DEPRECATED - Use action-wrapper.js executeAction('conversation') instead
 // Handle question action
 async function handleQuestion(result, tasks) {
     // Affiche directement la réponse de Mistral sans réinterpréter
@@ -2628,6 +3917,7 @@ async function handleQuestion(result, tasks) {
     speakResponse(result.response);
 }
 
+// @DEPRECATED - Use action-wrapper.js executeAction('goto_section') instead
 // Handle navigation to sections
 async function handleGotoSection(result) {
     console.log('[App][Navigation] Handling goto_section:', result);
@@ -2710,6 +4000,7 @@ async function handleGotoSection(result) {
     }
 }
 
+// @DEPRECATED - Use action-wrapper.js executeAction('call') instead
 // Handle emergency call
 async function handleCall(message) {
     console.log('[App][Call] Handling emergency call request:', message);
@@ -2840,38 +4131,20 @@ async function commandWhatTime() {
 
 // Speak response using TTS
 async function speakResponse(text) {
-    const ttsApiKey = getApiKey('google_tts', 'googleTTSApiKey');
+    // Get current TTS provider from settings
+    const ttsProviderValue = localStorage.getItem('ttsProvider') || 'browser';
     
-    if (ttsApiKey) {
-        try {
-            const lang = getCurrentLanguage();
-            const langCodes = {
-                fr: 'fr-FR',
-                it: 'it-IT',
-                en: 'en-US'
-            };
-            
-            // Convert text to SSML if not already SSML
-            let ssmlText = text;
-            if (!text.includes('<speak>')) {
-                // Use the convertToSSML function from mistral-agent.js
-                if (typeof convertToSSML === 'function') {
-                    ssmlText = convertToSSML(text, lang);
-                }
-            }
-            
-            await speakWithGoogleTTS(ssmlText, langCodes[lang] || 'fr-FR', ttsApiKey);
-        } catch (error) {
-            console.error('[App] TTS error:', error);
-            // Fallback to browser TTS without SSML
-            const cleanText = text.replace(/<\/?[^>]+(>|$)/g, '');
-            speakWithBrowserTTS(cleanText);
+    // For Google TTS with SSML support, convert text to SSML
+    if (ttsProviderValue === 'google' && !text.includes('<speak>')) {
+        const lang = getCurrentLanguage();
+        // Use the convertToSSML function from mistral-agent.js
+        if (typeof convertToSSML === 'function') {
+            text = convertToSSML(text, lang);
         }
-    } else {
-        // Browser TTS doesn't support SSML, so clean the text
-        const cleanText = text.replace(/<\/?[^>]+(>|$)/g, '');
-        speakWithBrowserTTS(cleanText);
     }
+    
+    // Use unified synthesizeSpeech function which handles all providers
+    await synthesizeSpeech(text);
 }
 
 // ======================================================================
