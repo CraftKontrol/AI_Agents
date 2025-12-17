@@ -115,4 +115,4 @@ Memory aid only, not medical advice | Call 15/112 for emergencies | Always-liste
 
 ---
 
-**v1.2 - Dec 2025** | CraftKontrol © 2025 Arnaud Cassone - Artcraft Visuals | https://www.artcraft-zone.com
+**v1.2 - Dec 17, 2025** | CraftKontrol © 2025 Arnaud Cassone - Artcraft Visuals | https://www.artcraft-zone.com
