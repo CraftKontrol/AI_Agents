@@ -27,7 +27,8 @@ import timber.log.Timber
 /**
  * Activity launched from home screen shortcuts
  * Opens directly to a specific web app
- * Each app type has its own instance (singleTask per app)
+ * Each app runs in its own separate task instance (standard launch mode)
+ * Multiple instances can run in parallel
  */
 @AndroidEntryPoint
 class ShortcutActivity : ComponentActivity() {
@@ -43,6 +44,15 @@ class ShortcutActivity : ComponentActivity() {
         
         Timber.d("ShortcutActivity onCreate with appId: $currentAppId")
         
+        // Set task description to differentiate tasks in recents
+        currentAppId?.let { appId ->
+            try {
+                setTaskDescription(android.app.ActivityManager.TaskDescription(appId))
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to set task description")
+            }
+        }
+        
         renderContent()
     }
     
@@ -54,13 +64,13 @@ class ShortcutActivity : ComponentActivity() {
         val newAppId = intent.getStringExtra(EXTRA_APP_ID)
         Timber.d("ShortcutActivity onNewIntent with appId: $newAppId (current: $currentAppId)")
         
-        // With singleTask, if the same app is opened again, just bring to front
-        // If different app, this shouldn't happen as each app has unique action
+        // With standard launch mode, each app gets its own instance
+        // This should only be called if explicitly routing to an existing instance
         if (newAppId != null && newAppId != currentAppId) {
             currentAppId = newAppId
             renderContent() // Re-render with new app
         }
-        // If same app, just bring existing instance to front (no action needed)
+        // If same app, just refresh the existing instance
     }
     
     private fun renderContent() {

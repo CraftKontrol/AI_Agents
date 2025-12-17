@@ -29,14 +29,18 @@ object ShortcutHelper {
         webApp: WebApp
     ): Boolean {
         return try {
-            // Create intent that opens ShortcutActivity with the specific app
-            // Each app gets its own task (single instance per app ID)
-            val intent = Intent(context, ShortcutActivity::class.java).apply {
+            // Create intent with action that will resolve to the correct activity-alias
+            // Each app has its own activity-alias with unique taskAffinity
+            val intent = Intent().apply {
+                // Action matches the intent-filter in activity-alias
                 action = "com.craftkontrol.ckgenericapp.OPEN_APP.${webApp.id}"
+                // Ensure it stays within our app
+                setPackage(context.packageName)
+                // Add the app ID as extra
                 putExtra(ShortcutActivity.EXTRA_APP_ID, webApp.id)
-                // Use NEW_TASK to create separate task, but not MULTIPLE_TASK
-                // This ensures only one instance per action
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                // MULTIPLE_TASK forces separate task creation even with same activity class
+                // Combined with different taskAffinity per alias, creates truly separate tasks
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK
             }
             
             // Generate a colored icon for the app

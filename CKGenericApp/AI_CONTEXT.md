@@ -48,9 +48,11 @@
 
 ### Shortcut System (`util/ShortcutHelper.kt`, `ShortcutActivity.kt`)
 **ShortcutHelper**: `createShortcut()` (pinned shortcut), `generateAppIcon()` (colored bitmap with initials)
-**Intent**: Action `OPEN_APP.{appId}`  Flags `NEW_TASK | CLEAR_TOP`  Extra `EXTRA_APP_ID`
-**ShortcutActivity**: Launch mode `singleTask` (one instance per action)  Direct WebView launch  Full permissions  JS bridge  Exit button
-**Lifecycle**: `onCreate` (extract appId, load WebView)  `onNewIntent` (bring to front if same app)
+**Intent**: Action `OPEN_APP.{appId}`  Identifier `{appId}`  Flags `NEW_TASK | MULTIPLE_TASK`  Extra `EXTRA_APP_ID`
+**ShortcutActivity**: Base activity (not exported)  Accessed via activity-alias per app
+**Activity Aliases**: Each app has dedicated alias with unique `taskAffinity` (com.craftkontrol.ckgenericapp.{appId})  `singleTask` per alias
+**Lifecycle**: `onCreate` (extract appId, load WebView)  `onNewIntent` (refresh if reopened)
+**Multi-Instance**: Each app alias has unique taskAffinity creating isolated tasks - all apps run in separate parallel tasks independently
 
 ### Alarm System (`util/AlarmScheduler.kt`, `AlarmReceiver.kt`)
 **Purpose**: Schedule alarms from web apps (Memory Helper tasks)
@@ -147,7 +149,7 @@ adb logcat | findstr CKGenericApp  # View logs
 
 1. **WebView JS Bridge**: Must call `addJavascriptInterface(interface, 'CKAndroid')` and inject API keys via JS execution
 2. **Alarm Permissions**: Android 12+ requires `SCHEDULE_EXACT_ALARM` permission, check with `canScheduleExactAlarms()`
-3. **Multi-Instance**: ShortcutActivity uses `singleTask` + unique action per app to enable multiple instances
+3. **Multi-Instance**: Activity-alias per app with unique taskAffinity ensures each app runs in completely isolated task (add new alias when adding new app to system)
 4. **Backup Timing**: BackupHelper triggers on preference changes + app pause for automatic persistence
 5. **State Management**: Always use `StateFlow` with `.update {}` for thread-safe mutations
 6. **Localization**: All text must use `stringResource(R.string.key)` for dynamic language updates

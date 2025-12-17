@@ -76,7 +76,8 @@
             android:theme="@style/Theme.CKGenericApp"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:windowSoftInputMode="adjustResize"
-            android:launchMode="singleTask">
+            android:launchMode="singleTask"
+            android:taskAffinity="com.craftkontrol.ckgenericapp.main">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -92,47 +93,88 @@
             </intent-filter>
         </activity>
         
-        <!-- Shortcut Activity - Launched from home screen shortcuts -->
-        <!-- Multiple instances allowed, one per app type -->
+        <!-- Shortcut Activity - Base activity (not exported directly) -->
         <activity
             android:name=".presentation.shortcut.ShortcutActivity"
-            android:exported="true"
+            android:exported="false"
             android:theme="@style/Theme.CKGenericApp"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:windowSoftInputMode="adjustResize"
-            android:launchMode="singleTask"
-            android:taskAffinity=""
+            android:launchMode="standard"
             android:excludeFromRecents="false"
-            android:persistableMode="persistNever">
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
+            android:persistableMode="persistNever" />
+        
+        <!-- Activity Alias for AI Search - separate task -->
+        <activity-alias
+            android:name=".ShortcutActivity_AiSearch"
+            android:targetActivity=".presentation.shortcut.ShortcutActivity"
+            android:exported="true"
+            android:taskAffinity="com.craftkontrol.ckgenericapp.ai_search">
             <intent-filter>
                 <action android:name="com.craftkontrol.ckgenericapp.OPEN_APP.ai_search" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
+        </activity-alias>
+        
+        <!-- Activity Alias for Astral Compute - separate task -->
+        <activity-alias
+            android:name=".ShortcutActivity_AstralCompute"
+            android:targetActivity=".presentation.shortcut.ShortcutActivity"
+            android:exported="true"
+            android:taskAffinity="com.craftkontrol.ckgenericapp.astral_compute">
             <intent-filter>
                 <action android:name="com.craftkontrol.ckgenericapp.OPEN_APP.astral_compute" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
+        </activity-alias>
+        
+        <!-- Activity Alias for Local Food - separate task -->
+        <activity-alias
+            android:name=".ShortcutActivity_LocalFood"
+            android:targetActivity=".presentation.shortcut.ShortcutActivity"
+            android:exported="true"
+            android:taskAffinity="com.craftkontrol.ckgenericapp.local_food">
             <intent-filter>
                 <action android:name="com.craftkontrol.ckgenericapp.OPEN_APP.local_food" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
+        </activity-alias>
+        
+        <!-- Activity Alias for Memory Board - separate task -->
+        <activity-alias
+            android:name=".ShortcutActivity_MemoryBoard"
+            android:targetActivity=".presentation.shortcut.ShortcutActivity"
+            android:exported="true"
+            android:taskAffinity="com.craftkontrol.ckgenericapp.memory_board">
             <intent-filter>
                 <action android:name="com.craftkontrol.ckgenericapp.OPEN_APP.memory_board" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
+        </activity-alias>
+        
+        <!-- Activity Alias for Meteo - separate task -->
+        <activity-alias
+            android:name=".ShortcutActivity_Meteo"
+            android:targetActivity=".presentation.shortcut.ShortcutActivity"
+            android:exported="true"
+            android:taskAffinity="com.craftkontrol.ckgenericapp.meteo">
             <intent-filter>
                 <action android:name="com.craftkontrol.ckgenericapp.OPEN_APP.meteo" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
+        </activity-alias>
+        
+        <!-- Activity Alias for News - separate task -->
+        <activity-alias
+            android:name=".ShortcutActivity_News"
+            android:targetActivity=".presentation.shortcut.ShortcutActivity"
+            android:exported="true"
+            android:taskAffinity="com.craftkontrol.ckgenericapp.news">
             <intent-filter>
                 <action android:name="com.craftkontrol.ckgenericapp.OPEN_APP.news" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
-        </activity>
+        </activity-alias>
         
         <!-- Background Monitoring Service -->
         <service
