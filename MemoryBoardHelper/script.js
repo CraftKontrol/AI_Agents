@@ -1688,6 +1688,9 @@ async function cancelPendingAction(confirmation) {
 
 // Priorisation navigation vocale sur Mistral
 async function processSpeechTranscript(transcript) {
+    // Show the transcript below the VU meter
+    showTranscript(transcript);
+    
     // Check for undo command first (highest priority)
     const undoKeywords = ['annuler', 'annule', 'undo', 'annulla', 'retour', 'défaire', 'defaire'];
     const transcriptLower = transcript.toLowerCase();
