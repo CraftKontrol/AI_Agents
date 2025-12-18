@@ -193,30 +193,161 @@ async function injectVoiceTranscript(transcript) {
     }
     
     try {
+        log(`Injection transcript: "${transcript}"`, 'info');
+        
+        // Check if Mistral API key is configured
+        const mistralKey = appWindow.localStorage?.getItem('mistralApiKey') || appWindow.mistralApiKey;
+        if (!mistralKey) {
+            log(`⚠️ WARNING: No Mistral API key found!`, 'error');
+            alert('⚠️ Mistral API key not configured! Go to index.html and set your API key first.');
+            return { processed: false, mistralDecision: null };
+        }
+        log(`✅ Mistral API key found: ${mistralKey.substring(0, 10)}...`, 'success');
+        
+        // Debug: Check conversationHistory availability
+        log(`→ typeof conversationHistory: ${typeof appWindow.conversationHistory}`, 'info');
+        log(`→ Is array: ${Array.isArray(appWindow.conversationHistory)}`, 'info');
+        
+        // Capture conversation history before
+        const historyBefore = appWindow.conversationHistory ? appWindow.conversationHistory.length : 0;
+        log(`→ History before: ${historyBefore}`, 'info');
+        
+        // Store last user message to track it
+        appWindow.lastUserMessage = transcript;
+        
         // Method 1: Call processSpeechTranscript directly (main entry point for STT)
         if (typeof appWindow.processSpeechTranscript === 'function') {
-            log(`Injection transcript: "${transcript}"`, 'info');
+            log(`→ Calling processSpeechTranscript()`, 'info');
+            
+            // Create visible indicator
+            const indicator = document.createElement('div');
+            indicator.style.cssText = 'position:fixed;top:10px;right:10px;background:red;color:white;padding:20px;z-index:99999;font-size:20px;';
+            indicator.textContent = '⏳ Calling Mistral API...';
+            document.body.appendChild(indicator);
+            
+            // Capture iframe console logs
+            const iframeConsole = [];
+            const originalLog = appWindow.console.log;
+            const originalError = appWindow.console.error;
+            appWindow.console.log = (...args) => {
+                iframeConsole.push(['LOG', ...args]);
+                originalLog.apply(appWindow.console, args);
+            };
+            appWindow.console.error = (...args) => {
+                iframeConsole.push(['ERROR', ...args]);
+                originalError.apply(appWindow.console, args);
+            };
+            
             await appWindow.processSpeechTranscript(transcript);
-            return true;
+            
+            // Wait a bit for async operations
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // Restore console
+            appWindow.console.log = originalLog;
+            appWindow.console.error = originalError;
+            
+            // Log captured console output
+            log(`→ Captured ${iframeConsole.length} iframe console entries:`, 'info');
+            iframeConsole.forEach(entry => {
+                const [type, ...args] = entry;
+                log(`  [${type}] ${args.join(' ')}`, type === 'ERROR' ? 'error' : 'info');
+            });
+            
+            indicator.textContent = '✅ Mistral call completed';
+            indicator.style.background = 'green';
+            setTimeout(() => indicator.remove(), 2000);
+            
+            // Capture conversation history after
+            const historyAfter = appWindow.conversationHistory ? appWindow.conversationHistory.length : 0;
+            log(`→ History: ${historyBefore} → ${historyAfter}`, 'info');
+            
+            // Get the last Mistral response from conversation history
+            // Note: History might stay at max length (10), so we check the LAST entry for our transcript
+            let mistralDecision = null;
+            let appResponse = null;
+            
+            if (appWindow.conversationHistory && appWindow.conversationHistory.length > 0) {
+                // Get the last conversation entry
+                const lastConversation = appWindow.conversationHistory[appWindow.conversationHistory.length - 1];
+                log(`→ Last conversation entry: ${JSON.stringify(lastConversation)}`, 'info');
+                
+                // Check if this is the conversation we just added (matches our transcript)
+                if (lastConversation && lastConversation.userMessage === transcript && lastConversation.assistantResponse) {
+                    try {
+                        // Parse the assistant's response as JSON (contains action info)
+                        mistralDecision = JSON.parse(lastConversation.assistantResponse);
+                        log(`→ Mistral Decision: action="${mistralDecision.action}"`, 'success');
+                        log(`→ Mistral Response: "${mistralDecision.response}"`, 'info');
+                        
+                        // Log task details if present
+                        if (mistralDecision.task) {
+                            log(`→ Task Details: ${JSON.stringify(mistralDecision.task)}`, 'info');
+                        }
+                        if (mistralDecision.list) {
+                            log(`→ List Details: ${JSON.stringify(mistralDecision.list)}`, 'info');
+                        }
+                        if (mistralDecision.note) {
+                            log(`→ Note Details: ${JSON.stringify(mistralDecision.note)}`, 'info');
+                        }
+                    } catch (e) {
+                        log(`→ Failed to parse Mistral response: ${e.message}`, 'error');
+                        log(`→ Raw response: "${lastConversation.assistantResponse}"`, 'info');
+                    }
+                } else {
+                    log(`→ Last entry doesn't match our transcript`, 'warning');
+                    log(`→ Expected: "${transcript}"`, 'info');
+                    log(`→ Got: "${lastConversation?.userMessage}"`, 'info');
+                }
+            }
+            
+            // Capture actual app response (what was displayed/spoken to user)
+            // Check response display area and last TTS output
+            const responseContainer = appWindow.document.getElementById('responseContainer');
+            if (responseContainer) {
+                const lastResponseElement = responseContainer.querySelector('.response-message:last-child');
+                if (lastResponseElement) {
+                    appResponse = {
+                        text: lastResponseElement.textContent.trim(),
+                        type: lastResponseElement.className.includes('error') ? 'error' : 
+                              lastResponseElement.className.includes('success') ? 'success' : 'info',
+                        timestamp: new Date().toISOString()
+                    };
+                    log(`→ App Response (${appResponse.type}): "${appResponse.text}"`, appResponse.type);
+                }
+            }
+            
+            // Also check if there was a TTS output
+            if (appWindow.lastSpokenText) {
+                if (!appResponse) appResponse = {};
+                appResponse.spoken = appWindow.lastSpokenText;
+                log(`→ TTS Output: "${appWindow.lastSpokenText}"`, 'info');
+            }
+            
+            // Store decision and response for test result
+            return { processed: historyAfter > historyBefore, mistralDecision, appResponse };
         }
         
         // Method 2: Fallback to handleSpeechResult (alternative entry point)
         if (typeof appWindow.handleSpeechResult === 'function') {
+            log(`→ Calling handleSpeechResult()`, 'info');
             const mockEvent = {
                 results: [[{ transcript: transcript }]]
             };
             await appWindow.handleSpeechResult(mockEvent);
-            return true;
+            return { processed: true, mistralDecision: null };
         }
         
         // Method 3: Fallback to handleVoiceNavigation
         if (typeof appWindow.handleVoiceNavigation === 'function') {
-            await appWindow.handleVoiceNavigation(transcript);
-            return true;
+            log(`→ Calling handleVoiceNavigation()`, 'info');
+            const result = await appWindow.handleVoiceNavigation(transcript);
+            return { processed: result, mistralDecision: null };
         }
         
         throw new Error('Aucune fonction de traitement vocal trouvée');
     } catch (e) {
+        log(`→ Error: ${e.message}`, 'error');
         throw new Error(`Erreur d'injection: ${e.message}`);
     }
 }
@@ -1409,7 +1540,7 @@ const tests = {
     vocal_add_task_simple: {
         name: 'Vocal: Ajouter tâche simple',
         action: async () => {
-            await injectVoiceTranscript("Ajoute une tâche acheter du pain pour demain");
+            return await injectVoiceTranscript("Ajoute une tâche acheter du pain pour demain");
         },
         validate: async () => {
             await new Promise(resolve => setTimeout(resolve, 2000));
@@ -1422,7 +1553,7 @@ const tests = {
     vocal_add_task_with_time: {
         name: 'Vocal: Tâche avec heure',
         action: async () => {
-            await injectVoiceTranscript("Rappelle-moi d'appeler le docteur demain à 14h30");
+            return await injectVoiceTranscript("Rappelle-moi d'appeler le docteur demain à 14h30");
         },
         validate: async () => {
             await new Promise(resolve => setTimeout(resolve, 2000));
@@ -1434,7 +1565,7 @@ const tests = {
     vocal_add_recurring_task: {
         name: 'Vocal: Tâche récurrente',
         action: async () => {
-            await injectVoiceTranscript("Crée une tâche récurrente tous les jours à 8h pour prendre mes vitamines");
+            return await injectVoiceTranscript("Crée une tâche récurrente tous les jours à 8h pour prendre mes vitamines");
         },
         validate: async () => {
             await new Promise(resolve => setTimeout(resolve, 2000));
@@ -1446,7 +1577,7 @@ const tests = {
     vocal_complete_task: {
         name: 'Vocal: Marquer terminé',
         action: async () => {
-            await injectVoiceTranscript("Marque la tâche acheter du pain comme terminée");
+            return await injectVoiceTranscript("Marque la tâche acheter du pain comme terminée");
         },
         validate: async () => {
             await new Promise(resolve => setTimeout(resolve, 2000));
@@ -1458,7 +1589,7 @@ const tests = {
     vocal_delete_task: {
         name: 'Vocal: Supprimer tâche',
         action: async () => {
-            await injectVoiceTranscript("Supprime la tâche acheter du pain");
+            return await injectVoiceTranscript("Supprime la tâche acheter du pain");
         },
         validate: async () => {
             await new Promise(resolve => setTimeout(resolve, 2000));
@@ -1470,7 +1601,7 @@ const tests = {
     vocal_move_task: {
         name: 'Vocal: Déplacer tâche',
         action: async () => {
-            await injectVoiceTranscript("Déplace la tâche appeler le docteur à mercredi prochain");
+            return await injectVoiceTranscript("Déplace la tâche appeler le docteur à mercredi prochain");
         },
         validate: async () => {
             await new Promise(resolve => setTimeout(resolve, 2000));
@@ -1482,7 +1613,7 @@ const tests = {
     vocal_question_when: {
         name: 'Vocal: Question "Quand"',
         action: async () => {
-            await injectVoiceTranscript("Quand dois-je appeler le docteur?");
+            return await injectVoiceTranscript("Quand dois-je appeler le docteur?");
         },
         validate: async () => {
             await new Promise(resolve => setTimeout(resolve, 2000));
@@ -1494,7 +1625,7 @@ const tests = {
     vocal_question_what: {
         name: 'Vocal: Question "Quoi"',
         action: async () => {
-            await injectVoiceTranscript("Qu'est-ce que j'ai à faire aujourd'hui?");
+            return await injectVoiceTranscript("Qu'est-ce que j'ai à faire aujourd'hui?");
         },
         validate: async () => {
             await new Promise(resolve => setTimeout(resolve, 2000));
@@ -1502,23 +1633,28 @@ const tests = {
                    appWindow.conversationHistory.length > 0;
         }
     },
+
+    
     
     vocal_call_contact: {
         name: 'Vocal: Appeler contact',
         action: async () => {
-            await injectVoiceTranscript("Appelle Marie sur son portable");
+            return await injectVoiceTranscript("Appelle Marie sur son portable");
         },
-        validate: async () => {
+        validate: async (result) => {
             await new Promise(resolve => setTimeout(resolve, 2000));
-            return typeof appWindow.conversationHistory !== 'undefined' && 
-                   appWindow.conversationHistory.length > 0;
+            // Verify that call action was triggered
+            if (result && result.mistralDecision) {
+                return result.mistralDecision.action === 'call';
+            }
+            return false;
         }
     },
     
     vocal_navigation_calendar: {
         name: 'Vocal: Navigation calendrier',
         action: async () => {
-            await injectVoiceTranscript("Ouvre le calendrier");
+            return await injectVoiceTranscript("Ouvre le calendrier");
         },
         validate: async () => {
             await new Promise(resolve => setTimeout(resolve, 1000));
@@ -1532,7 +1668,7 @@ const tests = {
     vocal_navigation_notes: {
         name: 'Vocal: Navigation notes',
         action: async () => {
-            await injectVoiceTranscript("Va aux notes");
+            return await injectVoiceTranscript("Va aux notes");
         },
         validate: async () => {
             await new Promise(resolve => setTimeout(resolve, 1000));
@@ -1545,13 +1681,493 @@ const tests = {
     vocal_navigation_lists: {
         name: 'Vocal: Navigation listes',
         action: async () => {
-            await injectVoiceTranscript("Affiche les listes de courses");
+            return await injectVoiceTranscript("Affiche les listes de courses");
         },
         validate: async () => {
             await new Promise(resolve => setTimeout(resolve, 1000));
             const doc = appWindow.document;
             const listsSection = doc.querySelector('.lists-section');
             return listsSection && listsSection.style.display !== 'none';
+        }
+    },
+    
+    // === Additional Vocal Commands from test-mistral.html ===
+    vocal_medication_daily: {
+        name: 'Vocal: Médicament quotidien',
+        action: async () => {
+            return await injectVoiceTranscript("Rappelle-moi de prendre mes médicaments à 20h");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
+        }
+    },
+    
+    vocal_medication_multiple: {
+        name: 'Vocal: Médicament 3x/jour',
+        action: async () => {
+            return await injectVoiceTranscript("Prendre aspirine 500mg trois fois par jour");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
+        }
+    },
+    
+    vocal_appointment_dentist: {
+        name: 'Vocal: RDV dentiste',
+        action: async () => {
+            return await injectVoiceTranscript("Rendez-vous chez le dentiste lundi prochain à 14h30");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
+        }
+    },
+    
+    vocal_create_list: {
+        name: 'Vocal: Créer liste',
+        action: async () => {
+            return await injectVoiceTranscript("Crée une liste pour mes courses du weekend");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
+        }
+    },
+    
+    vocal_list_with_items: {
+        name: 'Vocal: Liste avec items',
+        action: async () => {
+            return await injectVoiceTranscript("Liste de courses: tomates, pain, beurre");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
+        }
+    },
+    
+    vocal_add_to_list: {
+        name: 'Vocal: Ajouter à liste',
+        action: async () => {
+            return await injectVoiceTranscript("Ajoute pommes et bananes à ma liste de courses");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
+        }
+    },
+    
+    vocal_create_note: {
+        name: 'Vocal: Créer note',
+        action: async () => {
+            return await injectVoiceTranscript("Crée une note avec mes idées de projet");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
+        }
+    },
+    
+    vocal_take_note: {
+        name: 'Vocal: Prends note que',
+        action: async () => {
+            return await injectVoiceTranscript("Prends note que je dois appeler le plombier");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
+        }
+    },
+    
+    vocal_update_note: {
+        name: 'Vocal: Compléter note',
+        action: async () => {
+            return await injectVoiceTranscript("Ajoute à ma note de meeting la discussion sur le budget");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
+        }
+    },
+    
+    vocal_mark_complete: {
+        name: 'Vocal: Marquer terminé',
+        action: async () => {
+            return await injectVoiceTranscript("Marque comme terminé la tâche d'acheter du pain");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
+        }
+    },
+    
+    vocal_search_week_tasks: {
+        name: 'Vocal: Chercher tâches semaine',
+        action: async () => {
+            return await injectVoiceTranscript("Cherche mes tâches de la semaine prochaine");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
+        }
+    },
+    
+    vocal_show_today_tasks: {
+        name: 'Vocal: Tâches du jour',
+        action: async () => {
+            return await injectVoiceTranscript("Montre-moi mes tâches du jour");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
+        }
+    },
+    
+    vocal_recurring_vitamins: {
+        name: 'Vocal: Vitamines quotidiennes',
+        action: async () => {
+            return await injectVoiceTranscript("Rappelle-moi de prendre mes vitamines tous les jours à 8h");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
+        }
+    },
+    
+    vocal_recurring_trash: {
+        name: 'Vocal: Poubelles hebdo',
+        action: async () => {
+            return await injectVoiceTranscript("Crée une tâche récurrente sortir les poubelles chaque lundi");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
+        }
+    },
+    
+    vocal_recurring_monthly: {
+        name: 'Vocal: RDV mensuel',
+        action: async () => {
+            return await injectVoiceTranscript("Rendez-vous médecin tous les mois le 15");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
+        }
+    },
+    
+    vocal_question_time: {
+        name: 'Vocal: Quelle heure',
+        action: async () => {
+            return await injectVoiceTranscript("Quelle heure est-il");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
+        }
+    },
+    
+    vocal_question_date: {
+        name: 'Vocal: Quelle date',
+        action: async () => {
+            return await injectVoiceTranscript("Quelle est la date aujourd'hui");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
+        }
+    },
+    
+    vocal_question_day: {
+        name: 'Vocal: Quel jour',
+        action: async () => {
+            return await injectVoiceTranscript("Quel jour sommes-nous");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
+        }
+    },
+    
+    vocal_nav_settings: {
+        name: 'Vocal: Paramètres',
+        action: async () => {
+            return await injectVoiceTranscript("Affiche les paramètres");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            const doc = appWindow.document;
+            const modal = doc.getElementById('settingsModal');
+            return modal && modal.style.display !== 'none';
+        }
+    },
+    
+    vocal_call_emergency: {
+        name: 'Vocal: Urgences',
+        action: async () => {
+            return await injectVoiceTranscript("Appelle les urgences");
+        },
+        validate: async (result) => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            // Verify that call action was triggered
+            if (result && result.mistralDecision) {
+                return result.mistralDecision.action === 'call';
+            }
+            return false;
+        }
+    },
+    
+    vocal_call_mom: {
+        name: 'Vocal: Appeler maman',
+        action: async () => {
+            return await injectVoiceTranscript("Téléphone à maman");
+        },
+        validate: async (result) => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            // Verify that call action was triggered
+            if (result && result.mistralDecision) {
+                return result.mistralDecision.action === 'call';
+            }
+            return false;
+        }
+    },
+    
+    vocal_undo_last: {
+        name: 'Vocal: Annuler dernière',
+        action: async () => {
+            return await injectVoiceTranscript("Annule la dernière action");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
+        }
+    },
+    
+    vocal_undo_that: {
+        name: 'Vocal: Défais ça',
+        action: async () => {
+            return await injectVoiceTranscript("Défais ce que je viens de faire");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
+        }
+    },
+    
+    vocal_dont_forget: {
+        name: 'Vocal: N\'oublie pas',
+        action: async () => {
+            return await injectVoiceTranscript("N'oublie pas de sortir les poubelles ce soir");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
+        }
+    },
+    
+    vocal_medication_meals: {
+        name: 'Vocal: Médicament repas',
+        action: async () => {
+            return await injectVoiceTranscript("Rappelle-moi mon insuline avant chaque repas");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
+        }
+    },
+    
+    vocal_medication_weekly: {
+        name: 'Vocal: Vitamine hebdo',
+        action: async () => {
+            return await injectVoiceTranscript("Prendre vitamine D une fois par semaine le dimanche");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
+        }
+    },
+    
+    vocal_appointment_specific: {
+        name: 'Vocal: RDV date précise',
+        action: async () => {
+            return await injectVoiceTranscript("Rendez-vous ophtalmo le 20 janvier à 15h");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
+        }
+    },
+    
+    vocal_change_date: {
+        name: 'Vocal: Changer date',
+        action: async () => {
+            return await injectVoiceTranscript("Change la date de mon rendez-vous dentiste");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
+        }
+    },
+    
+    vocal_move_appointment: {
+        name: 'Vocal: Déplacer RDV',
+        action: async () => {
+            return await injectVoiceTranscript("Déplace mon rendez-vous à demain même heure");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
+        }
+    },
+    
+    vocal_list_enumeration: {
+        name: 'Vocal: Énumération simple',
+        action: async () => {
+            return await injectVoiceTranscript("Faire le café faire les courses faire un bisou");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
+        }
+    },
+    
+    vocal_shopping_list: {
+        name: 'Vocal: Liste courses items',
+        action: async () => {
+            return await injectVoiceTranscript("Acheter pain lait œufs beurre");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
+        }
+    },
+    
+    vocal_note_wifi: {
+        name: 'Vocal: Note code WiFi',
+        action: async () => {
+            return await injectVoiceTranscript("Note: le code WiFi est 12345");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
+        }
+    },
+    
+    vocal_search_appointments: {
+        name: 'Vocal: Chercher RDV',
+        action: async () => {
+            return await injectVoiceTranscript("Quels sont mes rendez-vous de la semaine");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
+        }
+    },
+    
+    vocal_when_appointment: {
+        name: 'Vocal: C\'est quand mon RDV',
+        action: async () => {
+            return await injectVoiceTranscript("C'est quand mon rendez-vous médecin");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
+        }
+    },
+    
+    vocal_delete_old_tasks: {
+        name: 'Vocal: Supprimer anciennes',
+        action: async () => {
+            return await injectVoiceTranscript("Efface toutes mes tâches passées");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
+        }
+    },
+    
+    vocal_delete_done_tasks: {
+        name: 'Vocal: Supprimer terminées',
+        action: async () => {
+            return await injectVoiceTranscript("Supprime les tâches terminées");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
+        }
+    },
+    
+    vocal_call_mom_weekly: {
+        name: 'Vocal: Appel hebdo maman',
+        action: async () => {
+            return await injectVoiceTranscript("Rappelle-moi d'appeler maman tous les dimanches à 10h");
+        },
+        validate: async (result) => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            // Verify that add_recursive_task action was triggered
+            if (result && result.mistralDecision) {
+                return result.mistralDecision.action === 'add_recursive_task' || 
+                       result.mistralDecision.action === 'add_task';
+            }
+            return false;
+        }
+    },
+    
+    vocal_greeting: {
+        name: 'Vocal: Bonjour',
+        action: async () => {
+            return await injectVoiceTranscript("Bonjour comment ça va");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
+        }
+    },
+    
+    vocal_thank_you: {
+        name: 'Vocal: Merci',
+        action: async () => {
+            return await injectVoiceTranscript("Merci beaucoup");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
         }
     }
 };
@@ -1589,32 +2205,83 @@ async function runTest(testId, buttonElement) {
     const oldResult = button.querySelector('.test-result');
     if (oldResult) oldResult.remove();
     
+    const startTime = Date.now();
     log(`Exécution: ${test.name}`, 'info');
+    log(`→ Test ID: ${testId}`, 'info');
+    
+    const testResult = {
+        testId: testId,
+        name: test.name,
+        startTime: new Date().toISOString(),
+        status: 'running'
+    };
     
     try {
+        // Capture app state before
+        const stateBefore = {
+            conversationHistory: appWindow.conversationHistory ? appWindow.conversationHistory.length : 0,
+            tasks: appWindow.getAllTasks ? (await appWindow.getAllTasks()).length : 'N/A',
+            lists: appWindow.getAllLists ? (await appWindow.getAllLists()).length : 'N/A',
+            notes: appWindow.getAllNotes ? (await appWindow.getAllNotes()).length : 'N/A'
+        };
+        log(`→ État avant: ${JSON.stringify(stateBefore)}`, 'info');
+        
+        let mistralDecision = null;
+        let appResponse = null;
+        let actionResult = null;
+        
         if (test.action) {
-            await test.action();
+            actionResult = await test.action();
+            // If action returns Mistral decision info, capture it
+            if (actionResult) {
+                if (actionResult.mistralDecision) {
+                    mistralDecision = actionResult.mistralDecision;
+                }
+                if (actionResult.appResponse) {
+                    appResponse = actionResult.appResponse;
+                }
+            }
         } else if (test.command) {
             await executeCommand(test.command);
         }
         
         await new Promise(resolve => setTimeout(resolve, 500));
         
-        const passed = await test.validate();
+        // Capture app state after
+        const stateAfter = {
+            conversationHistory: appWindow.conversationHistory ? appWindow.conversationHistory.length : 0,
+            tasks: appWindow.getAllTasks ? (await appWindow.getAllTasks()).length : 'N/A',
+            lists: appWindow.getAllLists ? (await appWindow.getAllLists()).length : 'N/A',
+            notes: appWindow.getAllNotes ? (await appWindow.getAllNotes()).length : 'N/A'
+        };
+        log(`→ État après: ${JSON.stringify(stateAfter)}`, 'info');
+        
+        // Pass actionResult to validate function
+        const passed = await test.validate(actionResult);
+        const duration = Date.now() - startTime;
+        
+        testResult.endTime = new Date().toISOString();
+        testResult.duration = duration;
+        testResult.stateBefore = stateBefore;
+        testResult.stateAfter = stateAfter;
+        testResult.mistralDecision = mistralDecision;
+        testResult.appResponse = appResponse;
         
         if (passed) {
             button.className = 'test-button success';
             const result = document.createElement('div');
             result.className = 'test-result success';
-            result.textContent = '✓ Test réussi';
+            result.textContent = `✓ Test réussi (${duration}ms)`;
             button.appendChild(result);
             
             testStats.passed++;
-            log(`✓ ${test.name} - RÉUSSI`, 'success');
+            testResult.status = 'passed';
+            log(`✓ ${test.name} - RÉUSSI (${duration}ms)`, 'success');
         } else {
             throw new Error('Validation échouée');
         }
     } catch (error) {
+        const duration = Date.now() - startTime;
         button.className = 'test-button error';
         const result = document.createElement('div');
         result.className = 'test-result error';
@@ -1622,11 +2289,55 @@ async function runTest(testId, buttonElement) {
         button.appendChild(result);
         
         testStats.failed++;
-        log(`✗ ${test.name} - ÉCHOUÉ: ${error.message}`, 'error');
+        testResult.status = 'failed';
+        testResult.error = error.message;
+        testResult.duration = duration;
+        testResult.endTime = new Date().toISOString();
+        log(`✗ ${test.name} - ÉCHOUÉ: ${error.message} (${duration}ms)`, 'error');
     }
     
     testStats.total++;
     updateStats();
+    
+    // Store test result
+    if (!window.testResults) window.testResults = [];
+    window.testResults.push(testResult);
+}
+
+// Export results to JSON
+function exportTestResults() {
+    if (!window.testResults || window.testResults.length === 0) {
+        alert('Aucun résultat à exporter. Lancez des tests d\'abord.');
+        return;
+    }
+    
+    const report = {
+        timestamp: new Date().toISOString(),
+        summary: {
+            total: testStats.total,
+            passed: testStats.passed,
+            failed: testStats.failed,
+            successRate: testStats.total > 0 ? ((testStats.passed / testStats.total) * 100).toFixed(2) + '%' : '0%'
+        },
+        tests: window.testResults,
+        environment: {
+            userAgent: navigator.userAgent,
+            url: window.location.href,
+            appUrl: appFrame ? appFrame.src : 'N/A'
+        }
+    };
+    
+    const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `test-results-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    log('Résultats exportés en JSON', 'success');
 }
 
 // Run all tests
@@ -1636,6 +2347,8 @@ async function runAllTests() {
         return;
     }
     
+    // Reset test results
+    window.testResults = [];
     resetTests();
     
     const delay = parseInt(document.getElementById('testDelay').value) || 1000;
@@ -1655,17 +2368,95 @@ async function runAllTests() {
         testStats.failed === 0 ? 'success' : 'warning');
 }
 
+// Run tests by category
+async function runTestsByCategory(category) {
+    if (!isAppReady) {
+        log('Application pas encore prête', 'error');
+        return;
+    }
+    
+    // Reset test results
+    window.testResults = [];
+    resetTests();
+    
+    const delay = parseInt(document.getElementById('testDelay').value) || 1000;
+    
+    // Define test categories
+    const categories = {
+        vocal: [
+            'vocal_add_task_simple', 'vocal_add_task_with_time', 'vocal_add_recurring_task',
+            'vocal_complete_task', 'vocal_delete_task', 'vocal_move_task',
+            'vocal_question_when', 'vocal_question_what', 'vocal_call_contact',
+            'vocal_navigation_calendar', 'vocal_navigation_notes', 'vocal_navigation_lists',
+            'vocal_medication_daily', 'vocal_medication_multiple', 'vocal_appointment_dentist',
+            'vocal_create_list', 'vocal_list_with_items', 'vocal_add_to_list',
+            'vocal_create_note', 'vocal_take_note', 'vocal_update_note',
+            'vocal_mark_complete', 'vocal_search_week_tasks', 'vocal_show_today_tasks',
+            'vocal_recurring_vitamins', 'vocal_recurring_trash', 'vocal_recurring_monthly',
+            'vocal_question_time', 'vocal_question_date', 'vocal_question_day',
+            'vocal_nav_settings', 'vocal_call_emergency', 'vocal_call_mom',
+            'vocal_undo_last', 'vocal_undo_that', 'vocal_dont_forget',
+            'vocal_medication_meals', 'vocal_medication_weekly', 'vocal_appointment_specific',
+            'vocal_change_date', 'vocal_move_appointment', 'vocal_list_enumeration',
+            'vocal_shopping_list', 'vocal_note_wifi', 'vocal_search_appointments',
+            'vocal_when_appointment', 'vocal_delete_old_tasks', 'vocal_delete_done_tasks',
+            'vocal_call_mom_weekly', 'vocal_greeting', 'vocal_thank_you'
+        ],
+        ui: [
+            'open_task_modal', 'close_task_modal', 'toggle_listening',
+            'check_alarm_system', 'check_calendar_render'
+        ],
+        storage: [
+            'check_indexeddb', 'check_localstorage', 'data_persistence'
+        ],
+        navigation: [
+            'vocal_navigation_calendar', 'vocal_navigation_tasks',
+            'vocal_navigation_notes', 'vocal_navigation_lists', 'vocal_navigation_settings'
+        ]
+    };
+    
+    const testIds = categories[category];
+    if (!testIds) {
+        log(`Catégorie inconnue: ${category}`, 'error');
+        return;
+    }
+    
+    log(`🎯 Démarrage des tests ${category}: ${testIds.length} tests`, 'info');
+    
+    let executed = 0;
+    for (const testId of testIds) {
+        if (!tests[testId]) {
+            log(`⚠️ Test non trouvé: ${testId}`, 'warning');
+            continue;
+        }
+        
+        const button = document.querySelector(`[onclick*="${testId}"]`);
+        if (button) {
+            await runTest(testId, button);
+            executed++;
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+    }
+    
+    log(`✅ Tests ${category} terminés: ${testStats.passed}/${executed} réussis`, 
+        testStats.failed === 0 ? 'success' : 'warning');
+}
+
 // Expose functions to global scope for onclick handlers
 window.runTest = runTest;
 window.runAllTests = runAllTests;
+window.runTestsByCategory = runTestsByCategory;
 window.resetTests = resetTests;
 window.reloadApp = reloadApp;
+window.exportTestResults = exportTestResults;
 
 console.log('✓ Fonctions de test exposées:', {
     runTest: typeof window.runTest,
     runAllTests: typeof window.runAllTests,
+    runTestsByCategory: typeof window.runTestsByCategory,
     resetTests: typeof window.resetTests,
-    reloadApp: typeof window.reloadApp
+    reloadApp: typeof window.reloadApp,
+    exportTestResults: typeof window.exportTestResults
 });
 
 

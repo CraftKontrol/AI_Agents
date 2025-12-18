@@ -449,6 +449,30 @@
                     <label for="testDelay">Délai entre tests (ms):</label>
                     <input type="number" id="testDelay" value="1000" min="100" step="100">
                 </div>
+                
+                <!-- Filter Buttons -->
+                <div class="control-group">
+                    <label>Catégories de tests:</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
+                        <button class="btn btn-secondary" onclick="runTestsByCategory('vocal')" style="font-size: 12px; padding: 8px;">
+                            <span class="material-symbols-outlined" style="font-size: 16px;">mic</span>
+                            Vocaux
+                        </button>
+                        <button class="btn btn-secondary" onclick="runTestsByCategory('ui')" style="font-size: 12px; padding: 8px;">
+                            <span class="material-symbols-outlined" style="font-size: 16px;">touch_app</span>
+                            UI
+                        </button>
+                        <button class="btn btn-secondary" onclick="runTestsByCategory('storage')" style="font-size: 12px; padding: 8px;">
+                            <span class="material-symbols-outlined" style="font-size: 16px;">storage</span>
+                            Storage
+                        </button>
+                        <button class="btn btn-secondary" onclick="runTestsByCategory('navigation')" style="font-size: 12px; padding: 8px;">
+                            <span class="material-symbols-outlined" style="font-size: 16px;">explore</span>
+                            Navigation
+                        </button>
+                    </div>
+                </div>
+                
                 <div class="control-buttons">
                     <button class="btn btn-primary" onclick="runAllTests()">
                         <span class="material-symbols-outlined">play_arrow</span>
@@ -461,6 +485,10 @@
                     <button class="btn btn-secondary" onclick="reloadApp()">
                         <span class="material-symbols-outlined">refresh</span>
                         Recharger App
+                    </button>
+                    <button class="btn btn-secondary" onclick="exportTestResults()">
+                        <span class="material-symbols-outlined">download</span>
+                        Exporter JSON
                     </button>
                 </div>
             </div>
@@ -619,7 +647,7 @@
                     <div class="category-header" onclick="toggleSection('vocalTests')">
                         <span class="category-title">
                             <span class="material-symbols-outlined">mic</span>
-                            Commandes Vocales (12)
+                            Commandes Vocales (57)
                         </span>
                         <span class="material-symbols-outlined">expand_less</span>
                     </div>
@@ -636,6 +664,45 @@
                         <button class="test-button" onclick="runTest('vocal_navigation_calendar', this)">Vocal: Navigation calendrier</button>
                         <button class="test-button" onclick="runTest('vocal_navigation_notes', this)">Vocal: Navigation notes</button>
                         <button class="test-button" onclick="runTest('vocal_navigation_lists', this)">Vocal: Navigation listes</button>
+                        <button class="test-button" onclick="runTest('vocal_medication_daily', this)">Vocal: Médicament quotidien</button>
+                        <button class="test-button" onclick="runTest('vocal_medication_multiple', this)">Vocal: Médicament 3x/jour</button>
+                        <button class="test-button" onclick="runTest('vocal_appointment_dentist', this)">Vocal: RDV dentiste</button>
+                        <button class="test-button" onclick="runTest('vocal_create_list', this)">Vocal: Créer liste</button>
+                        <button class="test-button" onclick="runTest('vocal_list_with_items', this)">Vocal: Liste avec items</button>
+                        <button class="test-button" onclick="runTest('vocal_add_to_list', this)">Vocal: Ajouter à liste</button>
+                        <button class="test-button" onclick="runTest('vocal_create_note', this)">Vocal: Créer note</button>
+                        <button class="test-button" onclick="runTest('vocal_take_note', this)">Vocal: Prends note que</button>
+                        <button class="test-button" onclick="runTest('vocal_update_note', this)">Vocal: Compléter note</button>
+                        <button class="test-button" onclick="runTest('vocal_mark_complete', this)">Vocal: Marquer terminé</button>
+                        <button class="test-button" onclick="runTest('vocal_search_week_tasks', this)">Vocal: Chercher tâches semaine</button>
+                        <button class="test-button" onclick="runTest('vocal_show_today_tasks', this)">Vocal: Tâches du jour</button>
+                        <button class="test-button" onclick="runTest('vocal_recurring_vitamins', this)">Vocal: Vitamines quotidiennes</button>
+                        <button class="test-button" onclick="runTest('vocal_recurring_trash', this)">Vocal: Poubelles hebdo</button>
+                        <button class="test-button" onclick="runTest('vocal_recurring_monthly', this)">Vocal: RDV mensuel</button>
+                        <button class="test-button" onclick="runTest('vocal_question_time', this)">Vocal: Quelle heure</button>
+                        <button class="test-button" onclick="runTest('vocal_question_date', this)">Vocal: Quelle date</button>
+                        <button class="test-button" onclick="runTest('vocal_question_day', this)">Vocal: Quel jour</button>
+                        <button class="test-button" onclick="runTest('vocal_nav_settings', this)">Vocal: Paramètres</button>
+                        <button class="test-button" onclick="runTest('vocal_call_emergency', this)">Vocal: Urgences</button>
+                        <button class="test-button" onclick="runTest('vocal_call_mom', this)">Vocal: Appeler maman</button>
+                        <button class="test-button" onclick="runTest('vocal_undo_last', this)">Vocal: Annuler dernière</button>
+                        <button class="test-button" onclick="runTest('vocal_undo_that', this)">Vocal: Défais ça</button>
+                        <button class="test-button" onclick="runTest('vocal_dont_forget', this)">Vocal: N'oublie pas</button>
+                        <button class="test-button" onclick="runTest('vocal_medication_meals', this)">Vocal: Médicament repas</button>
+                        <button class="test-button" onclick="runTest('vocal_medication_weekly', this)">Vocal: Vitamine hebdo</button>
+                        <button class="test-button" onclick="runTest('vocal_appointment_specific', this)">Vocal: RDV date précise</button>
+                        <button class="test-button" onclick="runTest('vocal_change_date', this)">Vocal: Changer date</button>
+                        <button class="test-button" onclick="runTest('vocal_move_appointment', this)">Vocal: Déplacer RDV</button>
+                        <button class="test-button" onclick="runTest('vocal_list_enumeration', this)">Vocal: Énumération simple</button>
+                        <button class="test-button" onclick="runTest('vocal_shopping_list', this)">Vocal: Liste courses items</button>
+                        <button class="test-button" onclick="runTest('vocal_note_wifi', this)">Vocal: Note code WiFi</button>
+                        <button class="test-button" onclick="runTest('vocal_search_appointments', this)">Vocal: Chercher RDV</button>
+                        <button class="test-button" onclick="runTest('vocal_when_appointment', this)">Vocal: C'est quand mon RDV</button>
+                        <button class="test-button" onclick="runTest('vocal_delete_old_tasks', this)">Vocal: Supprimer anciennes</button>
+                        <button class="test-button" onclick="runTest('vocal_delete_done_tasks', this)">Vocal: Supprimer terminées</button>
+                        <button class="test-button" onclick="runTest('vocal_call_mom_weekly', this)">Vocal: Appel hebdo maman</button>
+                        <button class="test-button" onclick="runTest('vocal_greeting', this)">Vocal: Bonjour</button>
+                        <button class="test-button" onclick="runTest('vocal_thank_you', this)">Vocal: Merci</button>
                     </div>
                 </div>
             </div>

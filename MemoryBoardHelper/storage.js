@@ -587,9 +587,16 @@ function isDatabaseReady() {
     return db !== null;
 }
 
-// Export STORES for testing
+// Export functions to window for access by other scripts
 if (typeof window !== 'undefined') {
     window.STORES = STORES;
+    window.getAllTasks = getAllTasks;
+    window.getAllLists = getAllLists;
+    window.getAllNotes = getAllNotes;
+    window.saveTask = saveTask;
+    window.deleteTask = deleteTask;
+    window.getTask = getTask;
+    window.isDatabaseReady = isDatabaseReady;
 }
 
 // Initialize on load

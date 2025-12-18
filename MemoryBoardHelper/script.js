@@ -1,4 +1,5 @@
 // --- Confirmation State for Important Actions ---
+// Cache-bust: 2025-12-18-v13-fixed-navigation-priority
 let pendingConfirmation = null; // Will store { action, data, language, confirmationMessage }
 
 // Helper function to get API key from CKGenericApp or localStorage
@@ -987,34 +988,38 @@ function handleVoiceNavigation(transcript) {
         'supprime', 'delete', 'enleve', 'remove', 'annule',
         'change', 'modifie', 'update', 'modifier', 'déplace',
         'question', 'quand', 'combien', 'quel', 'how', 'when', 'what',
-        'appelle', 'phone', 'call', 'téléphone'
+        'appelle', 'phone', 'call', 'téléphone', 'tâche', 'task',
+        'rappelle', 'remind', 'note', 'liste', 'list'
     ];
     
-    // If transcript contains task/question keywords and is not a direct voice command match,
-    // let Mistral handle it
+    // If transcript contains task/question keywords, let Mistral handle it
     const hasMistralKeyword = mistralActions.some(keyword => lowerTranscript.includes(keyword));
     
-    // Commandes vocales directes - strict matching
+    console.log('[VoiceNav] hasMistralKeyword:', hasMistralKeyword);
+    
+    // If it has Mistral keywords, skip voice navigation entirely
+    if (hasMistralKeyword) {
+        console.log('[VoiceNav] Detected Mistral action, skipping voice navigation');
+        return false;
+    }
+    
+    // Commandes vocales directes - only for pure navigation commands
     for (const cmd of voiceCommands) {
         for (const phrase of cmd.phrases) {
             // Use exact phrase matching for voice commands
-            if (lowerTranscript === phrase || lowerTranscript.includes(phrase)) {
-                // If it's a Mistral-related action and not an exact match, skip it
-                if (hasMistralKeyword && lowerTranscript !== phrase && !lowerTranscript.startsWith(phrase)) {
-                    continue;
-                }
+            if (lowerTranscript === phrase || lowerTranscript.startsWith(phrase)) {
+                console.log('[VoiceNav] Matched voice command:', phrase);
                 cmd.action(transcript);
                 return true;
             }
         }
     }
     
-    // Navigation par section - only if no Mistral keyword detected
-    if (!hasMistralKeyword) {
-        for (const key in sectionMap) {
-            if (lowerTranscript.includes(key)) {
-                return focusSection(key);
-            }
+    // Navigation par section
+    for (const key in sectionMap) {
+        if (lowerTranscript.includes(key)) {
+            console.log('[VoiceNav] Matched section:', key);
+            return focusSection(key);
         }
     }
     
@@ -1029,6 +1034,13 @@ let recognition = null;
 let conversationHistory = [];
 const MAX_CONVERSATION_HISTORY = 10;
 let currentPeriod = 'today'; // 'today', 'week', 'month', 'year'
+
+// Expose conversationHistory to window for test access
+// Use getter/setter so tests can access the current array reference
+Object.defineProperty(window, 'conversationHistory', {
+    get: () => conversationHistory,
+    set: (value) => { conversationHistory = value; }
+});
 
 // Speech recognition setup (REMOVED - now defined in STT/TTS provider section around line 1335)
 // let sttMethod = 'browser'; // 'browser' or 'google'
@@ -1743,12 +1755,18 @@ async function processSpeechTranscript(transcript) {
     }
     
     // Navigation vocale prioritaire
-    if (handleVoiceNavigation(transcript)) {
+    console.log('[App] Checking voice navigation...');
+    const wasNavigationHandled = handleVoiceNavigation(transcript);
+    console.log('[App] Voice navigation result:', wasNavigationHandled);
+    
+    if (wasNavigationHandled) {
         // Navigation effectuée, on bloque le reste
         console.log('[App] Navigation vocale exécutée:', transcript);
         return;
     }
+    
     // Sinon, traitement normal (Mistral, ajout de tâche, etc.)
+    console.log('[App] Proceeding to processUserMessage...');
     await processUserMessage(transcript);
     
     // Clean up UI after processing
@@ -1762,6 +1780,9 @@ async function processSpeechTranscript(transcript) {
         }
     }
 }
+
+// Expose to window for test access
+window.processSpeechTranscript = processSpeechTranscript;
 
 // Handle speech recognition error
 function handleSpeechError(event) {
@@ -2928,7 +2949,12 @@ function hideWakeWordDetected() {
 // Process user message with Mistral
 // UPDATED: Dec 2025 - Routes through unified wrapper system with GUARANTEED TTS
 async function processUserMessage(message) {
-    if (isProcessing) return;
+    console.log('[App] processUserMessage called with:', message);
+    
+    if (isProcessing) {
+        console.log('[App] Already processing, ignoring');
+        return;
+    }
     
     isProcessing = true;
     showLoading(true);
@@ -2965,6 +2991,7 @@ async function processUserMessage(message) {
         console.log('[App] Using cleaned history with', recentHistory.length, 'messages');
         
         // Process with Mistral AI
+        console.log('[App] Calling processWithMistral...');
         const result = await processWithMistral(message, recentHistory);
         if (!result) {
             throw new Error('No response from Mistral');
@@ -2977,7 +3004,9 @@ async function processUserMessage(message) {
         // NEW: Route ALL actions through unified wrapper system
         // This GUARANTEES TTS for every response
         // ========================================================
+        console.log('[App] Calling processMistralResultUnified...');
         await processMistralResultUnified(result, message);
+        console.log('[App] processMistralResultUnified completed');
         
         // Note: processMistralResultUnified() handles:
         // - Action execution via action-wrapper.js
@@ -4289,6 +4318,9 @@ async function commandWhatTime() {
 
 // Speak response using TTS
 async function speakResponse(text) {
+    // Store last spoken text for test access
+    window.lastSpokenText = text;
+    
     // Get current TTS provider from settings
     const ttsProviderValue = localStorage.getItem('ttsProvider') || 'browser';
     
@@ -4858,14 +4890,16 @@ async function saveNewTask() {
 
 // Conversation history
 async function loadConversationHistory() {
-    conversationHistory = await getRecentConversations(MAX_CONVERSATION_HISTORY);
+    const loaded = await getRecentConversations(MAX_CONVERSATION_HISTORY);
+    conversationHistory.length = 0;
+    conversationHistory.push(...loaded);
     console.log('[App] Loaded conversation history:', conversationHistory.length);
 }
 
 // Clear conversation history
 async function clearConversationHistory() {
     try {
-        conversationHistory = [];
+        conversationHistory.length = 0;
         await cleanOldConversations(0); // Delete all from database
         console.log('[App] Conversation history cleared');
         const simpleMsg = getLocalizedText('historyCleared') || 'Historique effacé avec succès';

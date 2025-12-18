@@ -89,15 +89,34 @@ async function processMistralResultUnified(mistralResult, userMessage) {
         // Save to conversation history
         await saveConversation(userMessage, mistralResult.response, mistralResult.language);
         
-        // Update in-memory history
-        conversationHistory.push({ 
-            userMessage: userMessage, 
-            assistantResponse: JSON.stringify(mistralResult)
-        });
+        // Update in-memory history (access via window to use the getter from script.js)
+        console.log('🔥🔥🔥 [ResponseHandler] About to update conversation history...');
+        console.log('🔥 window.conversationHistory exists:', !!window.conversationHistory);
+        console.log('🔥 window.conversationHistory.length:', window.conversationHistory?.length);
+        console.log('🔥 userMessage:', userMessage);
+        console.log('🔥 mistralResult:', mistralResult);
         
-        // Limit history
-        if (conversationHistory.length > MAX_CONVERSATION_HISTORY) {
-            conversationHistory = conversationHistory.slice(-MAX_CONVERSATION_HISTORY);
+        if (!window.conversationHistory) {
+            console.error('❌❌❌ [ResponseHandler] conversationHistory not available on window!');
+            alert('ERROR: conversationHistory not on window!');
+        } else {
+            const beforeLength = window.conversationHistory.length;
+            const newEntry = { 
+                userMessage: userMessage, 
+                assistantResponse: JSON.stringify(mistralResult)
+            };
+            console.log('🔥 Pushing entry:', newEntry);
+            window.conversationHistory.push(newEntry);
+            const afterLength = window.conversationHistory.length;
+            console.log(`✅✅✅ [ResponseHandler] Added to history: ${beforeLength} → ${afterLength}`);
+            console.log('✅ Last entry:', window.conversationHistory[window.conversationHistory.length - 1]);
+            
+            // Limit history (mutate in place to preserve window.conversationHistory reference)
+            const MAX_HISTORY = 10;
+            if (window.conversationHistory.length > MAX_HISTORY) {
+                window.conversationHistory.splice(0, window.conversationHistory.length - MAX_HISTORY);
+                console.log(`✂️ [ResponseHandler] Trimmed history to ${window.conversationHistory.length}`);
+            }
         }
         
         return actionResult;

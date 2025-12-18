@@ -24,6 +24,78 @@ class ActionResult {
     }
 }
 
+// Enhance calendar response with Mistral AI for more natural language
+async function enhanceCalendarResponse(basicMessage, context = {}) {
+    const apiKey = localStorage.getItem('mistralApiKey');
+    if (!apiKey) {
+        console.log('[ActionWrapper] No Mistral API key, using basic message');
+        return basicMessage;
+    }
+
+    try {
+        const language = context.language || 'fr';
+        const actionType = context.actionType || 'unknown';
+        
+        const systemPrompt = `Tu es un assistant mémoire chaleureux et empathique pour personnes âgées ou ayant des difficultés de mémoire.
+Ta tâche: Transformer les messages système basiques en réponses naturelles et encourageantes.
+
+Règles:
+1. Garde le sens et l'information du message d'origine
+2. Ajoute de la chaleur et de l'empathie
+3. Reste concis (maximum 2 phrases)
+4. Utilise un ton rassurant et positif
+5. Réponds dans la langue: ${language === 'fr' ? 'français' : language === 'en' ? 'anglais' : 'italien'}
+
+Exemples:
+- "taskNotFound" → "Je n'ai pas trouvé de tâche correspondante. Peux-tu me donner plus de détails ?"
+- "taskAdded" → "Parfait ! J'ai bien noté ta tâche."
+- "taskCompleted" → "Bravo ! Tâche accomplie ✓"
+- "taskDeleted" → "C'est fait, j'ai supprimé cette tâche."
+- "noTasksFound" → "Tu n'as aucune tâche prévue pour le moment. Profite de ce temps libre !"
+
+Réponds UNIQUEMENT avec la phrase améliorée, sans guillemets ni explications.`;
+
+        const userPrompt = `Message à améliorer: "${basicMessage}"
+Action: ${actionType}
+Contexte: ${context.taskDescription ? 'Tâche: ' + context.taskDescription : ''}`;
+
+        console.log('[ActionWrapper] 🎨 Enhancing response with Mistral...');
+
+        const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: 'mistral-small-latest',
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userPrompt }
+                ],
+                temperature: 0.7,
+                max_tokens: 100
+            })
+        });
+
+        if (!response.ok) {
+            console.warn('[ActionWrapper] Mistral API error:', response.status);
+            return basicMessage;
+        }
+
+        const data = await response.json();
+        const enhancedMessage = data.choices[0].message.content.trim()
+            .replace(/^["']|["']$/g, ''); // Remove surrounding quotes
+        
+        console.log('[ActionWrapper] ✨ Enhanced:', basicMessage, '→', enhancedMessage);
+        return enhancedMessage;
+        
+    } catch (error) {
+        console.error('[ActionWrapper] Enhancement error:', error);
+        return basicMessage;
+    }
+}
+
 // Action Registry - Maps action names to handler functions
 const ACTION_REGISTRY = {};
 
@@ -72,9 +144,17 @@ async function executeAction(actionName, params, language = 'fr') {
         const validation = await action.validate(params, language);
         if (!validation.valid) {
             console.log(`[ActionWrapper] Validation failed: ${validation.message}`);
+            
+            // Enhance validation error with Mistral
+            const enhancedMessage = await enhanceCalendarResponse(validation.message, {
+                language: language,
+                actionType: actionName,
+                taskDescription: params.task?.description
+            });
+            
             return new ActionResult(
                 false,
-                validation.message,
+                enhancedMessage,
                 null,
                 'Validation failed'
             );
@@ -83,6 +163,16 @@ async function executeAction(actionName, params, language = 'fr') {
         // Phase 2: Execution
         console.log(`[ActionWrapper] Executing ${actionName}...`);
         const result = await action.execute(params, language);
+        
+        // Enhance success message with Mistral (if not already from Mistral params.response)
+        if (result.success && result.message && !params.response) {
+            const enhancedMessage = await enhanceCalendarResponse(result.message, {
+                language: language,
+                actionType: actionName,
+                taskDescription: params.task?.description || result.data?.task?.description
+            });
+            result.message = enhancedMessage;
+        }
         
         // Phase 3: Verification (optional)
         if (action.verify && result.success) {
@@ -170,9 +260,10 @@ registerAction(
             
             return new ActionResult(true, message, createResult.task);
         } else {
+            const message = params.response || getLocalizedText('taskCreationFailed', language);
             return new ActionResult(
                 false, 
-                getLocalizedText('taskCreationFailed', language), 
+                message, 
                 null, 
                 'createTask returned failure'
             );
@@ -226,8 +317,11 @@ registerAction(
     'complete_task',
     // Validate
     async (params, language) => {
-        const tasks = await getTodayTasks();
+        const tasks = await getAllTasks(); // Changed from getTodayTasks to search ALL tasks
         const description = params.task?.description?.toLowerCase() || '';
+        
+        console.log('🔍 complete_task - Searching for task:', description);
+        console.log('🔍 complete_task - Available tasks:', tasks.map(t => `"${t.description}" (${t.date})`));
         
         if (!description) {
             return { 
@@ -242,11 +336,14 @@ registerAction(
         );
         
         if (!matchingTask) {
+            console.log('❌ complete_task - No matching task found');
             return { 
                 valid: false, 
                 message: getLocalizedText('taskNotFound', language) 
             };
         }
+        
+        console.log('✅ complete_task - Found matching task:', matchingTask.description);
         
         params._resolvedTaskId = matchingTask.id;
         params._resolvedTask = matchingTask;
@@ -268,9 +365,10 @@ registerAction(
             
             return new ActionResult(true, message, { taskId, task });
         } else {
+            const message = params.response || getLocalizedText('taskCompletionFailed', language);
             return new ActionResult(
                 false, 
-                getLocalizedText('taskCompletionFailed', language), 
+                message, 
                 null, 
                 'completeTask returned failure'
             );
@@ -291,8 +389,11 @@ registerAction(
     'delete_task',
     // Validate
     async (params, language) => {
-        const tasks = await getTodayTasks();
+        const tasks = await getAllTasks();  // Changed from getTodayTasks to search ALL tasks
         const description = params.task?.description?.toLowerCase() || '';
+        
+        console.log('[delete_task] Searching for task:', description);
+        console.log('[delete_task] Available tasks:', tasks.map(t => ({id: t.id, description: t.description, date: t.date})));
         
         if (!description) {
             return { 
@@ -307,12 +408,14 @@ registerAction(
         );
         
         if (!matchingTask) {
+            console.log('[delete_task] No matching task found');
             return { 
                 valid: false, 
                 message: getLocalizedText('taskNotFound', language) 
             };
         }
         
+        console.log('[delete_task] Found matching task:', matchingTask);
         params._resolvedTaskId = matchingTask.id;
         params._resolvedTask = matchingTask;
         return { valid: true };
@@ -333,9 +436,10 @@ registerAction(
             
             return new ActionResult(true, message, { taskId, task });
         } else {
+            const message = params.response || getLocalizedText('taskDeletionFailed', language);
             return new ActionResult(
                 false, 
-                getLocalizedText('taskDeletionFailed', language), 
+                message, 
                 null, 
                 'deleteTask returned failure'
             );
@@ -424,9 +528,10 @@ registerAction(
             
             return new ActionResult(true, message, createResult.task);
         } else {
+            const message = params.response || getLocalizedText('taskUpdateFailed', language);
             return new ActionResult(
                 false, 
-                getLocalizedText('taskUpdateFailed', language), 
+                message, 
                 null, 
                 'createTask returned failure'
             );
@@ -444,15 +549,21 @@ registerAction(
     // Execute
     async (params, language) => {
         const description = params.task?.description?.toLowerCase() || '';
-        const tasks = await getTodayTasks();
+        const tasks = await getAllTasks(); // Changed from getTodayTasks to search ALL tasks
+        
+        console.log('🔍 search_task - Searching for:', description);
+        console.log('🔍 search_task - Available tasks:', tasks.map(t => `"${t.description}" (${t.date})`));
         
         const matchingTasks = tasks.filter(t =>
             t.description.toLowerCase().includes(description) ||
             description.includes(t.description.toLowerCase())
         );
         
+        console.log('🔍 search_task - Found', matchingTasks.length, 'matching task(s)');
+        
         if (matchingTasks.length === 0) {
-            const message = getLocalizedText('noTasksFound', language);
+            // Use Mistral response if provided, otherwise use localized text
+            const message = params.response || getLocalizedText('noTasksFound', language);
             return new ActionResult(true, message, { tasks: [] });
         }
         
@@ -487,9 +598,10 @@ registerAction(
             
             return new ActionResult(true, message, { count: result.count });
         } else {
+            const message = params.response || getLocalizedText('oldTasksDeletionFailed', language);
             return new ActionResult(
                 false, 
-                getLocalizedText('oldTasksDeletionFailed', language), 
+                message, 
                 null, 
                 'deleteOldTasks returned failure'
             );
@@ -517,9 +629,10 @@ registerAction(
             
             return new ActionResult(true, message, { count: result.count });
         } else {
+            const message = params.response || getLocalizedText('doneTasksDeletionFailed', language);
             return new ActionResult(
                 false, 
-                getLocalizedText('doneTasksDeletionFailed', language), 
+                message, 
                 null, 
                 'deleteDoneTasks returned failure'
             );
@@ -568,9 +681,10 @@ registerAction(
             
             return new ActionResult(true, message, result.list);
         } else {
+            const message = params.response || getLocalizedText('listCreationFailed', language);
             return new ActionResult(
                 false, 
-                getLocalizedText('listCreationFailed', language), 
+                message, 
                 null, 
                 'addList returned failure'
             );
@@ -611,9 +725,10 @@ registerAction(
             
             return new ActionResult(true, message, result.list);
         } else {
+            const message = params.response || getLocalizedText('listUpdateFailed', language);
             return new ActionResult(
                 false, 
-                getLocalizedText('listUpdateFailed', language), 
+                message, 
                 null, 
                 'updateList returned failure'
             );
@@ -647,9 +762,10 @@ registerAction(
             
             return new ActionResult(true, message, result);
         } else {
+            const message = params.response || getLocalizedText('listDeletionFailed', language);
             return new ActionResult(
                 false, 
-                getLocalizedText('listDeletionFailed', language), 
+                message, 
                 null, 
                 'deleteList returned failure'
             );
@@ -692,9 +808,10 @@ registerAction(
             
             return new ActionResult(true, message, result.note);
         } else {
+            const message = params.response || getLocalizedText('noteCreationFailed', language);
             return new ActionResult(
                 false, 
-                getLocalizedText('noteCreationFailed', language), 
+                message, 
                 null, 
                 'addNote returned failure'
             );
@@ -729,9 +846,10 @@ registerAction(
             
             return new ActionResult(true, message, result.note);
         } else {
+            const message = params.response || getLocalizedText('noteUpdateFailed', language);
             return new ActionResult(
                 false, 
-                getLocalizedText('noteUpdateFailed', language), 
+                message, 
                 null, 
                 'updateNote returned failure'
             );
@@ -765,9 +883,10 @@ registerAction(
             
             return new ActionResult(true, message, result);
         } else {
+            const message = params.response || getLocalizedText('noteDeletionFailed', language);
             return new ActionResult(
                 false, 
-                getLocalizedText('noteDeletionFailed', language), 
+                message, 
                 null, 
                 'deleteNote returned failure'
             );
@@ -853,9 +972,10 @@ registerAction(
                 return new ActionResult(false, message, null, 'undoLastAction returned failure');
             }
         } else {
+            const message = params.response || getLocalizedText('undoNotAvailable', language);
             return new ActionResult(
                 false, 
-                getLocalizedText('undoNotAvailable', language), 
+                message, 
                 null, 
                 'undoLastAction function not available'
             );
@@ -880,9 +1000,10 @@ registerAction(
             const message = params.response || result.message;
             return new ActionResult(result.success, message, result);
         } else {
+            const message = params.response || getLocalizedText('callNotAvailable', language);
             return new ActionResult(
                 false, 
-                getLocalizedText('callNotAvailable', language), 
+                message, 
                 null, 
                 'makeCall function not available'
             );
