@@ -2622,6 +2622,7 @@ async function startGoogleSTTRecording(apiKey) {
         
         mediaRecorder.onstop = async () => {
             console.log('[GoogleSTT] Recording stopped, processing audio');
+            console.log('[GoogleSTT] Audio chunks count:', audioChunks.length);
             isRecording = false;
             
             // Stop spectrum and VAD
@@ -2638,9 +2639,21 @@ async function startGoogleSTTRecording(apiKey) {
                 showListeningIndicator(false);
             }
             
-            // Convert audio chunks to base64
+            // Convert audio chunks to blob
             const audioBlob = new Blob(audioChunks, { type: options.mimeType });
-            await sendAudioToGoogleSTT(audioBlob, apiKey);
+            console.log('[GoogleSTT] Audio blob created:', {
+                size: audioBlob.size,
+                type: audioBlob.type,
+                mimeType: options.mimeType
+            });
+            
+            if (audioBlob.size === 0) {
+                console.error('[GoogleSTT] Audio blob is empty!');
+                showError('Aucun audio enregistré');
+                return;
+            }
+            
+            await sendAudioToGoogleSTT(audioBlob, apiKey, options.mimeType);
         };
         
         mediaRecorder.onerror = (error) => {
@@ -2662,7 +2675,16 @@ async function startGoogleSTTRecording(apiKey) {
         mediaRecorder.start();
         isRecording = true;
         playListeningSound();
-        console.log('[GoogleSTT] Recording started');
+        console.log('[GoogleSTT] Recording started with mime type:', options.mimeType);
+        console.log('[GoogleSTT] MediaRecorder state:', mediaRecorder.state);
+        
+        // Log when data is available
+        let dataCount = 0;
+        const dataHandler = () => {
+            dataCount++;
+            console.log('[GoogleSTT] Data available event #' + dataCount, 'chunks:', audioChunks.length);
+        };
+        mediaRecorder.addEventListener('dataavailable', dataHandler);
         
         // Start Voice Activity Detection to auto-stop on silence
         if (microphoneStream) {
@@ -2710,15 +2732,17 @@ async function stopGoogleSTTRecording(apiKey) {
 }
 
 // Convert audio blob to base64 and send to Google STT API
-async function sendAudioToGoogleSTT(audioBlob, apiKey) {
+async function sendAudioToGoogleSTT(audioBlob, apiKey, mimeType) {
     try {
         console.log('[GoogleSTT] Converting audio to base64');
+        console.log('[GoogleSTT] Audio blob size:', audioBlob.size, 'type:', audioBlob.type);
         
         // Convert blob to base64
         const base64Audio = await blobToBase64(audioBlob);
         
         // Remove data URL prefix
         const audioContent = base64Audio.split(',')[1];
+        console.log('[GoogleSTT] Base64 audio length:', audioContent.length);
         
         // Determine language code based on current language
         const lang = getCurrentLanguage();
@@ -2729,7 +2753,36 @@ async function sendAudioToGoogleSTT(audioBlob, apiKey) {
         };
         const languageCode = languageCodes[lang] || 'fr-FR';
         
+        // Determine encoding based on mime type
+        let encoding = 'WEBM_OPUS';
+        if (mimeType.includes('ogg')) {
+            encoding = 'OGG_OPUS';
+        } else if (mimeType.includes('wav')) {
+            encoding = 'LINEAR16';
+        }
+        
+        console.log('[GoogleSTT] Using encoding:', encoding, 'for mime type:', mimeType);
+        console.log('[GoogleSTT] Language:', languageCode);
         console.log('[GoogleSTT] Sending audio to Google Cloud Speech-to-Text API');
+        
+        const requestBody = {
+            config: {
+                encoding: encoding,
+                languageCode: languageCode,
+                enableAutomaticPunctuation: true,
+                model: 'default'
+            },
+            audio: {
+                content: audioContent
+            }
+        };
+        
+        // Only add sampleRateHertz for LINEAR16
+        if (encoding === 'LINEAR16') {
+            requestBody.config.sampleRateHertz = 16000;
+        }
+        
+        console.log('[GoogleSTT] Request config:', JSON.stringify(requestBody.config));
         
         // Send to Google Cloud Speech-to-Text API
         const response = await fetch(`https://speech.googleapis.com/v1/speech:recognize?key=${apiKey}`, {
@@ -2737,30 +2790,27 @@ async function sendAudioToGoogleSTT(audioBlob, apiKey) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                config: {
-                    encoding: 'WEBM_OPUS',
-                    sampleRateHertz: 16000,
-                    languageCode: languageCode,
-                    enableAutomaticPunctuation: true,
-                    model: 'default'
-                },
-                audio: {
-                    content: audioContent
-                }
-            })
+            body: JSON.stringify(requestBody)
         });
         
         if (!response.ok) {
-            const errorData = await response.json();
+            const errorText = await response.text();
+            let errorData;
+            try {
+                errorData = JSON.parse(errorText);
+            } catch {
+                errorData = { message: errorText };
+            }
             console.error('[GoogleSTT] API error:', errorData);
+            console.error('[GoogleSTT] Status:', response.status);
+            console.error('[GoogleSTT] Full error:', errorText);
             
             if (response.status === 400) {
-                showError('Invalid audio format or API request');
+                showError('Format audio invalide: ' + (errorData.error?.message || 'Vérifiez votre clé API'));
             } else if (response.status === 401 || response.status === 403) {
-                showError('Invalid API key or insufficient permissions');
+                showError('Clé API invalide ou permissions insuffisantes');
             } else {
-                showError(`Google STT API error: ${response.status}`);
+                showError(`Erreur Google STT API: ${response.status}`);
             }
             return;
         }
