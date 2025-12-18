@@ -13,6 +13,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import android.widget.FrameLayout
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -35,6 +37,8 @@ class ShortcutActivity : ComponentActivity() {
     
     private var currentAppId: String? = null
     var pendingWebViewPermissionRequest: android.webkit.PermissionRequest? = null
+    var currentWebView: WebView? = null
+    private var forceReload = false
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -68,9 +72,39 @@ class ShortcutActivity : ComponentActivity() {
         // This should only be called if explicitly routing to an existing instance
         if (newAppId != null && newAppId != currentAppId) {
             currentAppId = newAppId
+            forceReload = true
             renderContent() // Re-render with new app
+        } else {
+            // Same app reopened - force reload with cache clearing
+            Timber.d("Same app reopened - forcing fresh reload")
+            currentWebView?.let { webView ->
+                com.craftkontrol.ckgenericapp.webview.WebViewConfigurator.clearWebViewCache(webView)
+                val headers = mapOf(
+                    "Cache-Control" to "no-cache, no-store, must-revalidate",
+                    "Pragma" to "no-cache",
+                    "Expires" to "0"
+                )
+                webView.loadUrl(webView.url ?: "", headers)
+            }
         }
-        // If same app, just refresh the existing instance
+    }
+    
+    override fun onResume() {
+        super.onResume()
+        // Force reload when app comes to foreground
+        if (forceReload) {
+            Timber.d("onResume with forceReload flag - forcing fresh reload")
+            currentWebView?.let { webView ->
+                com.craftkontrol.ckgenericapp.webview.WebViewConfigurator.clearWebViewCache(webView)
+                val headers = mapOf(
+                    "Cache-Control" to "no-cache, no-store, must-revalidate",
+                    "Pragma" to "no-cache",
+                    "Expires" to "0"
+                )
+                webView.loadUrl(webView.url ?: "", headers)
+            }
+            forceReload = false
+        }
     }
     
     private fun renderContent() {
@@ -119,7 +153,6 @@ private fun ShortcutScreen(
     val app by viewModel.app.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val apiKeys by viewModel.apiKeys.collectAsStateWithLifecycle()
-    var webView: WebView? by remember { mutableStateOf(null) }
     
     // Permission launcher setup
     val permissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
@@ -181,7 +214,9 @@ private fun ShortcutScreen(
                     apiKeys = apiKeys,
                     activity = activity,
                     permissionLauncher = permissionLauncher,
-                    onWebViewCreated = { webView = it }
+                    onWebViewCreated = { webView -> 
+                        activity.currentWebView = webView
+                    }
                 )
             }
             else -> {
@@ -223,14 +258,23 @@ private fun StandaloneWebView(
     
     AndroidView(
         factory = { ctx ->
-            WebView(ctx).apply {
+            // Create SwipeRefreshLayout container
+            SwipeRefreshLayout(ctx).apply {
                 layoutParams = ViewGroup.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT
                 )
                 
-                // Configure WebView with JavaScript interface
-                val alarmScheduler = com.craftkontrol.ckgenericapp.util.AlarmScheduler(ctx)
+                // Create WebView
+                val webView =
+            WebView(ctx).apply {
+                    layoutParams = ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT
+                    )
+                    
+                    // Configure WebView with JavaScript interface
+                    val alarmScheduler = com.craftkontrol.ckgenericapp.util.AlarmScheduler(ctx)
                 
                 val jsInterface = com.craftkontrol.ckgenericapp.webview.WebViewJavaScriptInterface(
                     context = ctx,
@@ -267,8 +311,54 @@ private fun StandaloneWebView(
                     }
                 )
                 
-                onWebViewCreated(this)
-                loadUrl(app.url)
+                // Clear cache before loading to ensure fresh content
+                com.craftkontrol.ckgenericapp.webview.WebViewConfigurator.clearWebViewCache(this)
+                
+                    onWebViewCreated(this)
+                    
+                    // Load URL with cache bypass headers
+                    val headers = mapOf(
+                        "Cache-Control" to "no-cache, no-store, must-revalidate",
+                        "Pragma" to "no-cache",
+                        "Expires" to "0"
+                    )
+                    loadUrl(app.url, headers)
+                    
+                    // Store reference in activity
+                    activity.currentWebView = this
+                }
+                
+                // Add WebView to SwipeRefreshLayout
+                addView(webView)
+                
+                // Set up pull-to-refresh listener
+                setOnRefreshListener {
+                    Timber.d("Pull-to-refresh triggered for ${app.name}")
+                    
+                    // Clear cache before reloading
+                    com.craftkontrol.ckgenericapp.webview.WebViewConfigurator.clearWebViewCache(webView)
+                    
+                    // Reload with no-cache headers
+                    val headers = mapOf(
+                        "Cache-Control" to "no-cache, no-store, must-revalidate",
+                        "Pragma" to "no-cache",
+                        "Expires" to "0"
+                    )
+                    webView.loadUrl(webView.url ?: app.url, headers)
+                    
+                    // Stop refreshing after a short delay
+                    webView.postDelayed({
+                        isRefreshing = false
+                    }, 1000)
+                }
+                
+                // Customize colors
+                setColorSchemeColors(
+                    0xFF4A9EFF.toInt(), // Primary color
+                    0xFF2196F3.toInt(), // Blue
+                    0xFF00BCD4.toInt()  // Cyan
+                )
+                setProgressBackgroundColorSchemeColor(0xFF2A2A2A.toInt())
             }
         },
         modifier = Modifier.fillMaxSize()
@@ -317,7 +407,7 @@ private class ApiKeyInjectingWebViewClient(
     
     override fun onPageFinished(view: WebView?, url: String?) {
         super.onPageFinished(view, url)
-        Timber.d("Page loading finished: $url")
+        Timber.d("Page loading finished: $url (forced fresh reload)")
         
         // Inject API keys into JavaScript
         if (apiKeys.isNotEmpty() && view != null) {

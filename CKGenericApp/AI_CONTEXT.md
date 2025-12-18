@@ -36,9 +36,10 @@
 **ApiKeyInjectingWebViewClient**: Custom client in ShortcutActivity that injects API keys + handles `target="_blank"` to open in default browser
 **CKWebChromeClient**: Permissions (camera/mic/location/file), progress, console logs, geolocation
 **WebViewJavaScriptInterface**: Android  JS bridge (exposed as `CKAndroid`): `postMessage()`, `showNotification()`, `getAppVersion()`, `getApiKey()`
-**WebViewConfigurator**: Centralized settings (JS enabled, DOM storage, media playback, mixed content allowed, debug mode)
+**WebViewConfigurator**: Centralized settings (JS enabled, DOM storage, media playback, mixed content allowed, debug mode) + `clearWebViewCache()` for forced fresh reload
 
-**Critical Settings**: `javaScriptEnabled = true`  `domStorageEnabled = true`  `mediaPlaybackRequiresUserGesture = false`  `mixedContentMode = ALWAYS_ALLOW`
+**Critical Settings**: `javaScriptEnabled = true`  `domStorageEnabled = true`  `mediaPlaybackRequiresUserGesture = false`  `mixedContentMode = ALWAYS_ALLOW`  `cacheMode = LOAD_NO_CACHE` (force fresh content)
+**Cache Management**: Apps clear cache on every load (cache/history/formData) + No-Cache headers + `clearWebViewCache()` before loading URLs
 **External Links**: Links with `target="_blank"` or new window requests automatically open in default mobile browser via Intent
 
 ### Services (`service/`)
@@ -52,9 +53,11 @@
 ### Shortcut System (`util/ShortcutHelper.kt`, `ShortcutActivity.kt`)
 **ShortcutHelper**: `createShortcut()` (pinned shortcut), `generateAppIcon()` (colored bitmap with initials)
 **Intent**: Action `OPEN_APP.{appId}`  Identifier `{appId}`  Flags `NEW_TASK | MULTIPLE_TASK`  Extra `EXTRA_APP_ID`
-**ShortcutActivity**: Base activity (not exported)  Accessed via activity-alias per app
+**ShortcutActivity**: Base activity (not exported)  Accessed via activity-alias per app  Maintains `currentWebView` reference for reload operations
 **Activity Aliases**: Each app has dedicated alias with unique `taskAffinity` (com.craftkontrol.ckgenericapp.{appId})  `singleTask` per alias
-**Lifecycle**: `onCreate` (extract appId, load WebView)  `onNewIntent` (refresh if reopened)
+**Lifecycle**: `onCreate` (extract appId, clear cache, load WebView with no-cache headers)  `onNewIntent` (force reload with cache clearing)  `onResume` (force reload if flag set)
+**Cache Behavior**: Every load clears cache/history/formData + Uses no-cache HTTP headers + Forces fresh content on every app open/reopen
+**Pull-to-Refresh**: Swipe down from top to force reload (clears cache + reloads with no-cache headers) - Material3 PullToRefreshContainer with nestedScroll
 **Multi-Instance**: Each app alias has unique taskAffinity creating isolated tasks - all apps run in separate parallel tasks independently
 
 ### Alarm System (`util/AlarmScheduler.kt`, `AlarmReceiver.kt`)

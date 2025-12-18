@@ -131,6 +131,9 @@ dependencies {
     // WebView support
     implementation("androidx.webkit:webkit:1.9.0")
     
+    // SwipeRefreshLayout for pull-to-refresh
+    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
+    
     // Permissions
     implementation("com.google.accompanist:accompanist-permissions:0.34.0")
     

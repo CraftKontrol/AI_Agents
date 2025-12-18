@@ -31,8 +31,8 @@ object WebViewConfigurator {
                 // Set database path to ensure persistence
                 databasePath = context.getDatabasePath("webview_databases").path
                 
-                // Caching - Use persistent cache
-                cacheMode = WebSettings.LOAD_DEFAULT
+                // Caching - Disable cache to force fresh content on every load
+                cacheMode = WebSettings.LOAD_NO_CACHE
                 // setAppCacheEnabled removed in API 33+
                 
                 // Media
@@ -111,6 +111,32 @@ object WebViewConfigurator {
             Timber.d("WebView storage paths configured for persistence")
         } catch (e: Exception) {
             Timber.e(e, "Error configuring WebView data paths")
+        }
+    }
+    
+    /**
+     * Clear all WebView cache and force fresh reload
+     * Call this before loading a URL to ensure fresh content
+     */
+    fun clearWebViewCache(webView: WebView) {
+        try {
+            // Clear cache
+            webView.clearCache(true)
+            
+            // Clear history
+            webView.clearHistory()
+            
+            // Clear form data
+            webView.clearFormData()
+            
+            // Clear cookies (localStorage is preserved for app functionality)
+            android.webkit.CookieManager.getInstance().removeAllCookies { success ->
+                Timber.d("Cookies cleared: $success")
+            }
+            
+            Timber.d("WebView cache cleared successfully")
+        } catch (e: Exception) {
+            Timber.e(e, "Error clearing WebView cache")
         }
     }
 }
