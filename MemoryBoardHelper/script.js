@@ -1088,8 +1088,12 @@ async function launchGreeting() {
         
         // Get Mistral API key
         const mistralApiKey = localStorage.getItem('mistralApiKey');
+        console.log('[App] Mistral API key check:', mistralApiKey ? 'Found' : 'Not found');
+        console.log('[App] localStorage keys:', Object.keys(localStorage));
+        
         if (!mistralApiKey) {
             console.log('[App] No Mistral API key, skipping launch greeting');
+            console.log('[App] Checking CKGenericApp.apiKeys...', window.CKGenericApp?.apiKeys);
             return;
         }
         
@@ -1354,9 +1358,38 @@ document.addEventListener('DOMContentLoaded', async function() {
     console.log('[App] Initialization complete');
     
     // Show launch greeting after a short delay
-    setTimeout(() => {
-        launchGreeting();
-    }, 2000);
+    // Wait for CKGenericApp API keys if in WebView, otherwise show immediately
+    const isInCKGenericApp = typeof window.CKAndroid !== 'undefined';
+    
+    if (isInCKGenericApp) {
+        console.log('[App] Detected CKGenericApp environment - waiting for API keys before greeting');
+        // Wait for API keys event or timeout after 5 seconds
+        let greetingShown = false;
+        
+        const showGreetingOnce = () => {
+            if (!greetingShown) {
+                greetingShown = true;
+                launchGreeting();
+            }
+        };
+        
+        // Listen for keys ready event
+        window.addEventListener('ckgenericapp_keys_ready', () => {
+            console.log('[App] API keys ready - showing greeting');
+            setTimeout(showGreetingOnce, 500);
+        }, { once: true });
+        
+        // Fallback timeout in case event doesn't fire
+        setTimeout(() => {
+            console.log('[App] Greeting timeout reached - showing anyway');
+            showGreetingOnce();
+        }, 5000);
+    } else {
+        console.log('[App] Regular browser environment - showing greeting normally');
+        setTimeout(() => {
+            launchGreeting();
+        }, 2000);
+    }
 });
 
 // Handle undo button click
@@ -1395,7 +1428,8 @@ async function handleUndoClick() {
 
 // Initialize speech recognition
 function initializeSpeechRecognition() {
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    // Only initialize browser speech recognition if sttMethod is 'browser' and it's supported
+    if (sttMethod === 'browser' && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         recognition = new SpeechRecognition();
         recognition.continuous = true; // Always continuous to avoid permission re-request
@@ -1414,12 +1448,16 @@ function initializeSpeechRecognition() {
         recognition.onerror = handleSpeechError;
         recognition.onend = handleSpeechEnd;
         
-        sttMethod = 'browser';
         console.log('[App] Browser speech recognition initialized');
-    } else {
-        sttMethod = 'google';
-        console.log('[App] Browser speech recognition not available, will use Google STT API');
+    } else if (sttMethod === 'browser') {
+        // Browser STT requested but not available, fallback to first available API
+        console.log('[App] Browser speech recognition not available, falling back to API STT');
+        if (!sttMethod || sttMethod === 'browser') {
+            sttMethod = 'google'; // Default fallback
+        }
     }
+    
+    console.log(`[App] Speech recognition initialized with method: ${sttMethod}`);
 }
 
 // Toggle listening mode (manual / always-listening)
@@ -1784,6 +1822,8 @@ function saveProviderSettings() {
     const sttProvider = document.getElementById('sttProvider')?.value || 'browser';
     const ttsProviderValue = document.getElementById('ttsProvider')?.value || 'browser';
     
+    const previousSTTMethod = sttMethod;
+    
     localStorage.setItem('sttProvider', sttProvider);
     localStorage.setItem('ttsProvider', ttsProviderValue);
     
@@ -1791,6 +1831,29 @@ function saveProviderSettings() {
     ttsProvider = ttsProviderValue;
     
     console.log(`[Providers] STT: ${sttProvider}, TTS: ${ttsProviderValue}`);
+    
+    // Reinitialize speech recognition if STT provider changed
+    if (previousSTTMethod !== sttMethod) {
+        console.log(`[Providers] STT method changed from ${previousSTTMethod} to ${sttMethod}, reinitializing...`);
+        
+        // Stop any ongoing recognition
+        if (recognition && isRecognitionActive) {
+            try {
+                recognition.stop();
+            } catch (e) {
+                console.log('[Providers] Recognition already stopped');
+            }
+            isRecognitionActive = false;
+        }
+        
+        // Reinitialize with new method
+        initializeSpeechRecognition();
+        
+        // Restart always-listening mode if it was active
+        if (listeningMode === 'always-listening') {
+            startAlwaysListening();
+        }
+    }
     
     // Update voice selector when TTS provider changes
     updateTTSProviderVoices();
