@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.craftkontrol.ckgenericapp.presentation.localization.AppLanguage
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.Info
@@ -151,6 +152,24 @@ fun SettingsScreen(
                 BackupRestoreSection(
                     onExportData = { viewModel.exportData(context) },
                     onImportData = { viewModel.importData(context) }
+                )
+            }
+            
+            item {
+                Divider(modifier = Modifier.padding(vertical = 16.dp))
+            }
+            
+            item {
+                Text(
+                    text = stringResource(R.string.cache_management),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            }
+            
+            item {
+                ClearCacheButton(
+                    onClearCache = { viewModel.clearCache(context) }
                 )
             }
             
@@ -348,6 +367,45 @@ fun BackupRestoreSection(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 8.dp)
             )
+        }
+    }
+}
+
+@Composable
+fun ClearCacheButton(
+    onClearCache: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.clear_cache_description),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Button(
+                onClick = onClearCache,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(stringResource(R.string.clear_cache))
+            }
         }
     }
 }

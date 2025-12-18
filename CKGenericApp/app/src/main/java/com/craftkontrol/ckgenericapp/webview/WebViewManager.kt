@@ -3,6 +3,7 @@ package com.craftkontrol.ckgenericapp.webview
 import android.Manifest
 import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -11,10 +12,31 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import timber.log.Timber
 
-class CKWebViewClient : WebViewClient() {
+class CKWebViewClient(private val context: Context) : WebViewClient() {
     
     override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-        // Allow all URLs to load in the WebView
+        val url = request?.url?.toString() ?: return false
+        
+        // Check if this is a request that should open in external browser
+        // This handles target="_blank" links and external URLs
+        val isMainFrame = request.isForMainFrame
+        val hasGesture = request.hasGesture()
+        
+        // If it's not the main frame (e.g., target="_blank"), open in browser
+        if (!isMainFrame || hasGesture) {
+            try {
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(intent)
+                Timber.d("Opening URL in external browser: $url")
+                return true
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to open URL in external browser: $url")
+                return false
+            }
+        }
+        
+        // Allow same-page navigation within WebView
         return false
     }
     

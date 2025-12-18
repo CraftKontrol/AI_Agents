@@ -123,6 +123,13 @@
     <string name="import_data">Import Latest Backup</string>
     <string name="auto_backup_info">Your data is automatically backed up with Google account. Manual export recommended for additional safety.</string>
     
+    <!-- Cache Management -->
+    <string name="cache_management">Cache Management</string>
+    <string name="clear_cache">Clear WebView Cache</string>
+    <string name="clear_cache_description">Clear all cached web data (cookies, storage, history)</string>
+    <string name="cache_cleared">Cache cleared successfully</string>
+    <string name="cache_clear_failed">Failed to clear cache</string>
+    
     <!-- Shortcut Activity -->
     <string name="error_no_app">Error: App not specified</string>
     <string name="loading_app">Loading app...</string>

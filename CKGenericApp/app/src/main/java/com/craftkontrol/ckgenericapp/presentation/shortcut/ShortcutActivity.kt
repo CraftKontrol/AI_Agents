@@ -284,7 +284,29 @@ private class ApiKeyInjectingWebViewClient(
 ) : android.webkit.WebViewClient() {
     
     override fun shouldOverrideUrlLoading(view: WebView?, request: android.webkit.WebResourceRequest?): Boolean {
-        // Allow all URLs to load in the WebView
+        val url = request?.url?.toString() ?: return false
+        val context = view?.context ?: return false
+        
+        // Check if this is a request that should open in external browser
+        // This handles target="_blank" links and new window requests
+        val isMainFrame = request.isForMainFrame
+        val hasGesture = request.hasGesture()
+        
+        // If it's not the main frame (e.g., target="_blank"), open in external browser
+        if (!isMainFrame || hasGesture) {
+            try {
+                val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(intent)
+                Timber.d("Opening URL in external browser: $url")
+                return true
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to open URL in external browser: $url")
+                return false
+            }
+        }
+        
+        // Allow same-page navigation within WebView
         return false
     }
     

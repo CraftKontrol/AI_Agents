@@ -118,6 +118,13 @@
     
     <!-- Sauvegarde des données -->
     <string name="data_backup">Sauvegarde des données</string>
+    
+    <!-- Gestion du cache -->
+    <string name="cache_management">Gestion du cache</string>
+    <string name="clear_cache">Vider le cache WebView</string>
+    <string name="clear_cache_description">Effacer toutes les données en cache (cookies, stockage, historique)</string>
+    <string name="cache_cleared">Cache vidé avec succès</string>
+    <string name="cache_clear_failed">Échec de la suppression du cache</string>
     <string name="backup_description">Sauvegarder et restaurer toutes les données de l\'application et le stockage des applications web</string>
     <string name="export_data">Exporter les données</string>
     <string name="import_data">Importer la dernière sauvegarde</string>

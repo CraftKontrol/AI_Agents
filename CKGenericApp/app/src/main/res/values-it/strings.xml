@@ -116,6 +116,13 @@
     
     <!-- Backup dei dati -->
     <string name="data_backup">Backup dei dati</string>
+    
+    <!-- Gestione della cache -->
+    <string name="cache_management">Gestione della cache</string>
+    <string name="clear_cache">Svuota cache WebView</string>
+    <string name="clear_cache_description">Cancella tutti i dati memorizzati (cookie, storage, cronologia)</string>
+    <string name="cache_cleared">Cache svuotata con successo</string>
+    <string name="cache_clear_failed">Impossibile svuotare la cache</string>
     <string name="backup_description">Backup e ripristino di tutti i dati dell\'app e dello storage delle applicazioni web</string>
     <string name="export_data">Esporta dati</string>
     <string name="import_data">Importa ultimo backup</string>

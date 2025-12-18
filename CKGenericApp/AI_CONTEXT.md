@@ -11,11 +11,12 @@
 ### Presentation (`presentation/`)
 **Compose + Material 3 + Hilt ViewModels**
 
-**Screens**: MainScreen (app management + API keys)  SettingsScreen (preferences + language)  DeviceTestScreen (hardware testing tabs)
+**Screens**: MainScreen (app management + API keys)  SettingsScreen (preferences + language + cache management)  DeviceTestScreen (hardware testing tabs)
 **Navigation**: AppNavGraph (Compose Navigation)  Screen sealed class (routes)
 **Theme**: Color.kt, Type.kt, Theme.kt (M3 tokens, dynamic color)
 **Localization**: AppLanguage enum (FR/EN/IT)  LocalizationManager  LocaleHelper  stringResource() for all text
 **State**: `StateFlow<UiState>` from ViewModels  `.collectAsStateWithLifecycle()` in Composables  `.update {}` for mutations
+**Cache Management**: Settings screen includes button to clear all WebView cache (cookies, localStorage, history, IndexedDB)
 
 ### Domain (`domain/`)
 **Pure Kotlin - No Android deps**
@@ -31,12 +32,14 @@
 **Mappers**: WebAppMapper (toDomain/toEntity extensions)
 
 ### WebView (`webview/`)
-**CKWebViewClient**: URL loading, page lifecycle, error handling
+**CKWebViewClient**: URL loading, page lifecycle, error handling, external browser navigation for `target="_blank"`
+**ApiKeyInjectingWebViewClient**: Custom client in ShortcutActivity that injects API keys + handles `target="_blank"` to open in default browser
 **CKWebChromeClient**: Permissions (camera/mic/location/file), progress, console logs, geolocation
 **WebViewJavaScriptInterface**: Android  JS bridge (exposed as `CKAndroid`): `postMessage()`, `showNotification()`, `getAppVersion()`, `getApiKey()`
 **WebViewConfigurator**: Centralized settings (JS enabled, DOM storage, media playback, mixed content allowed, debug mode)
 
 **Critical Settings**: `javaScriptEnabled = true`  `domStorageEnabled = true`  `mediaPlaybackRequiresUserGesture = false`  `mixedContentMode = ALWAYS_ALLOW`
+**External Links**: Links with `target="_blank"` or new window requests automatically open in default mobile browser via Intent
 
 ### Services (`service/`)
 **MonitoringService**: Foreground service (dataSync), coroutine loop (5min intervals), checks alarms/appointments/news, shows notifications
@@ -162,6 +165,7 @@ adb logcat | findstr CKGenericApp  # View logs
 **Add Translation**: Add string to `values/strings.xml` + `values-fr/strings.xml` + `values-it/strings.xml`
 **Add Alarm Type**: Update AlarmReceiver emoji mapping + notification channel logic
 **Debug WebView**: Enable `WebView.setWebContentsDebuggingEnabled(true)` in debug builds (already done)
+**Clear Cache**: Settings screen provides button to clear all WebView data (cache, cookies, localStorage, sessionStorage, IndexedDB, history, form data)
 
 ---
 
