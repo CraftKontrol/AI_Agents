@@ -2284,6 +2284,32 @@ body {
     border: 1px solid var(--border-color);
 }
 
+/* Add Task Button */
+.btn-add-task {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 15px 20px;
+    margin-top: 20px;
+    background-color: var(--primary-color);
+    color: #ffffff;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 500;
+    transition: background-color 0.3s ease;
+}
+
+.btn-add-task:hover {
+    background-color: var(--primary-dark);
+}
+
+.btn-add-task .material-symbols-outlined {
+    font-size: 24px;
+}
+
 /* Responsive calendar */
 @media (max-width: 768px) {
     .calendar-header {
