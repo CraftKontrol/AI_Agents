@@ -613,6 +613,31 @@
                         <button class="test-button" onclick="runTest('data_persistence', this)">Persistance données</button>
                     </div>
                 </div>
+
+                <!-- Vocal Commands Tests -->
+                <div class="test-category">
+                    <div class="category-header" onclick="toggleSection('vocalTests')">
+                        <span class="category-title">
+                            <span class="material-symbols-outlined">mic</span>
+                            Commandes Vocales (12)
+                        </span>
+                        <span class="material-symbols-outlined">expand_less</span>
+                    </div>
+                    <div class="category-content" id="vocalTests">
+                        <button class="test-button" onclick="runTest('vocal_add_task_simple', this)">Vocal: Ajouter tâche simple</button>
+                        <button class="test-button" onclick="runTest('vocal_add_task_with_time', this)">Vocal: Tâche avec heure</button>
+                        <button class="test-button" onclick="runTest('vocal_add_recurring_task', this)">Vocal: Tâche récurrente</button>
+                        <button class="test-button" onclick="runTest('vocal_complete_task', this)">Vocal: Marquer terminé</button>
+                        <button class="test-button" onclick="runTest('vocal_delete_task', this)">Vocal: Supprimer tâche</button>
+                        <button class="test-button" onclick="runTest('vocal_move_task', this)">Vocal: Déplacer tâche</button>
+                        <button class="test-button" onclick="runTest('vocal_question_when', this)">Vocal: Question "Quand"</button>
+                        <button class="test-button" onclick="runTest('vocal_question_what', this)">Vocal: Question "Quoi"</button>
+                        <button class="test-button" onclick="runTest('vocal_call_contact', this)">Vocal: Appeler contact</button>
+                        <button class="test-button" onclick="runTest('vocal_navigation_calendar', this)">Vocal: Navigation calendrier</button>
+                        <button class="test-button" onclick="runTest('vocal_navigation_notes', this)">Vocal: Navigation notes</button>
+                        <button class="test-button" onclick="runTest('vocal_navigation_lists', this)">Vocal: Navigation listes</button>
+                    </div>
+                </div>
             </div>
         </div>
 

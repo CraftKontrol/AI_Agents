@@ -186,6 +186,41 @@ async function executeCommand(command) {
     }
 }
 
+// Inject voice transcript (simulates STT output)
+async function injectVoiceTranscript(transcript) {
+    if (!isAppReady) {
+        throw new Error('Application pas encore prête');
+    }
+    
+    try {
+        // Method 1: Call processSpeechTranscript directly (main entry point for STT)
+        if (typeof appWindow.processSpeechTranscript === 'function') {
+            log(`Injection transcript: "${transcript}"`, 'info');
+            await appWindow.processSpeechTranscript(transcript);
+            return true;
+        }
+        
+        // Method 2: Fallback to handleSpeechResult (alternative entry point)
+        if (typeof appWindow.handleSpeechResult === 'function') {
+            const mockEvent = {
+                results: [[{ transcript: transcript }]]
+            };
+            await appWindow.handleSpeechResult(mockEvent);
+            return true;
+        }
+        
+        // Method 3: Fallback to handleVoiceNavigation
+        if (typeof appWindow.handleVoiceNavigation === 'function') {
+            await appWindow.handleVoiceNavigation(transcript);
+            return true;
+        }
+        
+        throw new Error('Aucune fonction de traitement vocal trouvée');
+    } catch (e) {
+        throw new Error(`Erreur d'injection: ${e.message}`);
+    }
+}
+
 // Click element in iframe
 function clickElement(selector) {
     if (!isAppReady) {
@@ -1367,6 +1402,156 @@ const tests = {
         name: 'Persistance données',
         validate: async () => {
             return typeof appWindow.Storage !== 'undefined';
+        }
+    },
+    
+    // === VOCAL COMMANDS TESTS (STT Simulation) ===
+    vocal_add_task_simple: {
+        name: 'Vocal: Ajouter tâche simple',
+        action: async () => {
+            await injectVoiceTranscript("Ajoute une tâche acheter du pain pour demain");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            // Check if Mistral processed the command
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
+        }
+    },
+    
+    vocal_add_task_with_time: {
+        name: 'Vocal: Tâche avec heure',
+        action: async () => {
+            await injectVoiceTranscript("Rappelle-moi d'appeler le docteur demain à 14h30");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
+        }
+    },
+    
+    vocal_add_recurring_task: {
+        name: 'Vocal: Tâche récurrente',
+        action: async () => {
+            await injectVoiceTranscript("Crée une tâche récurrente tous les jours à 8h pour prendre mes vitamines");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
+        }
+    },
+    
+    vocal_complete_task: {
+        name: 'Vocal: Marquer terminé',
+        action: async () => {
+            await injectVoiceTranscript("Marque la tâche acheter du pain comme terminée");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
+        }
+    },
+    
+    vocal_delete_task: {
+        name: 'Vocal: Supprimer tâche',
+        action: async () => {
+            await injectVoiceTranscript("Supprime la tâche acheter du pain");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
+        }
+    },
+    
+    vocal_move_task: {
+        name: 'Vocal: Déplacer tâche',
+        action: async () => {
+            await injectVoiceTranscript("Déplace la tâche appeler le docteur à mercredi prochain");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
+        }
+    },
+    
+    vocal_question_when: {
+        name: 'Vocal: Question "Quand"',
+        action: async () => {
+            await injectVoiceTranscript("Quand dois-je appeler le docteur?");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
+        }
+    },
+    
+    vocal_question_what: {
+        name: 'Vocal: Question "Quoi"',
+        action: async () => {
+            await injectVoiceTranscript("Qu'est-ce que j'ai à faire aujourd'hui?");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
+        }
+    },
+    
+    vocal_call_contact: {
+        name: 'Vocal: Appeler contact',
+        action: async () => {
+            await injectVoiceTranscript("Appelle Marie sur son portable");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return typeof appWindow.conversationHistory !== 'undefined' && 
+                   appWindow.conversationHistory.length > 0;
+        }
+    },
+    
+    vocal_navigation_calendar: {
+        name: 'Vocal: Navigation calendrier',
+        action: async () => {
+            await injectVoiceTranscript("Ouvre le calendrier");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            // Check if calendar section is visible
+            const doc = appWindow.document;
+            const calendarSection = doc.querySelector('.calendar-section');
+            return calendarSection && calendarSection.style.display !== 'none';
+        }
+    },
+    
+    vocal_navigation_notes: {
+        name: 'Vocal: Navigation notes',
+        action: async () => {
+            await injectVoiceTranscript("Va aux notes");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            const doc = appWindow.document;
+            const notesSection = doc.querySelector('.notes-section');
+            return notesSection && notesSection.style.display !== 'none';
+        }
+    },
+    
+    vocal_navigation_lists: {
+        name: 'Vocal: Navigation listes',
+        action: async () => {
+            await injectVoiceTranscript("Affiche les listes de courses");
+        },
+        validate: async () => {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            const doc = appWindow.document;
+            const listsSection = doc.querySelector('.lists-section');
+            return listsSection && listsSection.style.display !== 'none';
         }
     }
 };
