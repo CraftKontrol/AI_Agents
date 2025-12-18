@@ -315,13 +315,13 @@ The app uses **multiple prompts** for different intents:
 
 ## 🔧 Key Functions
 
-**storage.js:** initializeDatabase, addToStore, updateInStore, getFromStore, getAllFromStore, deleteFromStore
+**storage.js:** initializeDatabase, addToStore, updateInStore, getFromStore, getAllFromStore, deleteFromStore (merges localStorage tasks when IndexedDB is empty to keep early-created tasks discoverable)
 
 **task-manager.js:** createTask, getDisplayableTasks (max 5), completeTask, snoozeTask, deleteTask, getTodayTasks
 
 **mistral-agent.js:** sendToMistralAgent, detectLanguage, extractTaskFromResponse, getCompressedConversationHistory
 
-**action-wrapper.js:** executeAction (main entry), processMistralResult, registerAction, getRegisteredActions, ActionResult class, storage wrapper functions (getTask, getAllTasks, saveTask, updateTask, deleteTask, getAllLists, saveList, updateList, deleteList, getAllNotes, saveNote, updateNote, deleteNote)
+**action-wrapper.js:** executeAction (main entry), processMistralResult, registerAction, getRegisteredActions, ActionResult class, storage wrapper functions (getTask, getAllTasks, saveTask, updateTask, deleteTask, getAllLists, saveList, updateList, deleteList, getAllNotes, saveNote, updateNote, deleteNote); list actions normalize/split items, convert them to `{text, completed}` objects, merge by text (case-insensitive), and allow search_list to handle object items safely
 
 **alarm-system.js:** initializeAlarmSystem, checkForAlarms (30s), triggerAlarm, snoozeAlarm (10min), dismissAlarm
 
@@ -369,7 +369,7 @@ The app uses **multiple prompts** for different intents:
 - Visual overlay with stats
 - Auto-dismiss after 30s
 
-**undo-system.js:** recordAction, undoLastAction, showUndoButton (10s auto-hide), showToast
+**undo-system.js:** recordAction, undoLastAction, showUndoButton (10s auto-hide), showToast; voice undo commands are routed through action-wrapper so tests/listeners get action events
 
 **Action Types:** ADD_TASK, DELETE_TASK, COMPLETE_TASK, SNOOZE_TASK, UPDATE_TASK, ADD_NOTE, DELETE_NOTE, ADD_LIST, DELETE_LIST
 

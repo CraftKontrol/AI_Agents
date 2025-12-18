@@ -1742,7 +1742,19 @@ async function processSpeechTranscript(transcript) {
     
     if (undoKeywords.some(keyword => transcriptLower.includes(keyword))) {
         console.log('[App] Undo command detected:', transcript);
-        await handleUndoClick();
+        try {
+            const lang = typeof getCurrentLanguage === 'function' ? getCurrentLanguage() : 'fr';
+            const result = await executeAction('undo', {}, lang);
+            if (result?.success) {
+                // Keep UI in sync after an undo
+                if (typeof loadTasks === 'function') await loadTasks();
+                if (typeof refreshCalendar === 'function') await refreshCalendar();
+                if (typeof loadNotes === 'function') await loadNotes();
+                if (typeof loadLists === 'function') await loadLists();
+            }
+        } catch (error) {
+            console.error('[App] Undo command error:', error);
+        }
         return;
     }
     

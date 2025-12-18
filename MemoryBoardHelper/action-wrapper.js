@@ -824,6 +824,59 @@ function normalizeText(text) {
     return (text || '').toLowerCase().trim();
 }
 
+// Helper: normalize/expand list items coming from Mistral
+function normalizeItems(items) {
+    if (!items) return [];
+    const arr = Array.isArray(items) ? items : [items];
+    return arr
+        .flatMap(item => {
+            if (typeof item === 'object' && item !== null) {
+                return item.text ? [item.text] : [];
+            }
+            if (typeof item !== 'string') return item ? [String(item)] : [];
+            // Split on commas, semicolons, or common conjunctions
+            return item.split(/[,;]|\bet\b|\band\b|\be\b/gi);
+        })
+        .map(s => (typeof s === 'string' ? s.trim() : s))
+        .filter(v => !!v);
+}
+
+// Helper: convert any item shape to the app-standard object
+function toItemObject(item) {
+    const text = typeof item === 'string'
+        ? item.trim()
+        : typeof item === 'object' && item !== null
+            ? String(item.text || '').trim()
+            : '';
+    if (!text) return null;
+    const completed = typeof item === 'object' && item !== null && !!item.completed;
+    return { text, completed };
+}
+
+function mergeItemObjects(existing = [], incoming = []) {
+    const map = new Map();
+    existing.forEach(item => {
+        const obj = toItemObject(item);
+        if (!obj) return;
+        map.set(obj.text.toLowerCase(), obj);
+    });
+    incoming.forEach(item => {
+        const obj = toItemObject(item);
+        if (!obj) return;
+        const key = obj.text.toLowerCase();
+        if (!map.has(key)) {
+            map.set(key, obj);
+        }
+    });
+    return Array.from(map.values());
+}
+
+function getItemText(item) {
+    if (typeof item === 'string') return item;
+    if (typeof item === 'object' && item !== null) return String(item.text || '');
+    return '';
+}
+
 // Helper: find list by title (case-insensitive, partial match)
 async function findListByTitle(title) {
     const lists = await getAllLists();
@@ -851,16 +904,18 @@ registerAction(
     // Execute
     async (params, language) => {
         const list = params.list;
-        const items = Array.isArray(list.items) ? list.items.filter(i => !!i) : [];
+        const itemTexts = normalizeItems(list.items);
         const existing = await findListByTitle(list.title);
         
         try {
             if (existing) {
-                const mergedItems = Array.from(new Set([...(existing.items || []), ...items]));
+                const mergedItems = mergeItemObjects(existing.items, itemTexts);
                 const updated = { ...existing, items: mergedItems, category: list.category || existing.category || 'general' };
                 await window.updateList(updated);
                 if (typeof renderLists === 'function') {
                     await renderLists();
+                } else if (typeof loadLists === 'function') {
+                    await loadLists();
                 }
                 const message = params.response || getLocalizedResponse('listUpdated', language);
                 return new ActionResult(true, message, updated);
@@ -868,12 +923,14 @@ registerAction(
 
             const created = await window.createList({
                 title: list.title,
-                items: items,
+                items: mergeItemObjects([], itemTexts),
                 category: list.category || 'general'
             });
 
             if (typeof renderLists === 'function') {
                 await renderLists();
+            } else if (typeof loadLists === 'function') {
+                await loadLists();
             }
             const message = params.response || getLocalizedResponse('listAdded', language);
             return new ActionResult(true, message, created);
@@ -896,27 +953,31 @@ registerAction(
                 message: getLocalizedText('listTitleRequired', language) 
             };
         }
-        if (!params.list.items || params.list.items.length === 0) {
+        const normalizedItems = normalizeItems(params.list.items);
+        if (!normalizedItems || normalizedItems.length === 0) {
             return { 
                 valid: false, 
                 message: getLocalizedText('listItemsRequired', language) 
             };
         }
+        params.list.items = normalizedItems;
         return { valid: true };
     },
     // Execute
     async (params, language) => {
         const list = params.list;
         const existing = await findListByTitle(list.title);
-        const incomingItems = Array.isArray(list.items) ? list.items.filter(i => !!i) : [];
+        const incomingItems = Array.isArray(list.items) ? list.items : normalizeItems(list.items);
         
         try {
             if (existing) {
-                const mergedItems = Array.from(new Set([...(existing.items || []), ...incomingItems]));
+                const mergedItems = mergeItemObjects(existing.items, incomingItems);
                 const updated = { ...existing, items: mergedItems, category: list.category || existing.category || 'general' };
                 await window.updateList(updated);
                 if (typeof renderLists === 'function') {
                     await renderLists();
+                } else if (typeof loadLists === 'function') {
+                    await loadLists();
                 }
                 const message = params.response || getLocalizedResponse('listUpdated', language);
                 return new ActionResult(true, message, updated);
@@ -925,11 +986,13 @@ registerAction(
             // If list does not exist, create it instead of failing
             const created = await window.createList({
                 title: list.title,
-                items: incomingItems,
+                items: mergeItemObjects([], incomingItems),
                 category: list.category || 'general'
             });
             if (typeof renderLists === 'function') {
                 await renderLists();
+            } else if (typeof loadLists === 'function') {
+                await loadLists();
             }
             const message = params.response || getLocalizedResponse('listAdded', language);
             return new ActionResult(true, message, created);
@@ -989,7 +1052,7 @@ registerAction(
         const lists = await getAllLists();
         const normalized = normalizeText(title);
         const matches = normalized
-            ? lists.filter(l => normalizeText(l.title).includes(normalized) || (l.items || []).some(i => normalizeText(i).includes(normalized)))
+            ? lists.filter(l => normalizeText(l.title).includes(normalized) || (l.items || []).some(i => normalizeText(getItemText(i)).includes(normalized)))
             : lists;
         
         const message = params.response || (matches.length > 0
@@ -1031,6 +1094,8 @@ registerAction(
             });
             if (typeof renderNotes === 'function') {
                 await renderNotes();
+            } else if (typeof loadNotes === 'function') {
+                await loadNotes();
             }
             const message = params.response || getLocalizedResponse('noteAdded', language);
             return new ActionResult(true, message, created);
@@ -1074,6 +1139,8 @@ registerAction(
                 await window.updateNote(updated);
                 if (typeof renderNotes === 'function') {
                     await renderNotes();
+                } else if (typeof loadNotes === 'function') {
+                    await loadNotes();
                 }
                 const message = params.response || getLocalizedResponse('noteUpdated', language);
                 return new ActionResult(true, message, updated);
@@ -1086,6 +1153,8 @@ registerAction(
             });
             if (typeof renderNotes === 'function') {
                 await renderNotes();
+            } else if (typeof loadNotes === 'function') {
+                await loadNotes();
             }
             const message = params.response || getLocalizedResponse('noteAdded', language);
             return new ActionResult(true, message, created);

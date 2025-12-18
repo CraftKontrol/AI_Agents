@@ -245,7 +245,10 @@ async function saveTask(task) {
 
 async function getTask(id) {
     try {
-        return await getFromStore(STORES.TASKS, id);
+        const result = await getFromStore(STORES.TASKS, id);
+        if (result) return result;
+        // Fallback to localStorage if IndexedDB returns nothing
+        return getTaskFromLocalStorage(id);
     } catch (error) {
         console.error('[Storage] Error getting task:', error);
         return getTaskFromLocalStorage(id);
@@ -254,7 +257,15 @@ async function getTask(id) {
 
 async function getAllTasks() {
     try {
-        return await getAllFromStore(STORES.TASKS);
+        const tasks = await getAllFromStore(STORES.TASKS);
+        if (tasks && tasks.length > 0) return tasks;
+        // If IndexedDB is empty but localStorage has tasks (early saves before DB ready), merge them in
+        const localTasks = getTasksFromLocalStorage();
+        if (localTasks && localTasks.length > 0) {
+            console.log('[Storage] Using localStorage tasks fallback (IndexedDB empty)');
+            return localTasks;
+        }
+        return tasks;
     } catch (error) {
         console.error('[Storage] Error getting all tasks:', error);
         return getTasksFromLocalStorage();
