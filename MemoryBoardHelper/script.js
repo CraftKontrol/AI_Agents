@@ -1240,19 +1240,58 @@ function displayLaunchGreeting(message, overdueCount, todayCount, userLanguage =
         stats.appendChild(todaySpan);
     }
     
-    const closeBtn = document.createElement('button');
-    closeBtn.style.cssText = `
+    // Button container
+    const buttonContainer = document.createElement('div');
+    buttonContainer.style.cssText = `
         margin-top: 30px;
+        display: flex;
+        gap: 15px;
+    `;
+    
+    // Cancel button
+    const cancelBtn = document.createElement('button');
+    cancelBtn.style.cssText = `
+        padding: 12px 24px;
+        background: transparent;
+        color: #e0e0e0;
+        border: 1px solid #3a3a3a;
+        cursor: pointer;
+        font-size: 16px;
+        flex: 1;
+        transition: background 0.2s ease;
+    `;
+    cancelBtn.textContent = userLanguage === 'fr' ? 'Fermer' : (userLanguage === 'it' ? 'Chiudi' : 'Close');
+    cancelBtn.onmouseover = () => {
+        cancelBtn.style.background = '#3a3a3a';
+    };
+    cancelBtn.onmouseout = () => {
+        cancelBtn.style.background = 'transparent';
+    };
+    cancelBtn.onclick = () => {
+        console.log('[App] Greeting cancelled by user');
+        overlay.remove();
+    };
+    
+    // Start button
+    const startBtn = document.createElement('button');
+    startBtn.style.cssText = `
         padding: 12px 24px;
         background: #4a9eff;
         color: white;
         border: none;
         cursor: pointer;
         font-size: 16px;
-        width: 100%;
+        flex: 1;
+        transition: background 0.2s ease;
     `;
-    closeBtn.textContent = userLanguage === 'fr' ? 'Commencer' : (userLanguage === 'it' ? 'Inizia' : 'Start');
-    closeBtn.onclick = () => {
+    startBtn.textContent = userLanguage === 'fr' ? 'Commencer' : (userLanguage === 'it' ? 'Inizia' : 'Start');
+    startBtn.onmouseover = () => {
+        startBtn.style.background = '#6ab0ff';
+    };
+    startBtn.onmouseout = () => {
+        startBtn.style.background = '#4a9eff';
+    };
+    startBtn.onclick = () => {
         // Play audio on user interaction (satisfies browser autoplay policy)
         if (shouldSpeak) {
             console.log('[App] Playing greeting audio after user interaction');
@@ -1261,9 +1300,12 @@ function displayLaunchGreeting(message, overdueCount, todayCount, userLanguage =
         overlay.remove();
     };
     
+    buttonContainer.appendChild(cancelBtn);
+    buttonContainer.appendChild(startBtn);
+    
     card.appendChild(title);
     card.appendChild(stats);
-    card.appendChild(closeBtn);
+    card.appendChild(buttonContainer);
     overlay.appendChild(card);
     document.body.appendChild(overlay);
     
@@ -1688,8 +1730,7 @@ async function cancelPendingAction(confirmation) {
 
 // Priorisation navigation vocale sur Mistral
 async function processSpeechTranscript(transcript) {
-    // Show the transcript below the VU meter
-    showTranscript(transcript);
+    console.log('[App] processSpeechTranscript called with:', transcript);
     
     // Check for undo command first (highest priority)
     const undoKeywords = ['annuler', 'annule', 'undo', 'annulla', 'retour', 'défaire', 'defaire'];
@@ -2360,7 +2401,8 @@ async function processAudioWithDeepgram(audioBlob) {
         
         if (transcript && transcript.trim()) {
             console.log('[Deepgram STT] Success - Transcript:', transcript);
-            // Process the transcript through speech processing system
+            // Show transcript and process
+            showTranscript(transcript.trim());
             await processSpeechTranscript(transcript.trim());
         } else {
             console.warn('[Deepgram STT] No speech detected in audio');
@@ -4307,11 +4349,16 @@ function getTaskActionText(action, lang) {
 
 // UI Helper functions
 function showTranscript(text) {
+    console.log('[UI] showTranscript called with:', text);
     const transcript = document.getElementById('voiceTranscript');
     const transcriptText = document.getElementById('transcriptText');
+    console.log('[UI] Elements found:', { transcript: !!transcript, transcriptText: !!transcriptText });
     if (transcript && transcriptText) {
         transcriptText.textContent = text;
         transcript.style.display = 'block';
+        console.log('[UI] Transcript displayed successfully');
+    } else {
+        console.error('[UI] Transcript elements not found!');
     }
 }
 
