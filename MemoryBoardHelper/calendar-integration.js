@@ -2,7 +2,7 @@
 // Manages calendar display, event interactions, and API bindings
 
 let calendar = null;
-let currentCalendarView = 'dayGridMonth';
+let currentCalendarView = 'listWeek';
 
 // Priority colors mapping (CraftKontrol theme)
 const PRIORITY_COLORS = {
@@ -123,6 +123,15 @@ async function initializeCalendar() {
 
         calendar.render();
         console.log('[Calendar] Initialized with', events.length, 'events');
+        
+        // Set initial active button state
+        setTimeout(() => {
+            document.querySelectorAll('.btn-view').forEach(btn => {
+                if (btn.getAttribute('data-view') === currentCalendarView) {
+                    btn.classList.add('active');
+                }
+            });
+        }, 100);
         
     } catch (error) {
         console.error('[Calendar] Initialization error:', error);
@@ -379,6 +388,16 @@ function changeCalendarView(viewName) {
     if (calendar) {
         calendar.changeView(viewName);
         currentCalendarView = viewName;
+        
+        // Update active button state
+        document.querySelectorAll('.btn-view').forEach(btn => {
+            if (btn.getAttribute('data-view') === viewName) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+        
         playSound('tap');
         console.log('[Calendar] View changed to:', viewName);
     }

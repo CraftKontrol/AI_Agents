@@ -1948,24 +1948,36 @@ body {
     font-size: 24px;
 }
 
-.view-selector select {
+.view-selector {
+    display: flex;
+    gap: 5px;
+}
+
+.btn-view {
     padding: 10px 15px;
     background-color: var(--background-color);
     color: var(--text-color);
     border: 1px solid var(--border-color);
     cursor: pointer;
-    font-size: 16px;
-    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
 }
 
-.view-selector select:hover {
+.btn-view:hover {
     border-color: var(--primary-color);
+    background-color: var(--surface-elevated);
 }
 
-.view-selector select:focus {
-    outline: none;
+.btn-view.active {
+    background-color: var(--primary-color);
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.1);
+    color: #ffffff;
+}
+
+.btn-view .material-symbols-outlined {
+    font-size: 20px;
 }
 
 /* Overdue task styling */
@@ -2286,10 +2298,11 @@ body {
     
     .view-selector {
         flex: 1;
+        justify-content: flex-end;
     }
     
-    .view-selector select {
-        width: 100%;
+    .btn-view {
+        padding: 8px 12px;
     }
     
     #calendarContainer {
@@ -2333,10 +2346,12 @@ body {
         font-size: 20px;
     }
     
-    .view-selector select {
-        font-size: 14px;
-        padding: 8px 12px;
-        height: 40px;
+    .btn-view {
+        padding: 8px 10px;
+    }
+    
+    .btn-view .material-symbols-outlined {
+        font-size: 18px;
     }
 }
 

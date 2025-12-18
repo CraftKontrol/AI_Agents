@@ -366,12 +366,18 @@
                         <span class="material-symbols-outlined">chevron_right</span>
                     </button>
                     <div class="view-selector">
-                        <select id="calendarViewSelect" onchange="changeCalendarView(this.value)">
-                            <option value="dayGridMonth">Mois</option>
-                            <option value="timeGridWeek">Semaine</option>
-                            <option value="timeGridDay">Jour</option>
-                            <option value="listWeek">Liste</option>
-                        </select>
+                        <button class="btn-view" onclick="changeCalendarView('listWeek')" data-view="listWeek" title="Liste">
+                            <span class="material-symbols-outlined">list</span>
+                        </button>
+                        <button class="btn-view" onclick="changeCalendarView('dayGridMonth')" data-view="dayGridMonth" title="Mois">
+                            <span class="material-symbols-outlined">calendar_month</span>
+                        </button>
+                        <button class="btn-view" onclick="changeCalendarView('timeGridWeek')" data-view="timeGridWeek" title="Semaine">
+                            <span class="material-symbols-outlined">view_week</span>
+                        </button>
+                        <button class="btn-view" onclick="changeCalendarView('timeGridDay')" data-view="timeGridDay" title="Jour">
+                            <span class="material-symbols-outlined">today</span>
+                        </button>
                     </div>
                 </div>
             </div>

@@ -3,13 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Test App - Memory Board Helper</title>
+    <title>Memory Board Helper - Test System</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
     <style>
         :root {
             --primary-color: #4a9eff;
             --primary-dark: #0d4fff;
+            --secondary-color: #404040;
             --background-color: #1a1a1a;
             --surface-color: #2a2a2a;
+            --surface-elevated: #3a3a3a;
             --text-color: #e0e0e0;
             --text-muted: #888;
             --border-color: #3a3a3a;
@@ -29,264 +32,604 @@
             background-color: var(--background-color);
             color: var(--text-color);
             line-height: 1.6;
-            padding: 20px;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+            user-select: none;
         }
 
+        /* Header */
         .header {
             background-color: var(--surface-color);
-            padding: 20px;
-            margin-bottom: 30px;
-        }
-
-        .header h1 {
-            color: #ffffff;
-            font-size: 28px;
-            margin-bottom: 8px;
-        }
-
-        .header p {
-            color: var(--text-muted);
-            font-size: 14px;
-        }
-
-        .test-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin-bottom: 20px;
-        }
-
-        .test-card {
-            background-color: var(--surface-color);
-            padding: 20px;
-        }
-
-        .test-card h2 {
-            color: #ffffff;
-            font-size: 18px;
-            margin-bottom: 15px;
-        }
-
-        .test-list {
-            list-style: none;
-        }
-
-        .test-item {
-            padding: 10px;
-            margin-bottom: 8px;
-            background-color: var(--background-color);
-            border: 1px solid var(--border-color);
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .test-item:hover {
-            border-color: var(--primary-color);
-            background-color: rgba(74, 158, 255, 0.1);
-        }
-
-        .test-item.running {
-            border-color: var(--warning-color);
-            background-color: rgba(255, 170, 68, 0.1);
-        }
-
-        .test-item.passed {
-            border-color: var(--success-color);
-            background-color: rgba(68, 255, 136, 0.1);
-        }
-
-        .test-item.failed {
-            border-color: var(--error-color);
-            background-color: rgba(255, 68, 68, 0.1);
-        }
-
-        .status-badge {
-            display: inline-block;
-            padding: 2px 8px;
-            font-size: 12px;
-            font-weight: 600;
-            border-radius: 3px;
-            margin-left: 10px;
-        }
-
-        .status-pending { background-color: var(--text-muted); color: #000; }
-        .status-running { background-color: var(--warning-color); color: #000; }
-        .status-passed { background-color: var(--success-color); color: #000; }
-        .status-failed { background-color: var(--error-color); color: #fff; }
-
-        .controls {
-            background-color: var(--surface-color);
-            padding: 20px;
-            margin-bottom: 20px;
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        button {
-            padding: 12px 24px;
-            background-color: var(--primary-color);
-            color: #ffffff;
-            border: none;
-            font-size: 16px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-
-        button:hover {
-            background-color: var(--primary-dark);
-        }
-
-        button:disabled {
-            background-color: var(--text-muted);
-            cursor: not-allowed;
-            opacity: 0.6;
-        }
-
-        .results {
-            background-color: var(--surface-color);
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-
-        .results h2 {
-            color: #ffffff;
-            font-size: 20px;
-            margin-bottom: 15px;
-        }
-
-        .result-item {
-            background-color: var(--background-color);
-            padding: 15px;
-            margin-bottom: 10px;
-            border: 1px solid var(--border-color);
-            font-family: 'Courier New', monospace;
-            font-size: 13px;
-        }
-
-        .result-header {
-            font-weight: bold;
-            margin-bottom: 10px;
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border-color);
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
 
-        .result-content {
-            white-space: pre-wrap;
-            word-wrap: break-word;
+        .header-title h1 {
+            color: #ffffff;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
-        .summary {
+        .header-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: var(--text-muted);
+            display: inline-block;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.ready {
+            background-color: var(--success-color);
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        #statusText {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        /* Main Layout */
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Test Panel */
+        .test-panel {
+            width: 400px;
             background-color: var(--surface-color);
-            padding: 20px;
-            margin-bottom: 20px;
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
 
-        .summary-stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 15px;
-            margin-top: 15px;
-        }
-
-        .stat-card {
-            background-color: var(--background-color);
+        .test-controls {
             padding: 15px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .control-group input {
+            width: 100%;
+            padding: 8px;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            font-size: 14px;
+        }
+
+        .control-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 15px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: #ffffff;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--surface-elevated);
+        }
+
+        /* Test Statistics */
+        .test-stats {
+            padding: 15px;
+            background-color: var(--background-color);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .stat-item {
             text-align: center;
         }
 
         .stat-value {
-            font-size: 32px;
+            font-size: 24px;
             font-weight: bold;
-            margin-bottom: 5px;
+            color: var(--primary-color);
+        }
+
+        .stat-item.passed .stat-value {
+            color: var(--success-color);
+        }
+
+        .stat-item.failed .stat-value {
+            color: var(--error-color);
         }
 
         .stat-label {
+            font-size: 12px;
             color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background-color: var(--surface-elevated);
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background-color: var(--primary-color);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        /* Test Categories */
+        .test-categories {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .test-category {
+            margin-bottom: 15px;
+        }
+
+        .category-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px;
+            background-color: var(--surface-elevated);
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .category-header:hover {
+            background-color: #454545;
+        }
+
+        .category-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
             font-size: 14px;
         }
 
-        .footer {
-            text-align: center;
-            padding: 20px;
-            margin-top: 40px;
+        .category-content {
+            padding: 5px;
+        }
+
+        .category-content.collapsed {
+            display: none;
+        }
+
+        .test-button {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            text-align: left;
+            font-size: 13px;
+            position: relative;
+            transition: all 0.2s ease;
+        }
+
+        .test-button:hover {
+            border-color: var(--primary-color);
+            background-color: var(--surface-elevated);
+        }
+
+        .test-button.running {
+            border-color: var(--primary-color);
+            background-color: rgba(74, 158, 255, 0.1);
+        }
+
+        .test-button.success {
+            border-color: var(--success-color);
+            background-color: rgba(68, 255, 136, 0.1);
+        }
+
+        .test-button.error {
+            border-color: var(--error-color);
+            background-color: rgba(255, 68, 68, 0.1);
+        }
+
+        .test-result {
+            font-size: 11px;
+            margin-top: 5px;
+            padding-top: 5px;
             border-top: 1px solid var(--border-color);
-            color: var(--text-muted);
+        }
+
+        .test-result.success {
+            color: var(--success-color);
+        }
+
+        .test-result.error {
+            color: var(--error-color);
+        }
+
+        /* App Frame */
+        .app-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .iframe-container {
+            flex: 1;
+            position: relative;
+            background-color: var(--background-color);
+        }
+
+        #appFrame {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        /* Log Panel */
+        .log-panel {
+            height: 200px;
+            background-color: var(--surface-color);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .log-header {
+            padding: 10px 15px;
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 500;
             font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .log-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 12px;
+        }
+
+        .log-entry {
+            padding: 4px 0;
+            line-height: 1.4;
+        }
+
+        .log-entry.info {
+            color: var(--text-muted);
+        }
+
+        .log-entry.success {
+            color: var(--success-color);
+        }
+
+        .log-entry.error {
+            color: var(--error-color);
+        }
+
+        .log-entry.warning {
+            color: var(--warning-color);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--background-color);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .test-panel {
+                width: 350px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .main-container {
+                flex-direction: column;
+            }
+            
+            .test-panel {
+                width: 100%;
+                height: 50%;
+                border-right: none;
+                border-bottom: 1px solid var(--border-color);
+            }
+
+            .log-panel {
+                height: 150px;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>Memory Board Helper - Test Suite</h1>
-            <p>Comprehensive testing for all application features</p>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-title">
+            <h1>
+                <span class="material-symbols-outlined">bug_report</span>
+                Memory Board Helper - Test System
+            </h1>
         </div>
-
-        <div class="controls">
-            <button onclick="runAllTests()">Run All Tests</button>
-            <button onclick="runCategoryTests('storage')">Test Storage</button>
-            <button onclick="runCategoryTests('tasks')">Test Tasks</button>
-            <button onclick="runCategoryTests('calendar')">Test Calendar</button>
-            <button onclick="runCategoryTests('alarms')">Test Alarms</button>
-            <button onclick="clearResults()">Clear Results</button>
+        <div class="header-controls">
+            <span class="status-indicator" id="statusIndicator"></span>
+            <span id="statusText">Initialisation...</span>
         </div>
+    </header>
 
-        <div class="summary" id="summary" style="display: none;">
-            <h2>Test Summary</h2>
-            <div class="summary-stats">
-                <div class="stat-card">
-                    <div class="stat-value" id="totalTests">0</div>
-                    <div class="stat-label">Total Tests</div>
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Test Panel -->
+        <div class="test-panel">
+            <!-- Test Controls -->
+            <div class="test-controls">
+                <div class="control-group">
+                    <label for="testDelay">Délai entre tests (ms):</label>
+                    <input type="number" id="testDelay" value="1000" min="100" step="100">
                 </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="passedTests" style="color: var(--success-color);">0</div>
-                    <div class="stat-label">Passed</div>
+                <div class="control-buttons">
+                    <button class="btn btn-primary" onclick="runAllTests()">
+                        <span class="material-symbols-outlined">play_arrow</span>
+                        Tous les tests
+                    </button>
+                    <button class="btn btn-secondary" onclick="resetTests()">
+                        <span class="material-symbols-outlined">refresh</span>
+                        Réinitialiser
+                    </button>
+                    <button class="btn btn-secondary" onclick="reloadApp()">
+                        <span class="material-symbols-outlined">refresh</span>
+                        Recharger App
+                    </button>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="failedTests" style="color: var(--error-color);">0</div>
-                    <div class="stat-label">Failed</div>
+            </div>
+
+            <!-- Test Statistics -->
+            <div class="test-stats">
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-value" id="totalTests">0</div>
+                        <div class="stat-label">Total</div>
+                    </div>
+                    <div class="stat-item passed">
+                        <div class="stat-value" id="passedTests">0</div>
+                        <div class="stat-label">Réussis</div>
+                    </div>
+                    <div class="stat-item failed">
+                        <div class="stat-value" id="failedTests">0</div>
+                        <div class="stat-label">Échoués</div>
+                    </div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="duration">0s</div>
-                    <div class="stat-label">Duration</div>
+                <div class="progress-bar">
+                    <div class="progress-bar-fill" id="progressBar"></div>
+                </div>
+            </div>
+
+            <!-- Test Categories -->
+            <div class="test-categories">
+                <!-- Task Tests -->
+                <div class="test-category">
+                    <div class="category-header" onclick="toggleSection('taskTests')">
+                        <span class="category-title">
+                            <span class="material-symbols-outlined">task</span>
+                            Tests Tâches (14)
+                        </span>
+                        <span class="material-symbols-outlined">expand_less</span>
+                    </div>
+                    <div class="category-content" id="taskTests">
+                        <button class="test-button" onclick="runTest('add_task_simple', this)">Ajouter tâche simple</button>
+                        <button class="test-button" onclick="runTest('add_task_with_date', this)">Ajouter tâche avec date</button>
+                        <button class="test-button" onclick="runTest('add_task_with_time', this)">Ajouter tâche avec heure</button>
+                        <button class="test-button" onclick="runTest('add_recursive_task', this)">Ajouter tâche récurrente</button>
+                        <button class="test-button" onclick="runTest('complete_task', this)">Compléter tâche</button>
+                        <button class="test-button" onclick="runTest('update_task_date', this)">Modifier date tâche</button>
+                        <button class="test-button" onclick="runTest('update_task_time', this)">Modifier heure tâche</button>
+                        <button class="test-button" onclick="runTest('update_task_recurrence', this)">Modifier récurrence</button>
+                        <button class="test-button" onclick="runTest('update_task_type', this)">Modifier type tâche</button>
+                        <button class="test-button" onclick="runTest('update_task_priority', this)">Modifier priorité</button>
+                        <button class="test-button" onclick="runTest('delete_task', this)">Supprimer tâche</button>
+                        <button class="test-button" onclick="runTest('delete_old_tasks', this)">Supprimer anciennes tâches</button>
+                        <button class="test-button" onclick="runTest('delete_done_tasks', this)">Supprimer tâches terminées</button>
+                        <button class="test-button" onclick="runTest('search_task', this)">Rechercher tâche</button>
+                    </div>
+                </div>
+
+                <!-- List Tests -->
+                <div class="test-category">
+                    <div class="category-header" onclick="toggleSection('listTests')">
+                        <span class="category-title">
+                            <span class="material-symbols-outlined">list</span>
+                            Tests Listes (3)
+                        </span>
+                        <span class="material-symbols-outlined">expand_less</span>
+                    </div>
+                    <div class="category-content" id="listTests">
+                        <button class="test-button" onclick="runTest('add_list', this)">Créer liste</button>
+                        <button class="test-button" onclick="runTest('update_list', this)">Ajouter à liste</button>
+                        <button class="test-button" onclick="runTest('delete_list', this)">Supprimer liste</button>
+                    </div>
+                </div>
+
+                <!-- Note Tests -->
+                <div class="test-category">
+                    <div class="category-header" onclick="toggleSection('noteTests')">
+                        <span class="category-title">
+                            <span class="material-symbols-outlined">note</span>
+                            Tests Notes (3)
+                        </span>
+                        <span class="material-symbols-outlined">expand_less</span>
+                    </div>
+                    <div class="category-content" id="noteTests">
+                        <button class="test-button" onclick="runTest('add_note', this)">Créer note</button>
+                        <button class="test-button" onclick="runTest('update_note', this)">Modifier note</button>
+                        <button class="test-button" onclick="runTest('delete_note', this)">Supprimer note</button>
+                    </div>
+                </div>
+
+                <!-- Navigation Tests -->
+                <div class="test-category">
+                    <div class="category-header" onclick="toggleSection('navTests')">
+                        <span class="category-title">
+                            <span class="material-symbols-outlined">navigation</span>
+                            Tests Navigation (17)
+                        </span>
+                        <span class="material-symbols-outlined">expand_less</span>
+                    </div>
+                    <div class="category-content" id="navTests">
+                        <button class="test-button" onclick="runTest('nav_time_display', this)">Section affichage heure</button>
+                        <button class="test-button" onclick="runTest('nav_voice_interaction', this)">Section interaction vocale</button>
+                        <button class="test-button" onclick="runTest('nav_calendar', this)">Section calendrier</button>
+                        <button class="test-button" onclick="runTest('nav_notes', this)">Section notes</button>
+                        <button class="test-button" onclick="runTest('nav_lists', this)">Section listes</button>
+                        <button class="test-button" onclick="runTest('nav_quick_commands', this)">Section commandes rapides</button>
+                        <button class="test-button" onclick="runTest('toggle_voice_section', this)">Masquer/Afficher vocal</button>
+                        <button class="test-button" onclick="runTest('toggle_calendar_section', this)">Masquer/Afficher calendrier</button>
+                        <button class="test-button" onclick="runTest('toggle_notes_section', this)">Masquer/Afficher notes</button>
+                        <button class="test-button" onclick="runTest('toggle_lists_section', this)">Masquer/Afficher listes</button>
+                        <button class="test-button" onclick="runTest('toggle_commands_section', this)">Masquer/Afficher commandes</button>
+                        <button class="test-button" onclick="runTest('calendar_today', this)">Calendrier aujourd'hui</button>
+                        <button class="test-button" onclick="runTest('calendar_prev', this)">Calendrier précédent</button>
+                        <button class="test-button" onclick="runTest('calendar_next', this)">Calendrier suivant</button>
+                        <button class="test-button" onclick="runTest('calendar_view_week', this)">Vue semaine</button>
+                        <button class="test-button" onclick="runTest('calendar_view_day', this)">Vue jour</button>
+                        <button class="test-button" onclick="runTest('calendar_view_month', this)">Vue mois</button>
+                    </div>
+                </div>
+
+                <!-- UI Tests -->
+                <div class="test-category">
+                    <div class="category-header" onclick="toggleSection('uiTests')">
+                        <span class="category-title">
+                            <span class="material-symbols-outlined">dashboard</span>
+                            Tests Interface (8)
+                        </span>
+                        <span class="material-symbols-outlined">expand_less</span>
+                    </div>
+                    <div class="category-content" id="uiTests">
+                        <button class="test-button" onclick="runTest('open_task_modal', this)">Ouvrir modal tâche</button>
+                        <button class="test-button" onclick="runTest('close_task_modal', this)">Fermer modal</button>
+                        <button class="test-button" onclick="runTest('open_settings_modal', this)">Ouvrir paramètres</button>
+                        <button class="test-button" onclick="runTest('close_settings_modal', this)">Fermer paramètres</button>
+                        <button class="test-button" onclick="runTest('toggle_emergency_panel', this)">Toggle urgence</button>
+                        <button class="test-button" onclick="runTest('toggle_listening_mode', this)">Toggle mode écoute</button>
+                        <button class="test-button" onclick="runTest('check_alarm_system', this)">Vérifier système alarme</button>
+                        <button class="test-button" onclick="runTest('check_calendar_render', this)">Rendu calendrier</button>
+                    </div>
+                </div>
+
+                <!-- Storage Tests -->
+                <div class="test-category">
+                    <div class="category-header" onclick="toggleSection('storageTests')">
+                        <span class="category-title">
+                            <span class="material-symbols-outlined">storage</span>
+                            Tests Stockage (3)
+                        </span>
+                        <span class="material-symbols-outlined">expand_less</span>
+                    </div>
+                    <div class="category-content" id="storageTests">
+                        <button class="test-button" onclick="runTest('check_indexeddb', this)">Vérifier IndexedDB</button>
+                        <button class="test-button" onclick="runTest('check_localstorage', this)">Vérifier localStorage</button>
+                        <button class="test-button" onclick="runTest('data_persistence', this)">Persistance données</button>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="test-grid">
-            <div class="test-card">
-                <h2>Storage Tests</h2>
-                <ul class="test-list" id="storageTests"></ul>
+        <!-- App Container -->
+        <div class="app-container">
+            <div class="iframe-container">
+                <iframe id="appFrame" src="index.html"></iframe>
             </div>
-            <div class="test-card">
-                <h2>Task Tests</h2>
-                <ul class="test-list" id="taskTests"></ul>
+            
+            <!-- Log Panel -->
+            <div class="log-panel">
+                <div class="log-header">
+                    <span class="material-symbols-outlined">terminal</span>
+                    Log des tests
+                </div>
+                <div class="log-content" id="testLog"></div>
             </div>
-            <div class="test-card">
-                <h2>Calendar Tests</h2>
-                <ul class="test-list" id="calendarTests"></ul>
-            </div>
-            <div class="test-card">
-                <h2>Alarm Tests</h2>
-                <ul class="test-list" id="alarmTests"></ul>
-            </div>
-        </div>
-
-        <div class="results" id="resultsSection" style="display: none;">
-            <h2>Test Results</h2>
-            <div id="results"></div>
-        </div>
-
-        <div class="footer">
-            <p>CraftKontrol © 2025</p>
         </div>
     </div>
 

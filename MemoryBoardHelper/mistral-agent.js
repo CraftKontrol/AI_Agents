@@ -89,6 +89,15 @@ When extracting tasks, respond in JSON format with:
     "language": "fr|it|en"
 }
 
+⚠️ ULTRA-CRITICAL PRIORITY RULES (NEVER VIOLATE):
+1. NEVER classify these as "conversation" - they are ALWAYS actions:
+   - ANY phrase with "N'oublie pas" → ALWAYS add_task
+   - ANY phrase starting with "Rendez-vous" or "Prendre" → ALWAYS add_task or add_recursive_task
+   - ANY phrase with "annule" + "action" OR "défais" + "ce que" → ALWAYS undo
+   - ANY phrase with "modifie" + "rendez-vous/tâche/heure" → ALWAYS update_task
+2. If unsure between task and conversation, ALWAYS choose task (safer)
+3. Conversation ONLY for: greetings, thanks, pure questions with NO action
+
 CRITICAL DETECTION RULES:
 
 🔴 NOTES vs TASKS (MOST IMPORTANT):
@@ -97,42 +106,45 @@ CRITICAL DETECTION RULES:
   * "note que" / "note:" / "noter que"
   * "ajoute une note" / "crée une note" / "add a note" / "create a note"
   * "nouvelle note" / "new note"
-- Use "add_task" ONLY when user says:
+- Use "add_task" when user says:
   * "rappelle-moi" / "remind me" / "ricordami"
   * "ajoute une tâche" / "crée une tâche" / "add a task"
-  * "n'oublie pas" / "don't forget"
-  * Mentions specific time/date for reminder
+  * "n'oublie pas" / "don't forget" / "non dimenticare"
+  * Mentions specific time/date for action
+  * Declarative appointment: "Rendez-vous X" / "Appointment X" / "Appuntamento X"
+  * Imperative medication: "Prendre X" / "Take X" / "Prendere X" (without "note")
+
+🔴 DECLARATIVE & IMPERATIVE PHRASES (CRITICAL - HIGHEST PRIORITY):
+When user states an action WITHOUT explicit "rappelle-moi/ajoute/crée", it is STILL a task if it:
+- Mentions appointment: "Rendez-vous X" / "Appointment X" / "Appuntamento X"
+- Imperative medication: "Prendre X" / "Take X" / "Prendere X"
+- "N'oublie pas de X" / "Don't forget to X" / "Non dimenticare X"
+- Has time/date context: "X demain à 14h" / "X lundi prochain"
+
+EXAMPLES (FOLLOW EXACTLY):
+- "Rendez-vous chez le dentiste demain à 14h" → add_task (NOT conversation!)
+- "Prendre aspirine 500mg" → add_task or add_recursive_task if recurring
+- "N'oublie pas de sortir les poubelles" → add_task (NOT conversation!)
+- "Rendez-vous médecin tous les mois" → add_recursive_task (NOT conversation!)
+
+NEVER respond with "conversation" for these - they are ALWAYS tasks!
 
 🔴 LISTS:
 - Use "add_list" when:
-  * User explicitly says "ajoute une liste", "crée une liste", "add a list", "create a list"
-  * OR when user enumerates 3+ distinct actions/tasks in one message
+  * User explicitly says "crée une liste" / "nouvelle liste" / "create a list" / "new list"
+  * OR user says "liste de X" followed by items ("liste de courses: pain, lait, œufs")
+  * OR when user enumerates 3+ distinct actions/tasks in one message WITHOUT "à ma liste"
   * Examples: "faire le café faire les courses faire un bisou" → add_list with 3 items
-  * "je dois acheter du pain du lait et des œufs" → add_list with 3 items
+  * "liste de courses: pain du lait et des œufs" → add_list with 3 items
 - Use "update_list" when:
-  * "ajoute X à ma liste" / "rajoute X dans la liste" / "add X to my list"
+  * "ajoute X à ma liste" / "rajoute X dans la liste" / "add X to my list" (explicit "à ma/to my")
   * Extract list name from context and items to add
+  * Example: "ajoute pommes à ma liste de courses" → update_list
 - Use "delete_list" when:
   * "supprime la liste" / "efface la liste" / "delete the list"
   * Extract list name or "dernière" if they want most recent
 
 🔴 RECURRING TASKS:
-- Set recurrence field when user mentions:
-  * "tous les jours" / "quotidien" / "chaque jour" → "daily"
-  * "chaque semaine" / "tous les lundis" / "hebdomadaire" → "weekly"
-  * "chaque mois" / "tous les mois" / "mensuel" → "monthly"
-  * "every day" / "daily" → "daily"
-  * "every week" / "weekly" → "weekly"
-  * "every month" / "monthly" → "monthly"
-
-For search_task action, use when the user asks about an existing task (e.g., "c'est quand mon rendez-vous?", "when is my appointment?", "quand ai-je mon médicament?", "montre-moi la tâche", "show me the task"). 
-ALSO use search_task when the user wants to list/view multiple tasks (e.g., "liste tous mes rendez-vous", "list all my appointments", "quels sont mes rendez-vous", "what are my appointments").
-IMPORTANT: If the user says "la tâche" or "the task" without specifying which one, check the conversation history to find what task was discussed in recent messages and use that task description for the search.
-For list requests (tous/toutes/all/liste), extract ONLY the task type, not a specific description. For example: "tous mes rendez-vous" → task.type = "appointment", task.description = "rendez-vous" (generic).
-
-For update_task action, always use when the user wants to change the date, time, or other details of an existing task. Do NOT use delete_task in this case. For example, if the user says "change la date du rendez-vous chez le dentiste pour demain à 14h", respond with action "update_task" and provide the new date and time in the task object.
-
-🔴 RECURRING TASKS - USE add_recursive_task:
 - Use "add_recursive_task" (NOT add_task) when user mentions:
   * "tous les jours" / "quotidien" / "chaque jour" / "every day" / "daily" → recurrence: "daily"
   * "chaque semaine" / "tous les lundis" / "hebdomadaire" / "every week" / "weekly" → recurrence: "weekly"
@@ -141,29 +153,29 @@ For update_task action, always use when the user wants to change the date, time,
   * "trois fois par jour" / "twice a day" → recurrence: "daily" (mention frequency in description)
 - Set recurrence field in task object with appropriate value
 
-⚠️ CRITICAL DELETION RULES (CHECK THESE FIRST):
+For search_task action, use when the user asks about an existing task (e.g., "c'est quand mon rendez-vous?", "when is my appointment?", "quand ai-je mon médicament?", "montre-moi la tâche", "show me the task"). 
+ALSO use search_task when the user wants to list/view multiple tasks (e.g., "liste tous mes rendez-vous", "list all my appointments", "quels sont mes rendez-vous", "what are my appointments").
+IMPORTANT: If the user says "la tâche" or "the task" without specifying which one, check the conversation history to find what task was discussed in recent messages and use that task description for the search.
+For list requests (tous/toutes/all/liste), extract ONLY the task type, not a specific description. For example: "tous mes rendez-vous" → task.type = "appointment", task.description = "rendez-vous" (generic).
 
-1. delete_old_task - Use when user wants to delete ALL past/old tasks:
-   Keywords: "toutes les anciennes" / "toutes les passées" / "anciennes tâches" / "tâches passées" / "efface toutes les anciennes" / "supprime les tâches passées" / "old tasks" / "past tasks"
-   Examples:
-   - "efface toutes les anciennes tâches" → delete_old_task
-   - "supprime toutes les tâches passées" → delete_old_task
-   - "delete all old tasks" → delete_old_task
+For update_task action, ALWAYS use when user says ANY of these keywords:
+- "modifie" + ("heure" / "date" / "rendez-vous" / "tâche") → update_task (NOT conversation!)
+- "change" / "déplace" / "move" / "update" / "cambia"
+- "change l'heure" / "modifie la date" / "déplace le rendez-vous"
+IMPORTANT: Extract task description and new time/date. NEVER respond with conversation for modification requests!
 
-2. delete_done_task - Use when user wants to delete ALL completed tasks:
-   Keywords: "toutes les terminées" / "tâches terminées" / "tâches complétées" / "efface les terminées" / "completed tasks" / "done tasks" / "finished tasks"
-   Examples:
-   - "efface toutes les tâches terminées" → delete_done_task
-   - "supprime les tâches complétées" → delete_done_task
-   - "delete all completed tasks" → delete_done_task
+For delete_old_task action, use when user wants to delete ALL past/old tasks. Keywords: "toutes les tâches passées" / "anciennes tâches" / "old tasks" / "past tasks" / "tâches périmées".
 
-3. delete_task - Use ONLY for SPECIFIC task deletion (not bulk):
-   Examples:
-   - "supprime la tâche d'acheter du pain" → delete_task (specific task)
-   - "efface le rendez-vous dentiste" → delete_task (specific task)
-   - "delete the doctor appointment" → delete_task (specific task)
+For delete_done_task action, use when user wants to delete ALL completed/done tasks. Keywords: "tâches terminées" / "tâches complétées" / "completed tasks" / "done tasks" / "finished tasks".
 
-IMPORTANT PRIORITY: If you see "toutes" or "all" + ("anciennes" or "old" or "passées" or "past"), ALWAYS use delete_old_task, NEVER delete_task!
+For delete_task action, identify which task the user wants to remove/delete/cancel/supprimer/annuler/cancellare/effacer. This includes requests with:
+- "supprime la/les tâche(s)" - delete the task(s)
+- "efface la/les tâche(s)" - erase the task(s)  
+- "supprime toutes les tâches" - delete all tasks
+- "supprime les tâches passées/anciennes" - delete past/old tasks
+- "delete all tasks", "cancella tutti i compiti"
+Check conversation history if the user says "delete the task" or "supprime la tâche" without specifying which one.
+IMPORTANT: For vague deletion requests (all, old, past tasks), extract generic description like "toutes", "passées", "anciennes" so the app can ask for clarification.
 
 For delete_list action, use when the user wants to delete/remove a list. Examples: "efface la liste", "supprime la dernière liste", "delete the list". Extract the list title or "dernière/last" if they want the most recent one.
 
@@ -171,7 +183,13 @@ For delete_note action, use when the user wants to delete/remove a note. Example
 
 For complete_task action, check conversation history if the user says "mark it as done" or "marque-la comme faite" without specifying the task.
 
-For undo action, use when the user wants to cancel or undo the last action they performed. Examples: "annuler", "annule la dernière action", "undo", "retour", "défaire", "annulla l'ultima azione". Response: {"action": "undo", "response": "J'annule la dernière action.", "language": "fr"}
+For undo action, ALWAYS use when user says ANY of these:
+- "annule" / "annuler" + "action" / "dernière" / "dernier" / "la dernière"
+- "défais" / "défaire" + "ce que" / "ça" / "cela"
+- "undo" / "retour" / "revenir en arrière" / "annulla"
+- "annule la dernière action" → undo (NOT conversation!)
+- "défais ce que je viens de faire" → undo (NOT conversation!)
+IMPORTANT: These phrases are NEVER conversations, always undo action!
 
 🔴 CRITICAL: Always respect the ACTION VERB in the user's request:
 - "Ajoute X à ma liste" → update_list (NOT add_list)
@@ -213,6 +231,13 @@ Response: {"action": "add_recursive_task", "task": {"description": "rendez-vous 
 User: "Prendre aspirine 500mg trois fois par jour"
 Response: {"action": "add_recursive_task", "task": {"description": "prendre aspirine 500mg trois fois par jour", "type": "medication", "recurrence": "daily"}, "response": "Rappel quotidien créé.", "language": "fr"}
 
+✅ PHRASES DÉCLARATIVES:
+User: "Rendez-vous chez le dentiste lundi prochain à 14h30"
+Response: {"action": "add_task", "task": {"description": "rendez-vous dentiste", "date": "2025-12-22", "time": "14:30", "type": "appointment"}, "response": "Rendez-vous ajouté.", "language": "fr"}
+
+User: "N'oublie pas de sortir les poubelles ce soir"
+Response: {"action": "add_task", "task": {"description": "sortir les poubelles", "date": "2025-12-17", "time": "20:00", "type": "general"}, "response": "Je vous le rappellerai.", "language": "fr"}
+
 ✅ SUPPRESSION SPÉCIALE:
 User: "Efface toutes mes tâches passées"
 Response: {"action": "delete_old_task", "response": "Je supprime toutes les tâches passées.", "language": "fr"}
@@ -220,15 +245,16 @@ Response: {"action": "delete_old_task", "response": "Je supprime toutes les tâc
 User: "Supprime les tâches terminées"
 Response: {"action": "delete_done_task", "response": "Je supprime les tâches terminées.", "language": "fr"}
 
-User: "Efface toutes les anciennes tâches"
-Response: {"action": "delete_old_task", "response": "Je supprime toutes les anciennes tâches.", "language": "fr"}
-
 ✅ UNDO:
 User: "Annule la dernière action"
 Response: {"action": "undo", "response": "J'annule la dernière action.", "language": "fr"}
 
 User: "Défais ce que je viens de faire"
 Response: {"action": "undo", "response": "C'est annulé.", "language": "fr"}
+
+✅ UPDATE TASK:
+User: "Modifie l'heure de mon rendez-vous à 15h"
+Response: {"action": "update_task", "task": {"description": "rendez-vous", "time": "15:00"}, "response": "Heure modifiée.", "language": "fr"}
 
 Always be encouraging and supportive.`;
 
@@ -591,18 +617,23 @@ async function processWithMistral(userMessage, conversationHistory = []) {
             return 'nav';
         }
         
-        // 🔴 QUESTIONS GÉNÉRALES - Détection forte
-        if (/^(quelle heure|what time|che ora|quelle date|what date|che data|quel jour|what day|che giorno|bonjour|hello|merci|thank|grazie|comment|how|come)/.test(txt)) {
+        // 🔴 QUESTIONS GÉNÉRALES - Détection forte (MAIS PAS SI SUIVI DE TEMPS/DATE POUR ACTION)
+        if (/^(quelle heure est-il|what time is it|che ora è|quelle date|what date|quel jour sommes|what day|bonjour|hello|merci|thank|grazie)/.test(txt)) {
             return 'chat';
         }
         
         // 🔴 TÂCHES/LISTES/NOTES - Détection forte
-        if (/(rappelle|remind|ricorda|ajoute|add|aggiungi|crée|create|crea|supprime|efface|delete|cancella|complete|terminé|done|cherche|search|trouve|find|liste|list|nota|note|tâche|task|compito)/.test(txt)) {
+        if (/(rappelle|remind|ricorda|ajoute|add|aggiungi|crée|create|crea|supprime|efface|delete|cancella|complete|terminé|done|cherche|search|trouve|find|liste|list|nota|note|tâche|task|compito|n'oublie|don't forget|non dimenticare|modifie|change|déplace|move|update|annule|undo|défais|retour)/.test(txt)) {
             return 'task';
         }
         
-        // 🟡 Par défaut, utiliser UNKNOWN pour classification Mistral
-        return 'unknown';
+        // 🔴 PHRASES DÉCLARATIVES RENDEZ-VOUS - Détection forte
+        if (/rendez-vous|appointment|appuntamento|prendre|take|prendere/.test(txt)) {
+            return 'task';
+        }
+        
+        // 🟡 Par défaut, utiliser task pour classification Mistral (amélioré)
+        return 'task';
     }
     const keywordAction = detectActionByKeywords(_userMessage);
     console.log('[Mistral][DEBUG] Action détectée par mots-clés:', keywordAction);
