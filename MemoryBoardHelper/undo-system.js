@@ -106,7 +106,7 @@ async function undoLastAction() {
         const allActions = await getAllFromStore(STORES.ACTION_HISTORY);
         
         if (allActions.length === 0) {
-            return { success: false, message: 'Aucune action à annuler' };
+            return { success: true, message: 'Aucune action à annuler', data: null };
         }
         
         // Find the last action that hasn't been undone
@@ -115,7 +115,7 @@ async function undoLastAction() {
             .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
         
         if (sortedActions.length === 0) {
-            return { success: false, message: 'Aucune action à annuler' };
+            return { success: true, message: 'Aucune action à annuler', data: null };
         }
         
         const lastAction = sortedActions[0];

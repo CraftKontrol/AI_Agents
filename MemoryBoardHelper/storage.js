@@ -603,6 +603,15 @@ if (typeof window !== 'undefined') {
     window.deleteTask = deleteTask;
     window.getTask = getTask;
     window.getTodayTasks = getTodayTasks;
+    // Expose list/note CRUD for action-wrapper integration
+    window.createList = createList;
+    window.updateList = updateList;
+    window.deleteList = deleteList;
+    window.getListById = getListById;
+    window.createNote = createNote;
+    window.updateNote = updateNote;
+    window.deleteNote = deleteNote;
+    window.getNoteById = getNoteById;
     window.isDatabaseReady = isDatabaseReady;
     
     console.log('[Storage] Functions exposed to window');

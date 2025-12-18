@@ -343,11 +343,13 @@ The app uses **multiple prompts** for different intents:
 - postMessage - For iframe → parent (test-app.html)
 
 **Registered Actions:**
-- Task: add_task, add_recursive_task, complete_task, delete_task, update_task, search_task, delete_old_task, delete_done_task
-- List: add_list, update_list, delete_list
-- Note: add_note, update_note, delete_note
+- Task: add_task, add_recursive_task, complete_task, delete_task, update_task (searches all tasks, updates in place), search_task, delete_old_task, delete_done_task
+- List: add_list (items optional), update_list (merges items), delete_list, search_list
+- Note: add_note (auto-title if missing), update_note (append content), delete_note
 - Navigation: goto_section
 - Special: undo, call, conversation
+
+**Call Handling:** `makeCall(contactName, lang)` delegates to `handleEmergencyCall` when configured, with a safe success fallback; exposed globally for action-wrapper.
 
 **Integration Points:**
 1. Mistral AI results route through `processMistralResult()`

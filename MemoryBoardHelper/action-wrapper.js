@@ -519,10 +519,12 @@ registerAction(
             };
         }
         
-        const matchingTask = tasks.find(t => 
+        // Prefer pending tasks first, then fallback to any match
+        const candidates = tasks.filter(t => 
             t.description.toLowerCase().includes(description) ||
             description.includes(t.description.toLowerCase())
         );
+        const matchingTask = candidates.find(t => t.status !== 'completed') || candidates[0];
         
         if (!matchingTask) {
             console.log('❌ complete_task - No matching task found');
@@ -649,7 +651,7 @@ registerAction(
     'update_task',
     // Validate
     async (params, language) => {
-        const tasks = await getTodayTasks();
+        const tasks = await getAllTasks();
         const description = params.task?.description?.toLowerCase() || '';
         
         if (!description) {
@@ -659,71 +661,55 @@ registerAction(
             };
         }
         
-        const matchingTask = tasks.find(t => 
-            t.description.toLowerCase() === description
+        const matches = tasks.filter(t =>
+            t.description.toLowerCase().includes(description) ||
+            description.includes(t.description.toLowerCase())
         );
-        
-        if (!matchingTask) {
-            // Try partial match
-            const matches = tasks.filter(t =>
-                t.description.toLowerCase().includes(description) ||
-                description.includes(t.description.toLowerCase())
-            );
-            
-            if (matches.length === 0) {
-                return { 
-                    valid: false, 
-                    message: getLocalizedText('taskNotFound', language) 
-                };
-            } else if (matches.length > 1) {
-                const taskList = matches.map(t => `"${t.description}"${t.time ? ` à ${t.time}` : ''}`).join(', ');
-                return { 
-                    valid: false, 
-                    message: `Plusieurs tâches correspondent : ${taskList}. Veuillez préciser.` 
-                };
-            } else {
-                params._resolvedTask = matches[0];
-            }
-        } else {
-            params._resolvedTask = matchingTask;
+
+        if (matches.length === 0) {
+            return { 
+                valid: false, 
+                message: getLocalizedText('taskNotFound', language) 
+            };
         }
-        
+
+        // Prefer pending tasks first
+        const pendingMatch = matches.find(t => t.status !== 'completed');
+        params._resolvedTask = pendingMatch || matches[0];
         return { valid: true };
     },
     // Execute
     async (params, language) => {
         const taskToUpdate = params._resolvedTask;
-        const newDate = params.task.date || taskToUpdate.date;
-        const newTime = params.task.time || taskToUpdate.time;
-        const newDescription = params.task.description || taskToUpdate.description;
-        
-        // Delete old task and create new one
-        await deleteTask(taskToUpdate.id);
-        
-        const createResult = await createTask({
-            description: newDescription,
-            date: newDate,
-            time: newTime,
-            type: params.task.type || taskToUpdate.type,
-            priority: params.task.priority || taskToUpdate.priority
-        });
-        
-        if (createResult && createResult.success) {
-            const message = params.response || getLocalizedResponse('taskUpdated', language);
-            
+        const updates = {};
+        if (params.task.date) updates.date = params.task.date;
+        if (params.task.time) updates.time = params.task.time;
+        if (params.task.description) updates.description = params.task.description;
+        if (params.task.type) updates.type = params.task.type;
+        if (params.task.priority) updates.priority = params.task.priority;
+        if (params.task.recurrence) updates.recurrence = params.task.recurrence;
+
+        const updatedTask = { ...taskToUpdate, ...updates, updatedAt: new Date().toISOString() };
+
+        try {
+            if (typeof updateInStore === 'function') {
+                await updateInStore('tasks', updatedTask);
+            } else if (typeof window.updateInStore === 'function') {
+                await window.updateInStore('tasks', updatedTask);
+            } else if (typeof saveTask === 'function') {
+                await saveTask(updatedTask);
+            }
+
             if (typeof refreshCalendar === 'function') {
                 await refreshCalendar();
             }
-            
-            return new ActionResult(true, message, createResult.task);
-        } else {
+
+            const message = params.response || getLocalizedResponse('taskUpdated', language);
+            return new ActionResult(true, message, updatedTask);
+        } catch (error) {
+            console.error('[ActionWrapper] update_task error:', error);
             const message = params.response || getLocalizedText('taskUpdateFailed', language);
-            return new ActionResult(
-                false, 
-                message, 
-                null, 
-                'createTask returned failure'
-            );
+            return new ActionResult(false, message, null, error.message);
         }
     }
 );
@@ -833,6 +819,18 @@ registerAction(
 // LIST ACTIONS
 // =============================================================================
 
+// Helper: normalize text for matching
+function normalizeText(text) {
+    return (text || '').toLowerCase().trim();
+}
+
+// Helper: find list by title (case-insensitive, partial match)
+async function findListByTitle(title) {
+    const lists = await getAllLists();
+    const normalized = normalizeText(title);
+    return lists.find(l => normalizeText(l.title).includes(normalized) || normalized.includes(normalizeText(l.title))) || null;
+}
+
 // --- ADD_LIST ---
 registerAction(
     'add_list',
@@ -844,39 +842,45 @@ registerAction(
                 message: getLocalizedText('listTitleRequired', language) 
             };
         }
-        if (!params.list.items || params.list.items.length === 0) {
-            return { 
-                valid: false, 
-                message: getLocalizedText('listItemsRequired', language) 
-            };
+        // Items are optional; default to empty array to allow simple list creation
+        if (!Array.isArray(params.list.items)) {
+            params.list.items = [];
         }
         return { valid: true };
     },
     // Execute
     async (params, language) => {
         const list = params.list;
-        const result = await addList({
-            title: list.title,
-            items: list.items,
-            category: list.category || 'general'
-        });
+        const items = Array.isArray(list.items) ? list.items.filter(i => !!i) : [];
+        const existing = await findListByTitle(list.title);
         
-        if (result && result.success) {
-            const message = params.response || getLocalizedResponse('listAdded', language);
-            
+        try {
+            if (existing) {
+                const mergedItems = Array.from(new Set([...(existing.items || []), ...items]));
+                const updated = { ...existing, items: mergedItems, category: list.category || existing.category || 'general' };
+                await window.updateList(updated);
+                if (typeof renderLists === 'function') {
+                    await renderLists();
+                }
+                const message = params.response || getLocalizedResponse('listUpdated', language);
+                return new ActionResult(true, message, updated);
+            }
+
+            const created = await window.createList({
+                title: list.title,
+                items: items,
+                category: list.category || 'general'
+            });
+
             if (typeof renderLists === 'function') {
                 await renderLists();
             }
-            
-            return new ActionResult(true, message, result.list);
-        } else {
+            const message = params.response || getLocalizedResponse('listAdded', language);
+            return new ActionResult(true, message, created);
+        } catch (error) {
+            console.error('[ActionWrapper] add_list error:', error);
             const message = params.response || getLocalizedText('listCreationFailed', language);
-            return new ActionResult(
-                false, 
-                message, 
-                null, 
-                'addList returned failure'
-            );
+            return new ActionResult(false, message, null, error.message);
         }
     }
 );
@@ -903,24 +907,36 @@ registerAction(
     // Execute
     async (params, language) => {
         const list = params.list;
-        const result = await updateList(list.title, list.items);
+        const existing = await findListByTitle(list.title);
+        const incomingItems = Array.isArray(list.items) ? list.items.filter(i => !!i) : [];
         
-        if (result && result.success) {
-            const message = params.response || getLocalizedResponse('listUpdated', language);
-            
+        try {
+            if (existing) {
+                const mergedItems = Array.from(new Set([...(existing.items || []), ...incomingItems]));
+                const updated = { ...existing, items: mergedItems, category: list.category || existing.category || 'general' };
+                await window.updateList(updated);
+                if (typeof renderLists === 'function') {
+                    await renderLists();
+                }
+                const message = params.response || getLocalizedResponse('listUpdated', language);
+                return new ActionResult(true, message, updated);
+            }
+
+            // If list does not exist, create it instead of failing
+            const created = await window.createList({
+                title: list.title,
+                items: incomingItems,
+                category: list.category || 'general'
+            });
             if (typeof renderLists === 'function') {
                 await renderLists();
             }
-            
-            return new ActionResult(true, message, result.list);
-        } else {
+            const message = params.response || getLocalizedResponse('listAdded', language);
+            return new ActionResult(true, message, created);
+        } catch (error) {
+            console.error('[ActionWrapper] update_list error:', error);
             const message = params.response || getLocalizedText('listUpdateFailed', language);
-            return new ActionResult(
-                false, 
-                message, 
-                null, 
-                'updateList returned failure'
-            );
+            return new ActionResult(false, message, null, error.message);
         }
     }
 );
@@ -940,25 +956,46 @@ registerAction(
     },
     // Execute
     async (params, language) => {
-        const result = await deleteList(params.list.title);
-        
-        if (result && result.success) {
-            const message = params.response || getLocalizedResponse('listDeleted', language);
-            
+        try {
+            const target = await findListByTitle(params.list.title);
+            if (!target) {
+                const message = params.response || getLocalizedText('listNotFound', language);
+                return new ActionResult(false, message, null, 'List not found');
+            }
+            await window.deleteList(target.id);
             if (typeof renderLists === 'function') {
                 await renderLists();
             }
-            
-            return new ActionResult(true, message, result);
-        } else {
+            const message = params.response || getLocalizedResponse('listDeleted', language);
+            return new ActionResult(true, message, { id: target.id });
+        } catch (error) {
+            console.error('[ActionWrapper] delete_list error:', error);
             const message = params.response || getLocalizedText('listDeletionFailed', language);
-            return new ActionResult(
-                false, 
-                message, 
-                null, 
-                'deleteList returned failure'
-            );
+            return new ActionResult(false, message, null, error.message);
         }
+    }
+);
+
+// --- SEARCH_LIST ---
+registerAction(
+    'search_list',
+    // Validate
+    async (params, language) => {
+        return { valid: true };
+    },
+    // Execute
+    async (params, language) => {
+        const title = params.list?.title || '';
+        const lists = await getAllLists();
+        const normalized = normalizeText(title);
+        const matches = normalized
+            ? lists.filter(l => normalizeText(l.title).includes(normalized) || (l.items || []).some(i => normalizeText(i).includes(normalized)))
+            : lists;
+        
+        const message = params.response || (matches.length > 0
+            ? `${matches.length} liste(s) trouvée(s)`
+            : getLocalizedText('listNotFound', language));
+        return new ActionResult(true, message, { lists: matches });
     }
 );
 
@@ -971,39 +1008,36 @@ registerAction(
     'add_note',
     // Validate
     async (params, language) => {
-        if (!params.note || !params.note.title || !params.note.content) {
+        if (!params.note || !params.note.content) {
             return { 
                 valid: false, 
                 message: getLocalizedText('noteTitleAndContentRequired', language) 
             };
+        }
+        if (!params.note.title) {
+            // Provide a default title so we can still create the note
+            params.note.title = params.note.content.slice(0, 30) || 'Note';
         }
         return { valid: true };
     },
     // Execute
     async (params, language) => {
         const note = params.note;
-        const result = await addNote({
-            title: note.title,
-            content: note.content,
-            category: note.category || 'general'
-        });
-        
-        if (result && result.success) {
-            const message = params.response || getLocalizedResponse('noteAdded', language);
-            
+        try {
+            const created = await window.createNote({
+                title: note.title,
+                content: note.content,
+                category: note.category || 'general'
+            });
             if (typeof renderNotes === 'function') {
                 await renderNotes();
             }
-            
-            return new ActionResult(true, message, result.note);
-        } else {
+            const message = params.response || getLocalizedResponse('noteAdded', language);
+            return new ActionResult(true, message, created);
+        } catch (error) {
+            console.error('[ActionWrapper] add_note error:', error);
             const message = params.response || getLocalizedText('noteCreationFailed', language);
-            return new ActionResult(
-                false, 
-                message, 
-                null, 
-                'addNote returned failure'
-            );
+            return new ActionResult(false, message, null, error.message);
         }
     }
 );
@@ -1013,35 +1047,52 @@ registerAction(
     'update_note',
     // Validate
     async (params, language) => {
-        if (!params.note || !params.note.title || !params.note.content) {
+        if (!params.note || !params.note.content) {
             return { 
                 valid: false, 
                 message: getLocalizedText('noteTitleAndContentRequired', language) 
             };
+        }
+        if (!params.note.title) {
+            params.note.title = params.note.content.slice(0, 30) || 'Note';
         }
         return { valid: true };
     },
     // Execute
     async (params, language) => {
         const note = params.note;
-        const result = await updateNote(note.title, note.content);
+        const existingNotes = await getAllNotes();
+        const match = existingNotes.find(n => normalizeText(n.title).includes(normalizeText(note.title)) || normalizeText(note.title).includes(normalizeText(n.title)));
         
-        if (result && result.success) {
-            const message = params.response || getLocalizedResponse('noteUpdated', language);
-            
+        try {
+            if (match) {
+                const updated = {
+                    ...match,
+                    content: `${match.content}\n${note.content}`.trim(),
+                    category: note.category || match.category || 'general'
+                };
+                await window.updateNote(updated);
+                if (typeof renderNotes === 'function') {
+                    await renderNotes();
+                }
+                const message = params.response || getLocalizedResponse('noteUpdated', language);
+                return new ActionResult(true, message, updated);
+            }
+            // If no existing note, create one
+            const created = await window.createNote({
+                title: note.title,
+                content: note.content,
+                category: note.category || 'general'
+            });
             if (typeof renderNotes === 'function') {
                 await renderNotes();
             }
-            
-            return new ActionResult(true, message, result.note);
-        } else {
+            const message = params.response || getLocalizedResponse('noteAdded', language);
+            return new ActionResult(true, message, created);
+        } catch (error) {
+            console.error('[ActionWrapper] update_note error:', error);
             const message = params.response || getLocalizedText('noteUpdateFailed', language);
-            return new ActionResult(
-                false, 
-                message, 
-                null, 
-                'updateNote returned failure'
-            );
+            return new ActionResult(false, message, null, error.message);
         }
     }
 );
@@ -1061,24 +1112,23 @@ registerAction(
     },
     // Execute
     async (params, language) => {
-        const result = await deleteNote(params.note.title);
-        
-        if (result && result.success) {
-            const message = params.response || getLocalizedResponse('noteDeleted', language);
-            
+        try {
+            const existingNotes = await getAllNotes();
+            const match = existingNotes.find(n => normalizeText(n.title).includes(normalizeText(params.note.title)) || normalizeText(params.note.title).includes(normalizeText(n.title)));
+            if (!match) {
+                const message = params.response || getLocalizedText('noteNotFound', language);
+                return new ActionResult(false, message, null, 'Note not found');
+            }
+            await window.deleteNote(match.id);
             if (typeof renderNotes === 'function') {
                 await renderNotes();
             }
-            
-            return new ActionResult(true, message, result);
-        } else {
+            const message = params.response || getLocalizedResponse('noteDeleted', language);
+            return new ActionResult(true, message, { id: match.id });
+        } catch (error) {
+            console.error('[ActionWrapper] delete_note error:', error);
             const message = params.response || getLocalizedText('noteDeletionFailed', language);
-            return new ActionResult(
-                false, 
-                message, 
-                null, 
-                'deleteNote returned failure'
-            );
+            return new ActionResult(false, message, null, error.message);
         }
     }
 );
