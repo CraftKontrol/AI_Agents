@@ -36,10 +36,12 @@
 - `storage.js` - IndexedDB CRUD
 - `task-manager.js` - Task operations (max 5 display)
 - `mistral-agent.js` - AI NLP + intent classification
+- `action-wrapper.js` - Unified action execution system (validation → execution → verification)
 - `calendar-integration.js` - FullCalendar wrapper
 - `alarm-system.js` - 30s polling + audio alerts
 - `script-task-popup.js` - Task modal UI
 - `undo-system.js` - Action history (max 20)
+- `test-app.html/js` - Testing system with action-wrapper integration
 
 **STT Functions (in script.js):**
 - `initializeSpeechRecognition()` - Setup browser or Google STT
@@ -57,12 +59,31 @@
 
 **Browser Speech Recognition:**
 ```
-User Speech → Web Speech API → Mistral AI Agent → Task Extraction → Storage (IndexedDB) → UI Update
+User Speech → Web Speech API → Mistral AI Agent → Action-Wrapper → Task-Manager/Storage → IndexedDB → UI Update
+                                                      ↓
+                                                Events (actionStarted/Completed/Error)
+                                                      ↓
+                                                Response Handler → TTS
 ```
 
 **Google Cloud STT:**
 ```
-User Speech → MediaRecorder → Audio Blob → Base64 → Google Cloud Speech-to-Text API → Transcript → Mistral AI Agent → Task Extraction → Storage (IndexedDB) → UI Update
+User Speech → MediaRecorder → Audio Blob → Base64 → Google Cloud Speech-to-Text API → Transcript → Mistral AI Agent → Action-Wrapper → Task-Manager/Storage → IndexedDB → UI Update
+                                                                                                                             ↓
+                                                                                                                      Events (actionStarted/Completed/Error)
+                                                                                                                             ↓
+                                                                                                                      Response Handler → TTS
+```
+
+**Test-App Integration:**
+```
+test-app.js → executeActionWrapper() → action-wrapper.js → executeAction()
+                                              ↓
+                                       Validate → Execute → Verify
+                                              ↓
+                                       postMessage (iframe → parent)
+                                              ↓
+                                       test-app.js event listeners
 ```
 
 ### 2. Listening Modes
@@ -300,7 +321,39 @@ The app uses **multiple prompts** for different intents:
 
 **mistral-agent.js:** sendToMistralAgent, detectLanguage, extractTaskFromResponse, getCompressedConversationHistory
 
+**action-wrapper.js:** executeAction (main entry), processMistralResult, registerAction, getRegisteredActions, ActionResult class, storage wrapper functions (getTask, getAllTasks, saveTask, updateTask, deleteTask, getAllLists, saveList, updateList, deleteList, getAllNotes, saveNote, updateNote, deleteNote)
+
 **alarm-system.js:** initializeAlarmSystem, checkForAlarms (30s), triggerAlarm, snoozeAlarm (10min), dismissAlarm
+
+**test-app.js:** executeActionWrapper, testCreateTask, testCompleteTask, testDeleteTask, testSearchTask, testAddList, testAddNote, testGotoSection, waitForActionCompletion
+
+---
+
+## 🔄 Action-Wrapper System
+
+**Purpose:** Unified action execution with validation → execution → verification flow
+
+**Event System:**
+- `actionStarted` - Dispatched when action begins
+- `actionCompleted` - Dispatched when action succeeds
+- `actionError` - Dispatched when action fails
+
+**Communication:**
+- CustomEvent - For same-window listeners
+- postMessage - For iframe → parent (test-app.html)
+
+**Registered Actions:**
+- Task: add_task, add_recursive_task, complete_task, delete_task, update_task, search_task, delete_old_task, delete_done_task
+- List: add_list, update_list, delete_list
+- Note: add_note, update_note, delete_note
+- Navigation: goto_section
+- Special: undo, call, conversation
+
+**Integration Points:**
+1. Mistral AI results route through `processMistralResult()`
+2. Test-app uses `executeActionWrapper()` for all actions
+3. All actions emit events for tracking and debugging
+4. Storage operations abstracted through wrapper functions
 
 **calendar-integration.js:** initializeCalendar, taskToEvent, refreshCalendarEvents, handleEventClick, handleEventDrop, getOverdueTasks (visual indicators)
 

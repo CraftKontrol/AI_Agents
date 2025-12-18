@@ -507,6 +507,21 @@ async function initializeTaskManager() {
 // Auto-initialize
 if (typeof window !== 'undefined') {
     // Note: Initialize by calling initializeTaskManager() after database is ready
-    // Export getOverdueTasks for launch greeting
+    
+    // Export all task management functions globally
+    window.createTask = createTask;
+    window.getTasksByPeriod = getTasksByPeriod;
     window.getOverdueTasks = getOverdueTasks;
+    window.getDisplayableTasks = getDisplayableTasks;
+    window.completeTask = completeTask;
+    window.snoozeTask = snoozeTask;
+    window.updateTask = updateTask;
+    window.deleteTask = deleteTask;
+    window.getTaskStatistics = getTaskStatistics;
+    window.getTasksNeedingAlarms = getTasksNeedingAlarms;
+    window.getTodayMedications = getTodayMedications;
+    window.checkMedicationCompliance = checkMedicationCompliance;
+    window.initializeTaskManager = initializeTaskManager;
+    
+    console.log('[TaskManager] Functions exposed to window');
 }

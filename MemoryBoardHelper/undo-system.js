@@ -349,8 +349,12 @@ function hideUndoButton() {
  * @param {string} type - Type of toast ('success', 'error', 'info')
  */
 function showToast(message, type = 'success') {
+    console.log(`[UndoSystem] 🔔 Toast: [${type}] ${message}`);
     const toast = document.getElementById('undoToast');
-    if (!toast) return;
+    if (!toast) {
+        console.warn('[UndoSystem] ⚠️ Toast element (#undoToast) not found in DOM');
+        return;
+    }
     
     toast.textContent = message;
     toast.className = `undo-toast ${type} show`;
@@ -359,6 +363,12 @@ function showToast(message, type = 'success') {
     setTimeout(() => {
         toast.classList.remove('show');
     }, 3000);
+}
+
+// Expose showToast globally for cross-context access (iframe, test-app)
+if (typeof window !== 'undefined') {
+    window.showToast = showToast;
+    console.log('[UndoSystem] showToast exposed globally');
 }
 
 /**

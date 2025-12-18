@@ -580,6 +580,12 @@ async function detectLanguage(text) {
 
 // Process user message with Mistral AI
 async function processWithMistral(userMessage, conversationHistory = []) {
+    console.log(`\n========== MISTRAL PROCESSING START ==========`);
+    console.log(`[MistralAgent] Input: "${userMessage}"`);
+    console.log(`[MistralAgent] History length: ${conversationHistory.length}`);
+    console.log(`[MistralAgent] Timestamp: ${new Date().toISOString()}`);
+    console.log(`==============================================\n`);
+    
     // promptType: 'task' | 'chat' | 'nav' | 'system' (default: 'task')
     let promptType = 'task';
     let _userMessage = userMessage;
@@ -597,11 +603,13 @@ async function processWithMistral(userMessage, conversationHistory = []) {
 
     const apiKey = localStorage.getItem('mistralApiKey');
     if (!apiKey) {
+        console.error(`[MistralAgent] ❌ No API key configured`);
         throw new Error('Mistral API key not configured');
     }
 
     // Detect language first
     const language = await detectLanguage(_userMessage);
+    console.log(`[MistralAgent] 🌍 Detected language: ${language}`);
 
     // Détection améliorée avec mots-clés plus larges
     function detectActionByKeywords(text) {
@@ -884,11 +892,28 @@ async function processWithMistral(userMessage, conversationHistory = []) {
         result.language = language;
 
         // Plus de correction forcée - on fait confiance à Mistral après clarification
-        console.log('[Mistral][DEBUG] Action finale de Mistral:', result.action);
+        console.log(`\n========== MISTRAL PROCESSING END ==========`);
+        console.log(`[MistralAgent] Action: "${result.action}"`);
+        console.log(`[MistralAgent] Language: ${result.language}`);
+        console.log(`[MistralAgent] Response: "${result.response?.substring(0, 50)}${result.response?.length > 50 ? '...' : ''}"`);
+        if (result.task) {
+            console.log(`[MistralAgent] Task data:`, result.task);
+        }
+        if (result.list) {
+            console.log(`[MistralAgent] List data:`, result.list);
+        }
+        if (result.note) {
+            console.log(`[MistralAgent] Note data:`, result.note);
+        }
+        console.log(`[MistralAgent] Processing time: ${Date.now() - Date.now()}ms`);
+        console.log(`============================================\n`);
 
         return result;
     } catch (error) {
-        console.error('[Mistral] Processing error:', error);
+        console.error(`\n========== MISTRAL PROCESSING ERROR ==========`);
+        console.error(`[MistralAgent] ❌ Exception:`, error.message);
+        console.error(`[MistralAgent] Stack:`, error.stack);
+        console.error(`==============================================\n`);
         // Retourner une réponse de secours au lieu de throw
         return {
             action: 'conversation',

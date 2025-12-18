@@ -24,6 +24,79 @@ class ActionResult {
     }
 }
 
+// Localization helper functions - fallback if not available from script.js/mistral-agent.js
+function getLocalizedText(key, language = 'fr') {
+    if (typeof window !== 'undefined' && typeof window.getLocalizedText === 'function') {
+        return window.getLocalizedText(key, language);
+    }
+    
+    // Fallback localization
+    const texts = {
+        fr: {
+            unknownAction: 'Action inconnue',
+            actionExecutionError: 'Erreur lors de l\'exécution de l\'action',
+            taskDescriptionRequired: 'Description de la tâche requise',
+            taskCreationFailed: 'Échec de la création de la tâche',
+            recurrenceRequired: 'Récurrence requise',
+            taskNotFound: 'Tâche non trouvée',
+            taskCompletionFailed: 'Échec de la complétion de la tâche',
+            taskDeletionFailed: 'Échec de la suppression de la tâche'
+        },
+        en: {
+            unknownAction: 'Unknown action',
+            actionExecutionError: 'Action execution error',
+            taskDescriptionRequired: 'Task description required',
+            taskCreationFailed: 'Task creation failed',
+            recurrenceRequired: 'Recurrence required',
+            taskNotFound: 'Task not found',
+            taskCompletionFailed: 'Task completion failed',
+            taskDeletionFailed: 'Task deletion failed'
+        },
+        it: {
+            unknownAction: 'Azione sconosciuta',
+            actionExecutionError: 'Errore di esecuzione dell\'azione',
+            taskDescriptionRequired: 'Descrizione dell\'attività richiesta',
+            taskCreationFailed: 'Creazione attività fallita',
+            recurrenceRequired: 'Ricorrenza richiesta',
+            taskNotFound: 'Attività non trovata',
+            taskCompletionFailed: 'Completamento attività fallito',
+            taskDeletionFailed: 'Eliminazione attività fallita'
+        }
+    };
+    
+    return texts[language]?.[key] || key;
+}
+
+function getLocalizedResponse(key, language = 'fr') {
+    if (typeof window !== 'undefined' && typeof window.getLocalizedResponse === 'function') {
+        return window.getLocalizedResponse(key, language);
+    }
+    
+    // Fallback localization
+    const responses = {
+        fr: {
+            taskAdded: 'Tâche ajoutée',
+            taskCompleted: 'Tâche complétée',
+            taskDeleted: 'Tâche supprimée',
+            taskUpdated: 'Tâche mise à jour'
+        },
+        en: {
+            taskAdded: 'Task added',
+            taskCompleted: 'Task completed',
+            taskDeleted: 'Task deleted',
+            taskUpdated: 'Task updated'
+        },
+        it: {
+            taskAdded: 'Attività aggiunta',
+            taskCompleted: 'Attività completata',
+            taskDeleted: 'Attività eliminata',
+            taskUpdated: 'Attività aggiornata'
+        }
+    };
+    
+    return responses[language]?.[key] || key;
+}
+
 // Enhance calendar response with Mistral AI for more natural language
 async function enhanceCalendarResponse(basicMessage, context = {}) {
     const apiKey = localStorage.getItem('mistralApiKey');
@@ -126,16 +199,60 @@ function registerAction(actionName, validateFn, executeFn, verifyFn = null) {
 async function executeAction(actionName, params, language = 'fr') {
     console.log(`[ActionWrapper] Executing action: ${actionName}`, params);
     
+    // Dispatch start event
+    if (typeof window !== 'undefined') {
+        const startDetail = {
+            action: actionName,
+            params: params,
+            timestamp: new Date().toISOString()
+        };
+        
+        const startEvent = new CustomEvent('actionStarted', { detail: startDetail });
+        window.dispatchEvent(startEvent);
+        
+        // Post message to parent window (for test-app.html)
+        if (window.parent !== window) {
+            window.parent.postMessage({
+                type: 'actionStarted',
+                detail: startDetail
+            }, '*');
+        }
+    }
+    
     // Check if action is registered
     const action = ACTION_REGISTRY[actionName];
     if (!action) {
         console.error(`[ActionWrapper] Unknown action: ${actionName}`);
-        return new ActionResult(
+        const errorResult = new ActionResult(
             false,
             getLocalizedText('unknownAction', language),
             null,
             `Action "${actionName}" not registered`
         );
+        
+        // Dispatch error event
+        if (typeof window !== 'undefined') {
+            const errorDetail = {
+                action: actionName,
+                params: params,
+                error: errorResult.error,
+                message: errorResult.message,
+                timestamp: new Date().toISOString()
+            };
+            
+            const errorEvent = new CustomEvent('actionError', { detail: errorDetail });
+            window.dispatchEvent(errorEvent);
+            
+            // Post message to parent window (for test-app.html)
+            if (window.parent !== window) {
+                window.parent.postMessage({
+                    type: 'actionError',
+                    detail: errorDetail
+                }, '*');
+            }
+        }
+        
+        return errorResult;
     }
     
     try {
@@ -152,12 +269,29 @@ async function executeAction(actionName, params, language = 'fr') {
                 taskDescription: params.task?.description
             });
             
-            return new ActionResult(
+            const errorResult = new ActionResult(
                 false,
                 enhancedMessage,
                 null,
                 'Validation failed'
             );
+            
+            // Dispatch error event
+            if (typeof window !== 'undefined') {
+                const errorEvent = new CustomEvent('actionError', {
+                    detail: {
+                        action: actionName,
+                        params: params,
+                        phase: 'validation',
+                        error: errorResult.error,
+                        message: errorResult.message,
+                        timestamp: new Date().toISOString()
+                    }
+                });
+                window.dispatchEvent(errorEvent);
+            }
+            
+            return errorResult;
         }
         
         // Phase 2: Execution
@@ -186,16 +320,71 @@ async function executeAction(actionName, params, language = 'fr') {
         }
         
         console.log(`[ActionWrapper] Action ${actionName} completed:`, result.success ? 'SUCCESS' : 'FAILED');
+        
+        // Dispatch completion event
+        if (typeof window !== 'undefined') {
+            const eventType = result.success ? 'actionCompleted' : 'actionError';
+            const eventDetail = {
+                action: actionName,
+                params: params,
+                result: result,
+                success: result.success,
+                message: result.message,
+                data: result.data,
+                error: result.error,
+                timestamp: new Date().toISOString()
+            };
+            
+            const event = new CustomEvent(eventType, { detail: eventDetail });
+            window.dispatchEvent(event);
+            
+            // Also post message to parent window (for test-app.html)
+            if (window.parent !== window) {
+                window.parent.postMessage({
+                    type: eventType,
+                    detail: eventDetail
+                }, '*');
+            }
+        }
+        
         return result;
         
     } catch (error) {
-        console.error(`[ActionWrapper] Error executing ${actionName}:`, error);
-        return new ActionResult(
+        console.error(`\n========== ACTION EXECUTION ERROR ==========`);
+        console.error(`[ActionWrapper] ❌ EXCEPTION in ${actionName}`);
+        console.error(`[ActionWrapper] Error type: ${error.constructor.name}`);
+        console.error(`[ActionWrapper] Error message: ${error.message}`);
+        console.error(`[ActionWrapper] Stack trace:`);
+        console.error(error.stack);
+        console.error(`[ActionWrapper] Params at error:`, JSON.stringify(params, null, 2));
+        console.error(`==========================================\n`);
+        
+        const errorResult = new ActionResult(
             false,
             getLocalizedText('actionExecutionError', language),
             null,
             error.message
         );
+        
+        // Dispatch error event
+        if (typeof window !== 'undefined') {
+            const errorEvent = new CustomEvent('actionError', {
+                detail: {
+                    action: actionName,
+                    params: params,
+                    error: error.message,
+                    errorType: error.constructor.name,
+                    stack: error.stack,
+                    message: errorResult.message,
+                    executionId: executionId,
+                    timestamp: new Date().toISOString()
+                }
+            });
+            window.dispatchEvent(errorEvent);
+            console.log(`[ActionWrapper] 📡 Dispatched actionError event`);
+        }
+        
+        return errorResult;
     }
 }
 
@@ -276,7 +465,7 @@ registerAction(
         }
         
         // Verify task exists in storage
-        const task = await getTask(taskData.id);
+        const task = await getTaskFromStorage(taskData.id);
         if (!task) {
             return { valid: false, message: 'Task not found in storage after creation' };
         }
@@ -376,7 +565,7 @@ registerAction(
     },
     // Verify
     async (data, params, language) => {
-        const task = await getTask(data.taskId);
+        const task = await getTaskFromStorage(data.taskId);
         if (!task || task.status !== 'completed') {
             return { valid: false, message: 'Task was not marked as completed' };
         }
@@ -425,9 +614,9 @@ registerAction(
         const taskId = params._resolvedTaskId;
         const task = params._resolvedTask;
         
-        const result = await deleteTask(taskId);
-        
-        if (result && result.success) {
+        try {
+            await deleteTask(taskId);
+            // deleteTask doesn't return a result, if it succeeds it resolves without error
             const message = params.response || getLocalizedResponse('taskDeleted', language);
             
             if (typeof refreshCalendar === 'function') {
@@ -435,7 +624,7 @@ registerAction(
             }
             
             return new ActionResult(true, message, { taskId, task });
-        } else {
+        } catch (error) {
             const message = params.response || getLocalizedText('taskDeletionFailed', language);
             return new ActionResult(
                 false, 
@@ -447,7 +636,7 @@ registerAction(
     },
     // Verify
     async (data, params, language) => {
-        const task = await getTask(data.taskId);
+        const task = await getTaskFromStorage(data.taskId);
         if (task) {
             return { valid: false, message: 'Task still exists after deletion' };
         }
@@ -1030,6 +1219,137 @@ registerAction(
 // =============================================================================
 
 /**
+ * Storage wrapper functions - Bridge to storage.js
+ * These functions ensure action-wrapper can work independently
+ */
+
+// Storage wrapper functions - use global functions from storage.js
+// Note: These are ONLY for verification - use task-manager functions for actual operations
+async function getTaskFromStorage(taskId) {
+    if (typeof getFromStore === 'function') {
+        return await getFromStore('tasks', taskId);
+    } else if (typeof window.getFromStore === 'function') {
+        return await window.getFromStore('tasks', taskId);
+    } else if (typeof window.getTask === 'function') {
+        return await window.getTask(taskId);
+    }
+    console.error('[ActionWrapper] getFromStore not available');
+    return null;
+}
+
+async function getAllTasks() {
+    if (typeof getAllFromStore === 'function') {
+        return await getAllFromStore('tasks');
+    } else if (typeof window.getAllFromStore === 'function') {
+        return await window.getAllFromStore('tasks');
+    }
+    console.error('[ActionWrapper] getAllFromStore not available');
+    return [];
+}
+
+async function saveTask(task) {
+    if (typeof addToStore === 'function') {
+        return await addToStore('tasks', task);
+    } else if (typeof window.addToStore === 'function') {
+        return await window.addToStore('tasks', task);
+    }
+    console.error('[ActionWrapper] addToStore not available');
+    throw new Error('Storage not available');
+}
+
+async function updateTask(taskId, updates) {
+    if (typeof updateInStore === 'function') {
+        return await updateInStore('tasks', taskId, updates);
+    } else if (typeof window.updateInStore === 'function') {
+        return await window.updateInStore('tasks', taskId, updates);
+    }
+    console.error('[ActionWrapper] updateInStore not available');
+    throw new Error('Storage not available');
+}
+
+async function deleteTask(taskId) {
+    if (typeof deleteFromStore === 'function') {
+        return await deleteFromStore('tasks', taskId);
+    } else if (typeof window.deleteFromStore === 'function') {
+        return await window.deleteFromStore('tasks', taskId);
+    }
+    console.error('[ActionWrapper] deleteFromStore not available');
+    throw new Error('Storage not available');
+}
+
+async function getAllLists() {
+    if (typeof getAllFromStore === 'function') {
+        return await getAllFromStore('lists');
+    } else if (typeof window.getAllFromStore === 'function') {
+        return await window.getAllFromStore('lists');
+    }
+    return [];
+}
+
+async function saveList(list) {
+    if (typeof addToStore === 'function') {
+        return await addToStore('lists', list);
+    } else if (typeof window.addToStore === 'function') {
+        return await window.addToStore('lists', list);
+    }
+    throw new Error('Storage not available');
+}
+
+async function updateList(listId, updates) {
+    if (typeof updateInStore === 'function') {
+        return await updateInStore('lists', listId, updates);
+    } else if (typeof window.updateInStore === 'function') {
+        return await window.updateInStore('lists', listId, updates);
+    }
+    throw new Error('Storage not available');
+}
+
+async function deleteList(listId) {
+    if (typeof deleteFromStore === 'function') {
+        return await deleteFromStore('lists', listId);
+    } else if (typeof window.deleteFromStore === 'function') {
+        return await window.deleteFromStore('lists', listId);
+    }
+    throw new Error('Storage not available');
+}
+
+async function getAllNotes() {
+    if (typeof getAllFromStore === 'function') {
+        return await getAllFromStore('notes');
+    } else if (typeof window.getAllFromStore === 'function') {
+        return await window.getAllFromStore('notes');
+    }
+    return [];
+}
+
+async function saveNote(note) {
+    if (typeof addToStore === 'function') {
+        return await addToStore('notes', note);
+    } else if (typeof window.addToStore === 'function') {
+        return await window.addToStore('notes', note);
+    }
+    throw new Error('Storage not available');
+}
+
+async function updateNote(noteId, updates) {
+    if (typeof updateInStore === 'function') {
+        return await updateInStore('notes', noteId, updates);
+    } else if (typeof window.updateInStore === 'function') {
+        return await window.updateInStore('notes', noteId, updates);
+    }
+    throw new Error('Storage not available');
+}
+
+async function deleteNote(noteId) {
+    if (typeof deleteFromStore === 'function') {
+        return await deleteFromStore('notes', noteId);
+    } else if (typeof window.deleteFromStore === 'function') {
+        return await window.deleteFromStore('notes', noteId);
+    }
+    throw new Error('Storage not available');
+}
+
+/**
  * Process Mistral result through action wrapper
  * @param {object} mistralResult - Result from Mistral AI
  * @returns {Promise<ActionResult>}
@@ -1053,7 +1373,79 @@ async function processMistralResult(mistralResult) {
     // Execute action through wrapper
     const result = await executeAction(action, params, language);
     
+    // Dispatch completion event for test-app
+    if (typeof window !== 'undefined') {
+        const event = new CustomEvent('actionCompleted', {
+            detail: {
+                action: action,
+                params: params,
+                result: result,
+                timestamp: new Date().toISOString()
+            }
+        });
+        window.dispatchEvent(event);
+        console.log('[ActionWrapper] Dispatched actionCompleted event');
+    }
+    
     return result;
+}
+
+/**
+ * Find closest matching action name (for suggestions)
+ * @param {string} actionName - Invalid action name
+ * @returns {string} Closest matching action name
+ */
+function findClosestAction(actionName) {
+    const actions = Object.keys(ACTION_REGISTRY);
+    if (actions.length === 0) return 'No actions registered';
+    
+    // Simple Levenshtein-like matching
+    let closest = actions[0];
+    let minDistance = Infinity;
+    
+    for (const action of actions) {
+        const distance = levenshteinDistance(actionName.toLowerCase(), action.toLowerCase());
+        if (distance < minDistance) {
+            minDistance = distance;
+            closest = action;
+        }
+    }
+    
+    return closest;
+}
+
+/**
+ * Calculate Levenshtein distance between two strings
+ * @param {string} a - First string
+ * @param {string} b - Second string
+ * @returns {number} Edit distance
+ */
+function levenshteinDistance(a, b) {
+    const matrix = [];
+    
+    for (let i = 0; i <= b.length; i++) {
+        matrix[i] = [i];
+    }
+    
+    for (let j = 0; j <= a.length; j++) {
+        matrix[0][j] = j;
+    }
+    
+    for (let i = 1; i <= b.length; i++) {
+        for (let j = 1; j <= a.length; j++) {
+            if (b.charAt(i - 1) === a.charAt(j - 1)) {
+                matrix[i][j] = matrix[i - 1][j - 1];
+            } else {
+                matrix[i][j] = Math.min(
+                    matrix[i - 1][j - 1] + 1,
+                    matrix[i][j - 1] + 1,
+                    matrix[i - 1][j] + 1
+                );
+            }
+        }
+    }
+    
+    return matrix[b.length][a.length];
 }
 
 /**
@@ -1067,3 +1459,13 @@ function getRegisteredActions() {
 // Log registered actions on load
 console.log('[ActionWrapper] Action Wrapper System initialized');
 console.log('[ActionWrapper] Registered actions:', getRegisteredActions());
+
+// Expose key functions globally for test-app and main app
+if (typeof window !== 'undefined') {
+    window.executeAction = executeAction;
+    window.processMistralResult = processMistralResult;
+    window.getRegisteredActions = getRegisteredActions;
+    window.ActionResult = ActionResult;
+    
+    console.log('[ActionWrapper] Functions exposed to window');
+}

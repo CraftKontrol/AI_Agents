@@ -590,13 +590,22 @@ function isDatabaseReady() {
 // Export functions to window for access by other scripts
 if (typeof window !== 'undefined') {
     window.STORES = STORES;
+    window.initializeDatabase = initializeDatabase;
+    window.addToStore = addToStore;
+    window.updateInStore = updateInStore;
+    window.getFromStore = getFromStore;
+    window.getAllFromStore = getAllFromStore;
+    window.deleteFromStore = deleteFromStore;
     window.getAllTasks = getAllTasks;
     window.getAllLists = getAllLists;
     window.getAllNotes = getAllNotes;
     window.saveTask = saveTask;
     window.deleteTask = deleteTask;
     window.getTask = getTask;
+    window.getTodayTasks = getTodayTasks;
     window.isDatabaseReady = isDatabaseReady;
+    
+    console.log('[Storage] Functions exposed to window');
 }
 
 // Initialize on load
