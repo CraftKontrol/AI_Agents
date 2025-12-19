@@ -1840,7 +1840,7 @@ const tests = {
     
     vocal_create_note: {
         name: 'Vocal: Créer note',
-        action: async () => { return await injectVoiceAndWaitForAction("Crée une note avec mes idées de projet"); },
+        action: async () => { return await injectVoiceAndWaitForAction("Prends note de mes idées: refaire le salon et acheter des plantes"); },
         validate: async (result) => {
             return result?.actionResult?.success === true;
         }
@@ -1864,7 +1864,7 @@ const tests = {
     
     vocal_mark_complete: {
         name: 'Vocal: Marquer terminé',
-        action: async () => { return await injectVoiceAndWaitForAction("Marque comme terminé la tâche d'acheter du pain"); },
+        action: async () => { return await injectVoiceAndWaitForAction("Marque comme terminé la tâche d'appeler le docteur"); },
         validate: async (result) => {
             return result?.actionResult?.success === true;
         }
@@ -2604,7 +2604,7 @@ async function runTestsByCategory(category) {
             'vocal_recurring_vitamins', 'vocal_recurring_trash', 'vocal_recurring_monthly',
             'vocal_question_time', 'vocal_question_date', 'vocal_question_day',
             'vocal_nav_settings', 'vocal_call_emergency', 'vocal_call_mom',
-            'vocal_undo_last', 'vocal_undo_that', 'vocal_dont_forget',
+            'vocal_dont_forget', 'vocal_undo_last', 'vocal_undo_that',
             'vocal_medication_meals', 'vocal_medication_weekly', 'vocal_appointment_specific',
             'vocal_change_date', 'vocal_move_appointment', 'vocal_list_enumeration',
             'vocal_shopping_list', 'vocal_note_wifi', 'vocal_search_appointments',

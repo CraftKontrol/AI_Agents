@@ -554,6 +554,36 @@ function quickShowYearTasks() {
     }
 }
 
+// Complete a task (mark as completed)
+async function completeTask(taskId) {
+    try {
+        const task = await getFromStore('tasks', taskId);
+        
+        if (!task) {
+            console.error('[CompleteTask] Task not found:', taskId);
+            return { success: false, error: 'Task not found' };
+        }
+        
+        // Update task status
+        task.status = 'completed';
+        task.completedAt = new Date().toISOString();
+        
+        await updateInStore('tasks', task);
+        
+        // Refresh calendar if available
+        if (typeof initializeCalendar === 'function') {
+            await initializeCalendar();
+        }
+        
+        console.log('[CompleteTask] Task completed:', taskId);
+        return { success: true, task };
+        
+    } catch (error) {
+        console.error('[CompleteTask] Error:', error);
+        return { success: false, error: error.message };
+    }
+}
+
 // Delete old tasks (before today)
 async function deleteOldTasks() {
     try {
@@ -621,6 +651,93 @@ async function deleteDoneTasks() {
     } catch (error) {
         console.error('[DeleteDoneTasks] Error:', error);
         showError('Erreur lors de la suppression des tâches terminées.');
+        return { success: false, error: error.message };
+    }
+}
+
+// Delete ALL tasks
+async function deleteAllTasks() {
+    try {
+        const tasks = await getAllTasks();
+        
+        if (tasks.length === 0) {
+            showSuccess('Aucune tâche à supprimer.');
+            return { success: true, deleted: 0 };
+        }
+        
+        // Delete all tasks
+        for (const task of tasks) {
+            await deleteTask(task.id);
+        }
+        
+        // Refresh calendar
+        if (typeof initializeCalendar === 'function') {
+            await initializeCalendar();
+        }
+        
+        showSuccess(`${tasks.length} tâche(s) supprimée(s).`);
+        return { success: true, deleted: tasks.length };
+    } catch (error) {
+        console.error('[DeleteAllTasks] Error:', error);
+        showError('Erreur lors de la suppression des tâches.');
+        return { success: false, error: error.message };
+    }
+}
+
+// Delete ALL lists
+async function deleteAllLists() {
+    try {
+        const lists = await getAllLists();
+        
+        if (lists.length === 0) {
+            showSuccess('Aucune liste à supprimer.');
+            return { success: true, deleted: 0 };
+        }
+        
+        // Delete all lists
+        for (const list of lists) {
+            await deleteFromStore('lists', list.id);
+        }
+        
+        // Refresh display
+        if (typeof loadLists === 'function') {
+            await loadLists();
+        }
+        
+        showSuccess(`${lists.length} liste(s) supprimée(s).`);
+        return { success: true, deleted: lists.length };
+    } catch (error) {
+        console.error('[DeleteAllLists] Error:', error);
+        showError('Erreur lors de la suppression des listes.');
+        return { success: false, error: error.message };
+    }
+}
+
+// Delete ALL notes
+async function deleteAllNotes() {
+    try {
+        const notes = await getAllNotes();
+        
+        if (notes.length === 0) {
+            showSuccess('Aucune note à supprimer.');
+            return { success: true, deleted: 0 };
+        }
+        
+        // Delete all notes
+        for (const note of notes) {
+            await deleteFromStore('notes', note.id);
+        }
+        
+        // Refresh display
+        if (typeof loadNotes === 'function') {
+            await loadNotes();
+        }
+        
+        showSuccess(`${notes.length} note(s) supprimée(s).`);
+        return { success: true, deleted: notes.length };
+    } catch (error) {
+        console.error('[DeleteAllNotes] Error:', error);
+        showError('Erreur lors de la suppression des notes.');
         return { success: false, error: error.message };
     }
 }
@@ -4621,11 +4738,16 @@ function checkApiKeysAndHideSection() {
 
 function toggleSection(sectionId) {
     const section = document.getElementById(sectionId);
+    if (!section) return;
+    
     const isVisible = section.style.display !== 'none';
     section.style.display = isVisible ? 'none' : 'block';
     
-    const btn = event.currentTarget;
-    btn.textContent = isVisible ? getLocalizedText('show') : getLocalizedText('hide');
+    // Only update button text if event exists (clicked via button)
+    if (typeof event !== 'undefined' && event && event.currentTarget) {
+        const btn = event.currentTarget;
+        btn.textContent = isVisible ? getLocalizedText('show') : getLocalizedText('hide');
+    }
 }
 
 // Mistral Settings Management
@@ -5157,6 +5279,23 @@ window.playSound = playSound;
 window.playTapSound = playTapSound;
 window.playValidationSound = playValidationSound;
 window.playListeningSound = playListeningSound;
+
+// Export task management functions
+window.completeTask = completeTask;
+window.deleteAllTasks = deleteAllTasks;
+window.deleteAllLists = deleteAllLists;
+window.deleteAllNotes = deleteAllNotes;
+
+// Export undo function wrapper
+window.undoLastAction = async function() {
+    try {
+        const { undoLastAction: undoFn } = await import('./undo-system.js');
+        return await undoFn();
+    } catch (error) {
+        console.error('[Script] Error in undoLastAction wrapper:', error);
+        return { success: false, error: error.message };
+    }
+};
 
 console.log('[Script] Quick command functions exported:', typeof window.quickAddTask);
 

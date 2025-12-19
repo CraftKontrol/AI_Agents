@@ -65,7 +65,7 @@ const TASK_PROMPT = `You are a helpful memory assistant for elderly or memory-de
 
 When extracting tasks, respond in JSON format with:
 {
-    "action": "add_task|add_list|add_note|complete_task|delete_task|delete_list|delete_note|update_task|update_list|update_note|search_task|undo|conversation|add_recursive_task|delete_old_task|delete_done_task",
+    "action": "add_task|add_list|add_note|complete_task|delete_task|delete_list|delete_note|update_task|update_list|update_note|search_task|undo|conversation|add_recursive_task|delete_old_task|delete_done_task|delete_all_tasks|delete_all_lists|delete_all_notes",
     "task": {
         "description": "clear task description",
         "date": "YYYY-MM-DD if mentioned, else null",
@@ -168,14 +168,18 @@ For delete_old_task action, use when user wants to delete ALL past/old tasks. Ke
 
 For delete_done_task action, use when user wants to delete ALL completed/done tasks. Keywords: "tâches terminées" / "tâches complétées" / "completed tasks" / "done tasks" / "finished tasks".
 
-For delete_task action, identify which task the user wants to remove/delete/cancel/supprimer/annuler/cancellare/effacer. This includes requests with:
-- "supprime la/les tâche(s)" - delete the task(s)
-- "efface la/les tâche(s)" - erase the task(s)  
-- "supprime toutes les tâches" - delete all tasks
-- "supprime les tâches passées/anciennes" - delete past/old tasks
-- "delete all tasks", "cancella tutti i compiti"
+For delete_all_tasks action, use when user wants to delete ALL tasks (regardless of status). Keywords: "toutes les tâches" / "supprime toutes les tâches" / "efface toutes les tâches" / "delete all tasks" / "supprimer tout" / "cancella tutti i compiti".
+
+For delete_all_lists action, use when user wants to delete ALL lists. Keywords: "toutes les listes" / "supprime toutes les listes" / "efface toutes les listes" / "delete all lists" / "supprimer toutes".
+
+For delete_all_notes action, use when user wants to delete ALL notes. Keywords: "toutes les notes" / "supprime toutes les notes" / "efface toutes les notes" / "delete all notes" / "supprimer toutes".
+
+For delete_task action, identify which SPECIFIC task the user wants to remove/delete/cancel/supprimer/annuler/cancellare/effacer. This is for individual task deletion only:
+- "supprime la tâche X" - delete the specific task X
+- "efface la tâche de demain" - erase tomorrow's task  
+- "supprime le rendez-vous dentiste" - delete dentist appointment
 Check conversation history if the user says "delete the task" or "supprime la tâche" without specifying which one.
-IMPORTANT: For vague deletion requests (all, old, past tasks), extract generic description like "toutes", "passées", "anciennes" so the app can ask for clarification.
+IMPORTANT: "supprime toutes les tâches" should use delete_all_tasks action, NOT delete_task.
 
 For delete_list action, use when the user wants to delete/remove a list. Examples: "efface la liste", "supprime la dernière liste", "delete the list". Extract the list title or "dernière/last" if they want the most recent one.
 
@@ -245,6 +249,15 @@ Response: {"action": "delete_old_task", "response": "Je supprime toutes les tâc
 User: "Supprime les tâches terminées"
 Response: {"action": "delete_done_task", "response": "Je supprime les tâches terminées.", "language": "fr"}
 
+User: "Supprime toutes les tâches"
+Response: {"action": "delete_all_tasks", "response": "Je supprime toutes les tâches.", "language": "fr"}
+
+User: "Efface toutes les listes"
+Response: {"action": "delete_all_lists", "response": "Je supprime toutes les listes.", "language": "fr"}
+
+User: "Supprime toutes les notes"
+Response: {"action": "delete_all_notes", "response": "Je supprime toutes les notes.", "language": "fr"}
+
 ✅ UNDO:
 User: "Annule la dernière action"
 Response: {"action": "undo", "response": "J'annule la dernière action.", "language": "fr"}
@@ -270,11 +283,15 @@ const NAV_PROMPT = `You are a navigation assistant for elderly or memory-deficie
 Available sections:
 - "tasks": Task list section
 - "calendar": Calendar view section
+- "notes": Notes section
+- "lists": Lists section
 - "settings": Settings/options section
 - "stats": Statistics section
 
 KEYWORDS FOR NAVIGATION:
 🔴 CALENDAR: "calendrier" / "calendar" / "planning" / "agenda" / "montre-moi le calendrier" / "show me calendar" / "va au calendrier" / "go to calendar"
+🔴 NOTES: "notes" / "note" / "mes notes" / "my notes" / "affiche les notes" / "show notes" / "va aux notes" / "go to notes"
+🔴 LISTS: "listes" / "lists" / "mes listes" / "my lists" / "affiche les listes" / "show lists" / "va aux listes" / "go to lists"
 🔴 SETTINGS: "paramètres" / "settings" / "réglages" / "options" / "configuration" / "affiche les paramètres" / "show settings" / "va dans les paramètres"
 🔴 STATS: "statistiques" / "statistics" / "stats" / "rapports" / "reports" / "va dans les statistiques" / "show stats"
 🔴 TASKS: "tâches" / "tasks" / "liste" / "todo" / "affiche les tâches" / "show tasks" / "retour aux tâches"
@@ -284,16 +301,19 @@ IMPORTANT: Always use action "goto_section" when user wants to navigate, NEVER u
 Respond in JSON format with:
 {
     "action": "goto_section",
-    "section": "tasks|calendar|settings|stats",
+    "section": "tasks|calendar|notes|lists|settings|stats",
     "response": "friendly message to user",
     "language": "fr|it|en"
 }
 
 EXAMPLES:
 - "Montre-moi le calendrier" → {"action": "goto_section", "section": "calendar"}
+- "Affiche les notes" → {"action": "goto_section", "section": "notes"}
+- "Va aux listes" → {"action": "goto_section", "section": "lists"}
 - "Affiche les paramètres" → {"action": "goto_section", "section": "settings"}
 - "Va dans les statistiques" → {"action": "goto_section", "section": "stats"}
 - "Show me the calendar" → {"action": "goto_section", "section": "calendar"}
+- "Show my notes" → {"action": "goto_section", "section": "notes"}
 
 Always be encouraging and supportive.`;
 

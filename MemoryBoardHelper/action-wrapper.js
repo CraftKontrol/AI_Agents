@@ -815,6 +815,91 @@ registerAction(
     }
 );
 
+// --- DELETE_ALL_TASKS ---
+registerAction(
+    'delete_all_tasks',
+    // Validate
+    async (params, language) => {
+        return { valid: true };
+    },
+    // Execute
+    async (params, language) => {
+        const result = await deleteAllTasks();
+        
+        if (result && result.success) {
+            const message = params.response || getLocalizedResponse('allTasksDeleted', language);
+            
+            if (typeof refreshCalendar === 'function') {
+                await refreshCalendar();
+            }
+            
+            return new ActionResult(true, message, { count: result.deleted });
+        } else {
+            const message = params.response || getLocalizedText('allTasksDeletionFailed', language);
+            return new ActionResult(
+                false, 
+                message, 
+                null, 
+                'deleteAllTasks returned failure'
+            );
+        }
+    }
+);
+
+// --- DELETE_ALL_LISTS ---
+registerAction(
+    'delete_all_lists',
+    // Validate
+    async (params, language) => {
+        return { valid: true };
+    },
+    // Execute
+    async (params, language) => {
+        const result = await deleteAllLists();
+        
+        if (result && result.success) {
+            const message = params.response || getLocalizedResponse('allListsDeleted', language);
+            
+            return new ActionResult(true, message, { count: result.deleted });
+        } else {
+            const message = params.response || getLocalizedText('allListsDeletionFailed', language);
+            return new ActionResult(
+                false, 
+                message, 
+                null, 
+                'deleteAllLists returned failure'
+            );
+        }
+    }
+);
+
+// --- DELETE_ALL_NOTES ---
+registerAction(
+    'delete_all_notes',
+    // Validate
+    async (params, language) => {
+        return { valid: true };
+    },
+    // Execute
+    async (params, language) => {
+        const result = await deleteAllNotes();
+        
+        if (result && result.success) {
+            const message = params.response || getLocalizedResponse('allNotesDeleted', language);
+            
+            return new ActionResult(true, message, { count: result.deleted });
+        } else {
+            const message = params.response || getLocalizedText('allNotesDeletionFailed', language);
+            return new ActionResult(
+                false, 
+                message, 
+                null, 
+                'deleteAllNotes returned failure'
+            );
+        }
+    }
+);
+
 // =============================================================================
 // LIST ACTIONS
 // =============================================================================
@@ -1224,16 +1309,14 @@ registerAction(
         const section = params.section;
         let targetElement = null;
         
-        // Close all open modals before navigation (except settings if navigating to settings)
+        // Close all open modals before navigation
         const closeModals = () => {
-            if (section.toLowerCase() !== 'settings') {
-                // Close settings modal
-                if (typeof closeSettingsModal === 'function') {
-                    closeSettingsModal();
-                } else {
-                    const settingsModal = document.getElementById('settingsModal');
-                    if (settingsModal) settingsModal.style.display = 'none';
-                }
+            // Close settings modal (always, will be reopened if navigating to settings)
+            if (typeof closeSettingsModal === 'function') {
+                closeSettingsModal();
+            } else {
+                const settingsModal = document.getElementById('settingsModal');
+                if (settingsModal) settingsModal.style.display = 'none';
             }
             
             // Close task modal
@@ -1268,7 +1351,7 @@ registerAction(
                 if (alarmModal) alarmModal.style.display = 'none';
             }
             
-            // Close task popup
+            // Close task popup (view task modal)
             const taskPopup = document.getElementById('taskPopup');
             if (taskPopup) taskPopup.style.display = 'none';
         };

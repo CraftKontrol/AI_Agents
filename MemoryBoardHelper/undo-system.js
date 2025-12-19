@@ -394,6 +394,14 @@ async function clearHistory() {
     }
 }
 
-// Functions are globally available (no exports needed for non-module scripts)
-// ACTION_TYPES, recordAction, undoLastAction, showUndoButton, hideUndoButton,
-// showToast, getLastActionId, clearHistory
+// Export functions for module usage
+export { 
+    ACTION_TYPES, 
+    recordAction, 
+    undoLastAction, 
+    showUndoButton, 
+    hideUndoButton, 
+    showToast, 
+    getLastActionId, 
+    clearHistory 
+};
