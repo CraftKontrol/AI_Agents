@@ -1307,46 +1307,64 @@ async function handleEmergencyCall(userMessage, conversationHistory = []) {
     try {
         const contacts = getEmergencyContacts();
         
-        if (contacts.length === 0) {
-            return {
-                success: false,
-                response: getLocalizedResponse('noEmergencyContacts', detectedLanguage),
-                language: detectedLanguage
-            };
-        }
-        
         // Try to find a specific contact mentioned in the message
         const matchedContact = findEmergencyContact(userMessage, contacts);
-        const contactToCall = matchedContact || contacts[0];
         
-        console.log('[Mistral] Calling contact:', contactToCall.name, contactToCall.phone);
-        
-        // Initiate the call
-        const callSuccess = initiatePhoneCall(contactToCall.phone);
-        
-        if (callSuccess) {
-            const response = matchedContact
-                ? {
-                    fr: `J'appelle ${contactToCall.name} au ${contactToCall.phone}.`,
-                    it: `Chiamo ${contactToCall.name} al ${contactToCall.phone}.`,
-                    en: `Calling ${contactToCall.name} at ${contactToCall.phone}.`
-                }
-                : {
-                    fr: `J'appelle le premier contact d'urgence : ${contactToCall.name} au ${contactToCall.phone}.`,
-                    it: `Chiamo il primo contatto di emergenza: ${contactToCall.name} al ${contactToCall.phone}.`,
-                    en: `Calling the first emergency contact: ${contactToCall.name} at ${contactToCall.phone}.`
+        // If matched contact is an emergency contact, call directly
+        if (matchedContact) {
+            console.log('[Mistral] Calling emergency contact:', matchedContact.name, matchedContact.phone);
+            
+            // Initiate the call
+            const callSuccess = initiatePhoneCall(matchedContact.phone);
+            
+            if (callSuccess) {
+                const response = {
+                    fr: `J'appelle ${matchedContact.name} au ${matchedContact.phone}.`,
+                    it: `Chiamo ${matchedContact.name} al ${matchedContact.phone}.`,
+                    en: `Calling ${matchedContact.name} at ${matchedContact.phone}.`
                 };
+                
+                return {
+                    success: true,
+                    contact: matchedContact,
+                    response: response[detectedLanguage] || response.fr,
+                    language: detectedLanguage
+                };
+            } else {
+                return {
+                    success: false,
+                    response: getLocalizedResponse('callFailed', detectedLanguage),
+                    language: detectedLanguage
+                };
+            }
+        }
+        
+        // If no emergency contact matched, open phone contacts app
+        console.log('[Mistral] No emergency contact matched, opening phone contacts');
+        const openSuccess = openPhoneContacts();
+        
+        if (openSuccess) {
+            const response = {
+                fr: `J'ouvre vos contacts téléphoniques.`,
+                it: `Apro i tuoi contatti telefonici.`,
+                en: `Opening your phone contacts.`
+            };
             
             return {
                 success: true,
-                contact: contactToCall,
                 response: response[detectedLanguage] || response.fr,
                 language: detectedLanguage
             };
         } else {
+            const response = {
+                fr: `Je ne peux pas ouvrir les contacts. Veuillez vérifier les permissions de votre navigateur.`,
+                it: `Non riesco ad aprire i contatti. Controlla i permessi del tuo browser.`,
+                en: `Cannot open contacts. Please check your browser permissions.`
+            };
+            
             return {
                 success: false,
-                response: getLocalizedResponse('callFailed', detectedLanguage),
+                response: response[detectedLanguage] || response.fr,
                 language: detectedLanguage
             };
         }
@@ -1373,6 +1391,35 @@ function initiatePhoneCall(phoneNumber) {
         return true;
     } catch (error) {
         console.error('[Mistral] Error initiating call:', error);
+        return false;
+    }
+}
+
+// Open phone contacts app
+function openPhoneContacts() {
+    try {
+        // Try multiple methods to open contacts
+        
+        // Method 1: Android intent (works on Android devices)
+        if (navigator.userAgent.match(/Android/i)) {
+            window.location.href = 'content://contacts/people/';
+            console.log('[Mistral] Opened contacts via Android intent');
+            return true;
+        }
+        
+        // Method 2: iOS URL scheme (works on iOS devices)
+        if (navigator.userAgent.match(/iPhone|iPad|iPod/i)) {
+            window.location.href = 'contacts://';
+            console.log('[Mistral] Opened contacts via iOS URL scheme');
+            return true;
+        }
+        
+        // Method 3: Generic tel: without number (some browsers open contacts)
+        window.location.href = 'tel:';
+        console.log('[Mistral] Opened contacts via tel: protocol');
+        return true;
+    } catch (error) {
+        console.error('[Mistral] Error opening contacts:', error);
         return false;
     }
 }

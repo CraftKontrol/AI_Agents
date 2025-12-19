@@ -56,6 +56,9 @@
 **Search:** "C'est quand mon rendez-vous chez le dentiste?" / "À quelle heure mon médicament?"
 **Complete:** "J'ai pris mes médicaments" / "C'est fait"
 **Time:** "Quelle heure est-il?" / "Quel jour sommes-nous?"
+**Call:** 
+- "Appelle Marie" (if Marie is emergency contact → direct call)
+- "Appelle Jean" (if Jean not in emergency contacts → opens phone contacts)
 
 ---
 

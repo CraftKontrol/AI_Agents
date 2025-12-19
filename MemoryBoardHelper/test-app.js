@@ -1102,6 +1102,24 @@ const tests = {
         }
     },
     
+    delete_all_lists: {
+        name: 'Supprimer toutes les listes',
+        action: async () => {
+            const lists = await appWindow.getAllLists();
+            for (const list of lists) {
+                await appWindow.deleteFromStore('lists', list.id);
+            }
+            if (typeof appWindow.loadLists === 'function') {
+                await appWindow.loadLists();
+            }
+            return { success: true };
+        },
+        validate: async () => {
+            const lists = await appWindow.getAllLists();
+            return lists.length === 0;
+        }
+    },
+    
     // Note Tests
     add_note: {
         name: 'Créer note',
@@ -1216,6 +1234,24 @@ const tests = {
         validate: async () => {
             await new Promise(resolve => setTimeout(resolve, 500));
             return true;
+        }
+    },
+    
+    delete_all_notes: {
+        name: 'Supprimer toutes les notes',
+        action: async () => {
+            const notes = await appWindow.getAllNotes();
+            for (const note of notes) {
+                await appWindow.deleteFromStore('notes', note.id);
+            }
+            if (typeof appWindow.loadNotes === 'function') {
+                await appWindow.loadNotes();
+            }
+            return { success: true };
+        },
+        validate: async () => {
+            const notes = await appWindow.getAllNotes();
+            return notes.length === 0;
         }
     },
     
@@ -1988,7 +2024,7 @@ const tests = {
     
     vocal_list_enumeration: {
         name: 'Vocal: Énumération simple',
-        action: async () => { return await injectVoiceAndWaitForAction("Faire le café faire les courses faire un bisou"); },
+        action: async () => { return await injectVoiceAndWaitForAction("je dois Faire le café faire les courses faire un bisou"); },
         validate: async (result) => {
             return result?.actionResult?.success === true;
         }
@@ -1996,7 +2032,7 @@ const tests = {
     
     vocal_shopping_list: {
         name: 'Vocal: Liste courses items',
-        action: async () => { return await injectVoiceAndWaitForAction("Acheter pain lait œufs beurre"); },
+        action: async () => { return await injectVoiceAndWaitForAction("Acheter du pain du lait des œufs du beurre"); },
         validate: async (result) => {
             return result?.actionResult?.success === true;
         }
@@ -2041,7 +2077,31 @@ const tests = {
             return result?.actionResult?.success === true;
         }
     },
+
+    vocal_delete_all_tasks: {
+        name: 'Vocal: Supprimer toutes les tâches',
+        action: async () => { return await injectVoiceAndWaitForAction("Supprime toutes les tâches"); },
+        validate: async (result) => {
+            return result?.actionResult?.success === true;
+        }
+    },
     
+    vocal_delete_all_lists: {
+        name: 'Vocal: Supprimer toutes les listes',
+        action: async () => { return await injectVoiceAndWaitForAction("Supprime toutes les listes"); },
+        validate: async (result) => {
+            return result?.actionResult?.success === true;
+        }
+    },
+    
+    vocal_delete_all_notes: {
+        name: 'Vocal: Supprimer toutes les notes',
+        action: async () => { return await injectVoiceAndWaitForAction("Supprime toutes les notes"); },
+        validate: async (result) => {
+            return result?.actionResult?.success === true;
+        }
+    },
+
     vocal_call_mom_weekly: {
         name: 'Vocal: Appel hebdo maman',
         action: async () => { return await injectVoiceAndWaitForAction("Rappelle-moi d'appeler maman tous les dimanches à 10h"); },
@@ -2549,6 +2609,7 @@ async function runTestsByCategory(category) {
             'vocal_change_date', 'vocal_move_appointment', 'vocal_list_enumeration',
             'vocal_shopping_list', 'vocal_note_wifi', 'vocal_search_appointments',
             'vocal_when_appointment', 'vocal_delete_old_tasks', 'vocal_delete_done_tasks',
+            'vocal_delete_all_tasks', 'vocal_delete_all_lists', 'vocal_delete_all_notes',
             'vocal_call_mom_weekly', 'vocal_greeting', 'vocal_thank_you'
         ],
         ui: [

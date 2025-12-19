@@ -349,7 +349,12 @@ The app uses **multiple prompts** for different intents:
 - Navigation: goto_section
 - Special: undo, call, conversation
 
-**Call Handling:** `makeCall(contactName, lang)` delegates to `handleEmergencyCall` when configured, with a safe success fallback; exposed globally for action-wrapper.
+**Call Handling:** 
+- `makeCall(contactName, lang)` delegates to `handleEmergencyCall`
+- Emergency Contact Match: Calls directly via `tel:` protocol (configured contacts)
+- No Match: Opens phone contacts app (Android: `content://contacts/people/`, iOS: `contacts://`, fallback: `tel:`)
+- Test-safe fallback when no emergency contacts configured
+- Exposed globally for action-wrapper
 
 **Integration Points:**
 1. Mistral AI results route through `processMistralResult()`

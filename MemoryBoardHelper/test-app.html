@@ -549,7 +549,7 @@
                     <div class="category-header" onclick="toggleSection('listTests')">
                         <span class="category-title">
                             <span class="material-symbols-outlined">list</span>
-                            Tests Listes (3)
+                            Tests Listes (4)
                         </span>
                         <span class="material-symbols-outlined">expand_less</span>
                     </div>
@@ -557,6 +557,7 @@
                         <button class="test-button" onclick="runTest('add_list', this)">Créer liste</button>
                         <button class="test-button" onclick="runTest('update_list', this)">Ajouter à liste</button>
                         <button class="test-button" onclick="runTest('delete_list', this)">Supprimer liste</button>
+                        <button class="test-button" onclick="runTest('delete_all_lists', this)">Supprimer toutes</button>
                     </div>
                 </div>
 
@@ -565,7 +566,7 @@
                     <div class="category-header" onclick="toggleSection('noteTests')">
                         <span class="category-title">
                             <span class="material-symbols-outlined">note</span>
-                            Tests Notes (3)
+                            Tests Notes (4)
                         </span>
                         <span class="material-symbols-outlined">expand_less</span>
                     </div>
@@ -573,6 +574,7 @@
                         <button class="test-button" onclick="runTest('add_note', this)">Créer note</button>
                         <button class="test-button" onclick="runTest('update_note', this)">Modifier note</button>
                         <button class="test-button" onclick="runTest('delete_note', this)">Supprimer note</button>
+                        <button class="test-button" onclick="runTest('delete_all_notes', this)">Supprimer toutes</button>
                     </div>
                 </div>
 
@@ -648,7 +650,7 @@
                     <div class="category-header" onclick="toggleSection('vocalTests')">
                         <span class="category-title">
                             <span class="material-symbols-outlined">mic</span>
-                            Commandes Vocales (57)
+                            Commandes Vocales (60)
                         </span>
                         <span class="material-symbols-outlined">expand_less</span>
                     </div>
@@ -701,6 +703,9 @@
                         <button class="test-button" onclick="runTest('vocal_when_appointment', this)">Vocal: C'est quand mon RDV</button>
                         <button class="test-button" onclick="runTest('vocal_delete_old_tasks', this)">Vocal: Supprimer anciennes</button>
                         <button class="test-button" onclick="runTest('vocal_delete_done_tasks', this)">Vocal: Supprimer terminées</button>
+                        <button class="test-button" onclick="runTest('vocal_delete_all_tasks', this)">Vocal: Supprimer toutes</button>
+                        <button class="test-button" onclick="runTest('vocal_delete_all_lists', this)">Vocal: Supprimer toutes listes</button>
+                        <button class="test-button" onclick="runTest('vocal_delete_all_notes', this)">Vocal: Supprimer toutes notes</button>
                         <button class="test-button" onclick="runTest('vocal_call_mom_weekly', this)">Vocal: Appel hebdo maman</button>
                         <button class="test-button" onclick="runTest('vocal_greeting', this)">Vocal: Bonjour</button>
                         <button class="test-button" onclick="runTest('vocal_thank_you', this)">Vocal: Merci</button>

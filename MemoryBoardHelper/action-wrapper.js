@@ -1224,6 +1224,58 @@ registerAction(
         const section = params.section;
         let targetElement = null;
         
+        // Close all open modals before navigation (except settings if navigating to settings)
+        const closeModals = () => {
+            if (section.toLowerCase() !== 'settings') {
+                // Close settings modal
+                if (typeof closeSettingsModal === 'function') {
+                    closeSettingsModal();
+                } else {
+                    const settingsModal = document.getElementById('settingsModal');
+                    if (settingsModal) settingsModal.style.display = 'none';
+                }
+            }
+            
+            // Close task modal
+            if (typeof closeAddTaskModal === 'function') {
+                closeAddTaskModal();
+            } else {
+                const taskModal = document.getElementById('addTaskModal');
+                if (taskModal) taskModal.style.display = 'none';
+            }
+            
+            // Close note modal
+            if (typeof closeAddNoteModal === 'function') {
+                closeAddNoteModal();
+            } else {
+                const noteModal = document.getElementById('addNoteModal');
+                if (noteModal) noteModal.style.display = 'none';
+            }
+            
+            // Close list modal
+            if (typeof closeAddListModal === 'function') {
+                closeAddListModal();
+            } else {
+                const listModal = document.getElementById('addListModal');
+                if (listModal) listModal.style.display = 'none';
+            }
+            
+            // Close alarm sound modal
+            if (typeof closeAlarmSoundModal === 'function') {
+                closeAlarmSoundModal();
+            } else {
+                const alarmModal = document.getElementById('alarmSoundModal');
+                if (alarmModal) alarmModal.style.display = 'none';
+            }
+            
+            // Close task popup
+            const taskPopup = document.getElementById('taskPopup');
+            if (taskPopup) taskPopup.style.display = 'none';
+        };
+        
+        // Close all modals first
+        closeModals();
+        
         // Map section names to DOM elements
         const sectionMap = {
             'tasks': '.task-list-section',
@@ -1243,8 +1295,8 @@ registerAction(
             targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
             
             // If settings, open modal
-            if (section.toLowerCase() === 'settings' && typeof openSettings === 'function') {
-                openSettings();
+            if (section.toLowerCase() === 'settings' && typeof openSettingsModal === 'function') {
+                openSettingsModal();
             }
             
             const message = params.response || getLocalizedResponse('navigationSuccess', language);
