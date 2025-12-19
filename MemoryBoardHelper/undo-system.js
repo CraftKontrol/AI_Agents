@@ -394,6 +394,16 @@ async function clearHistory() {
     }
 }
 
+// Make functions globally available for non-module scripts (backward compatibility)
+if (typeof window !== 'undefined') {
+    window.ACTION_TYPES = ACTION_TYPES;
+    window.recordAction = recordAction;
+    window.showUndoButton = showUndoButton;
+    window.hideUndoButton = hideUndoButton;
+    window.getLastActionId = getLastActionId;
+    window.clearHistory = clearHistory;
+}
+
 // Export functions for module usage
 export { 
     ACTION_TYPES, 
