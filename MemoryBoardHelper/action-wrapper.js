@@ -517,12 +517,27 @@ registerAction(
     'complete_task',
     // Validate
     async (params, language) => {
-        const tasks = await getAllTasks(); // Changed from getTodayTasks to search ALL tasks
+        const tasks = await getAllTasks(); // Search ALL tasks
+        const taskIdFromParams = params.taskId || params.task?.id;
         const description = params.task?.description?.toLowerCase() || '';
-        
-        console.log('🔍 complete_task - Searching for task:', description);
+
+        console.log('🔍 complete_task - Searching for task:', description || `(id:${taskIdFromParams})`);
         console.log('🔍 complete_task - Available tasks:', tasks.map(t => `"${t.description}" (${t.date})`));
-        
+
+        // Fast-path when taskId is provided (e.g., alarm dismiss, popup actions)
+        if (taskIdFromParams) {
+            const matchingById = tasks.find(t => String(t.id) === String(taskIdFromParams));
+            if (!matchingById) {
+                return {
+                    valid: false,
+                    message: getLocalizedText('taskNotFound', language)
+                };
+            }
+            params._resolvedTaskId = matchingById.id;
+            params._resolvedTask = matchingById;
+            return { valid: true };
+        }
+
         if (!description) {
             return { 
                 valid: false, 
