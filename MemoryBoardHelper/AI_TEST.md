@@ -282,4 +282,5 @@ Enable verbose logging by checking the console for:
 - **Navigation Tests**: UI navigation, section toggling
 - **UI Tests**: Modal interactions, button clicks
 - **Storage Tests**: IndexedDB, localStorage validation
+- **Audio Tests**: Sound system, volume control, haptic feedback, repetition detection (10 tests)
 - **Vocal Tests**: Voice command simulation (51 tests)

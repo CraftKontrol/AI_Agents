@@ -470,6 +470,10 @@
                             <span class="material-symbols-outlined" style="font-size: 16px;">explore</span>
                             Navigation
                         </button>
+                        <button class="btn btn-secondary" onclick="runTestsByCategory('audio')" style="font-size: 12px; padding: 8px;">
+                            <span class="material-symbols-outlined" style="font-size: 16px;">volume_up</span>
+                            Audio
+                        </button>
                     </div>
                 </div>
                 
@@ -642,6 +646,29 @@
                         <button class="test-button" onclick="runTest('check_indexeddb', this)">Vérifier IndexedDB</button>
                         <button class="test-button" onclick="runTest('check_localstorage', this)">Vérifier localStorage</button>
                         <button class="test-button" onclick="runTest('data_persistence', this)">Persistance données</button>
+                    </div>
+                </div>
+
+                <!-- Audio/Sound System Tests -->
+                <div class="test-category">
+                    <div class="category-header" onclick="toggleSection('audioTests')">
+                        <span class="category-title">
+                            <span class="material-symbols-outlined">volume_up</span>
+                            Système Audio (10)
+                        </span>
+                        <span class="material-symbols-outlined">expand_less</span>
+                    </div>
+                    <div class="category-content" id="audioTests">
+                        <button class="test-button" onclick="runTest('audio_sound_manager_loaded', this)">SoundManager chargé</button>
+                        <button class="test-button" onclick="runTest('audio_play_task_add', this)">Son: Ajouter tâche</button>
+                        <button class="test-button" onclick="runTest('audio_play_task_complete', this)">Son: Compléter tâche</button>
+                        <button class="test-button" onclick="runTest('audio_play_task_delete', this)">Son: Supprimer tâche</button>
+                        <button class="test-button" onclick="runTest('audio_volume_control', this)">Contrôle volume</button>
+                        <button class="test-button" onclick="runTest('audio_enable_disable', this)">Activation/Désactivation</button>
+                        <button class="test-button" onclick="runTest('audio_haptic_available', this)">Haptique disponible</button>
+                        <button class="test-button" onclick="runTest('audio_repetition_detection', this)">Détection répétition</button>
+                        <button class="test-button" onclick="runTest('audio_settings_persistence', this)">Persistance paramètres</button>
+                        <button class="test-button" onclick="runTest('audio_all_action_sounds', this)">Tous les sons d'actions</button>
                     </div>
                 </div>
 

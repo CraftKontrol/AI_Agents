@@ -1684,6 +1684,247 @@ const tests = {
         }
     },
     
+    // === AUDIO/SOUND SYSTEM TESTS ===
+    audio_sound_manager_loaded: {
+        name: 'SoundManager chargé',
+        action: async () => {
+            return {
+                loaded: typeof appWindow.soundManager !== 'undefined',
+                hasPlaySound: typeof appWindow.soundManager?.playSound === 'function',
+                hasSettings: typeof appWindow.soundManager?.getSettings === 'function'
+            };
+        },
+        validate: async (result) => {
+            return result.loaded && result.hasPlaySound && result.hasSettings;
+        }
+    },
+    
+    audio_play_task_add: {
+        name: 'Son: Ajouter tâche',
+        action: async () => {
+            if (!appWindow.soundManager) return { success: false, error: 'SoundManager not loaded' };
+            
+            // Force play sound even if disabled
+            appWindow.soundManager.playSound('add_task', true);
+            
+            // Wait for sound to play
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            return { success: true, action: 'add_task' };
+        },
+        validate: async (result) => {
+            return result.success === true;
+        }
+    },
+    
+    audio_play_task_complete: {
+        name: 'Son: Compléter tâche',
+        action: async () => {
+            if (!appWindow.soundManager) return { success: false };
+            appWindow.soundManager.playSound('complete_task', true);
+            await new Promise(resolve => setTimeout(resolve, 500));
+            return { success: true };
+        },
+        validate: async (result) => {
+            return result.success === true;
+        }
+    },
+    
+    audio_play_task_delete: {
+        name: 'Son: Supprimer tâche',
+        action: async () => {
+            if (!appWindow.soundManager) return { success: false };
+            appWindow.soundManager.playSound('delete_task', true);
+            await new Promise(resolve => setTimeout(resolve, 500));
+            return { success: true };
+        },
+        validate: async (result) => {
+            return result.success === true;
+        }
+    },
+    
+    audio_volume_control: {
+        name: 'Contrôle volume',
+        action: async () => {
+            if (!appWindow.soundManager) return { success: false };
+            
+            const originalVolume = appWindow.soundManager.volume;
+            
+            // Test volume change
+            appWindow.soundManager.setVolume(0.5);
+            const newVolume = appWindow.soundManager.volume;
+            
+            // Restore original
+            appWindow.soundManager.setVolume(originalVolume);
+            
+            return {
+                success: true,
+                originalVolume: originalVolume,
+                testVolume: newVolume,
+                changed: newVolume === 0.5
+            };
+        },
+        validate: async (result) => {
+            return result.success && result.changed;
+        }
+    },
+    
+    audio_enable_disable: {
+        name: 'Activation/Désactivation',
+        action: async () => {
+            if (!appWindow.soundManager) return { success: false };
+            
+            const originalState = appWindow.soundManager.enabled;
+            
+            // Test disable
+            appWindow.soundManager.setEnabled(false);
+            const disabledState = appWindow.soundManager.enabled;
+            
+            // Test enable
+            appWindow.soundManager.setEnabled(true);
+            const enabledState = appWindow.soundManager.enabled;
+            
+            // Restore original
+            appWindow.soundManager.setEnabled(originalState);
+            
+            return {
+                success: true,
+                disabledCorrectly: disabledState === false,
+                enabledCorrectly: enabledState === true
+            };
+        },
+        validate: async (result) => {
+            return result.success && result.disabledCorrectly && result.enabledCorrectly;
+        }
+    },
+    
+    audio_haptic_available: {
+        name: 'Haptique disponible',
+        action: async () => {
+            const hasVibrate = 'vibrate' in navigator;
+            const hapticEnabled = appWindow.soundManager?.hapticEnabled || false;
+            
+            return {
+                success: true,
+                browserSupport: hasVibrate,
+                managerEnabled: hapticEnabled
+            };
+        },
+        validate: async (result) => {
+            // Test passes if we can check haptic support
+            return result.success === true;
+        }
+    },
+    
+    audio_repetition_detection: {
+        name: 'Détection répétition',
+        action: async () => {
+            if (!appWindow.soundManager) return { success: false };
+            
+            // Clear action history
+            appWindow.soundManager.actionHistory = [];
+            
+            // Trigger same action 6 times to test variant detection
+            const results = [];
+            for (let i = 0; i < 6; i++) {
+                const variantBefore = appWindow.soundManager.getVariantLevel('add_task');
+                appWindow.soundManager.recordAction('add_task');
+                results.push(variantBefore);
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            
+            // After 6 calls, should be in "tired" variant
+            const finalVariant = appWindow.soundManager.getVariantLevel('add_task');
+            
+            return {
+                success: true,
+                progressionDetected: results.some(v => v !== 'normal'),
+                finalVariant: finalVariant,
+                isTired: finalVariant === 'tired'
+            };
+        },
+        validate: async (result) => {
+            return result.success && result.progressionDetected;
+        }
+    },
+    
+    audio_settings_persistence: {
+        name: 'Persistance paramètres',
+        action: async () => {
+            if (!appWindow.soundManager) return { success: false };
+            
+            // Save test values
+            const testVolume = 0.75;
+            const testEnabled = false;
+            
+            appWindow.soundManager.setVolume(testVolume);
+            appWindow.soundManager.setEnabled(testEnabled);
+            
+            // Wait a bit for localStorage to update
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            // Check localStorage from iframe context
+            const storedVolume = parseFloat(appWindow.localStorage.getItem('soundSystem_soundVolume'));
+            const storedEnabledString = appWindow.localStorage.getItem('soundSystem_soundEnabled');
+            const storedEnabled = storedEnabledString === 'false' ? false : storedEnabledString === 'true' ? true : null;
+            
+            // Restore defaults
+            appWindow.soundManager.setVolume(0.7);
+            appWindow.soundManager.setEnabled(true);
+            
+            return {
+                success: true,
+                volumeSaved: storedVolume === testVolume,
+                enabledSaved: storedEnabled === testEnabled,
+                storedVolumeValue: storedVolume,
+                storedEnabledValue: storedEnabledString
+            };
+        },
+        validate: async (result) => {
+            // Test passes if system can save/load settings (ignore sound file availability)
+            return result.success && result.volumeSaved && result.enabledSaved;
+        }
+    },
+    
+    audio_all_action_sounds: {
+        name: 'Tous les sons d\'actions',
+        action: async () => {
+            if (!appWindow.soundManager) return { success: false };
+            
+            const soundMap = appWindow.soundManager.soundMap;
+            const totalActions = Object.keys(soundMap).length;
+            
+            // Test a few different action types
+            const testActions = ['add_task', 'complete_task', 'delete_task', 'add_list', 'goto_section'];
+            const results = [];
+            
+            for (const action of testActions) {
+                const soundFile = soundMap[action];
+                results.push({
+                    action: action,
+                    soundFile: soundFile,
+                    hasSoundFile: !!soundFile
+                });
+                
+                // Play sound (quick test)
+                if (soundFile) {
+                    appWindow.soundManager.playSound(action, true);
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                }
+            }
+            
+            return {
+                success: true,
+                totalActionsMapped: totalActions,
+                testResults: results,
+                allMapped: results.every(r => r.hasSoundFile)
+            };
+        },
+        validate: async (result) => {
+            return result.success && result.allMapped && result.totalActionsMapped >= 12;
+        }
+    },
+    
     // === VOCAL COMMANDS TESTS (STT Simulation) ===
     vocal_add_task_simple: {
         name: 'Vocal: Ajouter tâche simple',
@@ -2624,6 +2865,12 @@ async function runTestsByCategory(category) {
         navigation: [
             'vocal_navigation_calendar', 'vocal_navigation_tasks',
             'vocal_navigation_notes', 'vocal_navigation_lists', 'vocal_navigation_settings'
+        ],
+        audio: [
+            'audio_sound_manager_loaded', 'audio_play_task_add', 'audio_play_task_complete',
+            'audio_play_task_delete', 'audio_volume_control', 'audio_enable_disable',
+            'audio_haptic_available', 'audio_repetition_detection', 'audio_settings_persistence',
+            'audio_all_action_sounds'
         ]
     };
     

@@ -137,6 +137,37 @@
                         </div>
                     </div>
 
+                    <!-- Sound System Settings -->
+                    <div class="settings-section">
+                        <h3><span class="material-symbols-outlined">volume_up</span> Système de Sons UI</h3>
+                        <div class="input-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="settingsSoundEnabled" checked>
+                                <span>Activer les sons d'interface</span>
+                            </label>
+                        </div>
+                        <div class="input-group">
+                            <label for="settingsSoundVolume">Volume des sons : <span id="soundVolumeValue">70%</span></label>
+                            <input type="range" id="settingsSoundVolume" min="0" max="100" value="70" oninput="updateSoundVolumeDisplay(this.value)">
+                        </div>
+                        <div class="input-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="settingsHapticEnabled" checked>
+                                <span>Activer les vibrations haptiques</span>
+                            </label>
+                        </div>
+                        <div class="input-group">
+                            <button class="btn-secondary" onclick="testSoundSystem()">
+                                <span class="material-symbols-outlined">play_circle</span>
+                                Tester les sons
+                            </button>
+                        </div>
+                        <p class="hint" style="margin-top: 10px;">
+                            <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle;">info</span>
+                            Les sons varient selon le type d'action et la fréquence d'utilisation
+                        </p>
+                    </div>
+
                     <!-- Logs -->
                     <div class="settings-section">
                         <h3><span class="material-symbols-outlined">description</span> Logs</h3>
@@ -1366,16 +1397,7 @@
         </div>
     </div>
 
-    <!-- Sound Effects -->
-    <audio id="tapSound">
-        <source src="assets/alarm-sounds/Tap.mp3" type="audio/mpeg">
-    </audio>
-    <audio id="validationSound">
-        <source src="assets/alarm-sounds/Validation.mp3" type="audio/mpeg">
-    </audio>
-    <audio id="listeningSound">
-        <source src="assets/alarm-sounds/Listening.mp3" type="audio/mpeg">
-    </audio>
+    <!-- Alarm Sound (for alarm-system.js) -->
     <audio id="alarmSound" loop>
         <source src="assets/alarm-sounds/gentle-alarm.mp3" type="audio/mpeg">
     </audio>
@@ -1398,6 +1420,7 @@
     <script src="task-manager.js"></script>
     <script src="alarm-system.js"></script>
     <script src="calendar-integration.js"></script>
+    <script src="sound-system.js"></script>
     <script src="action-wrapper.js"></script>
     <script src="script-response-handler.js"></script>
     <script src="script.js"></script>

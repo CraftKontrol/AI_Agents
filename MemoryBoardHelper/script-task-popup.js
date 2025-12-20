@@ -140,15 +140,16 @@ async function markTaskDone() {
     if (!currentTaskPopup) return;
     
     try {
-        // Use calendar integration if available
-        if (typeof markTaskCompletedInCalendar === 'function') {
-            await markTaskCompletedInCalendar(currentTaskPopup.id);
-        } else {
-            currentTaskPopup.status = 'completed';
-            currentTaskPopup.completedAt = new Date().toISOString();
-            await updateTask(currentTaskPopup.id, currentTaskPopup);
+        const lang = typeof getCurrentLanguage === 'function' ? getCurrentLanguage() : 'fr';
+        const result = await executeAction('complete_task', {
+            taskId: currentTaskPopup.id,
+            task: { description: currentTaskPopup.description }
+        }, lang);
+
+        if (!result?.success) {
+            throw new Error(result?.error || 'complete_task failed');
         }
-        
+
         closeTaskPopup();
         showSuccess('Tâche marquée comme terminée');
     } catch (error) {
@@ -192,11 +193,14 @@ async function saveTaskPopupEdit() {
             interval: 1
         } : null;
         
-        // Use calendar integration if available
-        if (typeof updateEventInCalendar === 'function') {
-            await updateEventInCalendar(currentTaskPopup.id, currentTaskPopup);
-        } else {
-            await updateTask(currentTaskPopup.id, currentTaskPopup);
+        // Use executeAction to trigger sounds
+        const result = await executeAction('update_task', {
+            taskId: currentTaskPopup.id,
+            updates: currentTaskPopup
+        }, 'fr');
+        
+        if (!result.success) {
+            throw new Error(result.error || 'Update failed');
         }
         
         // Supprimer le bouton "Enregistrer"
@@ -222,11 +226,13 @@ async function deleteTaskPopup() {
     }
     
     try {
-        // Use calendar integration if available
-        if (typeof removeEventFromCalendar === 'function') {
-            await removeEventFromCalendar(currentTaskPopup.id);
-        } else {
-            await deleteTask(currentTaskPopup.id);
+        // Use executeAction to trigger sounds
+        const result = await executeAction('delete_task', {
+            taskId: currentTaskPopup.id
+        }, 'fr');
+        
+        if (!result.success) {
+            throw new Error(result.error || 'Delete failed');
         }
         
         closeTaskPopup();

@@ -41,6 +41,7 @@
 - `alarm-system.js` - 30s polling + audio alerts
 - `script-task-popup.js` - Task modal UI
 - `undo-system.js` - Action history (max 20)
+- `sound-system.js` - UI sound feedback (pitch variation, repetition detection, haptic)
 - `test-app.html/js` - Testing system with action-wrapper integration
 
 **STT Functions (in script.js):**
@@ -380,7 +381,49 @@ The app uses **multiple prompts** for different intents:
 
 **undo-system.js:** recordAction, undoLastAction, showUndoButton (10s auto-hide), showToast; voice undo commands are routed through action-wrapper so tests/listeners get action events
 
+**sound-system.js:** SoundManager class, playSound (main entry), playSoundWithEffects (pitch/playback variation), getVariantLevel (repetition detection), triggerHaptic (vibration patterns), soundMap (action → sound file), hapticPatterns (normal/variant/tired)
+
 **Action Types:** ADD_TASK, DELETE_TASK, COMPLETE_TASK, SNOOZE_TASK, UPDATE_TASK, ADD_NOTE, DELETE_NOTE, ADD_LIST, DELETE_LIST
+
+---
+
+## 🔊 UI Sound System
+
+**Purpose:** Rich audio/haptic feedback for all user actions
+
+**Features:**
+- **Random Pitch Variation:** ±0.15 per sound (prevents monotony)
+- **Repetition Detection:** Tracks last 10 actions, switches to variant/tired sounds
+- **Haptic Feedback:** Vibration patterns (normal/variant/tired)
+- **User Controls:** Enable/disable, volume slider (0-100%), haptic toggle
+
+**Sound Files (12 files in `sounds/` folder):**
+- `task-add.mp3` - Success chime (add_task, add_recursive_task)
+- `task-complete.mp3` - Completion bell (complete_task)
+- `task-delete.mp3` - Soft whoosh (delete_task, delete_old_task, delete_done_task)
+- `task-update.mp3` - Quick tick (update_task)
+- `task-search.mp3` - Search blip (search_task, search_list)
+- `list-note-add.mp3` - Paper rustle (add_list, add_note)
+- `list-note-update.mp3` - Pen writing (update_list, update_note)
+- `list-note-delete.mp3` - Paper crumple (delete_list, delete_note)
+- `navigation-goto.mp3` - UI swoosh (goto_section)
+- `special-undo.mp3` - Rewind effect (undo)
+- `special-call.mp3` - Phone ring (call)
+- `special-conversation.mp3` - Ambient tone (conversation)
+
+**Variant System:**
+- **Normal** (0-2 repeats in 10s): Base sound + random pitch
+- **Variant** (3-4 repeats in 10s): 1.2x pitch + less variation
+- **Tired** (5+ repeats in 15s): 0.7x pitch + slower playback
+
+**Haptic Patterns:**
+- Normal: [20ms] - Single short vibration
+- Variant: [10ms, 50ms, 10ms] - Quick double tap
+- Tired: [50ms, 100ms, 50ms] - Longer frustrated pattern
+
+**Integration:** Triggered by `action-wrapper.js` on successful action execution
+
+**Settings:** localStorage keys `soundSystem_soundEnabled`, `soundSystem_soundVolume`, `soundSystem_hapticEnabled`
 
 ---
 

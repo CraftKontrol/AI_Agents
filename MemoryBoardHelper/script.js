@@ -389,43 +389,6 @@ function isConfirmation(text, language = 'fr') {
     return null;
 }
 
-// --- Sound Effects ---
-function playSound(soundType) {
-    const soundMap = {
-        'tap': 'tapSound',
-        'validation': 'validationSound',
-        'listening': 'listeningSound',
-        'alarm': 'alarmSound'
-    };
-    
-    const audioId = soundMap[soundType] || soundType + 'Sound';
-    const audio = document.getElementById(audioId);
-    
-    if (audio) {
-        audio.currentTime = 0;
-        audio.play().catch(err => console.log('[Sound] Play error:', err));
-    }
-}
-
-function playTapSound() {
-    playSound('tap');
-}
-
-function playValidationSound() {
-    playSound('validation');
-}
-
-function playListeningSound() {
-    playSound('listening');
-}
-// Patch all button presses to play tap sound
-document.addEventListener('DOMContentLoaded', function() {
-    document.body.addEventListener('click', function(e) {
-        if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
-            playTapSound();
-        }
-    }, true);
-});
 // Commande : Ajouter une tâche
 // Désactive le mode automatique en simulant un clic sur le bouton
 function disableAutoModeByButton() {
@@ -604,9 +567,13 @@ async function deleteOldTasks() {
             return { success: true, deleted: 0 };
         }
         
-        // Delete each old task
+        // Delete each old task via action wrapper
         for (const task of oldTasks) {
-            await deleteTask(task.id);
+            if (typeof executeAction === 'function') {
+                await executeAction('delete_task', { task: { description: task.description } }, getCurrentLanguage());
+            } else {
+                throw new Error('executeAction indisponible pour delete_task');
+            }
         }
         
         // Refresh calendar
@@ -636,9 +603,13 @@ async function deleteDoneTasks() {
             return { success: true, deleted: 0 };
         }
         
-        // Delete each completed task
+        // Delete each completed task via action wrapper
         for (const task of doneTasks) {
-            await deleteTask(task.id);
+            if (typeof executeAction === 'function') {
+                await executeAction('delete_task', { task: { description: task.description } }, getCurrentLanguage());
+            } else {
+                throw new Error('executeAction indisponible pour delete_task');
+            }
         }
         
         // Refresh calendar
@@ -665,9 +636,13 @@ async function deleteAllTasks() {
             return { success: true, deleted: 0 };
         }
         
-        // Delete all tasks
+        // Delete all tasks via action wrapper
         for (const task of tasks) {
-            await deleteTask(task.id);
+            if (typeof executeAction === 'function') {
+                await executeAction('delete_task', { task: { description: task.description } }, getCurrentLanguage());
+            } else {
+                throw new Error('executeAction indisponible pour delete_task');
+            }
         }
         
         // Refresh calendar
@@ -753,7 +728,11 @@ async function deleteTaskByDescription(description) {
             return false;
         }
         
-        await deleteTask(task.id);
+        if (typeof executeAction === 'function') {
+            await executeAction('delete_task', { task: { description: task.description } }, getCurrentLanguage());
+        } else {
+            throw new Error('executeAction indisponible pour delete_task');
+        }
         
         // Refresh calendar
         if (typeof initializeCalendar === 'function') {
@@ -1390,6 +1369,9 @@ function displayLaunchGreeting(message, overdueCount, todayCount, userLanguage =
     };
     cancelBtn.onclick = () => {
         console.log('[App] Greeting cancelled by user');
+        if (typeof soundManager !== 'undefined') {
+            soundManager.playSound('conversation', true);
+        }
         overlay.remove();
     };
     
@@ -1476,6 +1458,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     
     // Load wake word settings
     loadWakeWordSettings();
+    
+    // Load sound system settings
+    loadSoundSystemSettings();
+    initSoundSystemUIListeners();
     
     // Initialize speech recognition
     initializeSpeechRecognition();
@@ -1604,7 +1590,6 @@ function initializeSpeechRecognition() {
             isRecognitionActive = true;
             recognitionRestartAttempts = 0;
             console.log('[App] Recognition started');
-            playListeningSound();
         };
         
         recognition.onresult = handleSpeechResult;
@@ -1628,9 +1613,11 @@ function toggleListeningMode() {
     if (listeningMode === 'manual') {
         listeningMode = 'always-listening';
         startAlwaysListening();
+        playUiSound('ui_toggle_on');
     } else {
         listeningMode = 'manual';
         stopAlwaysListening();
+        playUiSound('ui_toggle_off');
     }
     updateModeUI();
 }
@@ -2426,7 +2413,6 @@ async function startMediaRecording(provider) {
         // Start recording
         mediaRecorder.start();
         isRecording = true;
-        playListeningSound();
         console.log(`[${provider} STT] Recording started`);
         
         // Start Voice Activity Detection to auto-stop on silence
@@ -2816,7 +2802,6 @@ async function startGoogleSTTRecording(apiKey) {
         // Start recording
         mediaRecorder.start();
         isRecording = true;
-        playListeningSound();
         console.log('[GoogleSTT] Recording started with mime type:', options.mimeType);
         console.log('[GoogleSTT] MediaRecorder state:', mediaRecorder.state);
         
@@ -3203,26 +3188,42 @@ async function handleUpdateTask(result, tasks) {
             ((newDate && t.date !== newDate) || (newTime && t.time !== newTime) || (!newDate && !newTime))
         );
         for (const oldTask of possibleOldTasks) {
-            await deleteTask(oldTask.id);
+            if (typeof executeAction === 'function') {
+                await executeAction('delete_task', {
+                    task: { description: oldTask.description }
+                }, result.language || getCurrentLanguage());
+            } else {
+                throw new Error('executeAction indisponible pour delete_task');
+            }
         }
-        // Crée la nouvelle tâche
-        const createResult = await createTask({
-            description: result.task.description,
-            date: result.task.date || null,
-            time: result.task.time || null,
-            type: result.task.type || 'general',
-            priority: result.task.priority || 'normal'
-        });
-        if (createResult && createResult.success) {
+        // Crée la nouvelle tâche via l'action wrapper
+        let createResult;
+        if (typeof executeAction === 'function') {
+            createResult = await executeAction('add_task', {
+                task: {
+                    description: result.task.description,
+                    date: result.task.date || null,
+                    time: result.task.time || null,
+                    type: result.task.type || 'general',
+                    priority: result.task.priority || 'normal'
+                },
+                response: result.response
+            }, result.language || getCurrentLanguage());
+        } else {
+            throw new Error('executeAction indisponible pour add_task');
+        }
+
+        const createdTask = createResult?.data || createResult?.task;
+        if (createResult && createResult.success && createdTask) {
             const confirmMsg = result.response || getLocalizedResponse('taskAdded', result.language) || 'Tâche ajoutée.';
             showSuccess(confirmMsg);
             speakResponse(confirmMsg);
             // Si la date n'est pas aujourd'hui, bascule l'onglet pour afficher la tâche
             const today = new Date().toISOString().split('T')[0];
-            if (createResult.task.date && createResult.task.date !== today) {
+            if (createdTask.date && createdTask.date !== today) {
                 // Si la tâche est dans la semaine courante, bascule sur "week", sinon "month"
                 const now = new Date();
-                const taskDate = new Date(createResult.task.date);
+                const taskDate = new Date(createdTask.date);
                 const weekStart = new Date(now);
                 weekStart.setDate(now.getDate() - now.getDay());
                 weekStart.setHours(0, 0, 0, 0);
@@ -3291,17 +3292,32 @@ async function updateTaskFromConfirmation(data, language) {
     }
     
     if (needDeleteOld) {
-        // Supprime l'ancienne tâche
-        await deleteTask(data.taskId);
-        // Crée la nouvelle tâche modifiée
-        const createResult = await createTask({
-            description: data.newDescription,
-            date: data.newDate,
-            time: data.newTime,
-            type: data.type || 'general',
-            priority: data.priority || 'normal'
-        });
-        if (createResult && createResult.success) {
+        // Supprime l'ancienne tâche puis recrée via l'action wrapper
+        if (typeof executeAction === 'function') {
+            await executeAction('delete_task', {
+                task: { description: data.oldDescription }
+            }, language || getCurrentLanguage());
+        } else {
+            throw new Error('executeAction indisponible pour delete_task');
+        }
+
+        let createResult;
+        if (typeof executeAction === 'function') {
+            createResult = await executeAction('add_task', {
+                task: {
+                    description: data.newDescription,
+                    date: data.newDate,
+                    time: data.newTime,
+                    type: data.type || 'general',
+                    priority: data.priority || 'normal'
+                }
+            }, language || getCurrentLanguage());
+        } else {
+            throw new Error('executeAction indisponible pour add_task');
+        }
+
+        const createdTask = createResult?.data || createResult?.task;
+        if (createResult && createResult.success && createdTask) {
             const confirmMessages = {
                 fr: `J'ai modifié la tâche. Elle est maintenant "${data.newDescription}"${data.newTime ? ' à ' + data.newTime : ''}${data.newDate ? ' le ' + formatDateForDisplay(data.newDate, 'fr') : ''}.`,
                 it: `Ho modificato il compito. Ora è "${data.newDescription}"${data.newTime ? ' alle ' + data.newTime : ''}${data.newDate ? ' il ' + formatDateForDisplay(data.newDate, 'it') : ''}.`,
@@ -3316,10 +3332,21 @@ async function updateTaskFromConfirmation(data, language) {
         }
     } else {
         // Si pas de changement, juste mettre à jour
-        const updateResult = await updateTask(data.taskId, {
-            date: data.newDate,
-            time: data.newTime
-        });
+        let updateResult;
+        if (typeof executeAction === 'function') {
+            updateResult = await executeAction('update_task', {
+                task: {
+                    description: data.oldDescription,
+                    date: data.newDate,
+                    time: data.newTime,
+                    type: data.type || 'general',
+                    priority: data.priority || 'normal'
+                }
+            }, language || getCurrentLanguage());
+        } else {
+            throw new Error('executeAction indisponible pour update_task');
+        }
+
         if (updateResult && updateResult.success) {
             const confirmMessages = {
                 fr: `J'ai mis à jour la tâche.`,
@@ -3411,9 +3438,15 @@ async function handleAddTask(result) {
 
 // Create task after confirmation
 async function createTaskFromConfirmation(taskData, language) {
-    const createResult = await createTask(taskData);
+    let createResult;
+    if (typeof executeAction === 'function') {
+        createResult = await executeAction('add_task', { task: taskData }, language || getCurrentLanguage());
+    } else {
+        throw new Error('executeAction indisponible pour add_task');
+    }
     
-    if (createResult && createResult.success) {
+    const createdTask = createResult?.data || createResult?.task;
+    if (createResult && createResult.success && createdTask) {
         const confirmMessages = {
             fr: `J'ai bien ajouté la tâche "${taskData.description}"${taskData.time ? ' à ' + taskData.time : ''}${taskData.date ? ' le ' + formatDateForDisplay(taskData.date, 'fr') : ''}.`,
             it: `Ho aggiunto il compito "${taskData.description}"${taskData.time ? ' alle ' + taskData.time : ''}${taskData.date ? ' il ' + formatDateForDisplay(taskData.date, 'it') : ''}.`,
@@ -3425,9 +3458,9 @@ async function createTaskFromConfirmation(taskData, language) {
         
         // Si la date n'est pas aujourd'hui, bascule l'onglet pour afficher la tâche
         const today = new Date().toISOString().split('T')[0];
-        if (createResult.task.date && createResult.task.date !== today) {
+        if (createdTask.date && createdTask.date !== today) {
             const now = new Date();
-            const taskDate = new Date(createResult.task.date);
+            const taskDate = new Date(createdTask.date);
             const weekStart = new Date(now);
             weekStart.setDate(now.getDate() - now.getDay());
             weekStart.setHours(0, 0, 0, 0);
@@ -3461,7 +3494,11 @@ async function handleAddList(result) {
     };
     
     try {
-        await createList(listData);
+        if (typeof executeAction === 'function') {
+            await executeAction('add_list', { list: listData }, result.language || getCurrentLanguage());
+        } else {
+            throw new Error('executeAction indisponible pour add_list');
+        }
         
         const confirmMessages = {
             fr: `J'ai créé la liste "${listData.title}" avec ${listData.items.length} élément${listData.items.length > 1 ? 's' : ''}.`,
@@ -3503,7 +3540,11 @@ async function handleAddNote(result) {
     };
     
     try {
-        await createNote(noteData);
+        if (typeof executeAction === 'function') {
+            await executeAction('add_note', { note: noteData }, result.language || getCurrentLanguage());
+        } else {
+            throw new Error('executeAction indisponible pour add_note');
+        }
         
         const confirmMessages = {
             fr: `J'ai créé la note "${noteData.title}".`,
@@ -3579,8 +3620,12 @@ async function handleDeleteList(result) {
             return;
         }
         
-        // Supprimer la liste
-        await deleteList(listToDelete.id);
+        // Supprimer la liste via l'action wrapper si dispo
+        if (typeof executeAction === 'function') {
+            await executeAction('delete_list', { list: { title: listToDelete.title } }, result.language || getCurrentLanguage());
+        } else {
+            throw new Error('executeAction indisponible pour delete_list');
+        }
         
         const confirmMessages = {
             fr: `J'ai supprimé la liste "${listToDelete.title}".`,
@@ -3655,8 +3700,12 @@ async function handleDeleteNote(result) {
             return;
         }
         
-        // Supprimer la note
-        await deleteNote(noteToDelete.id);
+        // Supprimer la note via l'action wrapper si dispo
+        if (typeof executeAction === 'function') {
+            await executeAction('delete_note', { note: { title: noteToDelete.title } }, result.language || getCurrentLanguage());
+        } else {
+            throw new Error('executeAction indisponible pour delete_note');
+        }
         
         const confirmMessages = {
             fr: `J'ai supprimé la note "${noteToDelete.title}".`,
@@ -3800,11 +3849,18 @@ async function handleUpdateNote(result) {
         
         // Mettre à jour la note avec le nouveau contenu
         const updatedContent = noteToUpdate.content + '\n\n' + newContent;
-        await updateNote(noteToUpdate.id, {
-            ...noteToUpdate,
-            content: updatedContent,
-            lastModified: Date.now()
-        });
+        if (typeof executeAction === 'function') {
+            await executeAction('update_note', {
+                note: {
+                    id: noteToUpdate.id,
+                    title: noteToUpdate.title,
+                    content: updatedContent,
+                    lastModified: Date.now()
+                }
+            }, result.language || getCurrentLanguage());
+        } else {
+            throw new Error('executeAction indisponible pour update_note');
+        }
         
         const confirmMessages = {
             fr: `J'ai ajouté le contenu à votre note "${noteToUpdate.title}".`,
@@ -3877,9 +3933,14 @@ async function handleCompleteTask(result, tasks) {
 
 // Complete task after confirmation
 async function completeTaskFromConfirmation(data, language) {
-    const completeResult = await completeTask(data.taskId);
+    let completeResult;
+    if (typeof executeAction === 'function') {
+        completeResult = await executeAction('complete_task', { task: { description: data.taskDescription } }, language || getCurrentLanguage());
+    } else {
+        throw new Error('executeAction indisponible pour complete_task');
+    }
     
-    if (completeResult.success) {
+    if (completeResult && completeResult.success) {
         const confirmMessages = {
             fr: `J'ai marqué "${data.taskDescription}" comme terminée.`,
             it: `Ho segnato "${data.taskDescription}" come completato.`,
@@ -4030,9 +4091,14 @@ async function handleDeleteTask(result, tasks) {
 
 // Delete task after confirmation
 async function deleteTaskFromConfirmation(data, language) {
-    const deleteResult = await deleteTask(data.taskId);
+    let deleteResult;
+    if (typeof executeAction === 'function') {
+        deleteResult = await executeAction('delete_task', { task: { description: data.taskDescription } }, language || getCurrentLanguage());
+    } else {
+        throw new Error('executeAction indisponible pour delete_task');
+    }
     
-    if (deleteResult.success) {
+    if (deleteResult && deleteResult.success) {
         const confirmMessages = {
             fr: `J'ai supprimé la tâche "${data.taskDescription}".`,
             it: `Ho cancellato il compito "${data.taskDescription}".`,
@@ -4435,7 +4501,11 @@ async function commandCompleteTask() {
     const tasks = await getTodayTasks();
     if (tasks.length > 0) {
         // Complete the first pending task
-        await completeTask(tasks[0].id);
+        if (typeof executeAction === 'function') {
+            await executeAction('complete_task', { task: { description: tasks[0].description } }, getCurrentLanguage());
+        } else {
+            throw new Error('executeAction indisponible pour complete_task');
+        }
         if (typeof refreshCalendar === 'function') await refreshCalendar();
         const lang = getCurrentLanguage();
         const simpleMsg = getLocalizedResponse('taskCompleted', lang);
@@ -4454,8 +4524,6 @@ async function commandWhatTime() {
         hour: '2-digit',
         minute: '2-digit'
     });
-    
-    const lang = getCurrentLanguage();
     const messages = {
         fr: `Il est ${time}`,
         it: `Sono le ${time}`,
@@ -4528,9 +4596,9 @@ async function refreshTaskDisplay() {
 // All old rendering functions removed - see calendar-integration.js for FullCalendar implementation
 // Complete task from UI
 async function completeTaskUI(taskId) {
-    const result = await completeTask(taskId);
+    // Use executeAction to trigger sounds
+    const result = await executeAction('complete_task', { taskId }, getCurrentLanguage());
     if (result.success) {
-        playValidationSound();
         if (typeof refreshCalendar === 'function') await refreshCalendar();
         const lang = getCurrentLanguage();
         const simpleMsg = getLocalizedResponse('taskCompleted', lang);
@@ -4566,7 +4634,8 @@ async function deleteTaskUI(taskId) {
     };
     
     if (confirm(confirmMessages[lang] || confirmMessages.fr)) {
-        const result = await deleteTask(taskId);
+        // Use executeAction to trigger sounds
+        const result = await executeAction('delete_task', { taskId }, lang);
         if (result.success) {
             if (typeof refreshCalendar === 'function') await refreshCalendar();
             const simpleMsg = getLocalizedResponse('taskDeleted', lang);
@@ -4750,6 +4819,7 @@ function toggleSection(sectionId) {
     
     const isVisible = section.style.display !== 'none';
     section.style.display = isVisible ? 'none' : 'block';
+    playUiSound(isVisible ? 'ui_toggle_off' : 'ui_toggle_on');
     
     // Only update button text if event exists (clicked via button)
     if (typeof event !== 'undefined' && event && event.currentTarget) {
@@ -4846,7 +4916,9 @@ function loadEmergencyContacts() {
 
 function toggleEmergencyPanel() {
     const panel = document.getElementById('emergencyPanel');
-    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    const willShow = panel.style.display === 'none';
+    panel.style.display = willShow ? 'block' : 'none';
+    playUiSound(willShow ? 'ui_toggle_on' : 'ui_toggle_off');
 }
 
 function callEmergencyContact(contactNumber) {
@@ -4977,6 +5049,7 @@ function openEmergencySettings() {
 
 // Add task modal
 function openAddTaskModal(selectedDate = null, selectedTime = null) {
+    playUiSound('ui_open');
     document.getElementById('addTaskModal').style.display = 'flex';
     document.getElementById('taskDate').value = selectedDate || new Date().toISOString().split('T')[0];
     document.getElementById('taskTime').value = selectedTime || '';
@@ -4987,6 +5060,7 @@ function openAddTaskModal(selectedDate = null, selectedTime = null) {
 }
 
 function closeAddTaskModal() {
+    playUiSound('ui_close');
     document.getElementById('addTaskModal').style.display = 'none';
 }
 
@@ -5014,24 +5088,20 @@ async function saveNewTask() {
     
     // Use calendar integration if available
     let result;
+    const payload = { 
+        description, 
+        date: taskDate, 
+        time, 
+        type, 
+        priority,
+        recurrence 
+    };
     if (typeof addEventToCalendar === 'function') {
-        result = await addEventToCalendar({ 
-            description, 
-            date: taskDate, 
-            time, 
-            type, 
-            priority,
-            recurrence 
-        });
+        result = await addEventToCalendar(payload);
+    } else if (typeof executeAction === 'function') {
+        result = await executeAction('add_task', { task: payload }, getCurrentLanguage());
     } else {
-        result = await createTask({ 
-            description, 
-            date: taskDate, 
-            time, 
-            type, 
-            priority,
-            recurrence 
-        });
+        throw new Error('executeAction indisponible: impossible de créer la tâche sans le wrapper.');
     }
     
     if (result.success) {
@@ -5117,10 +5187,12 @@ async function fetchLastModified() {
 
 // Ouvre la modale de sélection du son d'alarme
 function openAlarmSoundModal() {
+    playUiSound('ui_open');
     document.getElementById('alarmSoundModal').style.display = 'block';
 }
 
 function closeAlarmSoundModal() {
+    playUiSound('ui_close');
     document.getElementById('alarmSoundModal').style.display = 'none';
 }
 
@@ -5141,6 +5213,7 @@ function saveAlarmSound() {
 
 // --- Settings Modal Functions ---
 function openSettingsModal() {
+    playUiSound('ui_open');
     // Load current settings into modal
     const wakeWord = localStorage.getItem('wakeWord') || '';
     const wakeWordEnabled = localStorage.getItem('wakeWordEnabled') === 'true';
@@ -5155,14 +5228,25 @@ function openSettingsModal() {
     document.getElementById('settingsSsmlEnabled').checked = ssmlSettings.enabled;
     document.getElementById('settingsCustomKeywords').value = ssmlSettings.customKeywords || '';
 
+    // Load Sound System settings
+    if (typeof soundManager !== 'undefined') {
+        const soundSettings = soundManager.getSettings();
+        document.getElementById('settingsSoundEnabled').checked = soundSettings.enabled;
+        document.getElementById('settingsSoundVolume').value = Math.round(soundSettings.volume * 100);
+        document.getElementById('soundVolumeValue').textContent = Math.round(soundSettings.volume * 100) + '%';
+        document.getElementById('settingsHapticEnabled').checked = soundSettings.hapticEnabled;
+    }
+
     document.getElementById('settingsModal').style.display = 'flex';
 }
 
 function closeSettingsModal() {
+    playUiSound('ui_close');
     document.getElementById('settingsModal').style.display = 'none';
 }
 
 function saveSettings() {
+    playUiSound('ui_success');
     // Save Wake Word
     const wakeWord = document.getElementById('settingsWakeWord').value.trim();
     const wakeWordEnabled = document.getElementById('settingsWakeWordEnabled').checked;
@@ -5191,6 +5275,17 @@ function saveSettings() {
     ssmlSettings.customKeywords = document.getElementById('settingsCustomKeywords').value.trim();
     localStorage.setItem('ssmlSettings', JSON.stringify(ssmlSettings));
 
+    // Save Sound System Settings
+    if (typeof soundManager !== 'undefined') {
+        const soundEnabled = document.getElementById('settingsSoundEnabled').checked;
+        const soundVolume = parseInt(document.getElementById('settingsSoundVolume').value) / 100;
+        const hapticEnabled = document.getElementById('settingsHapticEnabled').checked;
+        
+        soundManager.setEnabled(soundEnabled);
+        soundManager.setVolume(soundVolume);
+        soundManager.setHapticEnabled(hapticEnabled);
+    }
+
     closeSettingsModal();
     showSuccess('Préférences enregistrées avec succès !');
     
@@ -5198,6 +5293,7 @@ function saveSettings() {
     loadTTSSettings();
     loadSSMLSettings();
     loadWakeWordSettings();
+    loadSoundSystemSettings();
 }
 
 function resetAllSettings() {
@@ -5282,12 +5378,6 @@ window.quickDismissAlarm = quickDismissAlarm;
 window.quickTestAlarm = quickTestAlarm;
 window.quickChangeAlarm = quickChangeAlarm;
 
-// Export sound functions
-window.playSound = playSound;
-window.playTapSound = playTapSound;
-window.playValidationSound = playValidationSound;
-window.playListeningSound = playListeningSound;
-
 // Export task management functions
 window.completeTask = completeTask;
 window.deleteAllTasks = deleteAllTasks;
@@ -5312,6 +5402,7 @@ let selectedNoteColor = '#2a2a2a';
 let editingNoteId = null;
 
 function openAddNoteModal() {
+    playUiSound('ui_open');
     document.getElementById('addNoteModal').style.display = 'flex';
     document.getElementById('noteTitle').value = '';
     document.getElementById('noteContent').value = '';
@@ -5323,6 +5414,7 @@ function openAddNoteModal() {
 }
 
 function closeAddNoteModal() {
+    playUiSound('ui_close');
     document.getElementById('addNoteModal').style.display = 'none';
     editingNoteId = null;
 }
@@ -5369,10 +5461,12 @@ async function saveNewNote() {
             await createNote(noteData);
             showSuccess('Note créée avec succès');
         }
+        playUiSound('ui_success');
         closeAddNoteModal();
         await loadNotes();
     } catch (error) {
         console.error('[Notes] Error saving note:', error);
+        playUiSound('ui_error');
         showError('Erreur lors de l\'enregistrement de la note');
     }
 }
@@ -5484,6 +5578,7 @@ function getCategoryName(category) {
 let editingListId = null;
 
 function openAddListModal() {
+    playUiSound('ui_open');
     document.getElementById('addListModal').style.display = 'flex';
     document.getElementById('listTitle').value = '';
     document.getElementById('listCategory').value = 'general';
@@ -5497,11 +5592,13 @@ function openAddListModal() {
 }
 
 function closeAddListModal() {
+    playUiSound('ui_close');
     document.getElementById('addListModal').style.display = 'none';
     editingListId = null;
 }
 
 function addListItem() {
+    playUiSound('ui_click');
     const container = document.getElementById('listItemsContainer');
     const itemCount = container.querySelectorAll('.list-item-input').length + 1;
     
@@ -5519,6 +5616,7 @@ function addListItem() {
 }
 
 function removeListItem(button) {
+    playUiSound('ui_click');
     const container = document.getElementById('listItemsContainer');
     const items = container.querySelectorAll('.list-item-input');
     
@@ -5573,10 +5671,12 @@ async function saveNewList() {
             await createList(listData);
             showSuccess('Liste créée avec succès');
         }
+        playUiSound('ui_success');
         closeAddListModal();
         await loadLists();
     } catch (error) {
         console.error('[Lists] Error saving list:', error);
+        playUiSound('ui_error');
         showError('Erreur lors de l\'enregistrement de la liste');
     }
 }
@@ -5709,6 +5809,128 @@ function escapeHtml(text) {
     div.textContent = text;
     return div.innerHTML;
 }
+
+// =============================================================================
+// SOUND SYSTEM HELPER FUNCTIONS
+// =============================================================================
+
+/**
+ * Update sound volume display
+ */
+function updateSoundVolumeDisplay(value) {
+    document.getElementById('soundVolumeValue').textContent = value + '%';
+}
+
+/**
+ * Load sound system settings
+ */
+function loadSoundSystemSettings() {
+    if (typeof soundManager === 'undefined') {
+        console.warn('[Settings] Sound system not loaded yet');
+        return;
+    }
+    
+    const settings = soundManager.getSettings();
+    
+    // Update UI controls
+    const enabledCheckbox = document.getElementById('settingsSoundEnabled');
+    const volumeSlider = document.getElementById('settingsSoundVolume');
+    const hapticCheckbox = document.getElementById('settingsHapticEnabled');
+    
+    if (enabledCheckbox) {
+        enabledCheckbox.checked = settings.enabled;
+    }
+    if (volumeSlider) {
+        volumeSlider.value = Math.round(settings.volume * 100);
+        updateSoundVolumeDisplay(volumeSlider.value);
+    }
+    if (hapticCheckbox) {
+        hapticCheckbox.checked = settings.hapticEnabled;
+    }
+    
+    console.log('[Settings] Loaded sound system settings:', settings);
+}
+
+// Play a reusable UI sound (guards if sound manager unavailable)
+function playUiSound(type = 'ui_click') {
+    if (typeof soundManager === 'undefined') return;
+    soundManager.playSound(type, true);
+}
+
+// Wire UI controls to sound system in real time
+function initSoundSystemUIListeners() {
+    if (typeof soundManager === 'undefined') return;
+
+    const enabledCheckbox = document.getElementById('settingsSoundEnabled');
+    const volumeSlider = document.getElementById('settingsSoundVolume');
+    const hapticCheckbox = document.getElementById('settingsHapticEnabled');
+
+    if (enabledCheckbox) {
+        // Apply initial state to soundManager
+        soundManager.setEnabled(enabledCheckbox.checked);
+        enabledCheckbox.addEventListener('change', (e) => {
+            soundManager.setEnabled(e.target.checked);
+        });
+    }
+
+    if (volumeSlider) {
+        const handler = (e) => {
+            const vol = parseInt(e.target.value, 10) / 100;
+            soundManager.setVolume(vol);
+            updateSoundVolumeDisplay(e.target.value);
+        };
+        // Apply initial volume to soundManager
+        handler({ target: volumeSlider });
+        volumeSlider.addEventListener('input', handler);
+        volumeSlider.addEventListener('change', handler);
+    }
+
+    if (hapticCheckbox) {
+        // Apply initial state to soundManager
+        soundManager.setHapticEnabled(hapticCheckbox.checked);
+        hapticCheckbox.addEventListener('change', (e) => {
+            soundManager.setHapticEnabled(e.target.checked);
+        });
+    }
+}
+
+/**
+ * Test sound system
+ */
+function testSoundSystem() {
+    if (typeof soundManager === 'undefined') {
+        showError('Système de sons non chargé');
+        return;
+    }
+    
+    // Test sequence with different actions
+    const testActions = [
+        { action: 'add_task', delay: 0, label: 'Ajout de tâche' },
+        { action: 'complete_task', delay: 500, label: 'Complétion' },
+        { action: 'update_task', delay: 1000, label: 'Mise à jour' },
+        { action: 'delete_task', delay: 1500, label: 'Suppression' },
+        { action: 'search_task', delay: 2000, label: 'Recherche' }
+    ];
+    
+    let message = '🎵 Test des sons:\n';
+    testActions.forEach(test => {
+        message += `${test.delay / 1000}s - ${test.label}\n`;
+        setTimeout(() => {
+            soundManager.playSound(test.action, true);
+        }, test.delay);
+    });
+    
+    showSuccess(message);
+}
+
+// Exporter les fonctions globalement
+window.updateSoundVolumeDisplay = updateSoundVolumeDisplay;
+window.loadSoundSystemSettings = loadSoundSystemSettings;
+window.testSoundSystem = testSoundSystem;
+
+// =============================================================================
+// EXPORTS
+// =============================================================================
 
 // Exporter les fonctions globalement
 window.openAddNoteModal = openAddNoteModal;

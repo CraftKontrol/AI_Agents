@@ -26,7 +26,10 @@ class ActionResult {
 
 // Localization helper functions - fallback if not available from script.js/mistral-agent.js
 function getLocalizedText(key, language = 'fr') {
-    if (typeof window !== 'undefined' && typeof window.getLocalizedText === 'function') {
+    // Check if external script.js has a different implementation
+    if (typeof window !== 'undefined' && 
+        typeof window.getLocalizedText === 'function' && 
+        window.getLocalizedText !== getLocalizedText) {
         return window.getLocalizedText(key, language);
     }
     
@@ -68,7 +71,10 @@ function getLocalizedText(key, language = 'fr') {
 }
 
 function getLocalizedResponse(key, language = 'fr') {
-    if (typeof window !== 'undefined' && typeof window.getLocalizedResponse === 'function') {
+    // Check if external script.js has a different implementation
+    if (typeof window !== 'undefined' && 
+        typeof window.getLocalizedResponse === 'function' && 
+        window.getLocalizedResponse !== getLocalizedResponse) {
         return window.getLocalizedResponse(key, language);
     }
     
@@ -320,6 +326,11 @@ async function executeAction(actionName, params, language = 'fr') {
         }
         
         console.log(`[ActionWrapper] Action ${actionName} completed:`, result.success ? 'SUCCESS' : 'FAILED');
+        
+        // Play UI sound on success
+        if (result.success && typeof soundManager !== 'undefined') {
+            soundManager.playSound(actionName);
+        }
         
         // Dispatch completion event
         if (typeof window !== 'undefined') {
@@ -580,12 +591,29 @@ registerAction(
     'delete_task',
     // Validate
     async (params, language) => {
-        const tasks = await getAllTasks();  // Changed from getTodayTasks to search ALL tasks
+        const tasks = await getAllTasks(); // Search ALL tasks
+        const taskIdFromParams = params.taskId || params.task?.id;
         const description = params.task?.description?.toLowerCase() || '';
-        
-        console.log('[delete_task] Searching for task:', description);
-        console.log('[delete_task] Available tasks:', tasks.map(t => ({id: t.id, description: t.description, date: t.date})));
-        
+
+        console.log('[delete_task] Searching for task:', description || `(id:${taskIdFromParams})`);
+        console.log('[delete_task] Available tasks:', tasks.map(t => ({ id: t.id, description: t.description, date: t.date })));
+
+        // Fast-path when taskId is provided (UI actions like popups/calendar)
+        if (taskIdFromParams) {
+            const matchingById = tasks.find(t => String(t.id) === String(taskIdFromParams));
+            if (!matchingById) {
+                return {
+                    valid: false,
+                    message: getLocalizedText('taskNotFound', language)
+                };
+            }
+
+            params._resolvedTaskId = matchingById.id;
+            params._resolvedTask = matchingById;
+            return { valid: true };
+        }
+
+        // Fallback to description matching
         if (!description) {
             return { 
                 valid: false, 

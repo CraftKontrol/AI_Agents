@@ -363,7 +363,6 @@ function handleViewChange(info) {
 function calendarToday() {
     if (calendar) {
         calendar.today();
-        playSound('tap');
     }
 }
 
@@ -371,7 +370,6 @@ function calendarToday() {
 function calendarPrev() {
     if (calendar) {
         calendar.prev();
-        playSound('tap');
     }
 }
 
@@ -379,7 +377,6 @@ function calendarPrev() {
 function calendarNext() {
     if (calendar) {
         calendar.next();
-        playSound('tap');
     }
 }
 
@@ -398,7 +395,6 @@ function changeCalendarView(viewName) {
             }
         });
         
-        playSound('tap');
         console.log('[Calendar] View changed to:', viewName);
     }
 }
@@ -414,17 +410,16 @@ function calendarGoToDate(dateStr) {
 // Add event to calendar
 async function addEventToCalendar(taskData) {
     try {
-        // Save task to storage
-        const result = await createTask(taskData);
+        // Use executeAction to trigger sounds
+        const result = await executeAction('add_task', { task: taskData }, 'fr');
         
         if (result.success && calendar) {
             // Add event to calendar
-            const event = taskToEvent(result.task);
+            const event = taskToEvent(result.data);
             calendar.addEvent(event);
             
-            console.log('[Calendar] Event added:', result.task.id);
+            console.log('[Calendar] Event added:', result.data.id);
             showSuccess('Tâche ajoutée au calendrier');
-            playSound('validation');
             
             return result;
         }
@@ -440,8 +435,12 @@ async function addEventToCalendar(taskData) {
 // Update event in calendar
 async function updateEventInCalendar(taskId, updates) {
     try {
-        // Update task in storage
-        await updateTask(taskId, updates);
+        // Use executeAction to trigger sounds
+        const result = await executeAction('update_task', { taskId, updates }, 'fr');
+        
+        if (!result.success) {
+            throw new Error(result.error || 'Update failed');
+        }
         
         if (calendar) {
             // Find and update event in calendar
@@ -473,7 +472,6 @@ async function updateEventInCalendar(taskId, updates) {
         }
         
         showSuccess('Tâche mise à jour');
-        playSound('validation');
         
     } catch (error) {
         console.error('[Calendar] Error updating event:', error);
@@ -484,8 +482,12 @@ async function updateEventInCalendar(taskId, updates) {
 // Remove event from calendar
 async function removeEventFromCalendar(taskId) {
     try {
-        // Delete task from storage
-        await deleteTask(taskId);
+        // Use executeAction to trigger sounds
+        const result = await executeAction('delete_task', { taskId }, 'fr');
+        
+        if (!result.success) {
+            throw new Error(result.error || 'Delete failed');
+        }
         
         if (calendar) {
             // Remove event from calendar
@@ -497,7 +499,6 @@ async function removeEventFromCalendar(taskId) {
         }
         
         showSuccess('Tâche supprimée');
-        playSound('validation');
         
     } catch (error) {
         console.error('[Calendar] Error removing event:', error);

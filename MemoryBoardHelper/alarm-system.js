@@ -453,8 +453,8 @@ async function dismissAlarm() {
     
     const taskId = currentActiveAlarm.id;
     
-    // Complete the task
-    const result = await completeTask(taskId);
+    // Complete the task using executeAction to trigger sounds
+    const result = await executeAction('complete_task', { taskId }, 'fr');
     
     if (result.success) {
         // Hide notification
