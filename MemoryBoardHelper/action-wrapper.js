@@ -1310,54 +1310,7 @@ registerAction(
         let targetElement = null;
         
         // Close all open modals before navigation
-        const closeModals = () => {
-            // Close settings modal (always, will be reopened if navigating to settings)
-            if (typeof closeSettingsModal === 'function') {
-                closeSettingsModal();
-            } else {
-                const settingsModal = document.getElementById('settingsModal');
-                if (settingsModal) settingsModal.style.display = 'none';
-            }
-            
-            // Close task modal
-            if (typeof closeAddTaskModal === 'function') {
-                closeAddTaskModal();
-            } else {
-                const taskModal = document.getElementById('addTaskModal');
-                if (taskModal) taskModal.style.display = 'none';
-            }
-            
-            // Close note modal
-            if (typeof closeAddNoteModal === 'function') {
-                closeAddNoteModal();
-            } else {
-                const noteModal = document.getElementById('addNoteModal');
-                if (noteModal) noteModal.style.display = 'none';
-            }
-            
-            // Close list modal
-            if (typeof closeAddListModal === 'function') {
-                closeAddListModal();
-            } else {
-                const listModal = document.getElementById('addListModal');
-                if (listModal) listModal.style.display = 'none';
-            }
-            
-            // Close alarm sound modal
-            if (typeof closeAlarmSoundModal === 'function') {
-                closeAlarmSoundModal();
-            } else {
-                const alarmModal = document.getElementById('alarmSoundModal');
-                if (alarmModal) alarmModal.style.display = 'none';
-            }
-            
-            // Close task popup (view task modal)
-            const taskPopup = document.getElementById('taskPopup');
-            if (taskPopup) taskPopup.style.display = 'none';
-        };
-        
-        // Close all modals first
-        closeModals();
+        closeAllModals();
         
         // Map section names to DOM elements
         const sectionMap = {
@@ -1374,20 +1327,70 @@ registerAction(
             targetElement = document.querySelector(selector);
         }
         
+        // Handle settings separately (it's a modal, not a section)
+        if (section.toLowerCase() === 'settings') {
+            if (typeof openSettingsModal === 'function') {
+                openSettingsModal();
+            }
+            const message = params.response || getLocalizedResponse('navigationSuccess', language);
+            return new ActionResult(true, message, { section, selector });
+        }
+        
+        // For other sections, scroll to them
         if (targetElement) {
             targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
             
-            // If settings, open modal
-            if (section.toLowerCase() === 'settings' && typeof openSettingsModal === 'function') {
-                openSettingsModal();
-            }
-            
             const message = params.response || getLocalizedResponse('navigationSuccess', language);
-            return new ActionResult(true, message, { section });
+            return new ActionResult(true, message, { section, selector });
         } else {
             const message = params.response || getLocalizedText('sectionNotFound', language);
             return new ActionResult(false, message, null, `Section ${section} not found`);
         }
+    },
+    // Verify
+    async (data, params, language) => {
+        // Wait for smooth scroll animation to complete (typically 300-500ms)
+        await new Promise(resolve => setTimeout(resolve, 600));
+        
+        const section = data.section;
+        const selector = data.selector;
+        
+        // For settings modal, check if modal is visible
+        if (section.toLowerCase() === 'settings') {
+            const settingsModal = document.getElementById('settingsModal');
+            if (!settingsModal) {
+                return { valid: false, message: 'Settings modal not found after navigation' };
+            }
+            const isVisible = settingsModal.style.display !== 'none' && 
+                             window.getComputedStyle(settingsModal).display !== 'none';
+            if (!isVisible) {
+                return { valid: false, message: 'Settings modal not visible after navigation' };
+            }
+            return { valid: true };
+        }
+        
+        // For other sections, verify element exists and is visible in viewport
+        const targetElement = document.querySelector(selector);
+        if (!targetElement) {
+            return { valid: false, message: `Section element ${selector} not found after navigation` };
+        }
+        
+        // Check if element is visible (display not none, visibility not hidden)
+        const computedStyle = window.getComputedStyle(targetElement);
+        if (computedStyle.display === 'none' || computedStyle.visibility === 'hidden') {
+            return { valid: false, message: `Section ${section} exists but is not visible` };
+        }
+        
+        // Check if element is in viewport or at least partially visible
+        const rect = targetElement.getBoundingClientRect();
+        const isInViewport = rect.top < window.innerHeight && rect.bottom > 0;
+        
+        if (!isInViewport) {
+            return { valid: false, message: `Section ${section} exists but is not in viewport` };
+        }
+        
+        console.log(`[ActionWrapper] ✅ Section ${section} verified visible`);
+        return { valid: true };
     }
 );
 
@@ -1435,12 +1438,20 @@ registerAction(
     },
     // Execute
     async (params, language) => {
+        // Close all modals before making a call
+        closeAllModals();
+        
         const contactName = params.contactName || null;
         
         if (typeof makeCall === 'function') {
             const result = await makeCall(contactName, language);
             
-            const message = params.response || result.message;
+            // CRITICAL: Use result.message (from intelligent emergency system) instead of params.response (from Mistral)
+            // The intelligent system provides contextual messages based on:
+            // - No emergency contacts configured
+            // - Emergency contact found
+            // - No matching contact found
+            const message = result.message || params.response || getLocalizedText('callNotAvailable', language);
             return new ActionResult(result.success, message, result);
         } else {
             const message = params.response || getLocalizedText('callNotAvailable', language);
@@ -1471,6 +1482,55 @@ registerAction(
 // =============================================================================
 // HELPER FUNCTIONS
 // =============================================================================
+
+/**
+ * Close all open modals
+ */
+function closeAllModals() {
+    // Close settings modal
+    if (typeof closeSettingsModal === 'function') {
+        closeSettingsModal();
+    } else {
+        const settingsModal = document.getElementById('settingsModal');
+        if (settingsModal) settingsModal.style.display = 'none';
+    }
+    
+    // Close task modal
+    if (typeof closeAddTaskModal === 'function') {
+        closeAddTaskModal();
+    } else {
+        const taskModal = document.getElementById('addTaskModal');
+        if (taskModal) taskModal.style.display = 'none';
+    }
+    
+    // Close note modal
+    if (typeof closeAddNoteModal === 'function') {
+        closeAddNoteModal();
+    } else {
+        const noteModal = document.getElementById('addNoteModal');
+        if (noteModal) noteModal.style.display = 'none';
+    }
+    
+    // Close list modal
+    if (typeof closeAddListModal === 'function') {
+        closeAddListModal();
+    } else {
+        const listModal = document.getElementById('addListModal');
+        if (listModal) listModal.style.display = 'none';
+    }
+    
+    // Close alarm sound modal
+    if (typeof closeAlarmSoundModal === 'function') {
+        closeAlarmSoundModal();
+    } else {
+        const alarmModal = document.getElementById('alarmSoundModal');
+        if (alarmModal) alarmModal.style.display = 'none';
+    }
+    
+    // Close task popup (view task modal)
+    const taskPopup = document.getElementById('taskPopup');
+    if (taskPopup) taskPopup.style.display = 'none';
+}
 
 /**
  * Storage wrapper functions - Bridge to storage.js

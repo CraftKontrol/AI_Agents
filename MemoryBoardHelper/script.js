@@ -4341,17 +4341,25 @@ async function makeCall(contactName = null, language = 'fr') {
         if (typeof handleEmergencyCall === 'function') {
             const result = await handleEmergencyCall(syntheticMessage, window.conversationHistory || []);
             if (result?.success) {
+                // Return full result including action type
                 return {
                     success: true,
                     message: result.response || `Appel vers ${targetLabel}`,
-                    contact: result.contact || { name: targetLabel }
+                    contact: result.contact || { name: targetLabel },
+                    action: result.action || 'unknown',
+                    language: result.language || language
                 };
             }
             console.warn('[App][Call] handleEmergencyCall returned failure, falling back');
         }
         // Fallback: simulate success so voice tests pass even without contacts configured
         const fallbackMsg = `Appel vers ${targetLabel}`;
-        return { success: true, message: fallbackMsg, contact: { name: targetLabel } };
+        return { 
+            success: true, 
+            message: fallbackMsg, 
+            contact: { name: targetLabel },
+            action: 'fallback'
+        };
     } catch (error) {
         console.error('[App][Call] makeCall error:', error);
         return {

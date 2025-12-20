@@ -289,14 +289,21 @@ Available sections:
 - "stats": Statistics section
 
 KEYWORDS FOR NAVIGATION:
-🔴 CALENDAR: "calendrier" / "calendar" / "planning" / "agenda" / "montre-moi le calendrier" / "show me calendar" / "va au calendrier" / "go to calendar"
-🔴 NOTES: "notes" / "note" / "mes notes" / "my notes" / "affiche les notes" / "show notes" / "va aux notes" / "go to notes"
-🔴 LISTS: "listes" / "lists" / "mes listes" / "my lists" / "affiche les listes" / "show lists" / "va aux listes" / "go to lists"
+🔴 CALENDAR: "calendrier" / "calendar" / "planning" / "agenda" / "montre-moi le calendrier" / "show me calendar" / "va au calendrier" / "go to calendar" / "affiche le calendrier"
+🔴 NOTES: "notes" / "note" / "mes notes" / "my notes" / "affiche les notes" / "show notes" / "va aux notes" / "go to notes" / "montre-moi mes notes" / "montre les notes"
+🔴 LISTS: "listes" / "lists" / "mes listes" / "my lists" / "affiche les listes" / "show lists" / "va aux listes" / "go to lists" / "montre-moi mes listes" / "show me my lists" / "affiche les listes de courses"
 🔴 SETTINGS: "paramètres" / "settings" / "réglages" / "options" / "configuration" / "affiche les paramètres" / "show settings" / "va dans les paramètres"
 🔴 STATS: "statistiques" / "statistics" / "stats" / "rapports" / "reports" / "va dans les statistiques" / "show stats"
-🔴 TASKS: "tâches" / "tasks" / "liste" / "todo" / "affiche les tâches" / "show tasks" / "retour aux tâches"
+🔴 TASKS: "tâches" / "tasks" / "liste de tâches" / "todo" / "affiche les tâches" / "show tasks" / "retour aux tâches"
 
-IMPORTANT: Always use action "goto_section" when user wants to navigate, NEVER use "search_task" or other actions.
+⚠️ ULTRA-CRITICAL: Navigation verbs take ABSOLUTE PRIORITY over content keywords
+- "Affiche les listes de courses" → goto_section (lists), NOT search_task for shopping!
+- "Va aux notes" → goto_section (notes), NOT conversation!
+- "Montre-moi mes listes" → goto_section (lists), NOT search_task!
+- The words "affiche", "va aux", "montre-moi" ALWAYS trigger navigation when followed by section name
+
+IMPORTANT: Always use action "goto_section" when user wants to navigate or VIEW a section, NEVER use "search_task" or "conversation".
+CRITICAL: "montre-moi mes listes" = goto_section with section="lists", NOT search_task!
 
 Respond in JSON format with:
 {
@@ -309,11 +316,15 @@ Respond in JSON format with:
 EXAMPLES:
 - "Montre-moi le calendrier" → {"action": "goto_section", "section": "calendar"}
 - "Affiche les notes" → {"action": "goto_section", "section": "notes"}
+- "Va aux notes" → {"action": "goto_section", "section": "notes"}
 - "Va aux listes" → {"action": "goto_section", "section": "lists"}
+- "Affiche les listes de courses" → {"action": "goto_section", "section": "lists"}
+- "Montre-moi mes listes" → {"action": "goto_section", "section": "lists"}
 - "Affiche les paramètres" → {"action": "goto_section", "section": "settings"}
 - "Va dans les statistiques" → {"action": "goto_section", "section": "stats"}
 - "Show me the calendar" → {"action": "goto_section", "section": "calendar"}
 - "Show my notes" → {"action": "goto_section", "section": "notes"}
+- "Show me my lists" → {"action": "goto_section", "section": "lists"}
 
 Always be encouraging and supportive.`;
 
@@ -360,7 +371,13 @@ Available actions:
 - CALL: Make an emergency phone call to a contact
 - CHAT: General conversation, questions about time/date/info, or unclear intent
 
-🔴 CRITICAL CLASSIFICATION RULES:
+🔴 CRITICAL CLASSIFICATION RULES (PRIORITY ORDER):
+
+⚠️ FIRST PRIORITY - Choose "nav" if message starts with ANY of these navigation verbs:
+- "affiche" / "show" / "montre" / "montre-moi" / "va aux" / "va dans" / "go to" + section name
+- Sections: calendrier/calendar/notes/listes/lists/paramètres/settings/statistiques/stats
+- Examples: "affiche les listes", "va aux notes", "montre-moi le calendrier", "show lists"
+- IMPORTANT: Even if message contains task keywords (courses/shopping), if it starts with navigation verb → NAV
 
 Choose "task" if message contains:
 - "rappelle-moi" / "remind me" / "ricordami"
@@ -368,14 +385,8 @@ Choose "task" if message contains:
 - "prends note" / "take note" / "noter"
 - "supprime" / "delete" / "efface" + "tâche/liste/note"
 - "marque comme" / "mark as" / "complète"
-- "cherche" / "search" / "trouve" / "montre" + "tâche"
+- "cherche" / "search" / "trouve" + "tâche"
 - Time/date references with action ("demain à 8h", "lundi prochain")
-
-Choose "nav" if message contains:
-- "montre-moi le calendrier" / "show calendar" / "affiche calendrier"
-- "va dans/affiche les paramètres" / "show settings" / "open settings"
-- "va dans/affiche les statistiques" / "show stats" / "open stats"
-- "retour aux tâches" / "back to tasks"
 
 Choose "call" if message contains:
 - "appelle" / "téléphone" / "call" / "phone" / "chiama"
@@ -400,9 +411,14 @@ Analyze the user's message and respond in JSON format with:
 EXAMPLES:
 - "Quelle heure est-il" → {"action": "chat"} (question about time)
 - "Montre-moi le calendrier" → {"action": "nav"} (navigation)
+- "Affiche les listes de courses" → {"action": "nav"} (navigation to lists, NOT shopping task!)
+- "Va aux notes" → {"action": "nav"} (navigation to notes)
+- "Montre-moi mes listes" → {"action": "nav"} (navigation to lists section)
+- "Affiche mes notes" → {"action": "nav"} (navigation to notes section)
 - "Appelle les urgences" → {"action": "call"} (emergency call)
 - "Prends note que" → {"action": "task"} (create note)
 - "Rappelle-moi de" → {"action": "task"} (create task)
+- "Ajoute pain à ma liste de courses" → {"action": "task"} (add item to list)
 
 Always be patient, kind, and use simple language.`;
 
@@ -669,7 +685,9 @@ async function processWithMistral(userMessage, conversationHistory = []) {
     // Ajoute la date actuelle exacte dans le prompt principal
     const now = new Date();
     const isoDate = now.toISOString().split('T')[0];
+    const isoTime = now.toTimeString().split(' ')[0].substring(0, 5); // HH:MM format
     const localeDate = now.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const localeTime = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
     // Si l'action est ambiguë, faire une pré-requête à Mistral
     let resolvedAction = keywordAction;
@@ -766,7 +784,7 @@ async function processWithMistral(userMessage, conversationHistory = []) {
     }
     
     // Ajoute SYSTEM_PROMPT à tous les prompts comme commande générale
-    const fullPrompt = `${SYSTEM_PROMPT}\n\n${mainPrompt}${previousResponsesReminder}\n\nLa date actuelle est : ${isoDate} (${localeDate}). Utilise toujours cette date comme référence pour "aujourd'hui".`;
+    const fullPrompt = `${SYSTEM_PROMPT}\n\n${mainPrompt}${previousResponsesReminder}\n\nDate et heure actuelles : ${localeDate} à ${localeTime} (${isoDate} ${isoTime}). Utilise TOUJOURS cette date et cette heure comme référence pour "aujourd'hui" et "maintenant".`;
 
     // Build messages with compressed history
     const messages = [
@@ -1237,9 +1255,14 @@ function getLocalizedResponse(key, language = 'fr') {
             en: 'You have no tasks scheduled for today.'
         },
         noEmergencyContacts: {
-            fr: 'Aucun contact d\'urgence n\'est configuré. Veuillez ajouter des contacts dans les paramètres.',
-            it: 'Nessun contatto di emergenza configurato. Si prega di aggiungere contatti nelle impostazioni.',
-            en: 'No emergency contacts are configured. Please add contacts in settings.'
+            fr: 'Il n\'y a pas de contacts d\'urgence enregistrés. Voulez-vous en ajouter un ?',
+            it: 'Non ci sono contatti di emergenza registrati. Vuoi aggiungerne uno?',
+            en: 'There are no emergency contacts registered. Would you like to add one?'
+        },
+        noMatchingContact: {
+            fr: 'Je n\'ai pas trouvé de contact d\'urgence correspondant. J\'ouvre vos contacts.',
+            it: 'Non ho trovato un contatto di emergenza corrispondente. Apro i tuoi contatti.',
+            en: 'I didn\'t find a matching emergency contact. Opening your contacts.'
         },
         callFailed: {
             fr: 'Désolé, je n\'ai pas pu lancer l\'appel.',
@@ -1327,6 +1350,38 @@ async function handleEmergencyCall(userMessage, conversationHistory = []) {
     try {
         const contacts = getEmergencyContacts();
         
+        // Check if no emergency contacts are configured at all
+        if (!contacts || contacts.length === 0) {
+            console.log('[Mistral] No emergency contacts configured');
+            
+            const response = {
+                fr: `Il n'y a pas de contacts d'urgence enregistrés. Voulez-vous en ajouter un ?`,
+                it: `Non ci sono contatti di emergenza registrati. Vuoi aggiungerne uno?`,
+                en: `There are no emergency contacts registered. Would you like to add one?`
+            };
+            
+            // Open emergency contacts settings modal
+            setTimeout(() => {
+                if (typeof openEmergencySettings === 'function') {
+                    openEmergencySettings();
+                } else if (typeof window.openEmergencySettings === 'function') {
+                    window.openEmergencySettings();
+                } else {
+                    console.warn('[Mistral] openEmergencySettings function not available, fallback to settings modal');
+                    if (typeof openSettingsModal === 'function') {
+                        openSettingsModal();
+                    }
+                }
+            }, 1000);
+            
+            return {
+                success: true,
+                action: 'open_emergency_settings',
+                response: response[detectedLanguage] || response.fr,
+                language: detectedLanguage
+            };
+        }
+        
         // Try to find a specific contact mentioned in the message
         const matchedContact = findEmergencyContact(userMessage, contacts);
         
@@ -1334,18 +1389,19 @@ async function handleEmergencyCall(userMessage, conversationHistory = []) {
         if (matchedContact) {
             console.log('[Mistral] Calling emergency contact:', matchedContact.name, matchedContact.phone);
             
+            const response = {
+                fr: `J'appelle ${matchedContact.name}.`,
+                it: `Chiamo ${matchedContact.name}.`,
+                en: `Calling ${matchedContact.name}.`
+            };
+            
             // Initiate the call
             const callSuccess = initiatePhoneCall(matchedContact.phone);
             
             if (callSuccess) {
-                const response = {
-                    fr: `J'appelle ${matchedContact.name} au ${matchedContact.phone}.`,
-                    it: `Chiamo ${matchedContact.name} al ${matchedContact.phone}.`,
-                    en: `Calling ${matchedContact.name} at ${matchedContact.phone}.`
-                };
-                
                 return {
                     success: true,
+                    action: 'call_emergency_contact',
                     contact: matchedContact,
                     response: response[detectedLanguage] || response.fr,
                     language: detectedLanguage
@@ -1359,35 +1415,22 @@ async function handleEmergencyCall(userMessage, conversationHistory = []) {
             }
         }
         
-        // If no emergency contact matched, open phone contacts app
-        console.log('[Mistral] No emergency contact matched, opening phone contacts');
+        // If emergency contacts exist but none matched, open phone contacts app
+        console.log('[Mistral] Emergency contacts exist but none matched, opening phone contacts');
         const openSuccess = openPhoneContacts();
         
-        if (openSuccess) {
-            const response = {
-                fr: `J'ouvre vos contacts téléphoniques.`,
-                it: `Apro i tuoi contatti telefonici.`,
-                en: `Opening your phone contacts.`
-            };
-            
-            return {
-                success: true,
-                response: response[detectedLanguage] || response.fr,
-                language: detectedLanguage
-            };
-        } else {
-            const response = {
-                fr: `Je ne peux pas ouvrir les contacts. Veuillez vérifier les permissions de votre navigateur.`,
-                it: `Non riesco ad aprire i contatti. Controlla i permessi del tuo browser.`,
-                en: `Cannot open contacts. Please check your browser permissions.`
-            };
-            
-            return {
-                success: false,
-                response: response[detectedLanguage] || response.fr,
-                language: detectedLanguage
-            };
-        }
+        const response = {
+            fr: `Je n'ai pas trouvé de contact d'urgence correspondant. J'ouvre vos contacts.`,
+            it: `Non ho trovato un contatto di emergenza corrispondente. Apro i tuoi contatti.`,
+            en: `I didn't find a matching emergency contact. Opening your contacts.`
+        };
+        
+        return {
+            success: true,
+            action: 'open_phone_contacts',
+            response: response[detectedLanguage] || response.fr,
+            language: detectedLanguage
+        };
     } catch (error) {
         console.error('[Mistral] Emergency call error:', error);
         return {

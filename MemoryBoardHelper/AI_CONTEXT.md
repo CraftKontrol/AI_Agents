@@ -351,9 +351,13 @@ The app uses **multiple prompts** for different intents:
 
 **Call Handling:** 
 - `makeCall(contactName, lang)` delegates to `handleEmergencyCall`
-- Emergency Contact Match: Calls directly via `tel:` protocol (configured contacts)
-- No Match: Opens phone contacts app (Android: `content://contacts/people/`, iOS: `contacts://`, fallback: `tel:`)
-- Test-safe fallback when no emergency contacts configured
+- **Intelligent Emergency System:**
+  1. **No emergency contacts configured**: Opens settings modal with message "Il n'y a pas de contacts d'urgence enregistrés. Voulez-vous en ajouter un ?"
+  2. **Emergency contact found**: Calls directly via `tel:` protocol with message "J'appelle [contact]"
+  3. **Emergency contacts exist but no match**: Opens phone contacts app with message "Je n'ai pas trouvé de contact d'urgence correspondant. J'ouvre vos contacts."
+- Emergency contacts stored in localStorage: `emergencyContact1`, `emergencyContact2`, `emergencyContact3`
+- Phone contacts app URLs: Android (`content://contacts/people/`), iOS (`contacts://`), fallback (`tel:`)
+- Test-safe fallback when system is unavailable
 - Exposed globally for action-wrapper
 
 **Integration Points:**

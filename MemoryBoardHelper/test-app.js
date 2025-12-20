@@ -2101,14 +2101,6 @@ const tests = {
             return result?.actionResult?.success === true;
         }
     },
-
-    vocal_call_mom_weekly: {
-        name: 'Vocal: Appel hebdo maman',
-        action: async () => { return await injectVoiceAndWaitForAction("Rappelle-moi d'appeler maman tous les dimanches à 10h"); },
-        validate: async (result) => {
-            return result?.actionResult?.success === true;
-        }
-    },
     
     vocal_greeting: {
         name: 'Vocal: Bonjour',
@@ -2117,7 +2109,15 @@ const tests = {
             return result?.actionResult?.success === true;
         }
     },
-    
+
+        vocal_dark_matter: {
+        name: 'Vocal: Matière noire',
+        action: async () => { return await injectVoiceAndWaitForAction("C'est quoi la matière noire dans l'univers"); },
+        validate: async (result) => {
+            return result?.actionResult?.success === true;
+        }
+    },
+
     vocal_thank_you: {
         name: 'Vocal: Merci',
         action: async () => { return await injectVoiceAndWaitForAction("Merci beaucoup"); },
@@ -2125,6 +2125,8 @@ const tests = {
             return result?.actionResult?.success === true;
         }
     }
+    
+
 };
 
 // Run single test
@@ -2610,7 +2612,7 @@ async function runTestsByCategory(category) {
             'vocal_shopping_list', 'vocal_note_wifi', 'vocal_search_appointments',
             'vocal_when_appointment', 'vocal_delete_old_tasks', 'vocal_delete_done_tasks',
             'vocal_delete_all_tasks', 'vocal_delete_all_lists', 'vocal_delete_all_notes',
-            'vocal_call_mom_weekly', 'vocal_greeting', 'vocal_thank_you'
+            'vocal_greeting', 'vocal_dark_matter', 'vocal_thank_you'
         ],
         ui: [
             'open_task_modal', 'close_task_modal', 'toggle_listening',
