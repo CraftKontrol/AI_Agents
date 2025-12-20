@@ -147,10 +147,10 @@ class SoundManager {
         
         // Clone audio to allow simultaneous playback
         const audioClone = audio.cloneNode();
-        audioClone.volume = this.volume;
-        
-        // Apply random pitch variation (±0.15)
-        const randomPitch = Math.random() * 2 - 1; // -1 to +1
+        // Add audible randomness: pitch and slight loudness variation
+        const randomPitch = Math.random() * 0.5 - 0.25; // -0.25 to +0.25
+        const randomVolume = 0.85 + Math.random() * 0.3; // 0.85 - 1.15
+        audioClone.volume = Math.max(0, Math.min(1, this.volume * randomVolume));
         
         // Calculate final playback rate based on variant
         let baseRate = 1.0;
@@ -159,10 +159,10 @@ class SoundManager {
                 baseRate = 1.0 + randomPitch;
                 break;
             case 'variant':
-                baseRate = 1.2 + (randomPitch * 0.5); // Higher pitch, less random
+                baseRate = 1.2 + (randomPitch * 0.6); // Higher and still varied
                 break;
             case 'tired':
-                baseRate = 0.7 + (randomPitch * 0.3); // Lower pitch, slower
+                baseRate = 0.75 + (randomPitch * 0.4); // Lower and varied
                 break;
         }
         
