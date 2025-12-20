@@ -1275,6 +1275,24 @@ body {
     animation: pulseRed 1s ease-in-out infinite;
 }
 
+/* Temporary listening after question - Green gentle pulsing */
+.btn-voice-large.temporary-listening,
+.btn-voice-floating.temporary-listening {
+    background-color: var(--success-color);
+    animation: pulseGreen 2s ease-in-out infinite;
+}
+
+@keyframes pulseGreen {
+    0%, 100% {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 0 0 rgba(68, 255, 136, 0.6);
+        transform: scale(1);
+    }
+    50% {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 0 15px rgba(68, 255, 136, 0);
+        transform: scale(1.03);
+    }
+}
+
 /* Always-listening waiting - Yellow slow pulsing */
 .btn-voice-large.always-listening {
     background-color: #ffc844;

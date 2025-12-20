@@ -104,6 +104,22 @@ test-app.js → executeActionWrapper() → action-wrapper.js → executeAction()
 - Optional wake word activation (browser STT only)
 - Processes commands continuously
 
+**Temporary Listening Mode (NEW - Dec 2025):**
+- Activates automatically after Mistral asks a question
+- Duration: 10 seconds (configurable via `TEMPORARY_LISTENING_DURATION`)
+- Visual feedback: Green pulsing button with `temporary-listening` CSS class
+- Allows user to respond vocally without clicking microphone
+- Auto-deactivates after:
+  - User speaks (response detected)
+  - Timeout expires (10s)
+  - User manually stops
+- Works in both manual and conversation modes
+- Does NOT activate if already in always-listening mode
+- Question detection based on:
+  - Presence of `?` character
+  - Question keywords in multiple languages (fr/it/en)
+  - Examples: "voulez-vous", "souhaitez-vous", "do you want", "vuoi"
+
 ### 3. Task Lifecycle
 
 ```
@@ -326,6 +342,13 @@ The app uses **multiple prompts** for different intents:
 **task-manager.js:** createTask, getDisplayableTasks (max 5), completeTask, snoozeTask, deleteTask, getTodayTasks
 
 **mistral-agent.js:** sendToMistralAgent, detectLanguage, extractTaskFromResponse, getCompressedConversationHistory
+
+**script.js (Temporary Listening System):**
+- `containsQuestion(text)` - Detects if response contains a question (? or keywords)
+- `activateTemporaryListening()` - Starts 10s listening after question
+- `deactivateTemporaryListening()` - Stops temporary listening
+- `speakResponse(text)` - Modified to trigger temporary listening after questions
+- Global vars: `temporaryListeningTimeout`, `isTemporaryListening`, `TEMPORARY_LISTENING_DURATION` (10000ms)
 
 **action-wrapper.js:** executeAction (main entry), processMistralResult, registerAction, getRegisteredActions, ActionResult class, storage wrapper functions (getTask, getAllTasks, saveTask, updateTask, deleteTask, getAllLists, saveList, updateList, deleteList, getAllNotes, saveNote, updateNote, deleteNote); list actions normalize/split items, convert them to `{text, completed}` objects, merge by text (case-insensitive), and allow search_list to handle object items safely
 

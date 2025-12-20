@@ -2,6 +2,11 @@
 // Cache-bust: 2025-12-18-v13-fixed-navigation-priority
 let pendingConfirmation = null; // Will store { action, data, language, confirmationMessage }
 
+// --- Temporary Listening for Questions ---
+let temporaryListeningTimeout = null;
+let isTemporaryListening = false;
+const TEMPORARY_LISTENING_DURATION = 10000; // 10 seconds
+
 // Helper function to get API key from CKGenericApp or localStorage
 function getApiKey(keyName, localStorageKey = null) {
     // Try CKGenericApp first (Android WebView)
@@ -1739,6 +1744,120 @@ function getModeText(key) {
     return texts[key]?.[lang] || texts[key]?.fr || '';
 }
 
+/**
+ * Check if text contains a question
+ * @param {string} text - Text to analyze
+ * @returns {boolean} True if text contains a question
+ */
+function containsQuestion(text) {
+    if (!text) return false;
+    
+    // Check for question marks
+    if (text.includes('?')) return true;
+    
+    // Check for question keywords in multiple languages
+    const questionKeywords = {
+        fr: ['voulez-vous', 'souhaitez-vous', 'désirez-vous', 'puis-je', 'dois-je', 'veux-tu', 'peux-tu', 'est-ce que', 'qu\'est-ce que', 'comment', 'pourquoi', 'quand', 'où', 'qui', 'quel', 'quelle', 'quels', 'quelles'],
+        it: ['vuoi', 'desideri', 'posso', 'devo', 'puoi', 'cosa', 'come', 'perché', 'quando', 'dove', 'chi', 'quale', 'quali'],
+        en: ['do you want', 'would you like', 'should i', 'can i', 'can you', 'what', 'how', 'why', 'when', 'where', 'who', 'which']
+    };
+    
+    const textLower = text.toLowerCase();
+    
+    // Check all language keywords
+    for (const lang in questionKeywords) {
+        if (questionKeywords[lang].some(keyword => textLower.includes(keyword))) {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+/**
+ * Activate temporary listening mode after a question
+ */
+async function activateTemporaryListening() {
+    // Don't activate if already in always-listening mode
+    if (listeningMode === 'always-listening') {
+        console.log('[App] Already in always-listening mode, skipping temporary listening');
+        return;
+    }
+    
+    // Don't activate if already in temporary listening
+    if (isTemporaryListening) {
+        console.log('[App] Already in temporary listening mode');
+        return;
+    }
+    
+    // Clear any existing timeout
+    if (temporaryListeningTimeout) {
+        clearTimeout(temporaryListeningTimeout);
+    }
+    
+    isTemporaryListening = true;
+    console.log(`[App] Activating temporary listening for ${TEMPORARY_LISTENING_DURATION}ms`);
+    
+    // Visual feedback
+    const voiceBtn = document.getElementById('voiceBtn');
+    if (voiceBtn) {
+        voiceBtn.classList.add('recording', 'temporary-listening');
+    }
+    showListeningIndicator(true);
+    
+    // Start listening based on STT method
+    if (sttMethod === 'browser' && recognition) {
+        try {
+            recognition.start();
+        } catch (error) {
+            console.error('[App] Error starting recognition:', error);
+            await startAPISTT();
+        }
+    } else {
+        await startAPISTT();
+    }
+    
+    // Set timeout to stop listening
+    temporaryListeningTimeout = setTimeout(() => {
+        console.log('[App] Temporary listening timeout reached');
+        deactivateTemporaryListening();
+    }, TEMPORARY_LISTENING_DURATION);
+}
+
+/**
+ * Deactivate temporary listening mode
+ */
+function deactivateTemporaryListening() {
+    if (!isTemporaryListening) return;
+    
+    console.log('[App] Deactivating temporary listening');
+    isTemporaryListening = false;
+    
+    // Clear timeout
+    if (temporaryListeningTimeout) {
+        clearTimeout(temporaryListeningTimeout);
+        temporaryListeningTimeout = null;
+    }
+    
+    // Stop recognition
+    if (sttMethod === 'browser' && recognition && isRecognitionActive) {
+        try {
+            recognition.stop();
+        } catch (error) {
+            console.error('[App] Error stopping recognition:', error);
+        }
+    } else if (isRecording) {
+        stopAPISTTRecording();
+    }
+    
+    // Visual feedback
+    const voiceBtn = document.getElementById('voiceBtn');
+    if (voiceBtn) {
+        voiceBtn.classList.remove('recording', 'temporary-listening');
+    }
+    showListeningIndicator(false);
+}
+
 // Handle voice interaction button
 async function handleVoiceInteraction() {
     if (isProcessing) {
@@ -1788,6 +1907,12 @@ async function handleVoiceInteraction() {
 async function handleSpeechResult(event) {
     const transcript = event.results[event.results.length - 1][0].transcript;
     console.log('[App] Speech recognized:', transcript);
+    
+    // Deactivate temporary listening if active
+    if (isTemporaryListening) {
+        console.log('[App] User responded during temporary listening');
+        deactivateTemporaryListening();
+    }
     
     // Check if we're waiting for confirmation
     if (pendingConfirmation) {
@@ -4636,6 +4761,12 @@ async function speakResponse(text) {
     
     // Use unified synthesizeSpeech function which handles all providers
     await synthesizeSpeech(text);
+    
+    // Check if response contains a question and activate temporary listening
+    if (containsQuestion(text)) {
+        console.log('[App] Question detected, activating temporary listening');
+        activateTemporaryListening();
+    }
 }
 
 // ======================================================================

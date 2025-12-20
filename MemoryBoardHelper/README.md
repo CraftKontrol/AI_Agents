@@ -8,12 +8,13 @@
 
 ## 🌟 Features
 
-- 🎤 **Two modes**: Manual (press to speak) or Always-Listening
+- 🎤 **Three listening modes**: Manual (press to speak), Always-Listening, or Temporary (auto-activates after questions)
 - 🤖 **Mistral AI**: Auto language detection (fr/it/en), task extraction, SSML speech
 - ✅ **Tasks**: Max 5 displayed, priority sorting, color badges, smart search
 - ⏰ **Alarms**: Audio + voice, 15min pre-reminders, 10min snooze
 - 🚨 **Emergency**: Quick-dial contacts (up to 3)
 - ♿ **Accessible**: Extra-large text (20px+), big buttons (60px+), high contrast
+- 🎙️ **Temporary Listening**: Auto-activates for 10s after Mistral asks a question
 
 ---
 
@@ -39,6 +40,7 @@
 4. Allow microphone and notifications when prompted
 5. (Optional) Add emergency contacts in "Urgence"
 6. Choose Manual or Always-Listening mode
+7. **Temporary Listening**: When Mistral asks a question (e.g., "Voulez-vous supprimer cette tâche?"), the microphone automatically activates for 10 seconds - just speak your answer!
 
 ### Getting Google Cloud STT API Key:
 1. Go to https://console.cloud.google.com/
