@@ -1624,28 +1624,65 @@ function toggleListeningMode() {
 
 // Start always-listening mode
 function startAlwaysListening() {
-    console.log('[App] Starting always-listening mode');
+    console.log('[App] Starting always-listening mode with STT method:', sttMethod);
     
-    if (recognition && sttMethod === 'browser') {
-        recognitionRestartAttempts = 0;
-        
-        try {
-            if (!isRecognitionActive) {
-                recognition.start();
-                showListeningIndicator(true);
+    if (sttMethod === 'browser') {
+        // Browser STT: use native continuous mode
+        if (recognition) {
+            recognitionRestartAttempts = 0;
+            
+            try {
+                if (!isRecognitionActive) {
+                    recognition.start();
+                    showListeningIndicator(true, false); // Yellow waiting state
+                }
+            } catch (error) {
+                console.error('[App] Error starting continuous recognition:', error);
+                isRecognitionActive = false;
             }
-        } catch (error) {
-            console.error('[App] Error starting continuous recognition:', error);
-            isRecognitionActive = false;
         }
+    } else if (sttMethod === 'deepgram' || sttMethod === 'google') {
+        // API STT: start loop-based always-listening
+        isAlwaysListeningAPI = true;
+        console.log('[App] Starting API-based always-listening loop');
+        startAPIListeningLoop();
     }
     
     updateVoiceStatus('active');
 }
 
+// Start API-based always-listening loop (for Deepgram/Google)
+async function startAPIListeningLoop() {
+    if (!isAlwaysListeningAPI) {
+        console.log('[App] API listening loop stopped (flag is false)');
+        return;
+    }
+    
+    if (isRecording) {
+        console.log('[App] Already recording, waiting for completion');
+        return;
+    }
+    
+    console.log('[App] Starting new API recording cycle');
+    showListeningIndicator(true, false); // Yellow waiting state for always-listening
+    
+    try {
+        await startAPISTT();
+    } catch (error) {
+        console.error('[App] Error in API listening loop:', error);
+        // Retry after delay if still in always-listening mode
+        if (isAlwaysListeningAPI && listeningMode === 'always-listening') {
+            setTimeout(() => startAPIListeningLoop(), 1000);
+        }
+    }
+}
+
 // Stop always-listening mode
 function stopAlwaysListening() {
     console.log('[App] Stopping always-listening mode');
+    
+    // Stop API-based always-listening loop
+    isAlwaysListeningAPI = false;
     
     if (recognition && sttMethod === 'browser') {
         try {
@@ -1656,6 +1693,11 @@ function stopAlwaysListening() {
             console.log('[App] Recognition already stopped');
         }
         isRecognitionActive = false;
+    }
+    
+    // Stop any ongoing API recording
+    if (isRecording && (sttMethod === 'deepgram' || sttMethod === 'google')) {
+        stopAPISTTRecording();
     }
     
     showListeningIndicator(false);
@@ -1941,7 +1983,7 @@ function handleSpeechEnd() {
             if (listeningMode === 'always-listening' && !isRecognitionActive) {
                 try {
                     recognition.start();
-                    showListeningIndicator(true);
+                    showListeningIndicator(true, false); // Yellow waiting state for always-listening
                     recognitionRestartAttempts = 0; // Reset counter on successful restart
                 } catch (error) {
                     console.error('[App] Could not restart continuous recognition:', error);
@@ -2243,9 +2285,19 @@ function startVoiceActivityDetection(stream, onSilenceDetected) {
             if (average > SILENCE_THRESHOLD) {
                 soundDetected = true;
                 silenceStart = null;
+                
+                // Show voice detected animation (red fast pulse)
+                if (listeningMode === 'always-listening') {
+                    showListeningIndicator(true, true); // true = voice detected
+                }
             } else {
                 // Only start counting silence after sound has been detected
                 if (soundDetected) {
+                    // Show waiting animation (yellow slow pulse) when voice stops
+                    if (listeningMode === 'always-listening') {
+                        showListeningIndicator(true, false); // false = no voice, waiting
+                    }
+                    
                     if (silenceStart === null) {
                         silenceStart = Date.now();
                     } else {
@@ -2276,6 +2328,11 @@ function stopVoiceActivityDetection() {
         clearInterval(vadCheckInterval);
         vadCheckInterval = null;
         console.log('[VAD] Stopped');
+        
+        // Reset to waiting state if in always-listening mode
+        if (listeningMode === 'always-listening') {
+            showListeningIndicator(true, false); // Back to yellow waiting state
+        }
     }
     silenceStart = null;
     soundDetected = false;
@@ -2534,11 +2591,21 @@ async function processAudioWithDeepgram(audioBlob) {
             await processSpeechTranscript(transcript.trim());
         } else {
             console.warn('[Deepgram STT] No speech detected in audio');
-            showError('Aucune parole détectée. Veuillez réessayer.');
+            if (listeningMode === 'manual') {
+                showError('Aucune parole détectée. Veuillez réessayer.');
+            }
         }
     } catch (error) {
         console.error('[Deepgram STT] Error:', error);
-        showError(error.message || 'Erreur lors de la reconnaissance vocale');
+        if (listeningMode === 'manual') {
+            showError(error.message || 'Erreur lors de la reconnaissance vocale');
+        }
+    } finally {
+        // Restart recording loop if in always-listening mode
+        if (isAlwaysListeningAPI && listeningMode === 'always-listening') {
+            console.log('[Deepgram STT] Restarting always-listening loop');
+            setTimeout(() => startAPIListeningLoop(), 500);
+        }
     }
 }
 
@@ -2686,6 +2753,7 @@ async function synthesizeSpeech(text) {
 let mediaRecorder = null;
 let audioChunks = [];
 let isRecording = false;
+let isAlwaysListeningAPI = false; // Flag for API-based always-listening loop
 
 async function fallbackToGoogleSTT() {
     const apiKey = getApiKey('google_stt', 'googleSTTApiKey');
@@ -2949,20 +3017,27 @@ async function sendAudioToGoogleSTT(audioBlob, apiKey, mimeType) {
             const transcript = data.results[0].alternatives[0].transcript;
             console.log('[GoogleSTT] Transcription:', transcript);
             
-            // Process the transcript like browser speech recognition
-            const event = {
-                results: [[{ transcript: transcript }]],
-                resultIndex: 0
-            };
-            await handleSpeechResult(event);
+            // Show transcript and process
+            showTranscript(transcript.trim());
+            await processSpeechTranscript(transcript.trim());
         } else {
             console.log('[GoogleSTT] No transcription results');
-            showError(getLocalizedText('noSpeechDetected'));
+            if (listeningMode === 'manual') {
+                showError(getLocalizedText('noSpeechDetected'));
+            }
         }
         
     } catch (error) {
         console.error('[GoogleSTT] Error sending audio to API:', error);
-        showError('Error processing audio: ' + error.message);
+        if (listeningMode === 'manual') {
+            showError('Error processing audio: ' + error.message);
+        }
+    } finally {
+        // Restart recording loop if in always-listening mode
+        if (isAlwaysListeningAPI && listeningMode === 'always-listening') {
+            console.log('[GoogleSTT] Restarting always-listening loop');
+            setTimeout(() => startAPIListeningLoop(), 500);
+        }
     }
 }
 
@@ -4682,10 +4757,55 @@ function showResponse(text) {
     }
 }
 
-function showListeningIndicator(show) {
+function showListeningIndicator(show, voiceDetected = false) {
     const indicator = document.getElementById('listeningIndicator');
     if (indicator) {
         indicator.style.display = show ? 'flex' : 'none';
+    }
+    
+    // Update voice buttons visual state
+    const voiceBtn = document.getElementById('voiceBtn');
+    const floatingBtn = document.getElementById('floatingVoiceBtn');
+    
+    console.log('[VoiceUI] Mode:', listeningMode, '| Show:', show, '| VoiceDetected:', voiceDetected);
+    
+    if (listeningMode === 'always-listening') {
+        // Always-listening mode
+        if (voiceDetected) {
+            // Voice detected - red fast pulse
+            console.log('[VoiceUI] State: VOICE DETECTED (red fast)');
+            voiceBtn?.classList.remove('always-listening', 'recording');
+            voiceBtn?.classList.add('voice-detected');
+            floatingBtn?.classList.remove('always-listening', 'recording');
+            floatingBtn?.classList.add('voice-detected');
+        } else if (show) {
+            // Waiting for voice - yellow slow pulse
+            console.log('[VoiceUI] State: WAITING (yellow slow)');
+            voiceBtn?.classList.remove('recording', 'voice-detected');
+            voiceBtn?.classList.add('always-listening');
+            floatingBtn?.classList.remove('recording', 'voice-detected');
+            floatingBtn?.classList.add('always-listening');
+        } else {
+            // Not listening
+            console.log('[VoiceUI] State: NOT LISTENING');
+            voiceBtn?.classList.remove('recording', 'always-listening', 'voice-detected');
+            floatingBtn?.classList.remove('recording', 'always-listening', 'voice-detected');
+        }
+    } else {
+        // Manual mode
+        if (show) {
+            // Recording in manual mode - red pulse
+            console.log('[VoiceUI] State: RECORDING (red pulse)');
+            voiceBtn?.classList.remove('always-listening', 'voice-detected');
+            voiceBtn?.classList.add('recording');
+            floatingBtn?.classList.remove('always-listening', 'voice-detected');
+            floatingBtn?.classList.add('recording');
+        } else {
+            // Not recording
+            console.log('[VoiceUI] State: IDLE');
+            voiceBtn?.classList.remove('recording', 'always-listening', 'voice-detected');
+            floatingBtn?.classList.remove('recording', 'always-listening', 'voice-detected');
+        }
     }
 }
 
@@ -4900,16 +5020,52 @@ function updateMistralValue(type, value) {
 }
 
 // Emergency contacts
+function getEmergencyContactDefaults(slot) {
+    return {
+        name: `Contact ${slot}`,
+        phone: slot === 3 ? '15' : '+33 6 00 00 00 00',
+        relation: slot === 3 ? 'SAMU' : slot === 2 ? 'Médecin' : 'Famille'
+    };
+}
+
+function getStoredEmergencyContact(slot) {
+    try {
+        const data = JSON.parse(localStorage.getItem(`emergencyContact${slot}`) || 'null');
+        const name = (data?.name || '').trim();
+        const phone = (data?.phone || '').trim();
+        const relation = (data?.relation || '').trim();
+        if (!name || !phone) {
+            localStorage.removeItem(`emergencyContact${slot}`);
+            return null;
+        }
+        return { name, phone, relation };
+    } catch (error) {
+        console.warn('[Emergency] Invalid contact data cleared:', error);
+        localStorage.removeItem(`emergencyContact${slot}`);
+        return null;
+    }
+}
+
 function loadEmergencyContacts() {
     for (let i = 1; i <= 3; i++) {
-        const contact = JSON.parse(localStorage.getItem(`emergencyContact${i}`) || 'null');
-        if (contact && contact.name && contact.name.trim() !== '') {
-            document.getElementById(`contact${i}Name`).textContent = contact.name;
-            document.getElementById(`contact${i}Phone`).textContent = contact.phone;
-            document.getElementById(`contact${i}Relation`).textContent = contact.relation;
-            document.getElementById(`contact${i}Card`).style.display = 'flex';
+        const contact = getStoredEmergencyContact(i);
+        const defaults = getEmergencyContactDefaults(i);
+        const nameEl = document.getElementById(`contact${i}Name`);
+        const phoneEl = document.getElementById(`contact${i}Phone`);
+        const relationEl = document.getElementById(`contact${i}Relation`);
+        const card = document.getElementById(`contact${i}Card`);
+        if (!nameEl || !phoneEl || !relationEl || !card) continue;
+
+        if (contact) {
+            nameEl.textContent = contact.name;
+            phoneEl.textContent = contact.phone;
+            relationEl.textContent = contact.relation || defaults.relation;
+            card.style.display = 'flex';
         } else {
-            document.getElementById(`contact${i}Card`).style.display = 'none';
+            nameEl.textContent = defaults.name;
+            phoneEl.textContent = defaults.phone;
+            relationEl.textContent = defaults.relation;
+            card.style.display = 'none';
         }
     }
 }
@@ -4975,74 +5131,66 @@ function deleteEmergencyContact(num) {
     }
 }
 function saveEmergencyContacts() {
-    // Contact 1
-    const c1Name = document.getElementById('contact1NameInput').value.trim();
-    const c1Phone = document.getElementById('contact1PhoneInput').value.trim();
-    const c1Relation = document.getElementById('contact1RelationInput').value.trim();
-    // Contact 2
-    const c2Visible = document.getElementById('contactConfig2').style.display !== 'none';
-    const c2Name = c2Visible ? document.getElementById('contact2NameInput').value.trim() : '';
-    const c2Phone = c2Visible ? document.getElementById('contact2PhoneInput').value.trim() : '';
-    const c2Relation = c2Visible ? document.getElementById('contact2RelationInput').value.trim() : '';
-    // Contact 3
-    const c3Visible = document.getElementById('contactConfig3').style.display !== 'none';
-    const c3Name = c3Visible ? document.getElementById('contact3NameInput').value.trim() : '';
-    const c3Phone = c3Visible ? document.getElementById('contact3PhoneInput').value.trim() : '';
-    const c3Relation = c3Visible ? document.getElementById('contact3RelationInput').value.trim() : '';
+    const contacts = [
+        {
+            slot: 1,
+            visible: true,
+            name: document.getElementById('contact1NameInput').value.trim(),
+            phone: document.getElementById('contact1PhoneInput').value.trim(),
+            relation: document.getElementById('contact1RelationInput').value.trim()
+        },
+        {
+            slot: 2,
+            visible: document.getElementById('contactConfig2').style.display !== 'none',
+            name: document.getElementById('contact2NameInput').value.trim(),
+            phone: document.getElementById('contact2PhoneInput').value.trim(),
+            relation: document.getElementById('contact2RelationInput').value.trim()
+        },
+        {
+            slot: 3,
+            visible: document.getElementById('contactConfig3').style.display !== 'none',
+            name: document.getElementById('contact3NameInput').value.trim(),
+            phone: document.getElementById('contact3PhoneInput').value.trim(),
+            relation: document.getElementById('contact3RelationInput').value.trim()
+        }
+    ];
 
-    // Save to localStorage
-    localStorage.setItem('emergencyContact1', JSON.stringify({ name: c1Name, phone: c1Phone, relation: c1Relation }));
-    localStorage.setItem('emergencyContact2', JSON.stringify({ name: c2Name, phone: c2Phone, relation: c2Relation }));
-    localStorage.setItem('emergencyContact3', JSON.stringify({ name: c3Name, phone: c3Phone, relation: c3Relation }));
+    contacts.forEach(({ slot, visible, name, phone, relation }) => {
+        const hasData = visible && name && phone;
+        if (hasData) {
+            localStorage.setItem(`emergencyContact${slot}`, JSON.stringify({ name, phone, relation }));
+        } else {
+            localStorage.removeItem(`emergencyContact${slot}`);
+        }
+    });
 
-    // Update UI
-    document.getElementById('contact1Name').textContent = c1Name || 'Contact 1';
-    document.getElementById('contact1Phone').textContent = c1Phone || '+33 6 00 00 00 00';
-    document.getElementById('contact1Relation').textContent = c1Relation || 'Famille';
-    document.getElementById('contact1Card').style.display = c1Name ? 'block' : 'none';
-
-    document.getElementById('contact2Name').textContent = c2Name || 'Contact 2';
-    document.getElementById('contact2Phone').textContent = c2Phone || '+33 6 00 00 00 00';
-    document.getElementById('contact2Relation').textContent = c2Relation || 'Médecin';
-    document.getElementById('contact2Card').style.display = c2Name ? 'block' : 'none';
-
-    document.getElementById('contact3Name').textContent = c3Name || 'Contact 3';
-    document.getElementById('contact3Phone').textContent = c3Phone || '15';
-    document.getElementById('contact3Relation').textContent = c3Relation || 'SAMU';
-    document.getElementById('contact3Card').style.display = c3Name ? 'block' : 'none';
-
+    loadEmergencyContacts();
     closeEmergencySettings();
     showSuccess('Contacts d\'urgence enregistrés.');
 }
 function openEmergencySettings() {
     const modal = document.getElementById('emergencySettingsModal');
     if (modal) {
-        // Remplir le contact 1
-        const c1Name = document.getElementById('contact1Name');
-        const c1Phone = document.getElementById('contact1Phone');
-        const c1Relation = document.getElementById('contact1Relation');
-        document.getElementById('contact1NameInput').value = c1Name ? c1Name.textContent : '';
-        document.getElementById('contact1PhoneInput').value = c1Phone ? c1Phone.textContent : '';
-        document.getElementById('contact1RelationInput').value = c1Relation ? c1Relation.textContent : '';
-        // Contact 2
-        const c2Name = document.getElementById('contact2Name');
-        const c2Phone = document.getElementById('contact2Phone');
-        const c2Relation = document.getElementById('contact2Relation');
-        document.getElementById('contact2NameInput').value = c2Name ? c2Name.textContent : '';
-        document.getElementById('contact2PhoneInput').value = c2Phone ? c2Phone.textContent : '';
-        document.getElementById('contact2RelationInput').value = c2Relation ? c2Relation.textContent : '';
-        // Contact 3
-        const c3Name = document.getElementById('contact3Name');
-        const c3Phone = document.getElementById('contact3Phone');
-        const c3Relation = document.getElementById('contact3Relation');
-        document.getElementById('contact3NameInput').value = c3Name ? c3Name.textContent : '';
-        document.getElementById('contact3PhoneInput').value = c3Phone ? c3Phone.textContent : '';
-        document.getElementById('contact3RelationInput').value = c3Relation ? c3Relation.textContent : '';
-        // Affiche seulement le contact 1 par défaut
+        const c1 = getStoredEmergencyContact(1) || { name: '', phone: '', relation: '' };
+        const c2 = getStoredEmergencyContact(2) || { name: '', phone: '', relation: '' };
+        const c3 = getStoredEmergencyContact(3) || { name: '', phone: '', relation: '' };
+
+        document.getElementById('contact1NameInput').value = c1.name;
+        document.getElementById('contact1PhoneInput').value = c1.phone;
+        document.getElementById('contact1RelationInput').value = c1.relation;
+
+        document.getElementById('contact2NameInput').value = c2.name;
+        document.getElementById('contact2PhoneInput').value = c2.phone;
+        document.getElementById('contact2RelationInput').value = c2.relation;
+
+        document.getElementById('contact3NameInput').value = c3.name;
+        document.getElementById('contact3PhoneInput').value = c3.phone;
+        document.getElementById('contact3RelationInput').value = c3.relation;
+
         document.getElementById('contactConfig1').style.display = 'block';
-        document.getElementById('contactConfig2').style.display = 'none';
-        document.getElementById('contactConfig3').style.display = 'none';
-        document.getElementById('addContactBtn').style.display = 'inline-block';
+        document.getElementById('contactConfig2').style.display = c2.name && c2.phone ? 'block' : 'none';
+        document.getElementById('contactConfig3').style.display = c3.name && c3.phone ? 'block' : 'none';
+        document.getElementById('addContactBtn').style.display = c3.name && c3.phone ? 'none' : 'inline-block';
         modal.style.display = 'flex';
     }
 }
@@ -5548,13 +5696,16 @@ function viewNote(id) {
 }
 
 async function confirmDeleteNote(id) {
+    playUiSound('ui_open');
     if (confirm('Êtes-vous sûr de vouloir supprimer cette note ?')) {
         try {
             await deleteNote(id);
+            playUiSound('ui_success');
             showSuccess('Note supprimée');
             await loadNotes();
         } catch (error) {
             console.error('[Notes] Error deleting note:', error);
+            playUiSound('ui_error');
             showError('Erreur lors de la suppression de la note');
         }
     }
@@ -5782,23 +5933,28 @@ async function toggleListItem(listId, itemText) {
         const item = list.items.find(i => i.text === itemText);
         if (item) {
             item.completed = !item.completed;
+            playUiSound(item.completed ? 'ui_toggle_on' : 'ui_toggle_off');
             await updateList(list);
             await loadLists();
         }
     } catch (error) {
         console.error('[Lists] Error toggling item:', error);
+        playUiSound('ui_error');
         showError('Erreur lors de la mise à jour de l\'élément');
     }
 }
 
 async function confirmDeleteList(id) {
+    playUiSound('ui_open');
     if (confirm('Êtes-vous sûr de vouloir supprimer cette liste ?')) {
         try {
             await deleteList(id);
+            playUiSound('ui_success');
             showSuccess('Liste supprimée');
             await loadLists();
         } catch (error) {
             console.error('[Lists] Error deleting list:', error);
+            playUiSound('ui_error');
             showError('Erreur lors de la suppression de la liste');
         }
     }

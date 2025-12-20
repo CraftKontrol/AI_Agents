@@ -362,6 +362,7 @@ function handleViewChange(info) {
 // Navigate to today
 function calendarToday() {
     if (calendar) {
+        if (typeof playUiSound === 'function') playUiSound('ui_click');
         calendar.today();
     }
 }
@@ -369,6 +370,7 @@ function calendarToday() {
 // Navigate to previous period
 function calendarPrev() {
     if (calendar) {
+        if (typeof playUiSound === 'function') playUiSound('ui_toggle_off');
         calendar.prev();
     }
 }
@@ -376,6 +378,7 @@ function calendarPrev() {
 // Navigate to next period
 function calendarNext() {
     if (calendar) {
+        if (typeof playUiSound === 'function') playUiSound('ui_toggle_on');
         calendar.next();
     }
 }
@@ -383,6 +386,7 @@ function calendarNext() {
 // Change calendar view
 function changeCalendarView(viewName) {
     if (calendar) {
+        if (typeof playUiSound === 'function') playUiSound('ui_open');
         calendar.changeView(viewName);
         currentCalendarView = viewName;
         

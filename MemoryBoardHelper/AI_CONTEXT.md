@@ -95,8 +95,13 @@ test-app.js → executeActionWrapper() → action-wrapper.js → executeAction()
 - Processes then stops
 
 **Always-Listening Mode:**
-- Continuous background listening
-- Optional wake word activation
+- **Browser STT**: Continuous background listening with native API
+- **Deepgram/Google STT**: Loop-based listening with VAD auto-stop
+  - Automatically starts recording
+  - Detects silence (VAD) and processes transcript
+  - Restarts recording cycle immediately (500ms delay)
+  - Continues until mode is disabled
+- Optional wake word activation (browser STT only)
 - Processes commands continuously
 
 ### 3. Task Lifecycle
@@ -357,6 +362,7 @@ The app uses **multiple prompts** for different intents:
   2. **Emergency contact found**: Calls directly via `tel:` protocol with message "J'appelle [contact]"
   3. **Emergency contacts exist but no match**: Opens phone contacts app with message "Je n'ai pas trouvé de contact d'urgence correspondant. J'ouvre vos contacts."
 - Emergency contacts stored in localStorage: `emergencyContact1`, `emergencyContact2`, `emergencyContact3`
+- Empty/invalid contact slots are cleared from localStorage; UI cards only render saved contacts (no placeholders). Emergency modal pre-fills from stored slots and re-hides unused slots, keeping the add-contact button hidden only when 3 contacts exist.
 - Phone contacts app URLs: Android (`content://contacts/people/`), iOS (`contacts://`), fallback (`tel:`)
 - Test-safe fallback when system is unavailable
 - Exposed globally for action-wrapper

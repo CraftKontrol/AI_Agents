@@ -44,6 +44,24 @@
     background-color: var(--error-color);
 }
 
+/* Manual recording - Red pulsing */
+.btn-voice-floating.recording {
+    animation: pulseRed 1s ease-in-out infinite;
+    background-color: var(--error-color);
+}
+
+/* Always-listening waiting - Yellow slow pulsing */
+.btn-voice-floating.always-listening {
+    animation: pulseYellow 2.5s ease-in-out infinite;
+    background-color: #ffc844;
+}
+
+/* Voice detected - Red fast pulsing */
+.btn-voice-floating.voice-detected {
+    animation: pulseRedFast 0.6s ease-in-out infinite;
+    background-color: var(--error-color);
+}
+
 @keyframes fadeInUp {
     from {
         opacity: 0;
@@ -61,6 +79,42 @@
     }
     50% {
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 0 20px rgba(255, 68, 68, 0);
+    }
+}
+
+/* Recording state (manual mode) - Red pulsing */
+@keyframes pulseRed {
+    0%, 100% {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 0 0 rgba(255, 68, 68, 0.7);
+        transform: scale(1);
+    }
+    50% {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 0 20px rgba(255, 68, 68, 0);
+        transform: scale(1.05);
+    }
+}
+
+/* Always-listening waiting state - Yellow slow pulsing */
+@keyframes pulseYellow {
+    0%, 100% {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 0 0 rgba(255, 200, 68, 0.6);
+        transform: scale(1);
+    }
+    50% {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 0 15px rgba(255, 200, 68, 0);
+        transform: scale(1.02);
+    }
+}
+
+/* Voice detected state - Red fast pulsing */
+@keyframes pulseRedFast {
+    0%, 100% {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 0 0 rgba(255, 68, 68, 0.9);
+        transform: scale(1);
+    }
+    50% {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 0 25px rgba(255, 68, 68, 0);
+        transform: scale(1.08);
     }
 }
 
@@ -1153,6 +1207,42 @@ body {
     }
 }
 
+/* Recording state (manual mode) - Red pulsing */
+@keyframes pulseRed {
+    0%, 100% {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 0 0 rgba(255, 68, 68, 0.7);
+        transform: scale(1);
+    }
+    50% {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 0 20px rgba(255, 68, 68, 0);
+        transform: scale(1.05);
+    }
+}
+
+/* Always-listening waiting state - Yellow slow pulsing */
+@keyframes pulseYellow {
+    0%, 100% {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 0 0 rgba(255, 200, 68, 0.6);
+        transform: scale(1);
+    }
+    50% {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 0 15px rgba(255, 200, 68, 0);
+        transform: scale(1.02);
+    }
+}
+
+/* Voice detected state - Red fast pulsing */
+@keyframes pulseRedFast {
+    0%, 100% {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 0 0 rgba(255, 68, 68, 0.9);
+        transform: scale(1);
+    }
+    50% {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 0 25px rgba(255, 68, 68, 0);
+        transform: scale(1.08);
+    }
+}
+
 .voice-controls {
     display: flex;
     justify-content: center;
@@ -1182,22 +1272,25 @@ body {
 
 .btn-voice-large.recording {
     background-color: var(--error-color);
-    animation: recordingPulse 1s ease-in-out infinite;
+    animation: pulseRed 1s ease-in-out infinite;
+}
+
+/* Always-listening waiting - Yellow slow pulsing */
+.btn-voice-large.always-listening {
+    background-color: #ffc844;
+    animation: pulseYellow 2.5s ease-in-out infinite;
+}
+
+/* Voice detected - Red fast pulsing */
+.btn-voice-large.voice-detected {
+    background-color: var(--error-color);
+    animation: pulseRedFast 0.6s ease-in-out infinite;
 }
 
 .btn-voice-large.awaiting-confirmation,
 .btn-voice-floating.awaiting-confirmation {
     background-color: var(--warning-color);
     animation: confirmationPulse 1.5s ease-in-out infinite;
-}
-
-@keyframes recordingPulse {
-    0%, 100% {
-        box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.7);
-    }
-    50% {
-        box-shadow: 0 0 0 20px rgba(255, 68, 68, 0);
-    }
 }
 
 @keyframes confirmationPulse {
@@ -1265,34 +1358,34 @@ body {
 
 .commands-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
 }
 
 .command-btn {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 15px;
-    padding: 30px 20px;
+    gap: 8px;
+    padding: 15px 12px;
     background-color: var(--background-color);
     border: 2px solid var(--border-color);
     color: var(--text-color);
     cursor: pointer;
-    font-size: 20px;
+    font-size: 16px;
     font-weight: 500;
     transition: all 0.3s ease;
-    min-height: 140px;
+    min-height: 90px;
 }
 
 .command-btn:hover {
     background-color: var(--surface-elevated);
     border-color: var(--primary-color);
-    transform: translateY(-3px);
+    transform: translateY(-2px);
 }
 
 .command-btn .material-symbols-outlined {
-    font-size: 48px;
+    font-size: 32px;
     color: var(--primary-color);
 }
 
@@ -2007,9 +2100,9 @@ body {
 /* FullCalendar Override Styles - CraftKontrol Theme */
 #calendarContainer {
     background-color: var(--background-color);
-    padding: 20px;
+    padding: 12px;
     border: 1px solid var(--border-color);
-    min-height: 600px;
+    min-height: 400px;
 }
 
 /* Calendar table */
@@ -2020,11 +2113,12 @@ body {
 .fc .fc-button {
     background-color: var(--primary-color);
     border: none;
-    padding: 8px 16px;
+    padding: 6px 12px;
     color: #ffffff;
     font-weight: 500;
     text-transform: none;
     border-radius: 0;
+    font-size: 13px;
 }
 
 .fc .fc-button:hover {
@@ -2042,12 +2136,12 @@ body {
 
 /* Calendar header */
 .fc .fc-toolbar {
-    margin-bottom: 20px;
+    margin-bottom: 12px;
 }
 
 .fc .fc-toolbar-title {
     color: #ffffff;
-    font-size: 22px;
+    font-size: 18px;
     font-weight: 600;
 }
 
@@ -2057,7 +2151,8 @@ body {
     border-color: var(--border-color);
     color: var(--text-color);
     font-weight: 600;
-    padding: 12px 5px;
+    padding: 6px 3px;
+    font-size: 13px;
 }
 
 .fc .fc-col-header-cell-cushion {
@@ -2081,8 +2176,8 @@ body {
 
 .fc .fc-daygrid-day-number {
     color: var(--text-color);
-    padding: 8px;
-    font-size: 14px;
+    padding: 4px;
+    font-size: 12px;
 }
 
 .fc .fc-day-today .fc-daygrid-day-number {
@@ -2092,7 +2187,7 @@ body {
 
 /* Week/Day view time grid */
 .fc .fc-timegrid-slot {
-    height: 3em;
+    height: 2em;
     border-color: var(--border-color);
 }
 
@@ -2126,8 +2221,8 @@ body {
 /* Events */
 .fc-event {
     border-radius: 0 !important;
-    border-width: 2px;
-    padding: 4px 6px;
+    border-width: 1px;
+    padding: 2px 4px;
     cursor: pointer;
     transition: all 0.2s ease;
 }
@@ -2143,11 +2238,11 @@ body {
 
 .fc-event-title {
     font-weight: 500;
-    font-size: 13px;
+    font-size: 11px;
 }
 
 .fc-event-time {
-    font-size: 11px;
+    font-size: 10px;
     opacity: 0.9;
 }
 
@@ -2315,6 +2410,7 @@ body {
     .calendar-header {
         flex-direction: column;
         align-items: flex-start;
+        gap: 8px;
     }
     
     .calendar-controls {
@@ -2328,56 +2424,107 @@ body {
     }
     
     .btn-view {
-        padding: 8px 12px;
+        padding: 6px 10px;
+        font-size: 12px;
     }
     
     #calendarContainer {
-        padding: 10px;
+        padding: 8px;
+        min-height: 350px;
     }
     
     .fc .fc-toolbar {
         flex-direction: column;
-        gap: 10px;
+        gap: 8px;
+        margin-bottom: 8px;
     }
     
     .fc .fc-toolbar-title {
-        font-size: 18px;
+        font-size: 16px;
     }
     
-    .fc-event-title {
+    .fc .fc-button {
+        padding: 5px 10px;
         font-size: 12px;
     }
     
-    .fc-event-time {
+    .fc .fc-col-header-cell {
+        padding: 4px 2px;
+        font-size: 11px;
+    }
+    
+    .fc .fc-daygrid-day-number {
+        padding: 3px;
+        font-size: 11px;
+    }
+    
+    .fc-event {
+        padding: 1px 3px;
+    }
+    
+    .fc-event-title {
         font-size: 10px;
+    }
+    
+    .fc-event-time {
+        font-size: 9px;
+    }
+    
+    .fc .fc-timegrid-slot {
+        height: 1.5em;
     }
 }
 
 @media (max-width: 480px) {
     .calendar-section {
-        padding: 15px;
+        padding: 10px;
     }
     
     .calendar-header h2 {
-        font-size: 20px;
+        font-size: 18px;
     }
     
     .btn-calendar-control {
-        min-width: 40px;
-        height: 40px;
-        padding: 8px;
+        min-width: 36px;
+        height: 36px;
+        padding: 6px;
     }
     
     .btn-calendar-control .material-symbols-outlined {
-        font-size: 20px;
+        font-size: 18px;
     }
     
     .btn-view {
-        padding: 8px 10px;
+        padding: 5px 8px;
+        font-size: 11px;
     }
     
     .btn-view .material-symbols-outlined {
-        font-size: 18px;
+        font-size: 16px;
+    }
+    
+    #calendarContainer {
+        padding: 5px;
+        min-height: 300px;
+    }
+    
+    .fc .fc-toolbar-title {
+        font-size: 14px;
+    }
+    
+    .fc .fc-button {
+        padding: 4px 8px;
+        font-size: 11px;
+    }
+    
+    .fc .fc-col-header-cell {
+        padding: 3px 1px;
+        font-size: 10px;
+    }
+    
+    .fc .fc-daygrid-day-number {
+        padding: 2px;
+        font-size: 10px;
     }
 }
 
@@ -3016,35 +3163,7 @@ body {
 }
 
 /* ===== RECORDING STATE ENHANCEMENTS ===== */
-.btn-voice-large.recording {
-    background: linear-gradient(135deg, var(--error-color), #ff6666);
-    animation: recordingPulse 1.5s ease-in-out infinite;
-    box-shadow: 0 0 20px rgba(255, 68, 68, 0.5);
-}
-
-@keyframes recordingPulse {
-    0%, 100% {
-        transform: scale(1);
-        box-shadow: 0 0 20px rgba(255, 68, 68, 0.5);
-    }
-    50% {
-        transform: scale(1.05);
-        box-shadow: 0 0 30px rgba(255, 68, 68, 0.8);
-    }
-}
-
-.btn-voice-large.recording .material-symbols-outlined {
-    animation: micPulse 1s ease-in-out infinite;
-}
-
-@keyframes micPulse {
-    0%, 100% {
-        transform: scale(1);
-    }
-    50% {
-        transform: scale(1.2);
-    }
-}
+/* Note: Recording states are now handled by pulseRed, pulseYellow, and pulseRedFast animations */
 
 /* ===== TTS VOICES ENHANCEMENT ===== */
 .tts-card select option[data-provider]:not([data-provider="browser"]) {
