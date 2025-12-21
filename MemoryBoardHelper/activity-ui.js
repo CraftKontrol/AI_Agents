@@ -7,6 +7,7 @@ class ActivityUI {
         this.currentPathLayer = null;
         this.markersLayer = null;
         this.isMapInitialized = false;
+        this.lastGpsPoint = null;
         
         console.log('[ActivityUI] Initialized');
     }
@@ -147,6 +148,7 @@ class ActivityUI {
             
             // Listen for activity events
             window.addEventListener('activityProgress', (e) => this.onActivityProgress(e.detail));
+            window.addEventListener('gpsUpdated', (e) => this.onGpsUpdated(e.detail));
 
             // Probe sensors early so native pedometer/geolocation can register
             await activityTracker.checkSensorAvailability();
@@ -261,6 +263,39 @@ class ActivityUI {
         if (activityTracker.isTracking) {
             this.updateTrackingStatus();
         }
+
+        this.renderTrackingDebug(data);
+    }
+
+    onGpsUpdated(point) {
+        this.lastGpsPoint = point;
+        this.renderTrackingDebug();
+    }
+
+    renderTrackingDebug(progressData = null) {
+        const gpsEl = document.getElementById('trackingDebugGPS');
+        const sensorsEl = document.getElementById('trackingDebugSensors');
+        if (!gpsEl || !sensorsEl) return;
+
+        const gps = this.lastGpsPoint;
+        if (gps) {
+            const ts = new Date(gps.timestamp || Date.now());
+            const acc = Number.isFinite(gps.accuracy) ? `${gps.accuracy.toFixed(1)}m` : '--';
+            const alt = Number.isFinite(gps.altitude) ? `${Math.round(gps.altitude)}m` : '--';
+            const spd = Number.isFinite(gps.speed) ? `${(gps.speed * 3.6).toFixed(1)}km/h` : '--';
+            gpsEl.textContent = `GPS ${gps.lat.toFixed(5)}, ${gps.lng.toFixed(5)} | acc ${acc} | alt ${alt} | spd ${spd} | ${ts.toLocaleTimeString()}`;
+        } else {
+            gpsEl.textContent = 'GPS --';
+        }
+
+        const steps = activityTracker?.stepCount ?? 0;
+        const source = activityTracker?.isPedometerAvailable ? 'pedometer' : 'gps';
+        const altitude = Number.isFinite(activityTracker?.lastAltitude) ? `${Math.round(activityTracker.lastAltitude)}m` : '--';
+        const speedVal = progressData?.speed ?? null;
+        const speed = speedVal ? `${speedVal} km/h` : '--';
+        const pathPts = activityTracker?.gpsPath?.length ?? 0;
+
+        sensorsEl.textContent = `Steps ${steps} (${source}) | alt ${altitude} | speed ${speed} | pts ${pathPts}`;
     }
     
     // Update dashboard with today's stats
