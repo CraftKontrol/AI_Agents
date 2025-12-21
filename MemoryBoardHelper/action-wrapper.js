@@ -1480,6 +1480,190 @@ registerAction(
 );
 
 // =============================================================================
+// ACTIVITY TRACKING ACTIONS
+// =============================================================================
+
+// --- START_ACTIVITY ---
+registerAction(
+    'start_activity',
+    // Validate
+    async (params, language) => {
+        const type = params.type || 'walk';
+        const validTypes = ['walk', 'run', 'bike'];
+        
+        if (!validTypes.includes(type)) {
+            return {
+                valid: false,
+                message: getLocalizedText('invalidActivityType', language) || `Type d'activité invalide: ${type}`
+            };
+        }
+        
+        return { valid: true };
+    },
+    // Execute
+    async (params, language) => {
+        if (typeof activityTracker === 'undefined') {
+            return new ActionResult(false, 'Activity tracker not available', null, 'Module not loaded');
+        }
+        
+        const type = params.type || 'walk';
+        const success = await activityTracker.startTracking(type);
+        
+        if (success) {
+            const typeLabels = {
+                walk: { fr: 'Marche démarrée', en: 'Walk started', it: 'Camminata iniziata' },
+                run: { fr: 'Course démarrée', en: 'Run started', it: 'Corsa iniziata' },
+                bike: { fr: 'Vélo démarré', en: 'Bike started', it: 'Bici iniziata' }
+            };
+            const message = params.response || typeLabels[type]?.[language] || 'Activity started';
+            return new ActionResult(true, message, { type, tracking: true });
+        } else {
+            return new ActionResult(false, 'Failed to start activity', null, 'Tracker already running');
+        }
+    }
+);
+
+// --- STOP_ACTIVITY ---
+registerAction(
+    'stop_activity',
+    // Validate
+    async (params, language) => {
+        return { valid: true };
+    },
+    // Execute
+    async (params, language) => {
+        if (typeof activityTracker === 'undefined') {
+            return new ActionResult(false, 'Activity tracker not available', null, 'Module not loaded');
+        }
+        
+        const activity = await activityTracker.stopTracking();
+        
+        if (activity) {
+            const typeLabels = {
+                walk: { fr: 'Marche', en: 'Walk', it: 'Camminata' },
+                run: { fr: 'Course', en: 'Run', it: 'Corsa' },
+                bike: { fr: 'Vélo', en: 'Bike', it: 'Bici' }
+            };
+            
+            const distanceText = typeof activityStats !== 'undefined' 
+                ? activityStats.formatDistance(activity.distance)
+                : `${(activity.distance / 1000).toFixed(2)} km`;
+            
+            const summary = {
+                fr: `${typeLabels[activity.type]?.fr || 'Activité'} terminée ! ${activity.steps} pas, ${distanceText}, ${activity.calories} kcal`,
+                en: `${typeLabels[activity.type]?.en || 'Activity'} completed! ${activity.steps} steps, ${distanceText}, ${activity.calories} kcal`,
+                it: `${typeLabels[activity.type]?.it || 'Attività'} completata! ${activity.steps} passi, ${distanceText}, ${activity.calories} kcal`
+            };
+            
+            const message = params.response || summary[language] || summary.fr;
+            return new ActionResult(true, message, activity);
+        } else {
+            const noActivity = {
+                fr: 'Aucune activité en cours',
+                en: 'No activity in progress',
+                it: 'Nessuna attività in corso'
+            };
+            return new ActionResult(false, noActivity[language] || noActivity.fr, null, 'Not tracking');
+        }
+    }
+);
+
+// --- GET_ACTIVITY_STATS ---
+registerAction(
+    'get_activity_stats',
+    // Validate
+    async (params, language) => {
+        return { valid: true };
+    },
+    // Execute
+    async (params, language) => {
+        if (typeof activityStats === 'undefined') {
+            return new ActionResult(false, 'Activity stats not available', null, 'Module not loaded');
+        }
+        
+        const period = params.period || 'today';
+        let stats;
+        
+        switch (period) {
+            case 'today':
+                stats = await activityStats.getTodayStats();
+                break;
+            case 'week':
+            case 'weekly':
+                stats = await activityStats.getWeeklyStats();
+                break;
+            case 'month':
+            case 'monthly':
+                stats = await activityStats.getMonthlyStats();
+                break;
+            case 'all':
+            case 'total':
+                stats = await activityStats.getAllTimeStats();
+                break;
+            default:
+                stats = await activityStats.getTodayStats();
+        }
+        
+        const summary = await activityStats.getVoiceSummary(language);
+        const message = params.response || summary;
+        
+        return new ActionResult(true, message, stats);
+    }
+);
+
+// --- SHOW_ACTIVITY_PATHS ---
+registerAction(
+    'show_activity_paths',
+    // Validate
+    async (params, language) => {
+        return { valid: true };
+    },
+    // Execute
+    async (params, language) => {
+        if (typeof activityUI === 'undefined') {
+            return new ActionResult(false, 'Activity UI not available', null, 'Module not loaded');
+        }
+        
+        await activityUI.showPathViewer();
+        
+        const messages = {
+            fr: 'Affichage de vos parcours',
+            en: 'Showing your activity paths',
+            it: 'Visualizzazione dei tuoi percorsi'
+        };
+        
+        const message = params.response || messages[language] || messages.fr;
+        return new ActionResult(true, message, { modal: 'paths' });
+    }
+);
+
+// --- SHOW_ACTIVITY_STATS_MODAL ---
+registerAction(
+    'show_activity_stats_modal',
+    // Validate
+    async (params, language) => {
+        return { valid: true };
+    },
+    // Execute
+    async (params, language) => {
+        if (typeof activityUI === 'undefined') {
+            return new ActionResult(false, 'Activity UI not available', null, 'Module not loaded');
+        }
+        
+        await activityUI.showStatsModal();
+        
+        const messages = {
+            fr: 'Affichage de vos statistiques',
+            en: 'Showing your statistics',
+            it: 'Visualizzazione delle tue statistiche'
+        };
+        
+        const message = params.response || messages[language] || messages.fr;
+        return new ActionResult(true, message, { modal: 'stats' });
+    }
+);
+
+// =============================================================================
 // SPECIAL ACTIONS
 // =============================================================================
 

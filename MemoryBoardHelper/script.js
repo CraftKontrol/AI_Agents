@@ -1451,6 +1451,12 @@ document.addEventListener('DOMContentLoaded', async function() {
         setInterval(checkForPreReminders, 120000);
     }
     
+    // Initialize activity tracking UI
+    if (typeof activityUI !== 'undefined' && typeof activityUI.initializeActivitySection === 'function') {
+        activityUI.initializeActivitySection();
+        console.log('[App] Activity tracking initialized');
+    }
+    
     // Load saved API keys
     await loadSavedApiKeys();
     
@@ -6478,6 +6484,75 @@ window.loadSoundSystemSettings = loadSoundSystemSettings;
 window.testSoundSystem = testSoundSystem;
 
 // =============================================================================
+// ACTIVITY TRACKING FUNCTIONS
+// =============================================================================
+
+// Toggle activity tracking on/off
+async function toggleActivityTracking() {
+    const checkbox = document.getElementById('enableActivityTracking');
+    const isEnabled = checkbox.checked;
+    
+    // Save to localStorage
+    localStorage.setItem('activityTrackingEnabled', isEnabled);
+    
+    if (isEnabled) {
+        // Start tracking automatically
+        console.log('[Settings] Enabling activity tracking...');
+        const success = await activityTracker.startTracking('walk');
+        if (success) {
+            activityUI.showTrackingStatus();
+            speakResponse('Suivi d\'activité activé');
+        } else {
+            speakResponse('Erreur lors de l\'activation du suivi');
+            checkbox.checked = false;
+            localStorage.setItem('activityTrackingEnabled', 'false');
+        }
+    } else {
+        // Stop tracking and clear state
+        console.log('[Settings] Disabling activity tracking...');
+        await activityTracker.stopTracking();
+        activityTracker.clearActivityState();
+        activityUI.hideTrackingStatus();
+        speakResponse('Suivi d\'activité désactivé');
+    }
+}
+
+// Save daily steps goal
+async function saveDailyStepsGoal() {
+    const goalInput = document.getElementById('dailyStepsGoal');
+    const goal = parseInt(goalInput.value) || 10000;
+    
+    // Validate
+    if (goal < 1000) {
+        speakResponse('Objectif trop faible, minimum 1000 pas');
+        goalInput.value = 1000;
+        return;
+    }
+    if (goal > 100000) {
+        speakResponse('Objectif trop élevé, maximum 100000 pas');
+        goalInput.value = 100000;
+        return;
+    }
+    
+    // Save to localStorage
+    localStorage.setItem('dailyStepsGoal', goal);
+    
+    // Update in IndexedDB
+    await saveActivityGoal({
+        id: 'daily_steps',
+        type: 'daily_steps',
+        target: goal,
+        period: 'daily'
+    });
+    
+    // Update dashboard
+    activityUI.updateDashboard();
+    
+    console.log('[Settings] Daily steps goal saved:', goal);
+    speakResponse(`Objectif quotidien défini à ${goal} pas`);
+}
+
+// =============================================================================
 // EXPORTS
 // =============================================================================
 
@@ -6502,4 +6577,8 @@ window.confirmDeleteList = confirmDeleteList;
 window.makeCall = makeCall;
 window.showContactsGuidanceModal = showContactsGuidanceModal;
 window.closeContactsGuidanceModal = closeContactsGuidanceModal;
+
+// Activity tracking functions
+window.toggleActivityTracking = toggleActivityTracking;
+window.saveDailyStepsGoal = saveDailyStepsGoal;
 

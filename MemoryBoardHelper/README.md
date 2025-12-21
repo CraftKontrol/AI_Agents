@@ -12,6 +12,7 @@
 - 🤖 **Mistral AI**: Auto language detection (fr/it/en), task extraction, SSML speech
 - ✅ **Tasks**: Max 5 displayed, priority sorting, color badges, smart search
 - ⏰ **Alarms**: Audio + voice, 15min pre-reminders, 10min snooze
+- 🏃 **Activity Tracking**: Step counting, GPS paths, statistics, OpenStreetMap visualization (NEW)
 - 🚨 **Emergency**: Quick-dial contacts (up to 3)
 - ♿ **Accessible**: Extra-large text (20px+), big buttons (60px+), high contrast
 - 🎙️ **Temporary Listening**: Auto-activates for 10s after Mistral asks a question
@@ -53,20 +54,81 @@
 
 ## 🗣️ Voice Commands
 
-**Add:** "Ajoute une tâche: prendre médicaments à 14h" / "Rappelle-moi d'appeler demain"
-**Check:** "Qu'ai-je aujourd'hui?" / "Quelles sont mes tâches?"
-**Search:** "C'est quand mon rendez-vous chez le dentiste?" / "À quelle heure mon médicament?"
-**Complete:** "J'ai pris mes médicaments" / "C'est fait"
-**Time:** "Quelle heure est-il?" / "Quel jour sommes-nous?"
-**Call:** 
-- "Appelle Marie" (if Marie is emergency contact → direct call)
-- "Appelle Jean" (if Jean not in emergency contacts → opens phone contacts)
+**Tasks:**
+- Add: "Ajoute une tâche: prendre médicaments à 14h" / "Rappelle-moi d'appeler demain"
+- Check: "Qu'ai-je aujourd'hui?" / "Quelles sont mes tâches?"
+- Search: "C'est quand mon rendez-vous chez le dentiste?" / "À quelle heure mon médicament?"
+- Complete: "J'ai pris mes médicaments" / "C'est fait"
+
+**Activity Tracking:**
+- Start: "Démarre une marche" / "Commence une course" / "Lance le vélo"
+- Stop: "Arrête l'activité" / "Termine l'entraînement"
+- Stats: "Combien de pas aujourd'hui?" / "Mes stats de la semaine"
+- View: "Montre mes parcours" / "Statistiques complètes"
+
+**General:**
+- Time: "Quelle heure est-il?" / "Quel jour sommes-nous?"
+- Call: "Appelle Marie" (if Marie is emergency contact → direct call)
+        "Appelle Jean" (if Jean not in emergency contacts → opens phone contacts)
 
 ---
 
 ## 📱 Mobile (PWA)
 
 Open in mobile browser → Add to Home Screen → Works offline, background notifications
+
+---
+
+## 🏃 Activity Tracking
+
+**Features:**
+- ⏱️ **Automatic tracking**: Enable once in settings, tracks continuously in background
+- 📍 **GPS paths**: Records your walking, running, or biking routes automatically
+- 🗺️ **Map viewer**: See your last 10 activities on OpenStreetMap
+- 📊 **Statistics**: Daily, weekly, monthly, and all-time stats
+- 🎯 **Goals**: Set daily step targets (default: 10,000 steps)
+- 🏆 **Personal bests**: Track your longest distance, most steps, fastest pace
+- 📈 **Weekly chart**: Visual 7-day step history
+- 🔄 **Session persistence**: Activity continues across page reloads
+
+**How to use:**
+
+1. **Enable automatic tracking:**
+   - Scroll to "Paramètres de suivi d'activité" section
+   - Toggle "Activer le suivi automatique" ON
+   - Allow GPS permissions when prompted
+   - Tracking starts immediately and runs continuously in background
+
+2. **Set your daily goal:**
+   - Enter your desired daily steps (default: 10,000)
+   - Click "Sauvegarder l'objectif" to save
+
+3. **View your progress:**
+   - Dashboard shows today's steps, distance, calories, duration
+   - Weekly chart displays last 7 days
+   - Goal progress bar tracks your daily target
+
+4. **View past activities:**
+   - Click "Voir mes parcours" → View last 10 GPS routes on OpenStreetMap
+   - Click "Statistiques complètes" → See detailed stats and personal bests
+
+5. **Disable tracking:**
+   - Toggle "Activer le suivi automatique" OFF to stop
+
+**Voice commands:**
+- "Combien de pas aujourd'hui?" → Get today's step count
+- "Montre mes parcours" → View GPS paths on map
+- "Statistiques complètes" → Open full stats modal
+
+**Permissions required:**
+- **Location (GPS)**: For route tracking and distance calculation
+- **Motion sensors** (if available): For step counting
+
+**Data:**
+- All activity data stored locally (IndexedDB)
+- No cloud sync - you own your data
+- Export option available (JSON format)
+- Session state saved every 30 seconds + on page close
 
 ---
 
@@ -120,4 +182,4 @@ Memory aid only, not medical advice | Call 15/112 for emergencies | Always-liste
 
 ---
 
-**v1.2 - Dec 17, 2025** | CraftKontrol © 2025 Arnaud Cassone - Artcraft Visuals | https://www.artcraft-zone.com
+**v1.3 - Dec 21, 2025** | CraftKontrol © 2025 Arnaud Cassone - Artcraft Visuals | https://www.artcraft-zone.com

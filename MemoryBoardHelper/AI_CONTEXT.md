@@ -34,6 +34,10 @@
 
 **Modules:**
 - `storage.js` - IndexedDB CRUD
+- `activity-storage.js` - Activity tracking IndexedDB operations (NEW)
+- `activity-tracker.js` - Step counting, GPS tracking, sensor integration (NEW)
+- `activity-stats.js` - Statistics calculation & aggregation (NEW)
+- `activity-ui.js` - Activity dashboard, path viewer, stats modal (NEW)
 - `task-manager.js` - Task operations (max 5 display)
 - `mistral-agent.js` - AI NLP + intent classification
 - `action-wrapper.js` - Unified action execution system (validation → execution → verification)
@@ -44,7 +48,7 @@
 - `sound-system.js` - UI sound feedback (pitch variation, repetition detection, haptic)
 - `tavily-search.js` - Web search via Tavily API
 - `gps-navigation.js` - GPS navigation integration (Google Maps, Waze, Apple Maps, OSM)
-- `weather.js` - Weather forecast from multiple APIs (OpenWeatherMap, WeatherAPI, Open-Meteo) (NEW)
+- `weather.js` - Weather forecast from multiple APIs (OpenWeatherMap, WeatherAPI, Open-Meteo)
 - `test-app.html/js` - Testing system with action-wrapper integration
 
 **STT Functions (in script.js):**
@@ -150,7 +154,7 @@ The app uses **multiple prompts** for different intents:
 
 ### 5. Storage Schema (IndexedDB)
 
-**Database:** `MemoryBoardHelperDB` (Version 3)
+**Database:** `MemoryBoardHelperDB` (Version 4)
 
 | Store | Key Path | Indexes | Purpose |
 |-------|----------|---------|---------|
@@ -160,6 +164,9 @@ The app uses **multiple prompts** for different intents:
 | **notes** | `id` (auto-increment) | timestamp, category, pinned | User notes |
 | **lists** | `id` (auto-increment) | timestamp, category | User lists |
 | **actionHistory** | `id` (auto-increment) | timestamp, type, undone | Action history for undo system (max 20 actions) |
+| **activities** | `id` (auto-increment) | type, startTime, date | Activity tracking (GPS, steps, stats) |
+| **dailyStats** | `date` (key) | date | Daily aggregated activity statistics |
+| **activityGoals** | `id` (auto-increment) | type | User-defined fitness goals |
 
 ---
 
@@ -174,6 +181,48 @@ The app uses **multiple prompts** for different intents:
     recurrence: null|"daily|weekly|monthly",
     medicationInfo: {dosage, taken},
     createdAt, completedAt, snoozedUntil
+}
+```
+
+---
+
+## 🏃 Activity Schema
+
+```javascript
+{
+    id, type: "walk|run|bike",
+    startTime, endTime, date,
+    duration, // seconds
+    distance, // meters
+    steps,
+    calories,
+    avgPace, // min/km
+    maxSpeed, // km/h
+    gpsPath: [
+        {lat, lng, timestamp, altitude, speed, accuracy}
+    ]
+}
+```
+
+**Daily Stats:**
+```javascript
+{
+    date, // YYYY-MM-DD (primary key)
+    totalSteps,
+    totalDistance, // meters
+    totalCalories,
+    totalDuration, // seconds
+    activities: [activityIds]
+}
+```
+
+**Activity Goals:**
+```javascript
+{
+    id,
+    type: "daily_steps|daily_distance|daily_calories",
+    target, // number
+    enabled // boolean
 }
 ```
 
@@ -324,7 +373,7 @@ The app uses **multiple prompts** for different intents:
 {action, task?, list?, note?, taskId?, section?, contactName?, response, language}
 ```
 
-**Actions:** add_task, add_list, add_note, complete_task, delete_task, delete_list, delete_note, update_task, update_list, update_note, search_task, goto_section, call, undo, conversation, search_web, open_gps, send_address, **get_weather** (NEW)
+**Actions:** add_task, add_list, add_note, complete_task, delete_task, delete_list, delete_note, update_task, update_list, update_note, search_task, goto_section, call, undo, conversation, search_web, open_gps, send_address, **get_weather**, **start_activity**, **stop_activity**, **get_activity_stats**, **show_activity_paths**, **show_activity_stats_modal** (NEW)
 
 **Critical:** Always include last 10-20 conversation exchanges for context. Never repeat responses.
 
@@ -751,18 +800,247 @@ OpenStreetMap: https://www.openstreetmap.org/directions?to={lat},{lng}
 
 ---
 
+## 🏃 Activity Tracking System
+
+**Module:** `activity-tracker.js`, `activity-storage.js`, `activity-stats.js`, `activity-ui.js`
+
+**Purpose:** Continuous automatic fitness tracking with GPS paths, step counting, and statistics
+
+### Architecture: Automatic Continuous Tracking
+
+**Tracking Model:**
+- **NO manual start/stop buttons** - tracking runs continuously in background when enabled
+- **Settings-based** - enabled/disabled via toggle in settings section
+- **Session persistence** - activity state saved to localStorage, restored on page reload
+- **Automatic saving** - state saved every 30 seconds + on page unload
+- **Auto-resume** - tracking continues across page reloads/browser restarts
+
+**UI Components:**
+- **Settings Toggle:** `enableActivityTracking` checkbox (localStorage: `activityTrackingEnabled`)
+- **Daily Steps Goal:** Input field (localStorage: `dailyStepsGoal`, default: 10000)
+- **Tracking Status:** Live status indicator showing duration, distance, steps, calories
+- **Dashboard:** 4 stat cards (steps, distance, calories, duration) + weekly chart + goal progress
+- **Path Viewer:** Button to view last 10 GPS paths on OpenStreetMap
+- **Statistics Modal:** Button to view comprehensive stats (today, week, month, personal bests)
+
+**Key Functions:**
+- `toggleActivityTracking()` - Enable/disable automatic tracking (script.js)
+- `saveDailyStepsGoal()` - Save daily goal to localStorage + IndexedDB (script.js)
+- `saveActivityState()` - Persist current activity to localStorage (activity-tracker.js)
+- `restoreActivityState()` - Restore tracking from localStorage on page load (activity-tracker.js)
+- `clearActivityState()` - Remove saved state when tracking disabled (activity-tracker.js)
+
+### Sensor Integration
+
+**Pedometer:**
+- **Native API** (Android WebView): `window.CKGenericApp.getPedometer()`
+- **Fallback**: GPS-based step estimation (0.75m stride length)
+- **Update frequency**: 1-2 seconds
+
+**GPS Tracking:**
+- **API**: `navigator.geolocation.watchPosition()`
+- **High accuracy mode**: enabled
+- **Path points**: `{lat, lng, timestamp, altitude, speed, accuracy}`
+- **Update frequency**: 5 seconds
+
+**Activity Detection:**
+- **Auto-detect type** based on speed:
+  - Walk: < 3 km/h
+  - Run: 3-12 km/h
+  - Bike: > 12 km/h
+- **Speed history**: Last 5 points for averaging
+
+### Key Functions
+
+**activity-tracker.js:**
+- `startTracking(type)` - Start GPS + step counting
+- `stopTracking()` - Stop and save activity
+- `pauseTracking()` / `resumeTracking()` - Pause/resume without stopping
+- `calculateTotalDistance()` - Haversine formula for GPS distance
+- `calculateCalories()` - MET-based calculation
+- `calculateAvgPace()` - min/km from duration and distance
+- `getStatus()` - Current tracking state
+- `saveActivityState()` - Save current activity to localStorage for persistence
+- `restoreActivityState()` - Restore saved activity from localStorage on page load
+- `clearActivityState()` - Remove saved state from localStorage
+
+**activity-storage.js:**
+- `saveActivity(data)` - Save to IndexedDB + update daily stats
+- `getAllActivities()` - Get all activities (sorted newest first)
+- `getLastActivities(count)` - Get last N activities
+- `getActivitiesByDateRange(start, end)` - Date-filtered activities
+- `updateDailyStats(date, activity)` - Aggregate daily totals
+- `getDailyStats(date)` - Get stats for specific day
+- `exportActivitiesData()` - Export JSON for backup
+
+**activity-stats.js:**
+- `getTodayStats()` - Current day statistics
+- `getWeeklyStats()` - Last 7 days aggregated
+- `getMonthlyStats()` - Last 30 days aggregated
+- `getAllTimeStats()` - Total statistics + personal bests
+- `getActivityStreak()` - Current and longest consecutive days
+- `getGoalProgress()` - Daily goals vs actual
+- `getWeeklyChartData()` - 7-day chart data
+- `getPersonalBests()` - Longest distance, duration, steps, pace, speed
+- `getVoiceSummary(language)` - Text summary for TTS
+
+**activity-ui.js:**
+- `initializeActivitySection()` - Setup UI, restore state, start auto-tracking if enabled
+- `initializeAutoTracking()` - Check settings, restore session, or start new tracking
+- `showTrackingStatus()` / `hideTrackingStatus()` - Show/hide live tracking indicator
+- `updateTrackingStatus()` - Update live stats every 5 seconds
+- `updateDashboard()` - Refresh today's stats display every 30 seconds
+- `updateWeeklyChart()` - Canvas-based bar chart
+- `showPathViewer()` - OpenStreetMap modal with 10 last paths
+- `showStatsModal()` - Full statistics modal
+- `displayActivityPath(activity)` - Draw GPS path on Leaflet map
+
+**script.js (global functions):**
+- `toggleActivityTracking()` - Enable/disable automatic tracking + save state
+- `saveDailyStepsGoal()` - Save daily goal to localStorage + IndexedDB
+
+### OpenStreetMap Integration
+
+**Library:** Leaflet.js 1.9.4 (CDN)
+
+**Map Features:**
+- **Tile Layer**: OpenStreetMap standard tiles
+- **Polyline**: Color-coded paths (walk=blue, run=red, bike=green)
+- **Markers**: Start (green circle), End (red circle)
+- **Auto-fit**: Map bounds adjusted to path
+- **Info Panel**: Overlay with activity details
+
+**Map Functions:**
+- `initializeMap()` - Create Leaflet map instance
+- `displayActivityPath(activity)` - Draw GPS path with markers
+- `updatePathInfo(activity)` - Update info overlay
+
+### Calculations
+
+**Distance:**
+- **Formula**: Haversine (accurate for GPS coordinates)
+- **Unit**: Meters (displayed as km when > 1000m)
+
+**Steps:**
+- **Native**: From device pedometer if available
+- **Estimated**: distance / 0.75m (average stride length)
+
+**Calories:**
+- **Formula**: MET × weight(kg) × time(hours)
+- **MET Values**: Walk=3.5, Run=7.0, Bike=6.0
+- **Assumed weight**: 70kg (average)
+
+**Pace:**
+- **Formula**: duration(minutes) / distance(km)
+- **Unit**: min/km
+- **Display**: MM:SS /km format
+
+### Voice Commands
+
+**Start Activity:**
+- "Démarre une marche" / "Start a walk" / "Inizia una camminata"
+- "Commence une course" / "Start a run" / "Inizia una corsa"
+- "Lance le vélo" / "Start biking" / "Inizia il ciclismo"
+
+**Stop Activity:**
+- "Arrête l'activité" / "Stop activity" / "Ferma l'attività"
+- "Termine l'entraînement" / "End workout" / "Termina l'allenamento"
+
+**Get Stats:**
+- "Combien de pas aujourd'hui ?" / "How many steps today?"
+- "Mes stats de la semaine" / "My weekly stats"
+- "Bilan du mois" / "Monthly summary"
+
+**View Paths:**
+- "Montre mes parcours" / "Show my paths"
+- "Voir mes trajets" / "See my routes"
+
+**View Stats Modal:**
+- "Statistiques complètes" / "Full statistics"
+- "Ouvre les stats" / "Open stats"
+
+### UI Components
+
+**Dashboard Cards:**
+- Steps (with icon)
+- Distance (with icon)
+- Calories (with icon)
+- Duration (with icon)
+
+**Goal Progress Bar:**
+- Daily steps goal (default: 10,000)
+- Visual progress indicator
+- Gradient fill (blue to green)
+
+**Weekly Chart:**
+- Canvas-based bar chart
+- 7-day history
+- Hover shows values
+- Labels with weekday abbreviations
+
+**Live Tracking Card:**
+- Animated header with blinking dot
+- Real-time updates (5s interval)
+- Current stats grid
+- Gradient background
+
+**Activity Buttons:**
+- Walk, Run, Bike with icons
+- Color-coded (blue, red, green)
+- Disabled during tracking
+- Stop button (red, full-width)
+
+**Path Viewer Modal:**
+- Left panel: Activity list (scrollable)
+- Right panel: Leaflet map + info overlay
+- Click activity to view path
+- Color-coded activity icons
+
+**Stats Modal:**
+- 6-card grid layout
+- Today, Weekly, Monthly, All-Time
+- Activity Streak
+- Personal Bests
+- Responsive (mobile: single column)
+
+### Data Privacy
+
+- **100% local storage**: All data in IndexedDB
+- **No cloud sync**: Stays on device
+- **Export option**: JSON download available
+- **Clear data**: Delete all activities button
+
+### Mobile Permissions
+
+**Required:**
+- **Geolocation**: GPS tracking (high accuracy)
+- **Motion Sensors**: Step counting (if available)
+
+**Optional:**
+- **Background Location**: Continue tracking when minimized
+- **Notifications**: Goal reminders, milestone alerts
+
+### Dependencies
+
+- **Leaflet.js**: 1.9.4 (OpenStreetMap library)
+- **Geolocation API**: `navigator.geolocation`
+- **MediaRecorder API**: (future: audio recording for voice logs)
+- **IndexedDB**: Version 4 (activities, dailyStats, activityGoals stores)
+
+---
+
 ## 🐛 Debug
 
-**Console:** `[Storage]`, `[TaskManager]`, `[AlarmSystem]`, `[Calendar]`, `[Tavily]`, `[GPS]`, `[Weather]` prefixes
-**Inspect:** `getAllFromStore(STORES.TASKS)`, `localStorage.getItem('mistralApiKey')`, `localStorage.getItem('apiKey_tavily')`, `localStorage.getItem('apiKey_openweathermap')`
-**Test:** `sendToMistralAgent("test", TASK_PROMPT)`, `searchTavily("test query", "fr")`, `openGPSWithCoords(48.8566, 2.3522, "Paris")`, `performWeatherQuery("Paris", "current", "fr")`
+**Console:** `[Storage]`, `[TaskManager]`, `[AlarmSystem]`, `[Calendar]`, `[Tavily]`, `[GPS]`, `[Weather]`, `[ActivityTracker]`, `[ActivityStats]`, `[ActivityUI]` prefixes
+**Inspect:** `getAllFromStore(STORES.TASKS)`, `localStorage.getItem('mistralApiKey')`, `localStorage.getItem('apiKey_tavily')`, `localStorage.getItem('apiKey_openweathermap')`, `getAllActivities()`, `activityTracker.getStatus()`
+**Test:** `sendToMistralAgent("test", TASK_PROMPT)`, `searchTavily("test query", "fr")`, `openGPSWithCoords(48.8566, 2.3522, "Paris")`, `performWeatherQuery("Paris", "current", "fr")`, `activityTracker.startTracking('walk')`, `activityStats.getTodayStats()`
 
 ---
 
 ## 📚 Dependencies
 
-**CDN:** Material Symbols, FullCalendar 6.1.10
-**APIs:** Web Speech, IndexedDB, localStorage, Notification, Tavily, Nominatim (Geocoding), OpenWeatherMap, WeatherAPI.com, Open-Meteo
+**CDN:** Material Symbols, FullCalendar 6.1.10, Leaflet 1.9.4
+**APIs:** Web Speech, IndexedDB, localStorage, Notification, Geolocation, Tavily, Nominatim (Geocoding), OpenWeatherMap, WeatherAPI.com, Open-Meteo
 
 ---
 

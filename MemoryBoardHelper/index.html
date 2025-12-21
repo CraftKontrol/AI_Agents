@@ -10,6 +10,8 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
     <!-- FullCalendar CSS -->
     <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css' rel='stylesheet' />
+    <!-- Leaflet CSS for OpenStreetMap -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1a1a1a">
@@ -379,6 +381,81 @@
             <div id="successMessage" class="success-message" style="display: none;"></div>
         </section>
 
+        <!-- Activity Tracking Section -->
+        <section class="activity-section">
+            <div class="activity-header">
+                <h2>
+                    <span class="material-symbols-outlined">directions_run</span>
+                    <span id="activityTitle">Activités & Exercices</span>
+                </h2>
+                <button class="section-toggle" onclick="toggleSection('activityContent')" id="activityToggleBtn">Masquer</button>
+            </div>
+            <div id="activityContent" class="section-content">
+                <!-- Today's Summary Dashboard -->
+                <div class="activity-dashboard">
+                    <div class="dashboard-grid">
+                        <div class="dashboard-card">
+                            <span class="material-symbols-outlined">footprint</span>
+                            <div class="card-content">
+                                <span class="card-label" id="stepsLabel">Pas</span>
+                                <span class="card-value" id="todaySteps">0</span>
+                            </div>
+                        </div>
+                        <div class="dashboard-card">
+                            <span class="material-symbols-outlined">route</span>
+                            <div class="card-content">
+                                <span class="card-label" id="distanceLabel">Distance</span>
+                                <span class="card-value" id="todayDistance">0 m</span>
+                            </div>
+                        </div>
+                        <div class="dashboard-card">
+                            <span class="material-symbols-outlined">local_fire_department</span>
+                            <div class="card-content">
+                                <span class="card-label" id="caloriesLabel">Calories</span>
+                                <span class="card-value" id="todayCalories">0</span>
+                            </div>
+                        </div>
+                        <div class="dashboard-card">
+                            <span class="material-symbols-outlined">timer</span>
+                            <div class="card-content">
+                                <span class="card-label" id="durationLabel">Durée</span>
+                                <span class="card-value" id="todayDuration">0s</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Steps Goal Progress -->
+                    <div class="goal-progress-container">
+                        <div class="goal-header">
+                            <span id="goalLabel">Objectif de pas quotidien</span>
+                            <span id="stepsGoalText">0 / 10,000</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="stepsProgress" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Weekly Steps Chart -->
+                    <div class="weekly-chart-container">
+                        <h3 id="weeklyStepsTitle">Pas - 7 derniers jours</h3>
+                        <canvas id="weeklyStepsChart" width="700" height="200"></canvas>
+                    </div>
+                </div>
+
+                <!-- View Options -->
+                <div class="activity-view-options">
+                    <button class="btn-view-option" id="viewPathsBtn">
+                        <span class="material-symbols-outlined">map</span>
+                        <span id="viewPathsLabel">Voir mes parcours</span>
+                    </button>
+                    <button class="btn-view-option" id="viewStatsBtn">
+                        <span class="material-symbols-outlined">bar_chart</span>
+                        <span id="viewStatsLabel">Statistiques complètes</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
         <section class="calendar-section">
             <div class="calendar-header">
                 <h2>
@@ -741,6 +818,55 @@
                         <span id="rememberKeysText">Mémoriser les clés API</span>
                     </label>
                     <button class="btn-save" onclick="saveApiKeys()" id="saveKeysBtn">Enregistrer les clés</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Activity Tracking Settings -->
+        <section class="activity-settings-section">
+            <h2>
+                <span class="material-symbols-outlined">directions_run</span>
+                <span id="activitySettingsTitle">Suivi d'activité</span>
+                <button class="section-toggle" onclick="toggleSection('activitySettingsContent')" id="activitySettingsToggleBtn">Afficher</button>
+            </h2>
+            
+            <div id="activitySettingsContent" class="section-content" style="display: none;">
+                <div class="setting-card">
+                    <div class="setting-header">
+                        <label for="enableActivityTracking">
+                            <span class="material-symbols-outlined">track_changes</span>
+                            <span id="enableTrackingLabel">Activer le suivi automatique</span>
+                        </label>
+                        <label class="switch">
+                            <input type="checkbox" id="enableActivityTracking" onchange="toggleActivityTracking()">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <p class="setting-description">
+                        Le suivi enregistre automatiquement vos déplacements (pas, distance, GPS) en arrière-plan.
+                        Vous pouvez consulter vos statistiques et parcours à tout moment.
+                    </p>
+                </div>
+
+                <div class="setting-card">
+                    <label for="dailyStepsGoal">
+                        <span class="material-symbols-outlined">flag</span>
+                        <span id="stepsGoalLabel">Objectif de pas quotidien</span>
+                    </label>
+                    <input type="number" id="dailyStepsGoal" min="1000" max="50000" step="1000" value="10000" onchange="saveDailyStepsGoal()">
+                    <p class="setting-description">Nombre de pas à atteindre chaque jour</p>
+                </div>
+
+                <div class="tracking-status" id="trackingStatus" style="display: none;">
+                    <div class="status-indicator">
+                        <span class="status-dot active"></span>
+                        <span id="trackingStatusText">Suivi actif</span>
+                    </div>
+                    <div class="tracking-info">
+                        <p id="trackingDuration">Durée: --</p>
+                        <p id="trackingSteps">Pas: --</p>
+                        <p id="trackingDistance">Distance: --</p>
+                    </div>
                 </div>
             </div>
         </section>
@@ -1464,8 +1590,14 @@
 
     <!-- FullCalendar JS -->
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
+    <!-- Leaflet JS for OpenStreetMap -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
     <script src="storage.js"></script>
+    <script src="activity-storage.js"></script>
+    <script src="activity-tracker.js"></script>
+    <script src="activity-stats.js"></script>
+    <script src="activity-ui.js"></script>
     <script type="module" src="undo-system.js"></script>
     <script src="mistral-agent.js"></script>
     <script src="task-manager.js"></script>
