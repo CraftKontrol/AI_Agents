@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Board Helper - Architecture Diagram</title>
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #4a9eff;
+            --primary-dark: #0d4fff;
+            --secondary-color: #404040;
+            --background-color: #1a1a1a;
+            --surface-color: #2a2a2a;
+            --surface-elevated: #3a3a3a;
+            --text-color: #e0e0e0;
+            --text-muted: #888;
+            --border-color: #3a3a3a;
+            --error-color: #ff4444;
+            --success-color: #44ff88;
+            --warning-color: #ffaa44;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .header {
+            background-color: var(--surface-color);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            color: #ffffff;
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .controls {
+            background-color: var(--surface-color);
+            padding: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .control-group label {
+            color: var(--text-color);
+            font-size: 14px;
+        }
+
+        select, button {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 8px 12px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        select:hover, button:hover {
+            border-color: var(--primary-color);
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: #ffffff;
+            font-weight: 500;
+        }
+
+        button:hover {
+            background-color: #6ab0ff;
+        }
+
+        #network-container {
+            width: 100%;
+            height: 75vh;
+            background-color: var(--surface-color);
+            border: 1px solid var(--border-color);
+        }
+
+        .legend {
+            background-color: var(--surface-color);
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .legend h3 {
+            color: #ffffff;
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+
+        .legend-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px;
+            background-color: var(--background-color);
+            border: 1px solid var(--border-color);
+        }
+
+        .legend-color {
+            width: 30px;
+            height: 30px;
+            border: 2px solid var(--border-color);
+        }
+
+        .legend-label {
+            color: var(--text-color);
+            font-size: 14px;
+        }
+
+        .info-panel {
+            background-color: var(--surface-color);
+            padding: 20px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .info-panel.active {
+            display: block;
+        }
+
+        .info-panel h3 {
+            color: #ffffff;
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+
+        .info-panel p {
+            color: var(--text-color);
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .info-panel .info-section {
+            margin-top: 15px;
+        }
+
+        .info-panel .info-section h4 {
+            color: var(--primary-color);
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+
+        .info-panel .info-list {
+            list-style: none;
+            padding-left: 15px;
+        }
+
+        .info-panel .info-list li {
+            color: var(--text-color);
+            font-size: 13px;
+            margin-bottom: 5px;
+            padding-left: 15px;
+            position: relative;
+        }
+
+        .info-panel .info-list li::before {
+            content: "→";
+            position: absolute;
+            left: 0;
+            color: var(--primary-color);
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            margin-top: 40px;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>Memory Board Helper - Architecture Diagram</h1>
+        <p>Diagramme interactif des interactions et flux de données</p>
+    </header>
+
+    <div class="controls">
+        <div class="control-group">
+            <label for="layoutSelect">Layout:</label>
+            <select id="layoutSelect">
+                <option value="hierarchical">Hiérarchique</option>
+                <option value="force">Force-directed</option>
+                <option value="circular">Circulaire</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label for="filterSelect">Filtrer:</label>
+            <select id="filterSelect">
+                <option value="all">Tout afficher</option>
+                <option value="core">Modules Core</option>
+                <option value="api">APIs Externes</option>
+                <option value="storage">Stockage</option>
+                <option value="ui">Interface UI</option>
+                <option value="voice">Système Vocal</option>
+            </select>
+        </div>
+        <button onclick="resetView()">Réinitialiser la vue</button>
+        <button onclick="exportDiagram()">Exporter PNG</button>
+    </div>
+
+    <div id="network-container"></div>
+
+    <div id="info-panel" class="info-panel">
+        <h3 id="node-title">Sélectionnez un nœud</h3>
+        <p id="node-description"></p>
+        <div id="node-details"></div>
+    </div>
+
+    <div class="legend">
+        <h3>Légende</h3>
+        <div class="legend-grid">
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #4a9eff;"></div>
+                <span class="legend-label">Modules Core</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #c62828;"></div>
+                <span class="legend-label">APIs Externes</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #ffaa44;"></div>
+                <span class="legend-label">Stockage</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #2e7d32;"></div>
+                <span class="legend-label">Interface UI</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #9966ff;"></div>
+                <span class="legend-label">Système Vocal</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #ff66cc;"></div>
+                <span class="legend-label">Événements</span>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>Arnaud Cassone © Artcraft Visuals 2025</p>
+    </footer>
+
+    <script>
+        // Données du graphe
+        const nodes = new vis.DataSet([
+            // Modules Core
+            { id: 1, label: 'script.js\n(Main App)', color: { background: '#4a9eff', border: '#0d4fff' }, group: 'core', level: 0, 
+              description: 'Application principale - Gestion UI et orchestration',
+              details: ['Initialisation app', 'Gestion modes écoute', 'Coordonnateur général', 'Temporary listening (10s)', 'Launch greeting (2s delay)'] },
+            { id: 2, label: 'action-wrapper.js', color: { background: '#4a9eff', border: '#0d4fff' }, group: 'core', level: 1,
+              description: 'Système unifié d\'exécution d\'actions',
+              details: ['Validation → Execution → Verification', 'Dispatch événements (started/completed/error)', '20+ actions enregistrées', 'Communication postMessage'] },
+            { id: 3, label: 'mistral-agent.js', color: { background: '#4a9eff', border: '#0d4fff' }, group: 'core', level: 1,
+              description: 'Agent IA Mistral pour NLP et décisions',
+              details: ['Classification intents', 'Extraction tâches', '4 prompts (TASK/NAV/CALL/CHAT)', 'Historique 10-20 échanges'] },
+            { id: 4, label: 'task-manager.js', color: { background: '#4a9eff', border: '#0d4fff' }, group: 'core', level: 2,
+              description: 'CRUD opérations sur les tâches',
+              details: ['Max 5 tâches affichées', 'Create/Read/Update/Delete', 'Statuts: pending/completed/snoozed', 'Récurrences: daily/weekly/monthly'] },
+            { id: 5, label: 'storage.js', color: { background: '#4a9eff', border: '#0d4fff' }, group: 'core', level: 3,
+              description: 'Abstraction IndexedDB + localStorage',
+              details: ['initializeDatabase', 'CRUD operations', 'Fallback localStorage', 'Merge tasks at init'] },
+            { id: 6, label: 'alarm-system.js', color: { background: '#4a9eff', border: '#0d4fff' }, group: 'core', level: 2,
+              description: 'Système d\'alarmes et rappels',
+              details: ['Polling 30s', 'Pre-reminder 15min', 'Snooze 10min', '4 sons (general/medication/appointment/call)'] },
+            { id: 7, label: 'calendar-integration.js', color: { background: '#4a9eff', border: '#0d4fff' }, group: 'core', level: 2,
+              description: 'Intégration FullCalendar',
+              details: ['FullCalendar 6.1.10', 'taskToEvent conversion', 'EventDrop handling', 'Overdue indicators (red striped)'] },
+            { id: 8, label: 'undo-system.js', color: { background: '#4a9eff', border: '#0d4fff' }, group: 'core', level: 2,
+              description: 'Historique et annulation d\'actions',
+              details: ['Max 20 actions', 'Auto-hide 10s', 'Voice undo routing', 'Action types tracking'] },
+            { id: 9, label: 'sound-system.js', color: { background: '#4a9eff', border: '#0d4fff' }, group: 'core', level: 2,
+              description: 'Feedback audio et haptique',
+              details: ['12 sons UI', 'Random pitch ±0.15', 'Détection répétition (10 actions)', 'Haptic patterns (normal/variant/tired)'] },
+            { id: 10, label: 'tavily-search.js', color: { background: '#4a9eff', border: '#0d4fff' }, group: 'core', level: 2,
+              description: 'Recherche web intelligente',
+              details: ['Tavily API integration', 'AI answer + 10 results', 'Modal UI', 'Voice commands: "recherche [query]"'] },
+            { id: 11, label: 'gps-navigation.js', color: { background: '#4a9eff', border: '#0d4fff' }, group: 'core', level: 2,
+              description: 'Navigation GPS multi-apps',
+              details: ['Google Maps/Waze/Apple Maps/OSM', 'Geocoding via Nominatim', 'showGPSOptions modal', 'Voice: "emmène-moi à [address]"'] },
+
+            // APIs Externes
+            { id: 20, label: 'Mistral AI\n(mistral-small-latest)', color: { background: '#c62828', border: '#8b0000' }, group: 'api', level: 1,
+              description: 'API Mistral pour traitement NLP',
+              details: ['Endpoint: /v1/chat/completions', 'temp=0.7, max_tokens=500', 'JSON response', 'Intents: TASK/NAV/CALL/CHAT'] },
+            { id: 21, label: 'Deepgram STT\n(Nova-2)', color: { background: '#c62828', border: '#8b0000' }, group: 'api', level: 1,
+              description: 'Speech-to-Text Deepgram Nova-2',
+              details: ['WEBM_OPUS format', 'Smart formatting', 'VAD auto-stop', 'Spectrum visualization'] },
+            { id: 22, label: 'Deepgram TTS\n(Aura-2)', color: { background: '#c62828', border: '#8b0000' }, group: 'api', level: 1,
+              description: 'Text-to-Speech Deepgram Aura-2',
+              details: ['16+ voices (fr/it/en)', 'MP3 stream', 'Natural, expressive', 'No custom parameters'] },
+            { id: 23, label: 'Google Cloud STT', color: { background: '#c62828', border: '#8b0000' }, group: 'api', level: 1,
+              description: 'Google Speech-to-Text API',
+              details: ['WEBM/OGG/WAV format', '16kHz sample rate', 'VAD auto-stop', 'Automatic punctuation'] },
+            { id: 24, label: 'Google Cloud TTS', color: { background: '#c62828', border: '#8b0000' }, group: 'api', level: 1,
+              description: 'Google Text-to-Speech API',
+              details: ['Neural2/Wavenet/Standard', 'Custom params (rate/pitch/volume)', 'MP3 encoding', '4-6 voices per language'] },
+            { id: 25, label: 'Tavily Search API', color: { background: '#c62828', border: '#8b0000' }, group: 'api', level: 1,
+              description: 'API de recherche web intelligente',
+              details: ['Endpoint: /search', 'Advanced depth', 'Max 10 results', 'AI answer generation'] },
+            { id: 26, label: 'Nominatim\n(Geocoding)', color: { background: '#c62828', border: '#8b0000' }, group: 'api', level: 1,
+              description: 'Geocoding OpenStreetMap gratuit',
+              details: ['Address → Coordinates', 'Format: JSON', 'User-Agent required', 'Limit 1 result'] },
+
+            // Stockage
+            { id: 30, label: 'IndexedDB\n(MemoryBoardHelperDB v3)', color: { background: '#ffaa44', border: '#ff8800' }, group: 'storage', level: 3,
+              description: 'Base de données principale',
+              details: ['6 stores: tasks/conversations/settings/notes/lists/actionHistory', 'Auto-increment IDs', 'Indexes on date/status/type/priority', 'Fallback localStorage'] },
+            { id: 31, label: 'localStorage', color: { background: '#ffaa44', border: '#ff8800' }, group: 'storage', level: 3,
+              description: 'Stockage clé-valeur pour settings',
+              details: ['API keys (mistral/deepgram/google/tavily)', 'ttsSettings JSON', 'sttProvider/ttsProvider', 'emergencyContact1-3'] },
+
+            // Interface UI
+            { id: 40, label: 'Task UI\n(script-task-popup.js)', color: { background: '#2e7d32', border: '#1b5e20' }, group: 'ui', level: 2,
+              description: 'Interface modale de gestion des tâches',
+              details: ['Task creation/edit modal', 'Type/priority selectors', 'Date/time pickers', 'Medication dosage tracking'] },
+            { id: 41, label: 'Calendar View\n(FullCalendar)', color: { background: '#2e7d32', border: '#1b5e20' }, group: 'ui', level: 2,
+              description: 'Vue calendrier des tâches',
+              details: ['FullCalendar 6.1.10 integration', 'Event drag & drop', 'Overdue visual indicators', 'Task-to-event conversion'] },
+            { id: 42, label: 'Settings Modal', color: { background: '#2e7d32', border: '#1b5e20' }, group: 'ui', level: 2,
+              description: 'Configuration de l\'application',
+              details: ['API keys management', 'STT/TTS provider selection', 'Voice settings', 'Emergency contacts', 'SSML toggles'] },
+            { id: 43, label: 'Search Results Modal', color: { background: '#2e7d32', border: '#1b5e20' }, group: 'ui', level: 2,
+              description: 'Affichage des résultats de recherche web',
+              details: ['AI answer section', 'Result cards with snippets', 'Score/domain display', 'Open link buttons'] },
+            { id: 44, label: 'GPS Options Modal', color: { background: '#2e7d32', border: '#1b5e20' }, group: 'ui', level: 2,
+              description: 'Sélection d\'application GPS',
+              details: ['4 apps: Google/Waze/Apple/OSM', 'Location name display', 'Coordinates (monospace)', 'Click outside to close'] },
+
+            // Système Vocal
+            { id: 50, label: 'Web Speech API\n(Browser STT/TTS)', color: { background: '#9966ff', border: '#6633cc' }, group: 'voice', level: 1,
+              description: 'API vocale native du navigateur',
+              details: ['SpeechRecognition (STT)', 'SpeechSynthesis (TTS)', 'FREE - No API key', 'Continuous mode + heartbeat (15s)', 'Auto-restart with exponential backoff'] },
+            { id: 51, label: 'MediaRecorder API\n(Audio Capture)', color: { background: '#9966ff', border: '#6633cc' }, group: 'voice', level: 1,
+              description: 'Enregistrement audio pour STT cloud',
+              details: ['WEBM_OPUS format', 'Real-time spectrum analysis', 'VAD monitoring (30 threshold)', 'Auto-stop on silence (1500ms)'] },
+            { id: 52, label: 'Voice Activity\nDetection (VAD)', color: { background: '#9966ff', border: '#6633cc' }, group: 'voice', level: 1,
+              description: 'Détection de silence pour auto-stop',
+              details: ['analyser.getByteFrequencyData', 'Threshold: 30/255', 'Silence: 1500ms continuous', 'Min recording: 500ms'] },
+
+            // Événements
+            { id: 60, label: 'actionStarted\nEvent', color: { background: '#ff66cc', border: '#cc3399' }, group: 'event', level: 1,
+              description: 'Événement de début d\'action',
+              details: ['CustomEvent + postMessage', 'detail: {action}', 'Dispatched by action-wrapper', 'Listeners: test-app, main app'] },
+            { id: 61, label: 'actionCompleted\nEvent', color: { background: '#ff66cc', border: '#cc3399' }, group: 'event', level: 1,
+              description: 'Événement de fin d\'action',
+              details: ['CustomEvent + postMessage', 'detail: {action, result}', 'ActionResult structure', 'Contains validation/verification'] },
+            { id: 62, label: 'actionError\nEvent', color: { background: '#ff66cc', border: '#cc3399' }, group: 'event', level: 1,
+              description: 'Événement d\'erreur d\'action',
+              details: ['CustomEvent + postMessage', 'detail: {action, error}', 'Error message string', 'Triggers UI error display'] },
+        ]);
+
+        const edges = new vis.DataSet([
+            // Main App Flows
+            { from: 1, to: 3, label: 'Voice transcript', arrows: 'to', color: '#4a9eff', dashes: false },
+            { from: 3, to: 2, label: 'Mistral decision', arrows: 'to', color: '#4a9eff' },
+            { from: 2, to: 4, label: 'Task actions', arrows: 'to', color: '#4a9eff' },
+            { from: 2, to: 8, label: 'Record action', arrows: 'to', color: '#4a9eff' },
+            { from: 2, to: 9, label: 'Trigger sound', arrows: 'to', color: '#4a9eff' },
+            { from: 2, to: 10, label: 'Search web', arrows: 'to', color: '#4a9eff' },
+            { from: 2, to: 11, label: 'Open GPS', arrows: 'to', color: '#4a9eff' },
+            { from: 4, to: 5, label: 'CRUD ops', arrows: 'to', color: '#4a9eff' },
+            { from: 5, to: 30, label: 'Read/Write', arrows: 'to;from', color: '#ffaa44' },
+            { from: 5, to: 31, label: 'Fallback', arrows: 'to;from', color: '#ffaa44', dashes: true },
+
+            // Voice System
+            { from: 1, to: 50, label: 'initSpeechRecognition', arrows: 'to', color: '#9966ff' },
+            { from: 1, to: 51, label: 'MediaRecorder setup', arrows: 'to', color: '#9966ff' },
+            { from: 51, to: 52, label: 'Audio analysis', arrows: 'to', color: '#9966ff' },
+            { from: 52, to: 51, label: 'Auto-stop signal', arrows: 'to', color: '#9966ff', dashes: true },
+            { from: 51, to: 21, label: 'Audio blob', arrows: 'to', color: '#c62828' },
+            { from: 51, to: 23, label: 'Audio blob', arrows: 'to', color: '#c62828' },
+            { from: 50, to: 1, label: 'Transcript', arrows: 'to', color: '#9966ff', dashes: true },
+            { from: 21, to: 1, label: 'Transcript', arrows: 'to', color: '#c62828', dashes: true },
+            { from: 23, to: 1, label: 'Transcript', arrows: 'to', color: '#c62828', dashes: true },
+
+            // TTS System
+            { from: 1, to: 22, label: 'synthesize (Deepgram)', arrows: 'to', color: '#c62828' },
+            { from: 1, to: 24, label: 'synthesize (Google)', arrows: 'to', color: '#c62828' },
+            { from: 1, to: 50, label: 'speak (Browser)', arrows: 'to', color: '#9966ff' },
+
+            // API Interactions
+            { from: 3, to: 20, label: 'Chat completion', arrows: 'to', color: '#c62828' },
+            { from: 10, to: 25, label: 'Search query', arrows: 'to', color: '#c62828' },
+            { from: 11, to: 26, label: 'Geocode address', arrows: 'to', color: '#c62828' },
+
+            // UI Flows
+            { from: 1, to: 40, label: 'Open modal', arrows: 'to', color: '#ff4444' },
+            { from: 40, to: 4, label: 'Task data', arrows: 'to', color: '#ff4444' },
+            { from: 1, to: 42, label: 'Settings', arrows: 'to', color: '#ff4444' },
+            { from: 42, to: 31, label: 'Save config', arrows: 'to', color: '#ff4444' },
+            { from: 10, to: 43, label: 'Display results', arrows: 'to', color: '#ff4444' },
+            { from: 11, to: 44, label: 'Show options', arrows: 'to', color: '#ff4444' },
+
+            // Calendar Integration
+            { from: 4, to: 7, label: 'Task updates', arrows: 'to', color: '#4a9eff' },
+            { from: 7, to: 41, label: 'Render calendar', arrows: 'to', color: '#ff4444' },
+
+            // Alarm System
+            { from: 6, to: 30, label: 'Check alarms (30s)', arrows: 'to', color: '#ffaa44' },
+            { from: 6, to: 1, label: 'Trigger alarm', arrows: 'to', color: '#4a9eff', dashes: true },
+
+            // Events
+            { from: 2, to: 60, label: 'dispatch', arrows: 'to', color: '#ff66cc' },
+            { from: 2, to: 61, label: 'dispatch', arrows: 'to', color: '#ff66cc' },
+            { from: 2, to: 62, label: 'dispatch', arrows: 'to', color: '#ff66cc' },
+            { from: 60, to: 1, label: 'listen', arrows: 'to', color: '#ff66cc', dashes: true },
+            { from: 61, to: 1, label: 'listen', arrows: 'to', color: '#ff66cc', dashes: true },
+            { from: 62, to: 1, label: 'listen', arrows: 'to', color: '#ff66cc', dashes: true },
+
+            // Storage Operations
+            { from: 4, to: 30, label: 'tasks store', arrows: 'to;from', color: '#ffaa44' },
+            { from: 3, to: 30, label: 'conversations store', arrows: 'to;from', color: '#ffaa44' },
+            { from: 8, to: 30, label: 'actionHistory store', arrows: 'to;from', color: '#ffaa44' },
+        ]);
+
+        // Options du réseau
+        let options = {
+            nodes: {
+                shape: 'box',
+                margin: 10,
+                widthConstraint: { minimum: 120, maximum: 180 },
+                font: { color: '#ffffff', size: 13, face: 'monospace' },
+                borderWidth: 2,
+                shadow: true
+            },
+            edges: {
+                width: 2,
+                color: { inherit: 'from' },
+                smooth: { type: 'cubicBezier', roundness: 0.4 },
+                font: { size: 11, color: '#888', strokeWidth: 0, align: 'middle' }
+            },
+            groups: {
+                core: { color: { background: '#4a9eff', border: '#0d4fff' } },
+                api: { color: { background: '#c62828', border: '#8b0000' } },
+                storage: { color: { background: '#ffaa44', border: '#ff8800' } },
+                ui: { color: { background: '#2e7d32', border: '#1b5e20' } },
+                voice: { color: { background: '#9966ff', border: '#6633cc' } },
+                event: { color: { background: '#ff66cc', border: '#cc3399' } }
+            },
+            layout: {
+                hierarchical: {
+                    enabled: true,
+                    direction: 'UD',
+                    sortMethod: 'directed',
+                    nodeSpacing: 150,
+                    levelSeparation: 180
+                }
+            },
+            physics: {
+                enabled: false
+            },
+            interaction: {
+                hover: true,
+                tooltipDelay: 200,
+                navigationButtons: true,
+                keyboard: true
+            }
+        };
+
+        // Initialisation du réseau
+        const container = document.getElementById('network-container');
+        const data = { nodes: nodes, edges: edges };
+        const network = new vis.Network(container, data, options);
+
+        // Node details
+        const nodeInfo = {};
+        nodes.forEach(node => {
+            nodeInfo[node.id] = {
+                title: node.label.replace(/\\n/g, ' '),
+                description: node.description,
+                details: node.details
+            };
+        });
+
+        // Gestion de la sélection
+        network.on('click', function(params) {
+            if (params.nodes.length > 0) {
+                const nodeId = params.nodes[0];
+                const info = nodeInfo[nodeId];
+                
+                document.getElementById('node-title').textContent = info.title;
+                document.getElementById('node-description').textContent = info.description;
+                
+                let detailsHTML = '<div class="info-section"><h4>Détails:</h4><ul class="info-list">';
+                info.details.forEach(detail => {
+                    detailsHTML += `<li>${detail}</li>`;
+                });
+                detailsHTML += '</ul></div>';
+                
+                document.getElementById('node-details').innerHTML = detailsHTML;
+                document.getElementById('info-panel').classList.add('active');
+            }
+        });
+
+        network.on('deselectNode', function() {
+            document.getElementById('info-panel').classList.remove('active');
+        });
+
+        // Gestion du layout
+        document.getElementById('layoutSelect').addEventListener('change', function(e) {
+            const layout = e.target.value;
+            
+            if (layout === 'hierarchical') {
+                options.layout = {
+                    hierarchical: {
+                        enabled: true,
+                        direction: 'UD',
+                        sortMethod: 'directed',
+                        nodeSpacing: 150,
+                        levelSeparation: 180
+                    }
+                };
+                options.physics.enabled = false;
+            } else if (layout === 'force') {
+                options.layout = { hierarchical: { enabled: false } };
+                options.physics = {
+                    enabled: true,
+                    barnesHut: {
+                        gravitationalConstant: -8000,
+                        springLength: 200,
+                        springConstant: 0.04
+                    }
+                };
+            } else if (layout === 'circular') {
+                options.layout = { hierarchical: { enabled: false } };
+                options.physics.enabled = false;
+            }
+            
+            network.setOptions(options);
+            
+            if (layout === 'circular') {
+                const nodeIds = nodes.getIds();
+                const positions = [];
+                const radius = 400;
+                const angleStep = (2 * Math.PI) / nodeIds.length;
+                
+                nodeIds.forEach((id, index) => {
+                    const angle = index * angleStep;
+                    positions.push({
+                        id: id,
+                        x: radius * Math.cos(angle),
+                        y: radius * Math.sin(angle)
+                    });
+                });
+                
+                nodes.update(positions);
+            }
+        });
+
+        // Filtrage
+        document.getElementById('filterSelect').addEventListener('change', function(e) {
+            const filter = e.target.value;
+            
+            if (filter === 'all') {
+                nodes.forEach(node => {
+                    nodes.update({ id: node.id, hidden: false });
+                });
+                edges.forEach(edge => {
+                    edges.update({ id: edge.id, hidden: false });
+                });
+            } else {
+                nodes.forEach(node => {
+                    const shouldShow = node.group === filter;
+                    nodes.update({ id: node.id, hidden: !shouldShow });
+                });
+                
+                edges.forEach(edge => {
+                    const fromNode = nodes.get(edge.from);
+                    const toNode = nodes.get(edge.to);
+                    const shouldShow = fromNode.group === filter || toNode.group === filter;
+                    edges.update({ id: edge.id, hidden: !shouldShow });
+                });
+            }
+        });
+
+        function resetView() {
+            network.fit({
+                animation: {
+                    duration: 1000,
+                    easingFunction: 'easeInOutQuad'
+                }
+            });
+        }
+
+        function exportDiagram() {
+            // Capture canvas as image
+            const canvas = container.querySelector('canvas');
+            const link = document.createElement('a');
+            link.download = 'memory-board-helper-architecture.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        // Initial fit
+        network.once('stabilizationIterationsDone', function() {
+            network.fit();
+        });
+    </script>
+</body>
+</html>
