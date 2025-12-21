@@ -187,6 +187,27 @@ class ActivityTracker {
         
         console.log('[ActivityTracker] GPS tracking started');
     }
+
+    // Ingest position updates coming from CKGenericApp/CKAndroid bridge
+    // (native side can dispatch custom events or call the exposed functions below)
+    ingestExternalPosition(data) {
+        if (!this.isTracking) return;
+
+        if (!data || typeof data.lat !== 'number' || typeof data.lng !== 'number') {
+            console.warn('[ActivityTracker] Ignoring external position (invalid payload)', data);
+            return;
+        }
+
+        const coords = {
+            latitude: data.lat,
+            longitude: data.lng,
+            altitude: typeof data.altitude === 'number' ? data.altitude : null,
+            speed: typeof data.speed === 'number' ? data.speed : null,
+            accuracy: typeof data.accuracy === 'number' ? data.accuracy : null
+        };
+
+        this.handleGPSUpdate({ coords });
+    }
     
     // Handle GPS position update
     handleGPSUpdate(position) {
@@ -290,6 +311,17 @@ class ActivityTracker {
             // Fallback to simulated step counting based on GPS
             this.startSimulatedStepCounting();
         }
+    }
+
+    // Inject step count coming from native bridge (CKGenericApp)
+    ingestExternalSteps(steps) {
+        if (!this.isTracking) return;
+        if (!Number.isFinite(steps)) {
+            console.warn('[ActivityTracker] Ignoring external steps (invalid payload)', steps);
+            return;
+        }
+
+        this.stepCount = Math.max(0, Math.round(steps));
     }
     
     // Native pedometer (Android WebView)
@@ -535,6 +567,26 @@ class ActivityTracker {
 
 // Global instance
 const activityTracker = new ActivityTracker();
+
+// Wire CKGenericApp native bridge events (location + sensors)
+window.addEventListener('ckgenericapp_location', (event) => {
+    activityTracker.ingestExternalPosition(event.detail);
+});
+
+window.addEventListener('ckgenericapp_pedometer', (event) => {
+    if (event.detail && typeof event.detail.steps !== 'undefined') {
+        activityTracker.ingestExternalSteps(event.detail.steps);
+    }
+});
+
+// Expose global callbacks for native code convenience
+window.onCKGenericAppLocation = function(lat, lng, accuracy, altitude, speed) {
+    activityTracker.ingestExternalPosition({ lat, lng, accuracy, altitude, speed });
+};
+
+window.onCKGenericAppSteps = function(steps) {
+    activityTracker.ingestExternalSteps(steps);
+};
 
 // Handle page unload - save current activity
 window.addEventListener('beforeunload', () => {

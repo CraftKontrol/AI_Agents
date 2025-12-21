@@ -842,6 +842,11 @@ OpenStreetMap: https://www.openstreetmap.org/directions?to={lat},{lng}
 - **Fallback**: GPS-based step estimation (0.75m stride length)
 - **Update frequency**: 1-2 seconds
 
+**CKGenericApp Bridge:**
+- Native side can push data via events `ckgenericapp_location` and `ckgenericapp_pedometer`
+- Global callbacks exposed: `onCKGenericAppLocation(lat, lng, accuracy, altitude, speed)` and `onCKGenericAppSteps(steps)`
+- Bridge hooks feed `ActivityTracker.ingestExternalPosition/ingestExternalSteps` while tracking
+
 **GPS Tracking:**
 - **API**: `navigator.geolocation.watchPosition()`
 - **High accuracy mode**: enabled

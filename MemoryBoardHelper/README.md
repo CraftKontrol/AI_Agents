@@ -123,6 +123,7 @@ Open in mobile browser → Add to Home Screen → Works offline, background noti
 **Permissions required:**
 - **Location (GPS)**: For route tracking and distance calculation
 - **Motion sensors** (if available): For step counting
+- In the CKGenericApp Android container, native bridges also push location + pedometer events (`ckgenericapp_location` / `ckgenericapp_pedometer`) so tracking keeps working even if browser geolocation is limited.
 
 **Data:**
 - All activity data stored locally (IndexedDB)

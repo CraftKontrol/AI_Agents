@@ -147,6 +147,9 @@ class ActivityUI {
             
             // Listen for activity events
             window.addEventListener('activityProgress', (e) => this.onActivityProgress(e.detail));
+
+            // Probe sensors early so native pedometer/geolocation can register
+            await activityTracker.checkSensorAvailability();
             
             // Load settings and start tracking if enabled
             await this.initializeAutoTracking();
