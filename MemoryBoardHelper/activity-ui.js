@@ -175,6 +175,8 @@ class ActivityUI {
         const restored = await activityTracker.restoreActivityState();
         if (restored) {
             console.log('[ActivityUI] Previous session restored');
+            const enableCheckbox = document.getElementById('enableActivityTracking');
+            if (enableCheckbox) enableCheckbox.checked = true;
             this.showTrackingStatus();
             return;
         }
