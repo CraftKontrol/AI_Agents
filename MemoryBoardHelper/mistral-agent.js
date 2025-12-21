@@ -65,7 +65,7 @@ const TASK_PROMPT = `You are a helpful memory assistant for elderly or memory-de
 
 When extracting tasks, respond in JSON format with:
 {
-    "action": "add_task|add_list|add_note|complete_task|delete_task|delete_list|delete_note|update_task|update_list|update_note|search_task|undo|conversation|add_recursive_task|delete_old_task|delete_done_task|delete_all_tasks|delete_all_lists|delete_all_notes",
+    "action": "add_task|add_list|add_note|complete_task|delete_task|delete_list|delete_note|update_task|update_list|update_note|search_task|undo|conversation|add_recursive_task|delete_old_task|delete_done_task|delete_all_tasks|delete_all_lists|delete_all_notes|search_web|open_gps|send_address|get_weather",
     "task": {
         "description": "clear task description",
         "date": "YYYY-MM-DD if mentioned, else null",
@@ -85,6 +85,15 @@ When extracting tasks, respond in JSON format with:
         "category": "general|personal|work|ideas|reminder"
     },
     "taskId": "id if completing, deleting or updating existing task",
+    "query": "search query (for search_web action)",
+    "coordinates": {
+        "lat": latitude (number),
+        "lng": longitude (number),
+        "name": "location name (optional)"
+    },
+    "address": "full address string (for send_address action)",
+    "location": "location name or 'current' (for get_weather action)",
+    "timeRange": "current|8hours|3days|5days (for get_weather action, default: current)",
     "response": "friendly message to user",
     "language": "fr|it|en"
 }
@@ -268,6 +277,65 @@ Response: {"action": "undo", "response": "C'est annulé.", "language": "fr"}
 ✅ UPDATE TASK:
 User: "Modifie l'heure de mon rendez-vous à 15h"
 Response: {"action": "update_task", "task": {"description": "rendez-vous", "time": "15:00"}, "response": "Heure modifiée.", "language": "fr"}
+
+🔍 WEB SEARCH ACTION:
+Use "search_web" when user wants to search for information on the internet:
+- "recherche sur internet" / "search the web" / "trova su internet"
+- "cherche des informations sur" / "search for information about" / "cerca informazioni su"
+- "trouve-moi des infos sur" / "find me info about" / "trovami informazioni su"
+- "google" / "recherche google" / "google search"
+- "que dit internet sur" / "what does the internet say about" / "cosa dice internet su"
+- "recherche [topic]" / "search [topic]" / "cerca [topic]"
+
+Examples:
+- "Recherche des restaurants italiens près de chez moi" → {"action": "search_web", "query": "restaurants italiens près de chez moi", "response": "Je recherche...", "language": "fr"}
+- "Trouve-moi des infos sur la météo de demain" → {"action": "search_web", "query": "météo demain", "response": "Je cherche...", "language": "fr"}
+- "What is the capital of France" → {"action": "search_web", "query": "capital of France", "response": "Searching...", "language": "en"}
+
+📍 GPS NAVIGATION ACTIONS:
+
+Use "open_gps" when user provides GPS coordinates:
+- "ouvre GPS pour [lat], [lng]" / "open GPS for [lat], [lng]" / "apri GPS per [lat], [lng]"
+- "navigue vers [lat], [lng]" / "navigate to [lat], [lng]" / "naviga verso [lat], [lng]"
+- "coordonnées [lat], [lng]" / "coordinates [lat], [lng]" / "coordinate [lat], [lng]"
+- Extract latitude and longitude as numbers
+
+Examples:
+- "Ouvre GPS pour 48.8566, 2.3522" → {"action": "open_gps", "coordinates": {"lat": 48.8566, "lng": 2.3522, "name": ""}, "response": "J'ouvre la navigation...", "language": "fr"}
+- "Navigue vers 45.5017, -73.5673, c'est Montréal" → {"action": "open_gps", "coordinates": {"lat": 45.5017, "lng": -73.5673, "name": "Montréal"}, "response": "Navigation vers Montréal...", "language": "fr"}
+
+Use "send_address" when user provides a street address or location name:
+- "ouvre GPS pour [address]" / "open GPS for [address]" / "apri GPS per [indirizzo]"
+- "navigue vers [address]" / "navigate to [address]" / "naviga verso [indirizzo]"
+- "emmène-moi à [address]" / "take me to [address]" / "portami a [indirizzo]"
+- "itinéraire vers [address]" / "directions to [address]" / "indicazioni per [indirizzo]"
+- "comment aller à [address]" / "how to get to [address]" / "come andare a [indirizzo]"
+
+Examples:
+- "Emmène-moi à Tour Eiffel, Paris" → {"action": "send_address", "address": "Tour Eiffel, Paris", "response": "Je cherche l'itinéraire...", "language": "fr"}
+- "Navigue vers 123 rue de la Paix, Lyon" → {"action": "send_address", "address": "123 rue de la Paix, Lyon", "response": "Navigation en cours...", "language": "fr"}
+- "How do I get to Central Park, New York" → {"action": "send_address", "address": "Central Park, New York", "response": "Finding directions...", "language": "en"}
+
+🌤️ WEATHER ACTION:
+
+Use "get_weather" when user wants weather information:
+- "météo" / "quel temps" / "weather" / "meteo" / "che tempo"
+- "prévisions météo" / "forecast" / "previsioni meteo"
+- "il fait quel temps" / "what's the weather" / "che tempo fa"
+- "météo pour [location]" / "weather in [location]" / "meteo a [luogo]"
+- "météo demain" / "weather tomorrow" / "meteo domani"
+- "température à [location]" / "temperature in [location]" / "temperatura a [luogo]"
+
+Extract location and timeRange:
+- location: city name or "current" for current location (required)
+- timeRange: "current" (default), "8hours", "3days", "5days"
+
+Examples:
+- "Quel temps fait-il?" → {"action": "get_weather", "location": "current", "timeRange": "current", "response": "Je consulte la météo...", "language": "fr"}
+- "Météo à Paris demain" → {"action": "get_weather", "location": "Paris", "timeRange": "current", "response": "Voici la météo pour Paris...", "language": "fr"}
+- "Prévisions pour Lyon sur 3 jours" → {"action": "get_weather", "location": "Lyon", "timeRange": "3days", "response": "Prévisions sur 3 jours...", "language": "fr"}
+- "What's the weather in London" → {"action": "get_weather", "location": "London", "timeRange": "current", "response": "Checking weather...", "language": "en"}
+- "Temperature in New York for 5 days" → {"action": "get_weather", "location": "New York", "timeRange": "5days", "response": "5-day forecast...", "language": "en"}
 
 Always be encouraging and supportive.`;
 
@@ -1461,25 +1529,36 @@ function initiatePhoneCall(phoneNumber) {
 // Open phone contacts app
 function openPhoneContacts() {
     try {
-        // Try multiple methods to open contacts
-        
-        // Method 1: Android intent (works on Android devices)
-        if (navigator.userAgent.match(/Android/i)) {
-            window.location.href = 'content://contacts/people/';
-            console.log('[Mistral] Opened contacts via Android intent');
+        // Check if running in CKGenericApp (Android WebView)
+        if (typeof window.CKGenericApp !== 'undefined' && typeof window.CKGenericApp.openContacts === 'function') {
+            window.CKGenericApp.openContacts();
+            console.log('[Mistral] Opened contacts via CKGenericApp');
             return true;
         }
         
-        // Method 2: iOS URL scheme (works on iOS devices)
-        if (navigator.userAgent.match(/iPhone|iPad|iPod/i)) {
-            window.location.href = 'contacts://';
-            console.log('[Mistral] Opened contacts via iOS URL scheme');
+        // For web browsers, we can't directly open contacts
+        // Instead, we'll open a modal to guide the user
+        if (typeof showContactsGuidanceModal === 'function') {
+            showContactsGuidanceModal();
+            console.log('[Mistral] Showing contacts guidance modal');
             return true;
         }
         
-        // Method 3: Generic tel: without number (some browsers open contacts)
-        window.location.href = 'tel:';
-        console.log('[Mistral] Opened contacts via tel: protocol');
+        // Fallback: Open phone dialer (user can access contacts from there)
+        // Using window.open to avoid navigation issues
+        const telWindow = window.open('tel:', '_blank');
+        if (telWindow) {
+            telWindow.close();
+        }
+        
+        // Show a toast/alert to inform user
+        if (typeof showToast === 'function') {
+            showToast("Pour appeler un contact, veuillez ouvrir l'application Téléphone de votre appareil.", 5000);
+        } else {
+            alert("Pour appeler un contact, veuillez ouvrir l'application Téléphone de votre appareil.");
+        }
+        
+        console.log('[Mistral] Contacts access not available in web browser');
         return true;
     } catch (error) {
         console.error('[Mistral] Error opening contacts:', error);

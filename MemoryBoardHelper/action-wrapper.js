@@ -43,7 +43,18 @@ function getLocalizedText(key, language = 'fr') {
             recurrenceRequired: 'Récurrence requise',
             taskNotFound: 'Tâche non trouvée',
             taskCompletionFailed: 'Échec de la complétion de la tâche',
-            taskDeletionFailed: 'Échec de la suppression de la tâche'
+            taskDeletionFailed: 'Échec de la suppression de la tâche',
+            searchQueryRequired: 'Requête de recherche requise',
+            tavilyKeyRequired: 'Clé API Tavily requise',
+            searchError: 'Erreur lors de la recherche',
+            coordinatesRequired: 'Coordonnées requises',
+            invalidCoordinates: 'Coordonnées invalides',
+            coordinatesOutOfRange: 'Coordonnées hors limites',
+            gpsError: 'Erreur GPS',
+            addressRequired: 'Adresse requise',
+            addressNotFound: 'Adresse introuvable',
+            locationRequired: 'Lieu requis',
+            weatherError: 'Erreur lors de la récupération de la météo'
         },
         en: {
             unknownAction: 'Unknown action',
@@ -53,7 +64,18 @@ function getLocalizedText(key, language = 'fr') {
             recurrenceRequired: 'Recurrence required',
             taskNotFound: 'Task not found',
             taskCompletionFailed: 'Task completion failed',
-            taskDeletionFailed: 'Task deletion failed'
+            taskDeletionFailed: 'Task deletion failed',
+            searchQueryRequired: 'Search query required',
+            tavilyKeyRequired: 'Tavily API key required',
+            searchError: 'Search error',
+            coordinatesRequired: 'Coordinates required',
+            invalidCoordinates: 'Invalid coordinates',
+            coordinatesOutOfRange: 'Coordinates out of range',
+            gpsError: 'GPS error',
+            locationRequired: 'Location required',
+            weatherError: 'Failed to fetch weather data',
+            addressRequired: 'Address required',
+            addressNotFound: 'Address not found'
         },
         it: {
             unknownAction: 'Azione sconosciuta',
@@ -63,7 +85,18 @@ function getLocalizedText(key, language = 'fr') {
             recurrenceRequired: 'Ricorrenza richiesta',
             taskNotFound: 'Attività non trovata',
             taskCompletionFailed: 'Completamento attività fallito',
-            taskDeletionFailed: 'Eliminazione attività fallita'
+            taskDeletionFailed: 'Eliminazione attività fallita',
+            searchQueryRequired: 'Query di ricerca richiesta',
+            tavilyKeyRequired: 'Chiave API Tavily richiesta',
+            searchError: 'Errore di ricerca',
+            coordinatesRequired: 'Coordinate richieste',
+            invalidCoordinates: 'Coordinate non valide',
+            coordinatesOutOfRange: 'Coordinate fuori limiti',
+            gpsError: 'Errore GPS',
+            locationRequired: 'Posizione richiesta',
+            weatherError: 'Errore nel recupero dei dati meteo',
+            addressRequired: 'Indirizzo richiesto',
+            addressNotFound: 'Indirizzo non trovato'
         }
     };
     
@@ -84,19 +117,28 @@ function getLocalizedResponse(key, language = 'fr') {
             taskAdded: 'Tâche ajoutée',
             taskCompleted: 'Tâche complétée',
             taskDeleted: 'Tâche supprimée',
-            taskUpdated: 'Tâche mise à jour'
+            taskUpdated: 'Tâche mise à jour',
+            searchCompleted: 'Recherche terminée',
+            navigationOpened: 'Navigation ouverte',
+            weatherFetched: 'Météo récupérée'
         },
         en: {
             taskAdded: 'Task added',
             taskCompleted: 'Task completed',
             taskDeleted: 'Task deleted',
-            taskUpdated: 'Task updated'
+            taskUpdated: 'Task updated',
+            searchCompleted: 'Search completed',
+            navigationOpened: 'Navigation opened',
+            weatherFetched: 'Weather fetched'
         },
         it: {
             taskAdded: 'Attività aggiunta',
             taskCompleted: 'Attività completata',
             taskDeleted: 'Attività eliminata',
-            taskUpdated: 'Attività aggiornata'
+            taskUpdated: 'Attività aggiornata',
+            searchCompleted: 'Ricerca completata',
+            navigationOpened: 'Navigazione aperta',
+            weatherFetched: 'Meteo recuperato'
         }
     };
     
@@ -1523,6 +1565,470 @@ registerAction(
 );
 
 // =============================================================================
+// TAVILY SEARCH ACTIONS
+// =============================================================================
+
+// --- SEARCH_WEB ---
+registerAction(
+    'search_web',
+    // Validate
+    async (params, language) => {
+        if (!params.query) {
+            return { 
+                valid: false, 
+                message: getLocalizedText('searchQueryRequired', language) 
+            };
+        }
+        
+        // Check if Tavily API key is configured
+        const apiKey = localStorage.getItem('apiKey_tavily');
+        if (!apiKey) {
+            return { 
+                valid: false, 
+                message: getLocalizedText('tavilyKeyRequired', language) 
+            };
+        }
+        
+        return { valid: true };
+    },
+    // Execute
+    async (params, language) => {
+        try {
+            if (typeof performTavilySearch !== 'function') {
+                throw new Error('Tavily search module not loaded');
+            }
+            
+            const query = params.query;
+            console.log(`[ActionWrapper] Performing web search for: "${query}"`);
+            
+            const result = await performTavilySearch(query, language);
+            
+            // Generate Mistral summary of search results
+            const summary = await generateSearchSummary(result.data, query, language);
+            
+            const message = summary || params.response || getLocalizedResponse('searchCompleted', language);
+            return new ActionResult(true, message, result.data);
+            
+        } catch (error) {
+            console.error('[ActionWrapper] Search error:', error);
+            const message = getLocalizedText('searchError', language);
+            return new ActionResult(false, message, null, error.message);
+        }
+    },
+    // Verify
+    async (result, params, language) => {
+        if (result.data && result.data.results) {
+            console.log(`[ActionWrapper] ✅ Search completed with ${result.data.results.length} results`);
+            return { valid: true };
+        }
+        return { valid: false, message: 'No search results returned' };
+    }
+);
+
+// =============================================================================
+// GPS NAVIGATION ACTIONS
+// =============================================================================
+
+// --- OPEN_GPS ---
+registerAction(
+    'open_gps',
+    // Validate
+    async (params, language) => {
+        if (!params.coordinates) {
+            return { 
+                valid: false, 
+                message: getLocalizedText('coordinatesRequired', language) 
+            };
+        }
+        
+        const { lat, lng } = params.coordinates;
+        
+        if (typeof lat !== 'number' || typeof lng !== 'number') {
+            return { 
+                valid: false, 
+                message: getLocalizedText('invalidCoordinates', language) 
+            };
+        }
+        
+        if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+            return { 
+                valid: false, 
+                message: getLocalizedText('coordinatesOutOfRange', language) 
+            };
+        }
+        
+        return { valid: true };
+    },
+    // Execute
+    async (params, language) => {
+        try {
+            if (typeof openGPSWithCoords !== 'function') {
+                throw new Error('GPS navigation module not loaded');
+            }
+            
+            const { lat, lng } = params.coordinates;
+            const name = params.name || '';
+            
+            console.log(`[ActionWrapper] Opening GPS navigation to: ${lat}, ${lng} (${name})`);
+            
+            const result = openGPSWithCoords(lat, lng, name, language);
+            
+            const message = params.response || result.message;
+            return new ActionResult(true, message, result.data);
+            
+        } catch (error) {
+            console.error('[ActionWrapper] GPS error:', error);
+            const message = getLocalizedText('gpsError', language);
+            return new ActionResult(false, message, null, error.message);
+        }
+    },
+    // Verify
+    async (result, params, language) => {
+        if (result.data && result.data.lat && result.data.lng) {
+            console.log(`[ActionWrapper] ✅ GPS navigation opened`);
+            return { valid: true };
+        }
+        return { valid: false, message: 'GPS navigation failed' };
+    }
+);
+
+// --- SEND_ADDRESS ---
+registerAction(
+    'send_address',
+    // Validate
+    async (params, language) => {
+        if (!params.address) {
+            return { 
+                valid: false, 
+                message: getLocalizedText('addressRequired', language) 
+            };
+        }
+        
+        return { valid: true };
+    },
+    // Execute
+    async (params, language) => {
+        try {
+            if (typeof sendAddressToGPS !== 'function') {
+                throw new Error('GPS navigation module not loaded');
+            }
+            
+            const address = params.address;
+            
+            console.log(`[ActionWrapper] Geocoding and opening navigation for: "${address}"`);
+            
+            const result = await sendAddressToGPS(address, language);
+            
+            const message = params.response || result.message;
+            return new ActionResult(true, message, result.data);
+            
+        } catch (error) {
+            console.error('[ActionWrapper] Address geocoding error:', error);
+            const message = getLocalizedText('addressNotFound', language);
+            return new ActionResult(false, message, null, error.message);
+        }
+    },
+    // Verify
+    async (result, params, language) => {
+        if (result.data && result.data.lat && result.data.lng) {
+            console.log(`[ActionWrapper] ✅ Address geocoded and navigation opened`);
+            return { valid: true };
+        }
+        return { valid: false, message: 'Address geocoding failed' };
+    }
+);
+
+// =============================================================================
+// WEATHER ACTIONS
+// =============================================================================
+
+// --- GET_WEATHER ---
+registerAction(
+    'get_weather',
+    // Validate
+    async (params, language) => {
+        // Location is optional - will use GPS if not provided
+        return { valid: true };
+    },
+    // Execute
+    async (params, language) => {
+        try {
+            if (typeof performWeatherQuery !== 'function') {
+                throw new Error('Weather module not loaded');
+            }
+            
+            let location = params.location;
+            const timeRange = params.timeRange || 'current';
+            
+            // If no location provided, use GPS
+            if (!location || location === 'current') {
+                console.log('[ActionWrapper] No location provided, using GPS...');
+                
+                try {
+                    const position = await new Promise((resolve, reject) => {
+                        if (!navigator.geolocation) {
+                            reject(new Error('Geolocation not supported'));
+                            return;
+                        }
+                        
+                        navigator.geolocation.getCurrentPosition(
+                            (pos) => resolve(pos),
+                            (err) => reject(err),
+                            { enableHighAccuracy: false, timeout: 30000, maximumAge: 600000 }
+                        );
+                    });
+                    
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    
+                    console.log(`[ActionWrapper] GPS position: ${lat}, ${lng}`);
+                    
+                    // Reverse geocode to get city name
+                    try {
+                        const response = await fetch(
+                            `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
+                            {
+                                headers: {
+                                    'User-Agent': 'MemoryBoardHelper/1.0'
+                                }
+                            }
+                        );
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            location = data.address?.city || data.address?.town || data.address?.village || `${lat},${lng}`;
+                            console.log(`[ActionWrapper] Location from GPS: ${location}`);
+                        } else {
+                            // Fallback to coordinates
+                            location = `${lat},${lng}`;
+                        }
+                    } catch (geocodeError) {
+                        console.warn('[ActionWrapper] Geocoding failed, using coordinates:', geocodeError);
+                        location = `${lat},${lng}`;
+                    }
+                    
+                } catch (gpsError) {
+                    console.error('[ActionWrapper] GPS error:', gpsError);
+                    
+                    // More helpful error messages based on error code
+                    let message;
+                    if (gpsError.code === 1) {
+                        message = language === 'fr' ? 
+                            'Accès GPS refusé. Veuillez autoriser la géolocalisation ou spécifier une ville.' :
+                            language === 'it' ?
+                            'Accesso GPS negato. Autorizza la geolocalizzazione o specifica una città.' :
+                            'GPS access denied. Please allow geolocation or specify a city.';
+                    } else if (gpsError.code === 3) {
+                        message = language === 'fr' ? 
+                            'Le GPS met trop de temps à répondre. Veuillez spécifier une ville.' :
+                            language === 'it' ?
+                            'Il GPS impiega troppo tempo. Specifica una città.' :
+                            'GPS is taking too long. Please specify a city.';
+                    } else {
+                        message = language === 'fr' ? 
+                            'Erreur GPS. Veuillez spécifier une ville.' :
+                            language === 'it' ?
+                            'Errore GPS. Specifica una città.' :
+                            'GPS error. Please specify a city.';
+                    }
+                    
+                    return new ActionResult(false, message, null, gpsError.message);
+                }
+            }
+            
+            console.log(`[ActionWrapper] Fetching weather for: "${location}" (${timeRange})`);
+            
+            const result = await performWeatherQuery(location, timeRange, language);
+            
+            if (!result) {
+                throw new Error('No weather data received');
+            }
+            
+            // Generate Mistral summary of weather data
+            const summary = await generateWeatherSummary(result, language);
+            
+            const message = summary || params.response || getLocalizedResponse('weatherFetched', language);
+            return new ActionResult(true, message, result);
+            
+        } catch (error) {
+            console.error('[ActionWrapper] Weather error:', error);
+            const message = getLocalizedText('weatherError', language);
+            return new ActionResult(false, message, null, error.message);
+        }
+    },
+    // Verify
+    async (result, params, language) => {
+        if (result.data && result.data.sources && result.data.sources.length > 0) {
+            console.log(`[ActionWrapper] ✅ Weather data fetched from ${result.data.sources.length} sources`);
+            return { valid: true };
+        }
+        return { valid: false, message: 'No weather data sources available' };
+    }
+);
+
+/**
+ * Generate a conversational summary of weather data using Mistral
+ * @param {Object} weatherData - Weather data from performWeatherQuery
+ * @param {string} language - Language code
+ * @returns {Promise<string>} Conversational summary
+ */
+async function generateWeatherSummary(weatherData, language) {
+    try {
+        // Get Mistral API key
+        const mistralApiKey = localStorage.getItem('mistralApiKey');
+        if (!mistralApiKey) {
+            console.warn('[ActionWrapper] No Mistral API key for weather summary');
+            return null;
+        }
+        
+        // Build a concise data summary for Mistral
+        let dataText = `Location: ${weatherData.location}\nTime range: ${weatherData.timeRange}\n\n`;
+        
+        weatherData.sources.forEach(source => {
+            dataText += `Source: ${source.source}\n`;
+            
+            if (source.type === 'current' && source.data) {
+                dataText += `  Temperature: ${source.data.temperature}°C (feels like ${source.data.feelsLike}°C)\n`;
+                dataText += `  Conditions: ${source.data.description}\n`;
+                dataText += `  Humidity: ${source.data.humidity}%\n`;
+                dataText += `  Wind: ${source.data.windSpeed} km/h\n`;
+                dataText += `  Pressure: ${source.data.pressure} hPa\n\n`;
+            } else if (source.type === 'forecast' && Array.isArray(source.data)) {
+                dataText += `  Forecast:\n`;
+                source.data.slice(0, 3).forEach(day => {
+                    dataText += `    ${day.date}: ${day.temp}°C - ${day.description}\n`;
+                });
+                dataText += '\n';
+            }
+        });
+        
+        const promptText = language === 'fr' ?
+            `Tu es un assistant météo conversationnel. Résume ces données météo de façon naturelle et concise en français:\n\n${dataText}\n\nRéponds en 2-3 phrases maximum, comme si tu parlais à un ami. Ne mentionne pas les sources, concentre-toi sur l'essentiel.` :
+            language === 'it' ?
+            `Sei un assistente meteo conversazionale. Riassumi questi dati meteo in modo naturale e conciso in italiano:\n\n${dataText}\n\nRispondi in 2-3 frasi al massimo, come se parlassi con un amico. Non menzionare le fonti, concentrati sull'essenziale.` :
+            `You are a conversational weather assistant. Summarize this weather data naturally and concisely in English:\n\n${dataText}\n\nRespond in 2-3 sentences maximum, as if talking to a friend. Don't mention sources, focus on essentials.`;
+        
+        console.log('[ActionWrapper] Requesting weather summary from Mistral...');
+        
+        const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${mistralApiKey}`
+            },
+            body: JSON.stringify({
+                model: 'mistral-small-latest',
+                messages: [
+                    { role: 'system', content: promptText },
+                    { role: 'user', content: 'Résume la météo de façon concise et naturelle.' }
+                ],
+                temperature: 0.7,
+                max_tokens: 150
+            })
+        });
+        
+        if (!response.ok) {
+            console.error('[ActionWrapper] Mistral API error:', response.status);
+            return null;
+        }
+        
+        const data = await response.json();
+        const summary = data.choices[0]?.message?.content;
+        
+        if (summary) {
+            console.log('[ActionWrapper] Weather summary generated:', summary);
+            return summary.trim();
+        }
+        
+        return null;
+        
+    } catch (error) {
+        console.error('[ActionWrapper] Error generating weather summary:', error);
+        return null;
+    }
+}
+
+/**
+ * Generate a conversational summary of search results using Mistral
+ * @param {Object} searchData - Search data from Tavily API
+ * @param {string} query - Original search query
+ * @param {string} language - Language code
+ * @returns {Promise<string>} Conversational summary
+ */
+async function generateSearchSummary(searchData, query, language) {
+    try {
+        // Get Mistral API key
+        const mistralApiKey = localStorage.getItem('mistralApiKey');
+        if (!mistralApiKey) {
+            console.warn('[ActionWrapper] No Mistral API key for search summary');
+            return null;
+        }
+        
+        // Build search results summary for Mistral
+        let dataText = `Query: "${query}"\n\n`;
+        
+        // Add AI answer if available
+        if (searchData.answer) {
+            dataText += `AI Answer: ${searchData.answer}\n\n`;
+        }
+        
+        // Add top results
+        if (searchData.results && searchData.results.length > 0) {
+            dataText += `Top Results:\n`;
+            searchData.results.slice(0, 5).forEach((result, i) => {
+                dataText += `${i + 1}. ${result.title}\n`;
+                dataText += `   ${result.snippet}\n`;
+                dataText += `   Source: ${new URL(result.url).hostname}\n\n`;
+            });
+        }
+        
+        const promptText = language === 'fr' ?
+            `Tu es un assistant de recherche conversationnel. Résume ces résultats de recherche de façon naturelle et concise en français:\n\n${dataText}\n\nRéponds en 2-4 phrases maximum. Synthétise les informations principales trouvées, comme si tu parlais à un ami. Mentionne les sources principales si pertinent.` :
+            language === 'it' ?
+            `Sei un assistente di ricerca conversazionale. Riassumi questi risultati di ricerca in modo naturale e conciso in italiano:\n\n${dataText}\n\nRispondi in 2-4 frasi al massimo. Sintetizza le informazioni principali trovate, come se parlassi con un amico. Menziona le fonti principali se rilevante.` :
+            `You are a conversational search assistant. Summarize these search results naturally and concisely in English:\n\n${dataText}\n\nRespond in 2-4 sentences maximum. Synthesize the main information found, as if talking to a friend. Mention main sources if relevant.`;
+        
+        console.log('[ActionWrapper] Requesting search summary from Mistral...');
+        
+        const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${mistralApiKey}`
+            },
+            body: JSON.stringify({
+                model: 'mistral-small-latest',
+                messages: [
+                    { role: 'system', content: promptText },
+                    { role: 'user', content: 'Résume les résultats de recherche de façon concise et naturelle.' }
+                ],
+                temperature: 0.7,
+                max_tokens: 200
+            })
+        });
+        
+        if (!response.ok) {
+            console.error('[ActionWrapper] Mistral API error:', response.status);
+            return null;
+        }
+        
+        const data = await response.json();
+        const summary = data.choices[0]?.message?.content;
+        
+        if (summary) {
+            console.log('[ActionWrapper] Search summary generated:', summary);
+            return summary.trim();
+        }
+        
+        return null;
+        
+    } catch (error) {
+        console.error('[ActionWrapper] Error generating search summary:', error);
+        return null;
+    }
+}
+
+// =============================================================================
 // HELPER FUNCTIONS
 // =============================================================================
 
@@ -1724,6 +2230,11 @@ async function processMistralResult(mistralResult) {
         note: mistralResult.note || null,
         section: mistralResult.section || null,
         contactName: mistralResult.contactName || null,
+        query: mistralResult.query || null,
+        coordinates: mistralResult.coordinates || null,
+        address: mistralResult.address || null,
+        location: mistralResult.location || null,
+        timeRange: mistralResult.timeRange || 'current',
         response: mistralResult.response || null
     };
     

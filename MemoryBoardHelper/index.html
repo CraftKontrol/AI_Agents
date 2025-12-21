@@ -682,6 +682,57 @@
                         <a href="https://cloud.google.com/text-to-speech" target="_blank" class="api-link">Obtenir une clé API →</a>
                         <p class="api-description">Synthèse vocale Google (FR/EN)</p>
                     </div>
+                    
+                    <div class="api-key-card">
+                        <h3>
+                            <span class="material-symbols-outlined">travel_explore</span>
+                            Tavily Search
+                        </h3>
+                        <div class="api-input-wrapper">
+                            <input type="password" id="apiKey_tavily" placeholder="Entrez la clé API Tavily...">
+                            <button class="btn-delete" onclick="deleteApiKey('tavily')" title="Supprimer">×</button>
+                        </div>
+                        <a href="https://tavily.com/" target="_blank" class="api-link">Obtenir une clé API →</a>
+                        <p class="api-description">Recherche web intelligente</p>
+                    </div>
+                    
+                    <div class="api-key-card">
+                        <h3>
+                            <span class="material-symbols-outlined">partly_cloudy_day</span>
+                            OpenWeatherMap
+                        </h3>
+                        <div class="api-input-wrapper">
+                            <input type="password" id="apiKey_openweathermap" placeholder="Entrez la clé API OpenWeatherMap...">
+                            <button class="btn-delete" onclick="deleteApiKey('openweathermap')" title="Supprimer">×</button>
+                        </div>
+                        <a href="https://openweathermap.org/api" target="_blank" class="api-link">Obtenir une clé API →</a>
+                        <p class="api-description">Données météo actuelles et prévisions (optionnel)</p>
+                    </div>
+                    
+                    <div class="api-key-card">
+                        <h3>
+                            <span class="material-symbols-outlined">cloud</span>
+                            WeatherAPI.com
+                        </h3>
+                        <div class="api-input-wrapper">
+                            <input type="password" id="apiKey_weatherapi" placeholder="Entrez la clé API WeatherAPI...">
+                            <button class="btn-delete" onclick="deleteApiKey('weatherapi')" title="Supprimer">×</button>
+                        </div>
+                        <a href="https://www.weatherapi.com/" target="_blank" class="api-link">Obtenir une clé API →</a>
+                        <p class="api-description">Prévisions météo détaillées (optionnel)</p>
+                    </div>
+                    
+                    <div class="api-key-card no-key-required">
+                        <h3>
+                            <span class="material-symbols-outlined">wb_sunny</span>
+                            Open-Meteo
+                        </h3>
+                        <div class="no-key-notice">
+                            <span>✓ Pas de clé API requise</span>
+                        </div>
+                        <a href="https://open-meteo.com/" target="_blank" class="api-link">En savoir plus →</a>
+                        <p class="api-description">Service météo gratuit sans inscription</p>
+                    </div>
                 </div>
 
                 <div class="api-actions">
@@ -1421,6 +1472,9 @@
     <script src="alarm-system.js"></script>
     <script src="calendar-integration.js"></script>
     <script src="sound-system.js"></script>
+    <script src="tavily-search.js"></script>
+    <script src="gps-navigation.js"></script>
+    <script src="weather.js"></script>
     <script src="action-wrapper.js"></script>
     <script src="script-response-handler.js"></script>
     <script src="script.js"></script>

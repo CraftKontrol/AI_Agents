@@ -42,6 +42,9 @@
 - `script-task-popup.js` - Task modal UI
 - `undo-system.js` - Action history (max 20)
 - `sound-system.js` - UI sound feedback (pitch variation, repetition detection, haptic)
+- `tavily-search.js` - Web search via Tavily API
+- `gps-navigation.js` - GPS navigation integration (Google Maps, Waze, Apple Maps, OSM)
+- `weather.js` - Weather forecast from multiple APIs (OpenWeatherMap, WeatherAPI, Open-Meteo) (NEW)
 - `test-app.html/js` - Testing system with action-wrapper integration
 
 **STT Functions (in script.js):**
@@ -96,6 +99,11 @@ test-app.js → executeActionWrapper() → action-wrapper.js → executeAction()
 
 **Always-Listening Mode:**
 - **Browser STT**: Continuous background listening with native API
+  - Includes heartbeat monitoring (checks every 15s for stuck state)
+  - Auto-restart with exponential backoff on errors (max 5 attempts)
+  - Tracks last activity timestamp to detect dead connections
+  - Force restart if no activity for 30 seconds
+  - Longer delays between restarts (800ms) to avoid collisions
 - **Deepgram/Google STT**: Loop-based listening with VAD auto-stop
   - Automatically starts recording
   - Detects silence (VAD) and processes transcript
@@ -133,7 +141,7 @@ The app uses **multiple prompts** for different intents:
 | Prompt Type | Purpose | Actions |
 |-------------|---------|---------|
 | `UNKNOWN_PROMPT` | Intent classifier | Determines if request is TASK/NAV/CALL/CHAT |
-| `TASK_PROMPT` | Task operations | add_task, add_list, add_note, complete_task, delete_task, update_task, search_task, undo |
+| `TASK_PROMPT` | Task operations | add_task, add_list, add_note, complete_task, delete_task, update_task, search_task, undo, **search_web, open_gps, send_address** (NEW) |
 | `NAV_PROMPT` | Navigation | goto_section (tasks/calendar/settings/stats) |
 | `CALL_PROMPT` | Emergency calls | call (with optional contact name) |
 | Custom chat prompt | General conversation | Loaded from settings or DEFAULT_CHAT_PROMPT |
@@ -316,7 +324,7 @@ The app uses **multiple prompts** for different intents:
 {action, task?, list?, note?, taskId?, section?, contactName?, response, language}
 ```
 
-**Actions:** add_task, add_list, add_note, complete_task, delete_task, delete_list, delete_note, update_task, update_list, update_note, search_task, goto_section, call, undo, conversation
+**Actions:** add_task, add_list, add_note, complete_task, delete_task, delete_list, delete_note, update_task, update_list, update_note, search_task, goto_section, call, undo, conversation, search_web, open_gps, send_address, **get_weather** (NEW)
 
 **Critical:** Always include last 10-20 conversation exchanges for context. Never repeat responses.
 
@@ -326,6 +334,9 @@ The app uses **multiple prompts** for different intents:
 - `delete_list`: Delete a list by title/last
 - `delete_note`: Delete a note by title/content
 - Improved recurrence detection for daily/weekly/monthly tasks
+- **`search_web`**: Web search via Tavily API - query parameter required
+- **`open_gps`**: Open GPS navigation with coordinates (lat, lng, optional name)
+- **`send_address`**: Geocode address and open navigation
 
 ## 🎨 Design
 
@@ -376,6 +387,9 @@ The app uses **multiple prompts** for different intents:
 - List: add_list (items optional), update_list (merges items), delete_list, search_list
 - Note: add_note (auto-title if missing), update_note (append content), delete_note
 - Navigation: goto_section
+- Search: search_web (Tavily API web search)
+- GPS: open_gps (coordinates), send_address (geocode & navigate)
+- Weather: **get_weather** (multi-source weather data) (NEW)
 - Special: undo, call, conversation
 
 **Call Handling:** 
@@ -383,10 +397,17 @@ The app uses **multiple prompts** for different intents:
 - **Intelligent Emergency System:**
   1. **No emergency contacts configured**: Opens settings modal with message "Il n'y a pas de contacts d'urgence enregistrés. Voulez-vous en ajouter un ?"
   2. **Emergency contact found**: Calls directly via `tel:` protocol with message "J'appelle [contact]"
-  3. **Emergency contacts exist but no match**: Opens phone contacts app with message "Je n'ai pas trouvé de contact d'urgence correspondant. J'ouvre vos contacts."
+  3. **Emergency contacts exist but no match**: Shows guidance modal to help user access phone contacts app
+- **Contacts Guidance Modal:**
+  - Multi-language support (fr/it/en)
+  - Instructions to open Phone/Contacts app manually
+  - Suggests adding emergency contacts in settings
+  - Auto-closes after 15 seconds
+  - Opens via `showContactsGuidanceModal()`, closes via `closeContactsGuidanceModal()`
+- **CKGenericApp Integration**: Uses `window.CKGenericApp.openContacts()` when available (Android WebView)
+- **Web Browser Fallback**: Shows guidance modal since direct contacts access is not possible in browsers
 - Emergency contacts stored in localStorage: `emergencyContact1`, `emergencyContact2`, `emergencyContact3`
 - Empty/invalid contact slots are cleared from localStorage; UI cards only render saved contacts (no placeholders). Emergency modal pre-fills from stored slots and re-hides unused slots, keeping the add-contact button hidden only when 3 contacts exist.
-- Phone contacts app URLs: Android (`content://contacts/people/`), iOS (`contacts://`), fallback (`tel:`)
 - Test-safe fallback when system is unavailable
 - Exposed globally for action-wrapper
 
@@ -495,6 +516,232 @@ The app uses **multiple prompts** for different intents:
 - Mistral: https://console.mistral.ai/ (AI agent)
 - Deepgram: https://console.deepgram.com/ (STT Nova-2 + TTS Aura-2)
 - Google Cloud: https://console.cloud.google.com/ (enable Speech-to-Text API & Text-to-Speech API)
+- **Tavily: https://tavily.com/ (Web search API - 1000 searches/month free)** (NEW)
+
+---
+
+## 🔍 Web Search (Tavily)
+
+**Module:** `tavily-search.js`
+
+**Purpose:** Intelligent web search via Tavily API with AI-powered results ranking
+
+**API Configuration:**
+- **Endpoint:** `https://api.tavily.com/search`
+- **Method:** POST
+- **API Key:** Stored in `apiKey_tavily` (localStorage)
+- **Search Depth:** advanced
+- **Max Results:** 10
+- **Features:** AI answer, content snippets, relevance scoring
+
+**Key Functions:**
+- `searchTavily(query, language)` - Perform Tavily search, returns formatted results
+- `displaySearchResults(searchData, language)` - Show results in modal
+- `createSearchResultsModal()` - Build search results UI
+- `closeSearchResultsModal()` - Close results modal
+- `performTavilySearch(query, language)` - Main entry point (search + display)
+
+**Result Schema:**
+```javascript
+{
+    results: [
+        {
+            title: string,
+            url: string,
+            snippet: string,
+            score: number (0-1),
+            publishedDate: string|null,
+            source: 'Tavily'
+        }
+    ],
+    answer: string|null,  // AI-generated answer
+    query: string,
+    responseTime: number|null
+}
+```
+
+**UI Components:**
+- Search results modal with dark theme
+- AI answer section (highlighted)
+- Result cards with title, snippet, domain, score
+- Open link buttons with external icon
+- Responsive layout (mobile-friendly)
+
+**Voice Commands:**
+- "Recherche sur internet [query]"
+- "Trouve-moi des infos sur [topic]"
+- "Cherche [query]"
+- "Que dit internet sur [topic]"
+
+**CSS Classes:**
+- `.search-results-modal` - Main modal container
+- `.search-modal-body` - Scrollable results area
+- `.search-answer` - AI answer section
+- `.search-result-card` - Individual result
+- `.result-title`, `.result-snippet`, `.result-link` - Result components
+
+---
+
+## 📍 GPS Navigation
+
+**Module:** `gps-navigation.js`
+
+**Purpose:** Open GPS coordinates or addresses in phone navigation apps
+
+**Supported Apps:**
+- Google Maps (Android/iOS/Desktop)
+- Waze (Android/iOS/Desktop)
+- Apple Maps (iOS/macOS)
+- OpenStreetMap (Web)
+
+**Key Functions:**
+- `showGPSOptions(lat, lng, name)` - Display app selection modal
+- `openInGPS(lat, lng, name, app)` - Open selected navigation app
+- `sendAddressToGPS(address, language)` - Geocode address → GPS
+- `openGPSWithCoords(lat, lng, name, language)` - Direct coordinates navigation
+
+**Geocoding:**
+- **Service:** Nominatim (OpenStreetMap) - FREE
+- **Endpoint:** `https://nominatim.openstreetmap.org/search`
+- **Format:** JSON
+- **Limit:** 1 result
+- **User-Agent:** Required (`MemoryBoardHelper/1.0`)
+
+**URL Formats:**
+```javascript
+Google Maps: https://www.google.com/maps/dir/?api=1&destination={lat},{lng}
+Waze: https://waze.com/ul?ll={lat},{lng}&navigate=yes
+Apple Maps: http://maps.apple.com/?daddr={lat},{lng}
+OpenStreetMap: https://www.openstreetmap.org/directions?to={lat},{lng}
+```
+
+**Voice Commands:**
+- **Coordinates:** "Ouvre GPS pour 48.8566, 2.3522"
+- **Named:** "Navigue vers 45.5017, -73.5673, c'est Montréal"
+- **Address:** "Emmène-moi à Tour Eiffel, Paris"
+- **Directions:** "Comment aller à l'Arc de Triomphe"
+- **Itinerary:** "Itinéraire vers Gare de Lyon, Paris"
+
+**UI Components:**
+- GPS overlay with modal
+- App selection grid (4 options)
+- Location name display
+- Coordinates display (monospace font)
+- Click outside to close
+
+**CSS Classes:**
+- `.gps-overlay` - Full-screen overlay
+- `.gps-modal` - Central modal
+- `.gps-location-info` - Location name card
+- `.gps-coords` - Coordinates display
+- `.gps-options` - App selection grid
+- `.gps-option-btn` - Individual app button
+
+---
+
+## 🌤️ Weather Forecast
+
+**Module:** `weather.js`
+
+**Purpose:** Multi-source weather forecast aggregation with modal display
+
+**API Configuration:**
+
+1. **OpenWeatherMap** (optional - requires API key):
+   - **Endpoint:** `https://api.openweathermap.org/data/2.5/weather` (current), `/forecast` (forecast)
+   - **API Key:** Stored in `apiKey_openweathermap` (localStorage)
+   - **Units:** metric (Celsius)
+   - **Geocoding:** `https://api.openweathermap.org/geo/1.0/direct`
+
+2. **WeatherAPI.com** (optional - requires API key):
+   - **Endpoint:** `https://api.weatherapi.com/v1/forecast.json`
+   - **API Key:** Stored in `apiKey_weatherapi` (localStorage)
+   - **Units:** Celsius
+   - **Free tier:** 1 million calls/month
+
+3. **Open-Meteo** (FREE - no API key):
+   - **Endpoint:** `https://api.open-meteo.com/v1/forecast`
+   - **No API Key Required**
+   - **Geocoding:** `https://geocoding-api.open-meteo.com/v1/search`
+   - **Weather codes:** WMO standard (0-99)
+
+**Key Functions:**
+- `fetchOpenWeatherMap(location, timeRange)` - Fetch from OpenWeatherMap API
+- `fetchWeatherAPI(location, timeRange)` - Fetch from WeatherAPI.com
+- `fetchOpenMeteo(location, timeRange)` - Fetch from Open-Meteo (no key)
+- `getWeatherForLocation(location, timeRange, language)` - Aggregate all sources
+- `performWeatherQuery(location, timeRange, language)` - Main entry point (fetch + display)
+- `displayWeatherModal(weatherData, language)` - Show results in modal
+- `createWeatherCard(sourceData, language)` - Generate weather card for each source
+- `closeWeatherModal()` - Close weather modal
+
+**Time Ranges:**
+- `current` - Current weather (default)
+- `8hours` - 8-hour forecast (hourly)
+- `3days` - 3-day forecast (daily)
+- `5days` - 5-day forecast (daily)
+
+**Result Schema:**
+```javascript
+{
+    location: "Paris",
+    timeRange: "current",
+    language: "fr",
+    sources: [
+        {
+            source: "Open-Meteo",
+            type: "current",
+            data: {
+                temperature: 15,
+                description: "Partly cloudy",
+                humidity: 65,
+                windSpeed: 12,
+                pressure: 1013,
+                feelsLike: 13
+            }
+        },
+        {
+            source: "WeatherAPI.com",
+            type: "forecast",
+            data: [
+                { date: "2025-12-21", temp: 14, description: "Cloudy" },
+                { date: "2025-12-22", temp: 16, description: "Sunny" }
+            ]
+        }
+    ],
+    timestamp: "2025-12-21T10:30:00.000Z"
+}
+```
+
+**UI Components:**
+- Weather modal with dark theme
+- Multi-source cards (Open-Meteo, OpenWeatherMap, WeatherAPI)
+- Current weather display (large temp, conditions, details grid)
+- Forecast list (hourly or daily)
+- Source badges for identification
+- Responsive layout (mobile-friendly)
+
+**Voice Commands:**
+- "Quel temps fait-il?" / "What's the weather?" / "Che tempo fa?"
+- "Météo à Paris" / "Weather in Paris" / "Meteo a Parigi"
+- "Prévisions pour Lyon sur 3 jours" / "3-day forecast for Lyon"
+- "Température à Nice" / "Temperature in Nice"
+- "Météo demain" / "Weather tomorrow" / "Meteo domani"
+
+**CSS Classes:**
+- `.weather-overlay` - Full-screen modal overlay
+- `.weather-modal` - Main modal container
+- `.weather-modal-header` - Header with title and close button
+- `.weather-modal-body` - Scrollable content area
+- `.weather-card` - Individual source card
+- `.weather-card-header` - Source name and type badge
+- `.weather-current` - Current weather layout
+- `.weather-main-temp` - Large temperature display
+- `.weather-description` - Conditions text
+- `.weather-details` - Grid of details (humidity, wind, etc.)
+- `.weather-forecast` - Forecast list container
+- `.weather-forecast-item` - Individual forecast entry
+- `.weather-type-badge` - Badge showing forecast type
 
 ---
 
@@ -506,16 +753,16 @@ The app uses **multiple prompts** for different intents:
 
 ## 🐛 Debug
 
-**Console:** `[Storage]`, `[TaskManager]`, `[AlarmSystem]`, `[Calendar]` prefixes
-**Inspect:** `getAllFromStore(STORES.TASKS)`, `localStorage.getItem('mistralApiKey')`
-**Test:** `sendToMistralAgent("test", TASK_PROMPT)`
+**Console:** `[Storage]`, `[TaskManager]`, `[AlarmSystem]`, `[Calendar]`, `[Tavily]`, `[GPS]`, `[Weather]` prefixes
+**Inspect:** `getAllFromStore(STORES.TASKS)`, `localStorage.getItem('mistralApiKey')`, `localStorage.getItem('apiKey_tavily')`, `localStorage.getItem('apiKey_openweathermap')`
+**Test:** `sendToMistralAgent("test", TASK_PROMPT)`, `searchTavily("test query", "fr")`, `openGPSWithCoords(48.8566, 2.3522, "Paris")`, `performWeatherQuery("Paris", "current", "fr")`
 
 ---
 
 ## 📚 Dependencies
 
 **CDN:** Material Symbols, FullCalendar 6.1.10
-**APIs:** Web Speech, IndexedDB, localStorage, Notification
+**APIs:** Web Speech, IndexedDB, localStorage, Notification, Tavily, Nominatim (Geocoding), OpenWeatherMap, WeatherAPI.com, Open-Meteo
 
 ---
 

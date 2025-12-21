@@ -1122,6 +1122,9 @@ function handleVoiceNavigation(transcript) {
 
 // Application state
 let listeningMode = 'manual'; // 'manual' or 'always-listening'
+let wakeListen = false; // Écoute du mot d'activation
+let recognitionHeartbeatInterval = null; // Check if recognition is actually running
+let lastRecognitionActivity = Date.now(); // Track last successful recognition activity
 let isProcessing = false;
 let recognition = null;
 let conversationHistory = [];
@@ -1635,16 +1638,40 @@ function startAlwaysListening() {
         // Browser STT: use native continuous mode
         if (recognition) {
             recognitionRestartAttempts = 0;
+            lastRecognitionActivity = Date.now();
             
+            // Force stop any existing recognition first
             try {
-                if (!isRecognitionActive) {
-                    recognition.start();
-                    showListeningIndicator(true, false); // Yellow waiting state
+                if (isRecognitionActive) {
+                    recognition.stop();
+                    isRecognitionActive = false;
                 }
             } catch (error) {
-                console.error('[App] Error starting continuous recognition:', error);
-                isRecognitionActive = false;
+                console.log('[App] No active recognition to stop');
             }
+            
+            // Wait a bit before starting to avoid conflicts
+            setTimeout(() => {
+                try {
+                    if (!isRecognitionActive && listeningMode === 'always-listening') {
+                        recognition.start();
+                        showListeningIndicator(true, false); // Yellow waiting state
+                        console.log('[App] Continuous recognition started');
+                    }
+                } catch (error) {
+                    console.error('[App] Error starting continuous recognition:', error);
+                    isRecognitionActive = false;
+                    // Retry after longer delay
+                    setTimeout(() => {
+                        if (listeningMode === 'always-listening') {
+                            startAlwaysListening();
+                        }
+                    }, 2000);
+                }
+            }, 500);
+            
+            // Start heartbeat to monitor recognition health
+            startRecognitionHeartbeat();
         }
     } else if (sttMethod === 'deepgram' || sttMethod === 'google') {
         // API STT: start loop-based always-listening
@@ -1685,6 +1712,9 @@ async function startAPIListeningLoop() {
 // Stop always-listening mode
 function stopAlwaysListening() {
     console.log('[App] Stopping always-listening mode');
+    
+    // Stop heartbeat
+    stopRecognitionHeartbeat();
     
     // Stop API-based always-listening loop
     isAlwaysListeningAPI = false;
@@ -1908,6 +1938,9 @@ async function handleSpeechResult(event) {
     const transcript = event.results[event.results.length - 1][0].transcript;
     console.log('[App] Speech recognized:', transcript);
     
+    // Update activity timestamp
+    lastRecognitionActivity = Date.now();
+    
     // Deactivate temporary listening if active
     if (isTemporaryListening) {
         console.log('[App] User responded during temporary listening');
@@ -2063,6 +2096,7 @@ window.processSpeechTranscript = processSpeechTranscript;
 function handleSpeechError(event) {
     console.log('[App] Speech recognition error:', event.error);
     isRecognitionActive = false;
+    lastRecognitionActivity = Date.now(); // Update even on error to avoid false positives
     if (listeningMode === 'manual') {
         const voiceBtn = document.getElementById('voiceBtn');
         voiceBtn.classList.remove('recording');
@@ -2096,27 +2130,32 @@ function handleSpeechError(event) {
 
 // Handle speech recognition end
 function handleSpeechEnd() {
-    console.log('[App] Recognition ended, mode:', listeningMode);
+    console.log('[App] Recognition ended, mode:', listeningMode, 'isRecognitionActive:', isRecognitionActive);
     isRecognitionActive = false;
     
     if (listeningMode === 'always-listening' && recognition) {
         // Restart only if mode is still always-listening
-        const delay = 300; // Short delay to avoid rapid restarts
+        const delay = 800; // Longer delay to avoid rapid restarts and collisions
         console.log(`[App] Restarting recognition in ${delay}ms`);
         setTimeout(() => {
             // Vérification stricte : ne relance que si le mode est TOUJOURS 'always-listening'
             if (listeningMode === 'always-listening' && !isRecognitionActive) {
                 try {
+                    console.log('[App] Attempting to restart recognition...');
                     recognition.start();
                     showListeningIndicator(true, false); // Yellow waiting state for always-listening
                     recognitionRestartAttempts = 0; // Reset counter on successful restart
+                    lastRecognitionActivity = Date.now(); // Update activity timestamp
+                    console.log('[App] Recognition restarted successfully');
                 } catch (error) {
                     console.error('[App] Could not restart continuous recognition:', error);
                     isRecognitionActive = false;
-                    // Increment attempts and try again with longer delay
+                    // Increment attempts and try again with exponential backoff
                     recognitionRestartAttempts++;
                     if (recognitionRestartAttempts < MAX_RESTART_ATTEMPTS) {
-                        setTimeout(() => handleSpeechEnd(), 1000 * recognitionRestartAttempts);
+                        const retryDelay = Math.min(2000 * recognitionRestartAttempts, 10000);
+                        console.log(`[App] Will retry in ${retryDelay}ms (attempt ${recognitionRestartAttempts}/${MAX_RESTART_ATTEMPTS})`);
+                        setTimeout(() => handleSpeechEnd(), retryDelay);
                     } else {
                         console.error('[App] Max restart attempts reached, stopping always-listening');
                         listeningMode = 'manual';
@@ -2127,13 +2166,71 @@ function handleSpeechEnd() {
                 }
             } else {
                 // Si le mode n'est plus always-listening, on ne relance pas
-                console.log('[App] Recognition NOT restarted: mode is', listeningMode);
+                console.log('[App] Recognition NOT restarted: mode is', listeningMode, 'isRecognitionActive:', isRecognitionActive);
             }
         }, delay);
     } else if (listeningMode === 'manual') {
         // In manual mode, don't restart
         console.log('[App] Manual mode - not restarting recognition');
         showListeningIndicator(false);
+    }
+}
+
+// Recognition heartbeat - checks if recognition is actually active
+function startRecognitionHeartbeat() {
+    stopRecognitionHeartbeat(); // Clear any existing interval
+    
+    console.log('[App] Starting recognition heartbeat monitoring');
+    
+    recognitionHeartbeatInterval = setInterval(() => {
+        if (listeningMode !== 'always-listening') {
+            stopRecognitionHeartbeat();
+            return;
+        }
+        
+        // Check if recognition is stuck (no activity for 30 seconds)
+        const timeSinceLastActivity = Date.now() - lastRecognitionActivity;
+        const HEARTBEAT_TIMEOUT = 30000; // 30 seconds
+        
+        if (timeSinceLastActivity > HEARTBEAT_TIMEOUT && !isRecognitionActive) {
+            console.warn('[App] Recognition heartbeat: No activity detected, attempting restart');
+            console.log('[App] isRecognitionActive:', isRecognitionActive, 'Time since last activity:', timeSinceLastActivity, 'ms');
+            
+            // Force restart
+            try {
+                recognition.stop();
+            } catch (e) {
+                console.log('[App] Recognition was already stopped');
+            }
+            
+            isRecognitionActive = false;
+            
+            setTimeout(() => {
+                if (listeningMode === 'always-listening') {
+                    try {
+                        recognition.start();
+                        lastRecognitionActivity = Date.now();
+                        console.log('[App] Recognition restarted by heartbeat');
+                    } catch (error) {
+                        console.error('[App] Heartbeat restart failed:', error);
+                    }
+                }
+            }, 1000);
+        } else if (isRecognitionActive) {
+            // Recognition is active, all good
+            console.log('[App] Recognition heartbeat: Active and healthy');
+        } else {
+            // Recognition inactive but recent activity, probably between cycles
+            console.log('[App] Recognition heartbeat: Inactive but recent activity (', timeSinceLastActivity, 'ms ago)');
+        }
+    }, 15000); // Check every 15 seconds
+}
+
+function stopRecognitionHeartbeat() {
+    if (recognitionHeartbeatInterval) {
+        clearInterval(recognitionHeartbeatInterval);
+        recognitionHeartbeatInterval = null;
+        console.log('[App] Recognition heartbeat stopped');
     }
 }
 
@@ -2152,9 +2249,9 @@ let microphoneStream = null;
 let vadCheckInterval = null;
 let silenceStart = null;
 let soundDetected = false;
-const SILENCE_THRESHOLD = 30; // Volume threshold (0-255)
-const SILENCE_DURATION = 1500; // ms of silence before stopping
-const MIN_RECORDING_TIME = 500; // Minimum recording duration in ms
+const SILENCE_THRESHOLD = 15; // Volume threshold (0-255) - Lowered to be less sensitive
+const SILENCE_DURATION = 2000; // ms of silence before stopping - Increased for better detection
+const MIN_RECORDING_TIME = 800; // Minimum recording duration in ms - Increased to capture full words
 let recordingStartTime = 0;
 
 // --- Provider Settings Management ---
@@ -4760,12 +4857,18 @@ async function speakResponse(text) {
     }
     
     // Use unified synthesizeSpeech function which handles all providers
+    // This returns a promise that resolves when audio playback is complete
     await synthesizeSpeech(text);
     
     // Check if response contains a question and activate temporary listening
+    // IMPORTANT: Wait for TTS to fully complete before starting to listen
     if (containsQuestion(text)) {
-        console.log('[App] Question detected, activating temporary listening');
-        activateTemporaryListening();
+        console.log('[App] Question detected, waiting before activating temporary listening');
+        // Add a small delay to ensure TTS is completely finished and user heard the question
+        setTimeout(() => {
+            console.log('[App] Activating temporary listening after TTS completion');
+            activateTemporaryListening();
+        }, 500); // 500ms delay after TTS ends
     }
 }
 
@@ -5010,10 +5113,30 @@ async function loadSavedApiKeys() {
     const mistralKey = getApiKey('mistral', 'mistralApiKey');
     const googleSTTKey = getApiKey('google_stt', 'googleSTTApiKey');
     const googleTTSKey = getApiKey('google_tts', 'googleTTSApiKey');
+    const deepgramKey = getApiKey('deepgram', 'apiKey_deepgram');
+    const deepgramTtsKey = getApiKey('deepgramtts', 'apiKey_deepgramtts');
+    const tavilyKey = getApiKey('tavily', 'apiKey_tavily');
     
     if (mistralKey) document.getElementById('mistralApiKey').value = mistralKey;
     if (googleSTTKey) document.getElementById('googleSTTApiKey').value = googleSTTKey;
     if (googleTTSKey) document.getElementById('googleTTSApiKey').value = googleTTSKey;
+    
+    const deepgramInput = document.getElementById('apiKey_deepgram');
+    if (deepgramInput && deepgramKey) deepgramInput.value = deepgramKey;
+    
+    const deepgramTtsInput = document.getElementById('apiKey_deepgramtts');
+    if (deepgramTtsInput && deepgramTtsKey) deepgramTtsInput.value = deepgramTtsKey;
+    
+    const tavilyInput = document.getElementById('apiKey_tavily');
+    if (tavilyInput && tavilyKey) tavilyInput.value = tavilyKey;
+    
+    const openweathermapKey = getApiKey('openweathermap', 'apiKey_openweathermap');
+    const openweathermapInput = document.getElementById('apiKey_openweathermap');
+    if (openweathermapInput && openweathermapKey) openweathermapInput.value = openweathermapKey;
+    
+    const weatherapiKey = getApiKey('weatherapi', 'apiKey_weatherapi');
+    const weatherapiInput = document.getElementById('apiKey_weatherapi');
+    if (weatherapiInput && weatherapiKey) weatherapiInput.value = weatherapiKey;
     
     const rememberKeys = localStorage.getItem('rememberApiKeys') === 'true';
     document.getElementById('rememberKeys').checked = rememberKeys;
@@ -5023,17 +5146,32 @@ async function saveApiKeys() {
     const mistralKey = document.getElementById('mistralApiKey').value.trim();
     const googleSTTKey = document.getElementById('googleSTTApiKey').value.trim();
     const googleTTSKey = document.getElementById('googleTTSApiKey').value.trim();
+    const deepgramKey = document.getElementById('apiKey_deepgram')?.value.trim() || '';
+    const deepgramTtsKey = document.getElementById('apiKey_deepgramtts')?.value.trim() || '';
+    const tavilyKey = document.getElementById('apiKey_tavily')?.value.trim() || '';
+    const openweathermapKey = document.getElementById('apiKey_openweathermap')?.value.trim() || '';
+    const weatherapiKey = document.getElementById('apiKey_weatherapi')?.value.trim() || '';
     const rememberKeys = document.getElementById('rememberKeys').checked;
     
     if (rememberKeys) {
         if (mistralKey) localStorage.setItem('mistralApiKey', mistralKey);
         if (googleSTTKey) localStorage.setItem('googleSTTApiKey', googleSTTKey);
         if (googleTTSKey) localStorage.setItem('googleTTSApiKey', googleTTSKey);
+        if (deepgramKey) localStorage.setItem('apiKey_deepgram', deepgramKey);
+        if (deepgramTtsKey) localStorage.setItem('apiKey_deepgramtts', deepgramTtsKey);
+        if (tavilyKey) localStorage.setItem('apiKey_tavily', tavilyKey);
+        if (openweathermapKey) localStorage.setItem('apiKey_openweathermap', openweathermapKey);
+        if (weatherapiKey) localStorage.setItem('apiKey_weatherapi', weatherapiKey);
         localStorage.setItem('rememberApiKeys', 'true');
     } else {
         localStorage.removeItem('mistralApiKey');
         localStorage.removeItem('googleSTTApiKey');
         localStorage.removeItem('googleTTSApiKey');
+        localStorage.removeItem('apiKey_deepgram');
+        localStorage.removeItem('apiKey_deepgramtts');
+        localStorage.removeItem('apiKey_tavily');
+        localStorage.removeItem('apiKey_openweathermap');
+        localStorage.removeItem('apiKey_weatherapi');
         localStorage.setItem('rememberApiKeys', 'false');
     }
     
@@ -5044,8 +5182,24 @@ async function saveApiKeys() {
 }
 
 async function deleteApiKey(service) {
-    localStorage.removeItem(`${service}ApiKey`);
-    document.getElementById(`${service}ApiKey`).value = '';
+    const keyMap = {
+        'mistral': 'mistralApiKey',
+        'googleSTT': 'googleSTTApiKey',
+        'googleTTS': 'googleTTSApiKey',
+        'deepgram': 'apiKey_deepgram',
+        'deepgramtts': 'apiKey_deepgramtts',
+        'tavily': 'apiKey_tavily',
+        'openweathermap': 'apiKey_openweathermap',
+        'weatherapi': 'apiKey_weatherapi'
+    };
+    
+    const keyName = keyMap[service] || `${service}ApiKey`;
+    localStorage.removeItem(keyName);
+    
+    const inputId = keyMap[service] || `${service}ApiKey`;
+    const input = document.getElementById(inputId);
+    if (input) input.value = '';
+    
     const simpleMsg = getLocalizedText('apiKeyDeleted');
     const enhancedMsg = await enhanceResponseWithMistral(simpleMsg);
     showSuccess(enhancedMsg);
@@ -6098,6 +6252,114 @@ function escapeHtml(text) {
 }
 
 // =============================================================================
+// CONTACTS GUIDANCE MODAL
+// =============================================================================
+
+/**
+ * Show modal to guide user when contacts cannot be opened directly
+ */
+function showContactsGuidanceModal() {
+    const translations = {
+        fr: {
+            title: "Accès aux contacts",
+            message: "Pour appeler un contact d'urgence, veuillez ouvrir l'application Téléphone de votre appareil.",
+            instructions: [
+                "Ouvrez l'application <strong>Téléphone</strong> ou <strong>Contacts</strong>",
+                "Sélectionnez le contact que vous souhaitez appeler",
+                "Appuyez sur le numéro pour lancer l'appel"
+            ],
+            tip: "💡 <strong>Astuce:</strong> Enregistrez vos contacts d'urgence dans les paramètres de l'application pour un accès rapide.",
+            close: "Fermer",
+            openSettings: "Ouvrir les paramètres"
+        },
+        it: {
+            title: "Accesso ai contatti",
+            message: "Per chiamare un contatto di emergenza, apri l'applicazione Telefono del tuo dispositivo.",
+            instructions: [
+                "Apri l'applicazione <strong>Telefono</strong> o <strong>Contatti</strong>",
+                "Seleziona il contatto che desideri chiamare",
+                "Premi sul numero per avviare la chiamata"
+            ],
+            tip: "💡 <strong>Suggerimento:</strong> Salva i tuoi contatti di emergenza nelle impostazioni dell'app per un accesso rapido.",
+            close: "Chiudi",
+            openSettings: "Apri impostazioni"
+        },
+        en: {
+            title: "Contact Access",
+            message: "To call an emergency contact, please open your device's Phone app.",
+            instructions: [
+                "Open your <strong>Phone</strong> or <strong>Contacts</strong> app",
+                "Select the contact you want to call",
+                "Tap the number to start the call"
+            ],
+            tip: "💡 <strong>Tip:</strong> Save your emergency contacts in the app settings for quick access.",
+            close: "Close",
+            openSettings: "Open Settings"
+        }
+    };
+    
+    const lang = localStorage.getItem('language') || 'fr';
+    const t = translations[lang] || translations.fr;
+    
+    // Remove existing modal if any
+    const existingModal = document.getElementById('contactsGuidanceModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // Create modal HTML
+    const modalHTML = `
+        <div id="contactsGuidanceModal" class="modal-overlay" style="display: flex;">
+            <div class="modal-content" style="max-width: 500px;">
+                <div class="modal-header">
+                    <h2>${t.title}</h2>
+                    <button class="close-modal-btn" onclick="closeContactsGuidanceModal()">×</button>
+                </div>
+                <div class="modal-body">
+                    <p class="modal-message">${t.message}</p>
+                    
+                    <div class="guidance-instructions">
+                        <ol>
+                            ${t.instructions.map(instruction => `<li>${instruction}</li>`).join('')}
+                        </ol>
+                    </div>
+                    
+                    <div class="guidance-tip">
+                        ${t.tip}
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn-secondary" onclick="closeContactsGuidanceModal()">${t.close}</button>
+                    <button class="btn-primary" onclick="closeContactsGuidanceModal(); goToSettings();">${t.openSettings}</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Add to DOM
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // Auto-close after 15 seconds
+    setTimeout(() => {
+        closeContactsGuidanceModal();
+    }, 15000);
+    
+    console.log('[App] Contacts guidance modal displayed');
+}
+
+/**
+ * Close contacts guidance modal
+ */
+function closeContactsGuidanceModal() {
+    const modal = document.getElementById('contactsGuidanceModal');
+    if (modal) {
+        modal.style.display = 'none';
+        setTimeout(() => modal.remove(), 300);
+        console.log('[App] Contacts guidance modal closed');
+    }
+}
+
+// =============================================================================
 // SOUND SYSTEM HELPER FUNCTIONS
 // =============================================================================
 
@@ -6238,4 +6500,6 @@ window.viewList = viewList;
 window.toggleListItem = toggleListItem;
 window.confirmDeleteList = confirmDeleteList;
 window.makeCall = makeCall;
+window.showContactsGuidanceModal = showContactsGuidanceModal;
+window.closeContactsGuidanceModal = closeContactsGuidanceModal;
 

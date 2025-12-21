@@ -77,8 +77,36 @@ async function processMistralResultUnified(mistralResult, userMessage) {
     console.log('[ResponseHandler] Processing Mistral result:', mistralResult.action);
     
     try {
-        // Route through action wrapper
-        const actionResult = await processMistralResult(mistralResult);
+        // Use processMistralResult if available, otherwise use executeAction directly
+        let actionResult;
+        
+        if (typeof processMistralResult === 'function') {
+            // Use the wrapper function (preferred)
+            actionResult = await processMistralResult(mistralResult);
+        } else if (typeof executeAction === 'function') {
+            // Fallback to direct execution
+            const action = mistralResult.action;
+            const language = mistralResult.language || 'fr';
+            
+            // Build params from Mistral result
+            const params = {
+                task: mistralResult.task || null,
+                list: mistralResult.list || null,
+                note: mistralResult.note || null,
+                section: mistralResult.section || null,
+                contactName: mistralResult.contactName || null,
+                query: mistralResult.query || null,
+                coordinates: mistralResult.coordinates || null,
+                address: mistralResult.address || null,
+                location: mistralResult.location || null,
+                timeRange: mistralResult.timeRange || 'current',
+                response: mistralResult.response || null
+            };
+            
+            actionResult = await executeAction(action, params, language);
+        } else {
+            throw new Error('Action wrapper not available');
+        }
         
         // Handle the result
         await handleActionResult(actionResult, mistralResult.response);

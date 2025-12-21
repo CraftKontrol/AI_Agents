@@ -2365,6 +2365,140 @@ const tests = {
         validate: async (result) => {
             return result?.actionResult?.success === true;
         }
+    },
+    
+    // Web Search Tests
+    vocal_search_web_simple: {
+        name: 'Vocal: Recherche simple',
+        action: async () => { return await injectVoiceAndWaitForAction("Recherche sur internet la recette de la tarte aux pommes"); },
+        validate: async (result) => {
+            return result?.actionResult?.success === true;
+        }
+    },
+    
+    vocal_search_web_restaurants: {
+        name: 'Vocal: Recherche restaurants',
+        action: async () => { return await injectVoiceAndWaitForAction("Trouve-moi des restaurants italiens près de chez moi"); },
+        validate: async (result) => {
+            return result?.actionResult?.success === true;
+        }
+    },
+    
+    vocal_search_web_weather: {
+        name: 'Vocal: Recherche météo',
+        action: async () => { return await injectVoiceAndWaitForAction("Que dit internet sur la météo de demain"); },
+        validate: async (result) => {
+            return result?.actionResult?.success === true;
+        }
+    },
+    
+    vocal_search_web_question: {
+        name: 'Vocal: Question recherche',
+        action: async () => { return await injectVoiceAndWaitForAction("Cherche des informations sur les bienfaits du thé vert"); },
+        validate: async (result) => {
+            return result?.actionResult?.success === true;
+        }
+    },
+    
+    // GPS Navigation Tests
+    vocal_gps_coords_simple: {
+        name: 'Vocal: GPS coordonnées simples',
+        action: async () => { return await injectVoiceAndWaitForAction("Ouvre GPS pour 48.8566, 2.3522"); },
+        validate: async (result) => {
+            return result?.actionResult?.success === true;
+        }
+    },
+    
+    vocal_gps_coords_named: {
+        name: 'Vocal: GPS coords avec nom',
+        action: async () => { return await injectVoiceAndWaitForAction("Navigue vers 45.5017, -73.5673, c'est Montréal"); },
+        validate: async (result) => {
+            return result?.actionResult?.success === true;
+        }
+    },
+    
+    vocal_gps_address_simple: {
+        name: 'Vocal: GPS adresse simple',
+        action: async () => { return await injectVoiceAndWaitForAction("Emmène-moi à Tour Eiffel, Paris"); },
+        validate: async (result) => {
+            return result?.actionResult?.success === true;
+        }
+    },
+    
+    vocal_gps_address_street: {
+        name: 'Vocal: GPS adresse complète',
+        action: async () => { return await injectVoiceAndWaitForAction("Navigue vers 123 rue de la Paix, Lyon"); },
+        validate: async (result) => {
+            return result?.actionResult?.success === true;
+        }
+    },
+    
+    vocal_gps_directions: {
+        name: 'Vocal: Directions GPS',
+        action: async () => { return await injectVoiceAndWaitForAction("Comment aller à l'Arc de Triomphe"); },
+        validate: async (result) => {
+            return result?.actionResult?.success === true;
+        }
+    },
+    
+    vocal_gps_itinerary: {
+        name: 'Vocal: Itinéraire GPS',
+        action: async () => { return await injectVoiceAndWaitForAction("Itinéraire vers Gare de Lyon, Paris"); },
+        validate: async (result) => {
+            return result?.actionResult?.success === true;
+        }
+    },
+    
+    // =========================================================================
+    // WEATHER TESTS
+    // =========================================================================
+    
+    vocal_weather_simple: {
+        name: 'Vocal: Météo simple',
+        action: async () => { return await injectVoiceAndWaitForAction("Quel temps fait-il?"); },
+        validate: async (result) => {
+            return result?.actionResult?.success === true;
+        }
+    },
+    
+    vocal_weather_city: {
+        name: 'Vocal: Météo pour une ville',
+        action: async () => { return await injectVoiceAndWaitForAction("Quelle est la météo à Paris?"); },
+        validate: async (result) => {
+            return result?.actionResult?.success === true;
+        }
+    },
+    
+    vocal_weather_forecast_3days: {
+        name: 'Vocal: Prévisions 3 jours',
+        action: async () => { return await injectVoiceAndWaitForAction("Prévisions météo pour Lyon sur 3 jours"); },
+        validate: async (result) => {
+            return result?.actionResult?.success === true;
+        }
+    },
+    
+    vocal_weather_forecast_5days: {
+        name: 'Vocal: Prévisions 5 jours',
+        action: async () => { return await injectVoiceAndWaitForAction("Météo à Marseille pour 5 jours"); },
+        validate: async (result) => {
+            return result?.actionResult?.success === true;
+        }
+    },
+    
+    vocal_weather_tomorrow: {
+        name: 'Vocal: Météo demain',
+        action: async () => { return await injectVoiceAndWaitForAction("Quel temps fera-t-il demain?"); },
+        validate: async (result) => {
+            return result?.actionResult?.success === true;
+        }
+    },
+    
+    vocal_weather_temperature: {
+        name: 'Vocal: Température ville',
+        action: async () => { return await injectVoiceAndWaitForAction("Quelle est la température à Nice?"); },
+        validate: async (result) => {
+            return result?.actionResult?.success === true;
+        }
     }
     
 
@@ -2853,7 +2987,23 @@ async function runTestsByCategory(category) {
             'vocal_shopping_list', 'vocal_note_wifi', 'vocal_search_appointments',
             'vocal_when_appointment', 'vocal_delete_old_tasks', 'vocal_delete_done_tasks',
             'vocal_delete_all_tasks', 'vocal_delete_all_lists', 'vocal_delete_all_notes',
-            'vocal_greeting', 'vocal_dark_matter', 'vocal_thank_you'
+            'vocal_greeting', 'vocal_dark_matter', 'vocal_thank_you',
+            'vocal_search_web_simple', 'vocal_search_web_restaurants', 'vocal_search_web_weather', 'vocal_search_web_question',
+            'vocal_gps_coords_simple', 'vocal_gps_coords_named', 'vocal_gps_address_simple', 'vocal_gps_address_street', 
+            'vocal_gps_directions', 'vocal_gps_itinerary',
+            'vocal_weather_simple', 'vocal_weather_city', 'vocal_weather_forecast_3days', 'vocal_weather_forecast_5days',
+            'vocal_weather_tomorrow', 'vocal_weather_temperature'
+        ],
+        search: [
+            'vocal_search_web_simple', 'vocal_search_web_restaurants', 'vocal_search_web_weather', 'vocal_search_web_question'
+        ],
+        gps: [
+            'vocal_gps_coords_simple', 'vocal_gps_coords_named', 'vocal_gps_address_simple', 'vocal_gps_address_street',
+            'vocal_gps_directions', 'vocal_gps_itinerary'
+        ],
+        weather: [
+            'vocal_weather_simple', 'vocal_weather_city', 'vocal_weather_forecast_3days', 'vocal_weather_forecast_5days',
+            'vocal_weather_tomorrow', 'vocal_weather_temperature'
         ],
         ui: [
             'open_task_modal', 'close_task_modal', 'toggle_listening',
