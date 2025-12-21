@@ -10,6 +10,124 @@ class ActivityUI {
         
         console.log('[ActivityUI] Initialized');
     }
+
+    // Get current language or fallback
+    getLang() {
+        return typeof currentLanguage !== 'undefined' ? currentLanguage : 'fr';
+    }
+
+    // Localized strings for UI additions
+    t(key) {
+        const lang = this.getLang();
+        const dict = {
+            emptyNoGps: {
+                fr: 'Aucun parcours GPS disponible.',
+                en: 'No GPS tracks available.',
+                it: 'Nessun percorso GPS disponibile.'
+            },
+            elevationGain: {
+                fr: 'Denivele +',
+                en: 'Elevation Gain',
+                it: 'Dislivello +'
+            },
+            altitude: {
+                fr: 'Altitude',
+                en: 'Altitude',
+                it: 'Altitudine'
+            },
+            today: {
+                fr: 'Aujourd\'hui',
+                en: 'Today',
+                it: 'Oggi'
+            },
+            thisWeek: {
+                fr: 'Cette semaine',
+                en: 'This Week',
+                it: 'Questa settimana'
+            },
+            thisMonth: {
+                fr: 'Ce mois-ci',
+                en: 'This Month',
+                it: 'Questo mese'
+            },
+            allTime: {
+                fr: 'Cumul total',
+                en: 'All Time',
+                it: 'Totale'
+            },
+            steps: {
+                fr: 'Pas :',
+                en: 'Steps:',
+                it: 'Passi:'
+            },
+            distance: {
+                fr: 'Distance :',
+                en: 'Distance:',
+                it: 'Distanza:'
+            },
+            calories: {
+                fr: 'Calories :',
+                en: 'Calories:',
+                it: 'Calorie:'
+            },
+            duration: {
+                fr: 'Duree :',
+                en: 'Duration:',
+                it: 'Durata:'
+            },
+            activityStreak: {
+                fr: 'Serie d\'activite',
+                en: 'Activity Streak',
+                it: 'Serie di attivita'
+            },
+            current: {
+                fr: 'Actuelle :',
+                en: 'Current:',
+                it: 'Attuale:'
+            },
+            longest: {
+                fr: 'Plus longue :',
+                en: 'Longest:',
+                it: 'Piu lunga:'
+            },
+            days: {
+                fr: 'jours',
+                en: 'days',
+                it: 'giorni'
+            },
+            personalBests: {
+                fr: 'Records personnels',
+                en: 'Personal Bests',
+                it: 'Record personali'
+            },
+            longestDistance: {
+                fr: 'Distance la plus longue :',
+                en: 'Longest Distance:',
+                it: 'Distanza piu lunga:'
+            },
+            longestDuration: {
+                fr: 'Duree la plus longue :',
+                en: 'Longest Duration:',
+                it: 'Durata piu lunga:'
+            },
+            mostSteps: {
+                fr: 'Nombre max de pas :',
+                en: 'Most Steps:',
+                it: 'Piu passi:'
+            },
+            fastestPace: {
+                fr: 'Allure la plus rapide :',
+                en: 'Fastest Pace:',
+                it: 'Passo piu veloce:'
+            },
+            mostElevationGain: {
+                fr: 'Denivele le plus eleve :',
+                en: 'Most Elevation Gain:',
+                it: 'Dislivello piu alto:'
+            }
+        };
+        return dict[key]?.[lang] || dict[key]?.fr || key;
+    }
     
     // Initialize activity section
     async initializeActivitySection() {
@@ -153,6 +271,11 @@ class ActivityUI {
         document.getElementById('todayDistance').textContent = activityStats.formatDistance(today.totalDistance);
         document.getElementById('todayCalories').textContent = today.totalCalories;
         document.getElementById('todayDuration').textContent = activityStats.formatDuration(today.totalDuration);
+        document.getElementById('todayElevation').textContent = `${Math.round(today.totalElevationGain || 0)} m`;
+        const elevationLabel = document.getElementById('elevationLabel');
+        if (elevationLabel) {
+            elevationLabel.textContent = this.t('elevationGain');
+        }
         
         // Update goal progress
         const progress = (today.totalSteps / dailyStepsGoal) * 100;
@@ -337,7 +460,7 @@ class ActivityUI {
                 try {
                     await Promise.race([
                         initializeActivityStores(),
-                        new Promise((_, reject) => setTimeout(() => reject(new Error('initializeActivityStores timeout (6s)')), 6000))
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('initializeActivityStores timeout (0.5s)')), 500))
                     ]);
                 } catch (initErr) {
                     initFailed = true;
@@ -369,13 +492,11 @@ class ActivityUI {
             });
             
             if (!activities || activities.length === 0) {
-                showError?.('Aucune activité enregistrée pour afficher un parcours');
-                return;
+                console.warn('[ActivityUI] showPathViewer: no activities, opening empty modal');
             }
 
             if (withGps.length === 0) {
-                showError?.('Aucune activité avec trace GPS disponible');
-                return;
+                console.warn('[ActivityUI] showPathViewer: no GPS traces, opening empty modal');
             }
 
             const modal = document.getElementById('pathViewerModal') || this.createPathViewerModal();
@@ -396,9 +517,11 @@ class ActivityUI {
             this.displayActivityList(withGps);
             console.log('[ActivityUI] showPathViewer: list displayed');
             
-            // Display first activity by default
-            this.displayActivityPath(withGps[0]);
-            console.log('[ActivityUI] showPathViewer: first path rendered');
+            // Display first activity by default when available
+            if (withGps.length > 0) {
+                this.displayActivityPath(withGps[0]);
+                console.log('[ActivityUI] showPathViewer: first path rendered');
+            }
         } catch (error) {
             console.error('[ActivityUI] showPathViewer failed:', error);
             showError?.('Impossible d\'afficher les parcours');
@@ -509,8 +632,8 @@ class ActivityUI {
             <p><strong>Duration:</strong> ${activityStats.formatDuration(activity.duration)}</p>
             <p><strong>Steps:</strong> ${activity.steps.toLocaleString()}</p>
             <p><strong>Calories:</strong> ${activity.calories} kcal</p>
-            <p><strong>Elevation Gain:</strong> ${Math.round(activity.elevationGain || 0)} m</p>
-            <p><strong>Altitude:</strong> ${activity.minAltitude !== null && activity.maxAltitude !== null ? `${Math.round(activity.minAltitude)} – ${Math.round(activity.maxAltitude)} m` : 'N/A'}</p>
+            <p><strong>${this.t('elevationGain')}:</strong> ${Math.round(activity.elevationGain || 0)} m</p>
+            <p><strong>${this.t('altitude')}:</strong> ${activity.minAltitude !== null && activity.maxAltitude !== null ? `${Math.round(activity.minAltitude)}  00  ${Math.round(activity.maxAltitude)} m` : 'N/A'}</p>
         `;
     }
     
@@ -522,7 +645,7 @@ class ActivityUI {
         listContainer.innerHTML = '';
         
         if (!activities || activities.length === 0) {
-            listContainer.innerHTML = '<p class="empty-state">Aucun parcours GPS disponible.</p>';
+            listContainer.innerHTML = `<p class="empty-state">${this.t('emptyNoGps')}</p>`;
             return;
         }
 
@@ -613,10 +736,10 @@ class ActivityUI {
         const bests = await activityStats.getPersonalBests();
         
         // Update stats display
-        document.getElementById('statsToday').innerHTML = this.formatStatsCard(today, 'Today');
-        document.getElementById('statsWeekly').innerHTML = this.formatStatsCard(weekly, 'This Week');
-        document.getElementById('statsMonthly').innerHTML = this.formatStatsCard(monthly, 'This Month');
-        document.getElementById('statsAllTime').innerHTML = this.formatStatsCard(allTime, 'All Time');
+        document.getElementById('statsToday').innerHTML = this.formatStatsCard(today, this.t('today'));
+        document.getElementById('statsWeekly').innerHTML = this.formatStatsCard(weekly, this.t('thisWeek'));
+        document.getElementById('statsMonthly').innerHTML = this.formatStatsCard(monthly, this.t('thisMonth'));
+        document.getElementById('statsAllTime').innerHTML = this.formatStatsCard(allTime, this.t('allTime'));
         document.getElementById('statsStreak').innerHTML = this.formatStreakCard(streak);
         if (bests) {
             document.getElementById('statsBests').innerHTML = this.formatBestsCard(bests);
@@ -628,23 +751,23 @@ class ActivityUI {
         return `
             <h3>${title}</h3>
             <div class="stat-row">
-                <span>Steps:</span>
+                <span>${this.t('steps')}</span>
                 <span>${stats.totalSteps?.toLocaleString() || 0}</span>
             </div>
             <div class="stat-row">
-                <span>Distance:</span>
+                <span>${this.t('distance')}</span>
                 <span>${activityStats.formatDistance(stats.totalDistance || 0)}</span>
             </div>
             <div class="stat-row">
-                <span>Calories:</span>
+                <span>${this.t('calories')}</span>
                 <span>${stats.totalCalories || 0} kcal</span>
             </div>
             <div class="stat-row">
-                <span>Duration:</span>
+                <span>${this.t('duration')}</span>
                 <span>${activityStats.formatDuration(stats.totalDuration || 0)}</span>
             </div>
             <div class="stat-row">
-                <span>Elevation Gain:</span>
+                <span>${this.t('elevationGain')}</span>
                 <span>${Math.round(stats.totalElevationGain || 0)} m</span>
             </div>
         `;
@@ -653,14 +776,14 @@ class ActivityUI {
     // Format streak card
     formatStreakCard(streak) {
         return `
-            <h3>Activity Streak</h3>
+            <h3>${this.t('activityStreak')}</h3>
             <div class="stat-row">
-                <span>Current:</span>
-                <span>🔥 ${streak.current} days</span>
+                <span>${this.t('current')}</span>
+                <span>🔥 ${streak.current} ${this.t('days')}</span>
             </div>
             <div class="stat-row">
-                <span>Longest:</span>
-                <span>🏆 ${streak.longest} days</span>
+                <span>${this.t('longest')}</span>
+                <span>🏆 ${streak.longest} ${this.t('days')}</span>
             </div>
         `;
     }
@@ -668,25 +791,25 @@ class ActivityUI {
     // Format personal bests card
     formatBestsCard(bests) {
         return `
-            <h3>Personal Bests</h3>
+            <h3>${this.t('personalBests')}</h3>
             <div class="stat-row">
-                <span>Longest Distance:</span>
+                <span>${this.t('longestDistance')}</span>
                 <span>${activityStats.formatDistance(bests.longestDistance.value)}</span>
             </div>
             <div class="stat-row">
-                <span>Longest Duration:</span>
+                <span>${this.t('longestDuration')}</span>
                 <span>${activityStats.formatDuration(bests.longestDuration.value)}</span>
             </div>
             <div class="stat-row">
-                <span>Most Steps:</span>
+                <span>${this.t('mostSteps')}</span>
                 <span>${bests.mostSteps.value.toLocaleString()}</span>
             </div>
             <div class="stat-row">
-                <span>Fastest Pace:</span>
+                <span>${this.t('fastestPace')}</span>
                 <span>${activityStats.formatPace(bests.fastestPace.value)}</span>
             </div>
             <div class="stat-row">
-                <span>Most Elevation Gain:</span>
+                <span>${this.t('mostElevationGain')}</span>
                 <span>${Math.round(bests.mostElevationGain.value || 0)} m</span>
             </div>
         `;

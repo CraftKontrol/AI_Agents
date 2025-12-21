@@ -70,10 +70,10 @@ async function initializeActivityStores() {
         };
     });
 
-    // Prevent indefinite hangs: timeout after 6s
+    // Prevent hangs: short timeout
     return Promise.race([
         openPromise,
-        new Promise((_, reject) => setTimeout(() => reject(new Error('IndexedDB open timeout (6s)')), 6000))
+        new Promise((_, reject) => setTimeout(() => reject(new Error('IndexedDB open timeout (0.5s)')), 500))
     ]).catch((err) => {
         activityDbUnavailable = true;
         console.warn('[ActivityStorage] IndexedDB unavailable, fallback to empty results:', err);

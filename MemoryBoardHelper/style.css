@@ -4041,18 +4041,18 @@ input:checked + .slider:before {
 
 .dashboard-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 15px;
-    margin-bottom: 25px;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 10px;
+    margin-bottom: 20px;
 }
 
 .dashboard-card {
     background-color: var(--background-color);
-    padding: 20px;
+    padding: 15px;
     border: 1px solid var(--border-color);
     display: flex;
     align-items: center;
-    gap: 15px;
+    gap: 10px;
     transition: transform 0.2s ease;
 }
 
@@ -4062,24 +4062,24 @@ input:checked + .slider:before {
 }
 
 .dashboard-card .material-symbols-outlined {
-    font-size: 40px;
+    font-size: 32px;
     color: var(--primary-color);
 }
 
 .card-content {
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: 4px;
 }
 
 .card-label {
     color: var(--text-muted);
-    font-size: 14px;
+    font-size: 12px;
 }
 
 .card-value {
     color: var(--text-color);
-    font-size: 24px;
+    font-size: 20px;
     font-weight: 600;
 }
 
