@@ -224,7 +224,7 @@ class ActivityUI {
     }
     
     // Update tracking status with real-time data
-    updateTrackingStatus() {
+    updateTrackingStatus(progressData = null) {
         if (!activityTracker.isTracking) {
             return;
         }
@@ -232,7 +232,8 @@ class ActivityUI {
         const activity = activityTracker.currentActivity;
         if (!activity) return;
         
-        const duration = Math.floor((Date.now() - activity.startTime) / 1000);
+        const startMs = activityTracker.startTime || Date.now();
+        const duration = progressData?.duration ?? Math.floor((Date.now() - startMs) / 1000);
         const hours = Math.floor(duration / 3600);
         const minutes = Math.floor((duration % 3600) / 60);
         const seconds = duration % 60;
@@ -241,8 +242,10 @@ class ActivityUI {
             ? `${hours}h ${minutes}m ${seconds}s`
             : `${minutes}m ${seconds}s`;
         
-        const distanceKm = (activity.distance / 1000).toFixed(2);
-        const steps = activity.steps || 0;
+        // Live distance/steps from progress if provided
+        const distanceMeters = progressData?.distance ?? activity.distance ?? 0;
+        const distanceKm = (distanceMeters / 1000).toFixed(2);
+        const steps = progressData?.steps ?? activity.steps ?? 0;
         const calories = Math.round(activity.calories || 0);
         const altitude = Number.isFinite(activityTracker.lastAltitude)
             ? Math.round(activityTracker.lastAltitude)
@@ -263,10 +266,11 @@ class ActivityUI {
     onActivityProgress(data) {
         // Update tracking status if visible
         if (activityTracker.isTracking) {
-            this.updateTrackingStatus();
+            this.updateTrackingStatus(data);
         }
 
         this.renderTrackingDebug(data);
+        this.renderLiveDashboard(data);
     }
 
     onGpsUpdated(point) {
@@ -298,6 +302,56 @@ class ActivityUI {
         const pathPts = activityTracker?.gpsPath?.length ?? 0;
 
         sensorsEl.textContent = `Steps ${steps} (${source}) | alt ${altitude} | speed ${speed} | pts ${pathPts}`;
+    }
+
+    renderLiveDashboard(progressData = null) {
+        if (!progressData || !activityTracker.isTracking) return;
+
+        const stepsEl = document.getElementById('todaySteps');
+        const distanceEl = document.getElementById('todayDistance');
+        const caloriesEl = document.getElementById('todayCalories');
+        const durationEl = document.getElementById('todayDuration');
+        const elevationEl = document.getElementById('todayElevation');
+        const progressBar = document.getElementById('stepsProgress');
+        const goalText = document.getElementById('stepsGoalText');
+
+        if (!stepsEl || !distanceEl || !caloriesEl || !durationEl || !progressBar || !goalText || !elevationEl) {
+            return;
+        }
+
+        const steps = progressData.steps ?? activityTracker.stepCount ?? 0;
+        const distance = progressData.distance ?? 0; // meters
+        const durationSec = progressData.duration ?? 0;
+
+        // Simple MET-based live calories using current activity type
+        let met = 3.5;
+        const type = activityTracker.activityType;
+        if (type === 'run') met = 7.0;
+        else if (type === 'bike') met = 6.0;
+        const calories = Math.round(met * 70 * (durationSec / 3600));
+
+        const elevationGain = activityTracker.currentActivity?.elevationGain ?? 0;
+
+        stepsEl.textContent = steps.toLocaleString();
+        distanceEl.textContent = distance >= 1000 ? `${(distance / 1000).toFixed(2)} km` : `${Math.round(distance)} m`;
+        caloriesEl.textContent = calories;
+        durationEl.textContent = this.formatDuration(durationSec);
+        elevationEl.textContent = `${Math.round(elevationGain)} m`;
+
+        const goal = parseInt(localStorage.getItem('dailyStepsGoal') || '10000', 10);
+        const progress = Math.min(100, (steps / goal) * 100);
+        progressBar.style.width = `${progress.toFixed(1)}%`;
+        goalText.textContent = `${steps.toLocaleString()} / ${goal.toLocaleString()}`;
+    }
+
+    formatDuration(seconds) {
+        const s = Math.max(0, Math.floor(seconds));
+        const h = Math.floor(s / 3600);
+        const m = Math.floor((s % 3600) / 60);
+        const sec = s % 60;
+        if (h > 0) return `${h}h ${m}m ${sec}s`;
+        if (m > 0) return `${m}m ${sec}s`;
+        return `${sec}s`;
     }
     
     // Update dashboard with today's stats

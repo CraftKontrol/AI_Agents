@@ -322,6 +322,9 @@ class ActivityTracker {
         }
 
         this.stepCount = Math.max(0, Math.round(steps));
+        if (this.currentActivity) {
+            this.currentActivity.steps = this.stepCount;
+        }
     }
     
     // Native pedometer (Android WebView)
@@ -330,6 +333,9 @@ class ActivityTracker {
             if (window.CKGenericApp && typeof window.CKGenericApp.getPedometer === 'function') {
                 const steps = window.CKGenericApp.getPedometer();
                 this.stepCount = steps;
+                if (this.currentActivity) {
+                    this.currentActivity.steps = this.stepCount;
+                }
             }
         }, 1000);
         
@@ -343,6 +349,9 @@ class ActivityTracker {
                 const distance = this.calculateTotalDistance();
                 // Estimate steps: average stride length 0.75m
                 this.stepCount = Math.floor(distance / 0.75);
+                if (this.currentActivity) {
+                    this.currentActivity.steps = this.stepCount;
+                }
             }
         }, 2000);
         
