@@ -22,9 +22,18 @@ class ActivityStats {
                 totalDistance: 0,
                 totalCalories: 0,
                 totalDuration: 0,
+                totalElevationGain: 0,
+                totalElevationLoss: 0,
+                maxAltitude: null,
+                minAltitude: null,
                 activities: []
             };
         }
+
+        stats.totalElevationGain = stats.totalElevationGain ?? 0;
+        stats.totalElevationLoss = stats.totalElevationLoss ?? 0;
+        stats.maxAltitude = stats.maxAltitude ?? null;
+        stats.minAltitude = stats.minAltitude ?? null;
         
         return stats;
     }
@@ -67,6 +76,8 @@ class ActivityStats {
             totalDistance: 0,
             totalCalories: 0,
             totalDuration: 0,
+            totalElevationGain: 0,
+            totalElevationLoss: 0,
             byType: {
                 walk: { count: 0, distance: 0, duration: 0 },
                 run: { count: 0, distance: 0, duration: 0 },
@@ -75,6 +86,8 @@ class ActivityStats {
             longestActivity: null,
             longestDistance: 0,
             mostSteps: 0,
+            maxAltitude: null,
+            minAltitude: null,
             firstActivity: allActivities[allActivities.length - 1]?.startTime || null,
             lastActivity: allActivities[0]?.startTime || null
         };
@@ -84,6 +97,8 @@ class ActivityStats {
             totalStats.totalDistance += activity.distance || 0;
             totalStats.totalCalories += activity.calories || 0;
             totalStats.totalDuration += activity.duration || 0;
+            totalStats.totalElevationGain += activity.elevationGain || 0;
+            totalStats.totalElevationLoss += activity.elevationLoss || 0;
             
             // Track by type
             const type = activity.type || 'walk';
@@ -102,6 +117,18 @@ class ActivityStats {
             if (activity.steps > totalStats.mostSteps) {
                 totalStats.mostSteps = activity.steps;
             }
+
+            if (activity.maxAltitude !== null && activity.maxAltitude !== undefined) {
+                totalStats.maxAltitude = totalStats.maxAltitude === null
+                    ? activity.maxAltitude
+                    : Math.max(totalStats.maxAltitude, activity.maxAltitude);
+            }
+
+            if (activity.minAltitude !== null && activity.minAltitude !== undefined) {
+                totalStats.minAltitude = totalStats.minAltitude === null
+                    ? activity.minAltitude
+                    : Math.min(totalStats.minAltitude, activity.minAltitude);
+            }
         });
         
         return totalStats;
@@ -114,11 +141,15 @@ class ActivityStats {
             totalDistance: 0,
             totalCalories: 0,
             totalDuration: 0,
+            totalElevationGain: 0,
+            totalElevationLoss: 0,
             totalActivities: 0,
             avgDailySteps: 0,
             avgDailyDistance: 0,
             days: dailyStats.length,
-            dailyBreakdown: []
+            dailyBreakdown: [],
+            maxAltitude: null,
+            minAltitude: null
         };
         
         dailyStats.forEach(day => {
@@ -126,13 +157,28 @@ class ActivityStats {
             aggregated.totalDistance += day.totalDistance || 0;
             aggregated.totalCalories += day.totalCalories || 0;
             aggregated.totalDuration += day.totalDuration || 0;
+            aggregated.totalElevationGain += day.totalElevationGain || 0;
+            aggregated.totalElevationLoss += day.totalElevationLoss || 0;
             aggregated.totalActivities += day.activities?.length || 0;
+
+            if (day.maxAltitude !== null && day.maxAltitude !== undefined) {
+                aggregated.maxAltitude = aggregated.maxAltitude === null
+                    ? day.maxAltitude
+                    : Math.max(aggregated.maxAltitude, day.maxAltitude);
+            }
+
+            if (day.minAltitude !== null && day.minAltitude !== undefined) {
+                aggregated.minAltitude = aggregated.minAltitude === null
+                    ? day.minAltitude
+                    : Math.min(aggregated.minAltitude, day.minAltitude);
+            }
             
             aggregated.dailyBreakdown.push({
                 date: day.date,
                 steps: day.totalSteps || 0,
                 distance: day.totalDistance || 0,
-                calories: day.totalCalories || 0
+                calories: day.totalCalories || 0,
+                elevationGain: day.totalElevationGain || 0
             });
         });
         
@@ -313,67 +359,73 @@ class ActivityStats {
     // Calculate personal bests
     async getPersonalBests() {
         const allActivities = await getAllActivities();
-        
+
         if (allActivities.length === 0) {
             return null;
         }
-        
+
         const bests = {
             longestDistance: { value: 0, activity: null },
             longestDuration: { value: 0, activity: null },
             mostSteps: { value: 0, activity: null },
             fastestPace: { value: Infinity, activity: null },
-            highestSpeed: { value: 0, activity: null }
+            highestSpeed: { value: 0, activity: null },
+            mostElevationGain: { value: 0, activity: null }
         };
-        
+
         allActivities.forEach(activity => {
             if (activity.distance > bests.longestDistance.value) {
                 bests.longestDistance.value = activity.distance;
                 bests.longestDistance.activity = activity;
             }
-            
+
             if (activity.duration > bests.longestDuration.value) {
                 bests.longestDuration.value = activity.duration;
                 bests.longestDuration.activity = activity;
             }
-            
+
             if (activity.steps > bests.mostSteps.value) {
                 bests.mostSteps.value = activity.steps;
                 bests.mostSteps.activity = activity;
             }
-            
+
             if (activity.avgPace > 0 && activity.avgPace < bests.fastestPace.value) {
                 bests.fastestPace.value = activity.avgPace;
                 bests.fastestPace.activity = activity;
             }
-            
+
             if (activity.maxSpeed > bests.highestSpeed.value) {
                 bests.highestSpeed.value = activity.maxSpeed;
                 bests.highestSpeed.activity = activity;
             }
+
+            if (activity.elevationGain > bests.mostElevationGain.value) {
+                bests.mostElevationGain.value = activity.elevationGain;
+                bests.mostElevationGain.activity = activity;
+            }
         });
-        
+
         return bests;
     }
-    
+
     // Export statistics as CSV
     async exportStatsCSV() {
         const allActivities = await getAllActivities();
-        
-        let csv = 'Date,Type,Duration (s),Distance (m),Steps,Calories,Avg Pace,Max Speed\n';
-        
+
+        let csv = 'Date,Type,Duration (s),Distance (m),Steps,Calories,Avg Pace,Max Speed,Elevation Gain (m),Min Altitude (m),Max Altitude (m)\n';
+
         allActivities.forEach(activity => {
-            csv += `${activity.startTime},${activity.type},${activity.duration},${activity.distance},${activity.steps},${activity.calories},${activity.avgPace},${activity.maxSpeed}\n`;
+            csv += `${activity.startTime},${activity.type},${activity.duration},${activity.distance},${activity.steps},${activity.calories},${activity.avgPace},${activity.maxSpeed},${Math.round(activity.elevationGain || 0)},${activity.minAltitude ?? ''},${activity.maxAltitude ?? ''}\n`;
         });
-        
+
         return csv;
     }
-    
+
     // Get summary for voice output
     async getVoiceSummary(language = 'fr') {
         const today = await this.getTodayStats();
-        const streak = await getActivityStreak();
-        
+        const streak = await this.getActivityStreak();
+
         const translations = {
             fr: {
                 summary: `Aujourd'hui, vous avez fait ${today.totalSteps} pas, parcouru ${this.formatDistance(today.totalDistance)}, et brûlé ${today.totalCalories} calories. Votre série est de ${streak.current} jours.`,
@@ -388,15 +440,16 @@ class ActivityStats {
                 noActivity: "Nessuna attività registrata oggi."
             }
         };
-        
+
         const lang = translations[language] || translations.fr;
-        
+
         return today.totalSteps > 0 ? lang.summary : lang.noActivity;
     }
 }
 
 // Global instance
 const activityStats = new ActivityStats();
+window.activityStats = activityStats;
 
 // Initialize on load
 console.log('[ActivityStats] Module loaded');

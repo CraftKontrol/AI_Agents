@@ -7,12 +7,16 @@ const ACTIVITY_STORES = {
     ACTIVITY_GOALS: 'activityGoals'
 };
 
+// Graceful fallback when IndexedDB is unavailable or blocked
+let activityDbUnavailable = false;
+
 // Initialize activity-related stores in existing database
 async function initializeActivityStores() {
     const dbName = 'MemoryBoardHelperDB';
     const currentVersion = 4; // Increment from version 3 to 4
+    console.log('[ActivityStorage] Opening DB', dbName, 'v', currentVersion);
 
-    return new Promise((resolve, reject) => {
+    const openPromise = new Promise((resolve, reject) => {
         const request = indexedDB.open(dbName, currentVersion);
 
         request.onerror = () => {
@@ -60,13 +64,32 @@ async function initializeActivityStores() {
                 console.log('[ActivityStorage] Created activityGoals store');
             }
         };
+
+        request.onblocked = () => {
+            console.warn('[ActivityStorage] Database open blocked by another tab/session');
+        };
+    });
+
+    // Prevent indefinite hangs: timeout after 6s
+    return Promise.race([
+        openPromise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error('IndexedDB open timeout (6s)')), 6000))
+    ]).catch((err) => {
+        activityDbUnavailable = true;
+        console.warn('[ActivityStorage] IndexedDB unavailable, fallback to empty results:', err);
+        return null;
     });
 }
 
 // Save activity to database
 async function saveActivity(activityData) {
     try {
+        if (activityDbUnavailable) {
+            console.warn('[ActivityStorage] DB unavailable, skipping saveActivity');
+            return null;
+        }
         const db = await initializeActivityStores();
+        if (!db) return null;
         const transaction = db.transaction([ACTIVITY_STORES.ACTIVITIES], 'readwrite');
         const store = transaction.objectStore(ACTIVITY_STORES.ACTIVITIES);
         
@@ -100,7 +123,9 @@ async function saveActivity(activityData) {
 // Get activity by ID
 async function getActivity(activityId) {
     try {
+        if (activityDbUnavailable) return null;
         const db = await initializeActivityStores();
+        if (!db) return null;
         const transaction = db.transaction([ACTIVITY_STORES.ACTIVITIES], 'readonly');
         const store = transaction.objectStore(ACTIVITY_STORES.ACTIVITIES);
         const request = store.get(activityId);
@@ -118,7 +143,9 @@ async function getActivity(activityId) {
 // Get all activities
 async function getAllActivities() {
     try {
+        if (activityDbUnavailable) return [];
         const db = await initializeActivityStores();
+        if (!db) return [];
         const transaction = db.transaction([ACTIVITY_STORES.ACTIVITIES], 'readonly');
         const store = transaction.objectStore(ACTIVITY_STORES.ACTIVITIES);
         const request = store.getAll();
@@ -169,7 +196,9 @@ async function getLastActivities(count = 10) {
 // Update daily stats
 async function updateDailyStats(date, activity) {
     try {
+        if (activityDbUnavailable) return null;
         const db = await initializeActivityStores();
+        if (!db) return null;
         const transaction = db.transaction([ACTIVITY_STORES.DAILY_STATS], 'readwrite');
         const store = transaction.objectStore(ACTIVITY_STORES.DAILY_STATS);
         
@@ -184,14 +213,39 @@ async function updateDailyStats(date, activity) {
                     totalDistance: 0,
                     totalCalories: 0,
                     totalDuration: 0,
+                    totalElevationGain: 0,
+                    totalElevationLoss: 0,
+                    maxAltitude: null,
+                    minAltitude: null,
                     activities: []
                 };
+
+                // Ensure new altitude fields exist for legacy entries
+                stats.totalElevationGain = stats.totalElevationGain ?? 0;
+                stats.totalElevationLoss = stats.totalElevationLoss ?? 0;
+                stats.maxAltitude = stats.maxAltitude ?? null;
+                stats.minAltitude = stats.minAltitude ?? null;
                 
                 // Add new activity data
                 stats.totalSteps += activity.steps || 0;
                 stats.totalDistance += activity.distance || 0;
                 stats.totalCalories += activity.calories || 0;
                 stats.totalDuration += activity.duration || 0;
+                stats.totalElevationGain += activity.elevationGain || 0;
+                stats.totalElevationLoss += activity.elevationLoss || 0;
+
+                if (activity.maxAltitude !== null && activity.maxAltitude !== undefined) {
+                    stats.maxAltitude = stats.maxAltitude === null
+                        ? activity.maxAltitude
+                        : Math.max(stats.maxAltitude, activity.maxAltitude);
+                }
+
+                if (activity.minAltitude !== null && activity.minAltitude !== undefined) {
+                    stats.minAltitude = stats.minAltitude === null
+                        ? activity.minAltitude
+                        : Math.min(stats.minAltitude, activity.minAltitude);
+                }
+
                 stats.activities.push(activity.id || Date.now());
                 
                 // Save updated stats
@@ -213,7 +267,9 @@ async function updateDailyStats(date, activity) {
 // Get daily stats for a specific date
 async function getDailyStats(date) {
     try {
+        if (activityDbUnavailable) return null;
         const db = await initializeActivityStores();
+        if (!db) return null;
         const transaction = db.transaction([ACTIVITY_STORES.DAILY_STATS], 'readonly');
         const store = transaction.objectStore(ACTIVITY_STORES.DAILY_STATS);
         const request = store.get(date);
@@ -231,7 +287,9 @@ async function getDailyStats(date) {
 // Get stats for date range
 async function getStatsForDateRange(startDate, endDate) {
     try {
+        if (activityDbUnavailable) return [];
         const db = await initializeActivityStores();
+        if (!db) return [];
         const transaction = db.transaction([ACTIVITY_STORES.DAILY_STATS], 'readonly');
         const store = transaction.objectStore(ACTIVITY_STORES.DAILY_STATS);
         const index = store.index('date');
@@ -251,7 +309,9 @@ async function getStatsForDateRange(startDate, endDate) {
 // Save/update activity goal
 async function saveActivityGoal(goalData) {
     try {
+        if (activityDbUnavailable) return null;
         const db = await initializeActivityStores();
+        if (!db) return null;
         const transaction = db.transaction([ACTIVITY_STORES.ACTIVITY_GOALS], 'readwrite');
         const store = transaction.objectStore(ACTIVITY_STORES.ACTIVITY_GOALS);
         
@@ -273,7 +333,9 @@ async function saveActivityGoal(goalData) {
 // Get all activity goals
 async function getActivityGoals() {
     try {
+        if (activityDbUnavailable) return [];
         const db = await initializeActivityStores();
+        if (!db) return [];
         const transaction = db.transaction([ACTIVITY_STORES.ACTIVITY_GOALS], 'readonly');
         const store = transaction.objectStore(ACTIVITY_STORES.ACTIVITY_GOALS);
         const request = store.getAll();
@@ -345,6 +407,14 @@ async function clearAllActivities() {
 // Export all activities as JSON
 async function exportActivitiesData() {
     try {
+        if (activityDbUnavailable) {
+            return {
+                exportDate: new Date().toISOString(),
+                totalActivities: 0,
+                activities: [],
+                dailyStats: []
+            };
+        }
         const activities = await getAllActivities();
         const stats = await getStatsForDateRange('2000-01-01', '2099-12-31');
         
@@ -373,4 +443,5 @@ window.getDailyStats = getDailyStats;
 window.getActivityGoals = getActivityGoals;
 window.updateActivityGoal = updateActivityGoal;
 window.exportActivitiesData = exportActivitiesData;
+window.initializeActivityStores = initializeActivityStores;
 

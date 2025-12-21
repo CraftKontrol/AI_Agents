@@ -9,6 +9,7 @@ class ActivityTracker {
         this.stepCount = 0;
         this.startTime = null;
         this.lastPosition = null;
+        this.lastAltitude = null;
         this.watchId = null;
         this.stepInterval = null;
         this.updateInterval = null;
@@ -79,8 +80,14 @@ class ActivityTracker {
             calories: 0,
             avgPace: 0,
             maxSpeed: 0,
-            gpsPath: []
+            gpsPath: [],
+            elevationGain: 0,
+            elevationLoss: 0,
+            minAltitude: null,
+            maxAltitude: null
         };
+
+        this.lastAltitude = null;
         
         // Start GPS tracking
         if ('geolocation' in navigator) {
@@ -141,6 +148,8 @@ class ActivityTracker {
         this.currentActivity.calories = this.calculateCalories();
         this.currentActivity.avgPace = this.calculateAvgPace();
         this.currentActivity.maxSpeed = Math.max(...this.speedHistory, 0);
+        this.currentActivity.elevationGain = Math.round(this.currentActivity.elevationGain);
+        this.currentActivity.elevationLoss = Math.round(this.currentActivity.elevationLoss);
         
         // Save to database
         const activityId = await saveActivity(this.currentActivity);
@@ -191,6 +200,31 @@ class ActivityTracker {
         };
         
         this.gpsPath.push(point);
+
+        // Track altitude metrics when altitude is available
+        if (point.altitude !== null) {
+            if (this.lastAltitude !== null) {
+                const delta = point.altitude - this.lastAltitude;
+                // Filter noise under 0.5m to avoid jitter
+                if (Math.abs(delta) >= 0.5) {
+                    if (delta > 0) {
+                        this.currentActivity.elevationGain += delta;
+                    } else {
+                        this.currentActivity.elevationLoss += Math.abs(delta);
+                    }
+                }
+            }
+
+            this.lastAltitude = point.altitude;
+
+            this.currentActivity.minAltitude = this.currentActivity.minAltitude === null
+                ? point.altitude
+                : Math.min(this.currentActivity.minAltitude, point.altitude);
+
+            this.currentActivity.maxAltitude = this.currentActivity.maxAltitude === null
+                ? point.altitude
+                : Math.max(this.currentActivity.maxAltitude, point.altitude);
+        }
         
         // Track speed for activity detection
         if (point.speed !== null) {
@@ -296,7 +330,8 @@ class ActivityTracker {
                         duration,
                         distance,
                         steps: this.stepCount,
-                        speed: this.lastPosition?.speed ? (this.lastPosition.speed * 3.6).toFixed(1) : 0
+                        speed: this.lastPosition?.speed ? (this.lastPosition.speed * 3.6).toFixed(1) : 0,
+                        altitude: this.lastAltitude
                     }
                 }));
             }
@@ -443,7 +478,8 @@ class ActivityTracker {
             gpsPath: this.gpsPath,
             stepCount: this.stepCount,
             startTime: this.startTime,
-            activityType: this.activityType
+            activityType: this.activityType,
+            lastAltitude: this.lastAltitude
         };
         
         localStorage.setItem('activityTrackerState', JSON.stringify(state));
@@ -465,6 +501,15 @@ class ActivityTracker {
             this.stepCount = state.stepCount || 0;
             this.startTime = state.startTime;
             this.activityType = state.activityType || 'walk';
+            this.lastAltitude = state.lastAltitude || null;
+
+            // Ensure altitude fields exist after restore
+            if (this.currentActivity) {
+                this.currentActivity.elevationGain = this.currentActivity.elevationGain || 0;
+                this.currentActivity.elevationLoss = this.currentActivity.elevationLoss || 0;
+                this.currentActivity.minAltitude = this.currentActivity.minAltitude ?? null;
+                this.currentActivity.maxAltitude = this.currentActivity.maxAltitude ?? null;
+            }
             
             // Resume tracking
             if (this.isTracking) {

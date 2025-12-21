@@ -35,7 +35,7 @@
 **Modules:**
 - `storage.js` - IndexedDB CRUD
 - `activity-storage.js` - Activity tracking IndexedDB operations (NEW)
-- `activity-tracker.js` - Step counting, GPS tracking, sensor integration (NEW)
+- `activity-tracker.js` - Step counting, GPS tracking, altitude gain/loss tracking, sensor integration (NEW)
 - `activity-stats.js` - Statistics calculation & aggregation (NEW)
 - `activity-ui.js` - Activity dashboard, path viewer, stats modal (NEW)
 - `task-manager.js` - Task operations (max 5 display)
@@ -198,6 +198,8 @@ The app uses **multiple prompts** for different intents:
     calories,
     avgPace, // min/km
     maxSpeed, // km/h
+    elevationGain, elevationLoss, // meters
+    minAltitude, maxAltitude, // meters
     gpsPath: [
         {lat, lng, timestamp, altitude, speed, accuracy}
     ]
@@ -212,6 +214,9 @@ The app uses **multiple prompts** for different intents:
     totalDistance, // meters
     totalCalories,
     totalDuration, // seconds
+    totalElevationGain, // meters
+    totalElevationLoss, // meters
+    maxAltitude, minAltitude, // meters
     activities: [activityIds]
 }
 ```
@@ -841,6 +846,7 @@ OpenStreetMap: https://www.openstreetmap.org/directions?to={lat},{lng}
 - **API**: `navigator.geolocation.watchPosition()`
 - **High accuracy mode**: enabled
 - **Path points**: `{lat, lng, timestamp, altitude, speed, accuracy}`
+- **Elevation metrics**: cumulative gain/loss with 0.5m noise filter, min/max altitude per session
 - **Update frequency**: 5 seconds
 
 **Activity Detection:**

@@ -119,6 +119,9 @@ class ActivityUI {
         const distanceKm = (activity.distance / 1000).toFixed(2);
         const steps = activity.steps || 0;
         const calories = Math.round(activity.calories || 0);
+        const altitude = Number.isFinite(activityTracker.lastAltitude)
+            ? Math.round(activityTracker.lastAltitude)
+            : null;
         
         const trackingInfo = document.getElementById('trackingInfo');
         if (trackingInfo) {
@@ -126,7 +129,7 @@ class ActivityUI {
                 ⏱️ ${durationStr} | 
                 📍 ${distanceKm} km | 
                 👣 ${steps} pas | 
-                🔥 ${calories} kcal
+                🔥 ${calories} kcal${altitude !== null ? ` | ⛰️ ${altitude} m` : ''}
             `;
         }
     }
@@ -219,6 +222,8 @@ class ActivityUI {
                 calories: 'Calories',
                 pace: 'Allure',
                 speed: 'Vitesse max',
+                elevation: 'Dénivelé +',
+                altitude: 'Altitude min/max',
                 close: 'Fermer'
             },
             en: {
@@ -230,6 +235,8 @@ class ActivityUI {
                 calories: 'Calories',
                 pace: 'Pace',
                 speed: 'Max Speed',
+                elevation: 'Elevation Gain',
+                altitude: 'Min/Max Altitude',
                 close: 'Close'
             },
             it: {
@@ -241,6 +248,8 @@ class ActivityUI {
                 calories: 'Calorie',
                 pace: 'Andatura',
                 speed: 'Velocità max',
+                elevation: 'Dislivello +',
+                altitude: 'Altitudine min/max',
                 close: 'Chiudi'
             }
         };
@@ -277,6 +286,14 @@ class ActivityUI {
                     <span class="summary-label">${lang.speed}</span>
                     <span class="summary-value">${activity.maxSpeed.toFixed(1)} km/h</span>
                 </div>
+                <div class="summary-item">
+                    <span class="summary-label">${lang.elevation}</span>
+                    <span class="summary-value">${Math.round(activity.elevationGain || 0)} m</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">${lang.altitude}</span>
+                    <span class="summary-value">${activity.minAltitude !== null && activity.maxAltitude !== null ? `${Math.round(activity.minAltitude)} / ${Math.round(activity.maxAltitude)} m` : 'N/A'}</span>
+                </div>
             </div>
             <button class="btn-primary" onclick="activityUI.closeSummaryModal()">${lang.close}</button>
         `;
@@ -305,26 +322,87 @@ class ActivityUI {
     
     // Show path viewer with OpenStreetMap
     async showPathViewer() {
-        const activities = await getLastActivities(10);
-        
-        if (activities.length === 0) {
-            alert('No activities to display');
-            return;
+        try {
+            console.log('[ActivityUI] showPathViewer: start');
+            if (typeof getLastActivities !== 'function') {
+                showError?.('Impossible de charger les parcours (stockage non initialisé)');
+                console.error('[ActivityUI] getLastActivities is not available');
+                return;
+            }
+
+            // Ensure DB stores are initialized to avoid hangs on first access
+            if (typeof initializeActivityStores === 'function') {
+                console.log('[ActivityUI] showPathViewer: initializing activity stores');
+                let initFailed = false;
+                try {
+                    await Promise.race([
+                        initializeActivityStores(),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('initializeActivityStores timeout (6s)')), 6000))
+                    ]);
+                } catch (initErr) {
+                    initFailed = true;
+                    console.warn('[ActivityUI] showPathViewer: init stores timeout, will continue anyway', initErr);
+                }
+
+                // Fire-and-forget second attempt without blocking, in case the first timed out but continues
+                if (initFailed) {
+                    try {
+                        initializeActivityStores();
+                    } catch (e) {
+                        console.warn('[ActivityUI] showPathViewer: background init failed', e);
+                    }
+                }
+            }
+
+            console.log('[ActivityUI] showPathViewer: calling getLastActivities...');
+            // Safety timeout to surface stalled IndexedDB requests
+            const activities = await Promise.race([
+                getLastActivities(10),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('getLastActivities timeout (8s)')), 8000))
+            ]);
+            console.log('[ActivityUI] showPathViewer: activities loaded');
+
+            const withGps = (activities || []).filter(a => Array.isArray(a.gpsPath) && a.gpsPath.length > 0);
+            console.log('[ActivityUI] showPathViewer: fetched activities', {
+                total: activities?.length || 0,
+                withGps: withGps.length
+            });
+            
+            if (!activities || activities.length === 0) {
+                showError?.('Aucune activité enregistrée pour afficher un parcours');
+                return;
+            }
+
+            if (withGps.length === 0) {
+                showError?.('Aucune activité avec trace GPS disponible');
+                return;
+            }
+
+            const modal = document.getElementById('pathViewerModal') || this.createPathViewerModal();
+            modal.style.display = 'flex';
+            console.log('[ActivityUI] showPathViewer: modal ready');
+            
+            // Initialize map if not already done
+            if (!this.isMapInitialized) {
+                await this.initializeMap();
+                if (!this.isMapInitialized) {
+                    showError?.('Carte indisponible (Leaflet non chargé)');
+                    return;
+                }
+            }
+            console.log('[ActivityUI] showPathViewer: map initialized');
+            
+            // Display activity list (only those with GPS paths)
+            this.displayActivityList(withGps);
+            console.log('[ActivityUI] showPathViewer: list displayed');
+            
+            // Display first activity by default
+            this.displayActivityPath(withGps[0]);
+            console.log('[ActivityUI] showPathViewer: first path rendered');
+        } catch (error) {
+            console.error('[ActivityUI] showPathViewer failed:', error);
+            showError?.('Impossible d\'afficher les parcours');
         }
-        
-        const modal = document.getElementById('pathViewerModal') || this.createPathViewerModal();
-        modal.style.display = 'flex';
-        
-        // Initialize map if not already done
-        if (!this.isMapInitialized) {
-            await this.initializeMap();
-        }
-        
-        // Display activity list
-        this.displayActivityList(activities);
-        
-        // Display first activity by default
-        this.displayActivityPath(activities[0]);
     }
     
     // Initialize Leaflet map
@@ -431,6 +509,8 @@ class ActivityUI {
             <p><strong>Duration:</strong> ${activityStats.formatDuration(activity.duration)}</p>
             <p><strong>Steps:</strong> ${activity.steps.toLocaleString()}</p>
             <p><strong>Calories:</strong> ${activity.calories} kcal</p>
+            <p><strong>Elevation Gain:</strong> ${Math.round(activity.elevationGain || 0)} m</p>
+            <p><strong>Altitude:</strong> ${activity.minAltitude !== null && activity.maxAltitude !== null ? `${Math.round(activity.minAltitude)} – ${Math.round(activity.maxAltitude)} m` : 'N/A'}</p>
         `;
     }
     
@@ -441,6 +521,11 @@ class ActivityUI {
         
         listContainer.innerHTML = '';
         
+        if (!activities || activities.length === 0) {
+            listContainer.innerHTML = '<p class="empty-state">Aucun parcours GPS disponible.</p>';
+            return;
+        }
+
         activities.forEach((activity, index) => {
             const item = document.createElement('div');
             item.className = 'activity-list-item';
@@ -558,6 +643,10 @@ class ActivityUI {
                 <span>Duration:</span>
                 <span>${activityStats.formatDuration(stats.totalDuration || 0)}</span>
             </div>
+            <div class="stat-row">
+                <span>Elevation Gain:</span>
+                <span>${Math.round(stats.totalElevationGain || 0)} m</span>
+            </div>
         `;
     }
     
@@ -595,6 +684,10 @@ class ActivityUI {
             <div class="stat-row">
                 <span>Fastest Pace:</span>
                 <span>${activityStats.formatPace(bests.fastestPace.value)}</span>
+            </div>
+            <div class="stat-row">
+                <span>Most Elevation Gain:</span>
+                <span>${Math.round(bests.mostElevationGain.value || 0)} m</span>
             </div>
         `;
     }
