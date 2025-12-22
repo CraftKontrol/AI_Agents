@@ -800,6 +800,14 @@ async function processWithMistral(userMessage, conversationHistory = []) {
             return 'chat';
         }
         
+        // 🔴 GPS/NAVIGATION - Détection forte (PRIORITAIRE)
+        if (/(ouvre|open|apri|navigue|navigate|naviga).*(gps|coordonnées|coordinates|coordinate|lat|lng|latitude|longitude)/i.test(txt)) {
+            return 'task';
+        }
+        if (/\b(gps|coordonnées|coordinates)\b/i.test(txt)) {
+            return 'task';
+        }
+        
         // 🔴 TÂCHES/LISTES/NOTES - Détection forte
         if (/(rappelle|remind|ricorda|ajoute|add|aggiungi|crée|create|crea|supprime|efface|delete|cancella|complete|terminé|done|cherche|search|trouve|find|liste|list|nota|note|tâche|task|compito|n'oublie|don't forget|non dimenticare|modifie|change|déplace|move|update|annule|undo|défais|retour)/.test(txt)) {
             return 'task';

@@ -1,382 +1,514 @@
-// Activity Tracker Module - Core tracking logic for steps, GPS, and sessions
-// Handles sensor integration, pedometer, geolocation, and activity recording
+// Activity Tracker Module - SIMPLIFIED WALK-ONLY with Triple Verification
+// GPS + Gyroscope + Accelerometer step detection | 10 paths/day max | Midnight auto-reset
 
 class ActivityTracker {
     constructor() {
+        // Tracking state
         this.isTracking = false;
-        this.currentActivity = null;
+        this.currentPath = null;
+        this.todayPaths = [];
+        this.currentDate = null;
+        
+        // Sensor data
         this.gpsPath = [];
+        this.lastGpsPoint = null;
+        this.lastGyroReading = null;
+        this.lastAccelReading = null;
+        
+        // Step counting
         this.stepCount = 0;
-        this.startTime = null;
-        this.lastPosition = null;
+        this.lastStepTime = 0;
+        this.stepCooldown = 300; // ms between steps
+        
+        // Altitude tracking
         this.lastAltitude = null;
-        this.watchId = null;
-        this.stepInterval = null;
+        this.elevationGain = 0;
+        this.elevationLoss = 0;
+        
+        // Intervals
+        this.gpsWatchId = null;
+        this.sensorCheckInterval = null;
         this.updateInterval = null;
+        this.midnightCheckInterval = null;
         
-        // Pedometer support
-        this.pedometer = null;
-        this.isPedometerAvailable = false;
+        // Settings (defaults)
+        this.settings = {
+            gpsThreshold: 1.5,      // meters
+            gyroThreshold: 15,      // degrees
+            accelThreshold: 0.15,   // g-force
+            calorieMultiplier: 1.0  // 0.5x - 2x
+        };
         
-        // Activity type detection
-        this.activityType = 'walk';
-        this.speedHistory = [];
+        // Sensor availability
+        this.sensorsAvailable = {
+            gps: false,
+            gyroscope: false,
+            accelerometer: false
+        };
         
-        // Settings
-        this.updateFrequency = 5000; // 5 seconds
-        this.autoDetectActivity = true;
+        console.log('[ActivityTracker] Initialized - Walk-only mode with triple verification');
+    }
+    
+    // Initialize system
+    async initialize() {
+        console.log('[ActivityTracker] Starting initialization...');
         
-        console.log('[ActivityTracker] Initialized');
+        // Load settings
+        await this.loadSettings();
+        
+        // Check current date
+        this.currentDate = new Date().toISOString().split('T')[0];
+        
+        // Load today's paths
+        await this.loadTodayPaths();
+        
+        // Check sensor availability
+        await this.checkSensorAvailability();
+        
+        // Start midnight check
+        this.startMidnightCheck();
+        
+        // Auto-start tracking
+        await this.startTracking();
+        
+        console.log('[ActivityTracker] Initialization complete');
+    }
+    
+    // Load settings from storage
+    async loadSettings() {
+        try {
+            const stored = localStorage.getItem('activitySettings');
+            if (stored) {
+                this.settings = { ...this.settings, ...JSON.parse(stored) };
+                console.log('[ActivityTracker] Settings loaded:', this.settings);
+            }
+        } catch (error) {
+            console.error('[ActivityTracker] Error loading settings:', error);
+        }
+    }
+    
+    // Save settings
+    async saveSettings(newSettings) {
+        this.settings = { ...this.settings, ...newSettings };
+        localStorage.setItem('activitySettings', JSON.stringify(this.settings));
+        console.log('[ActivityTracker] Settings saved:', this.settings);
+    }
+    
+    // Load today's paths from IndexedDB
+    async loadTodayPaths() {
+        try {
+            const today = this.currentDate;
+            const allPaths = await getAllActivities();
+            this.todayPaths = allPaths.filter(p => p.date === today);
+            console.log(`[ActivityTracker] Loaded ${this.todayPaths.length} paths for today`);
+        } catch (error) {
+            console.error('[ActivityTracker] Error loading paths:', error);
+            this.todayPaths = [];
+        }
     }
     
     // Check sensor availability
     async checkSensorAvailability() {
-        const available = {
-            geolocation: 'geolocation' in navigator,
-            pedometer: false,
-            accelerometer: false
-        };
+        // GPS
+        this.sensorsAvailable.gps = 'geolocation' in navigator;
         
-        // Check for Pedometer API (Android WebView)
-        if (window.CKGenericApp && typeof window.CKGenericApp.getPedometer === 'function') {
-            available.pedometer = true;
-            this.isPedometerAvailable = true;
-            console.log('[ActivityTracker] Pedometer API available');
+        // CKGenericApp bridge sensors
+        if (window.CKAndroid && typeof window.CKAndroid.startSensors === 'function') {
+            try {
+                window.CKAndroid.startSensors();
+                this.sensorsAvailable.gyroscope = true;
+                this.sensorsAvailable.accelerometer = true;
+                console.log('[ActivityTracker] CKAndroid sensors started');
+            } catch (error) {
+                console.warn('[ActivityTracker] CKAndroid sensors unavailable:', error);
+            }
         }
         
-        // Check for Generic Sensor API
-        if ('Accelerometer' in window) {
-            available.accelerometer = true;
-            console.log('[ActivityTracker] Accelerometer available');
-        }
-        
-        console.log('[ActivityTracker] Sensor availability:', available);
-        return available;
+        console.log('[ActivityTracker] Sensors available:', this.sensorsAvailable);
     }
     
-    // Start activity tracking
-    async startTracking(activityType = 'walk') {
+    // Start tracking
+    async startTracking() {
         if (this.isTracking) {
             console.warn('[ActivityTracker] Already tracking');
             return false;
         }
         
-        console.log('[ActivityTracker] Starting tracking:', activityType);
+        console.log('[ActivityTracker] Starting tracking...');
         
-        this.activityType = activityType;
         this.isTracking = true;
-        this.startTime = Date.now();
-        this.stepCount = 0;
-        this.gpsPath = [];
-        this.speedHistory = [];
+        const now = new Date();
         
-        this.currentActivity = {
-            type: activityType,
-            startTime: new Date().toISOString(),
+        // Create new path
+        this.currentPath = {
+            date: this.currentDate,
+            startTime: now.toISOString(),
             endTime: null,
             duration: 0,
-            distance: 0,
             steps: 0,
+            distance: 0,
             calories: 0,
-            avgPace: 0,
-            maxSpeed: 0,
-            gpsPath: [],
             elevationGain: 0,
             elevationLoss: 0,
             minAltitude: null,
-            maxAltitude: null
+            maxAltitude: null,
+            gpsPath: []
         };
-
+        
+        // Reset tracking data
+        this.gpsPath = [];
+        this.stepCount = 0;
+        this.lastStepTime = 0;
+        this.lastGpsPoint = null;
+        this.lastGyroReading = null;
+        this.lastAccelReading = null;
         this.lastAltitude = null;
+        this.elevationGain = 0;
+        this.elevationLoss = 0;
         
         // Start GPS tracking
-        if ('geolocation' in navigator) {
+        if (this.sensorsAvailable.gps) {
             this.startGPSTracking();
         }
         
-        // Start step counting
-        this.startStepCounting();
+        // Start sensor monitoring
+        this.startSensorMonitoring();
         
         // Start update loop
         this.startUpdateLoop();
         
         // Dispatch event
         window.dispatchEvent(new CustomEvent('activityStarted', {
-            detail: { type: activityType, startTime: this.startTime }
+            detail: { startTime: this.currentPath.startTime }
         }));
         
         return true;
     }
     
-    // Stop activity tracking
+    // Stop tracking
     async stopTracking() {
         if (!this.isTracking) {
             console.warn('[ActivityTracker] Not tracking');
             return null;
         }
         
-        console.log('[ActivityTracker] Stopping tracking');
+        console.log('[ActivityTracker] Stopping tracking...');
         
         this.isTracking = false;
-        const endTime = Date.now();
-        const duration = Math.floor((endTime - this.startTime) / 1000); // seconds
         
         // Stop GPS
-        if (this.watchId !== null) {
-            navigator.geolocation.clearWatch(this.watchId);
-            this.watchId = null;
+        if (this.gpsWatchId !== null) {
+            navigator.geolocation.clearWatch(this.gpsWatchId);
+            this.gpsWatchId = null;
         }
         
-        // Stop step counting
-        if (this.stepInterval) {
-            clearInterval(this.stepInterval);
-            this.stepInterval = null;
+        // Stop intervals
+        if (this.sensorCheckInterval) {
+            clearInterval(this.sensorCheckInterval);
+            this.sensorCheckInterval = null;
         }
         
-        // Stop update loop
         if (this.updateInterval) {
             clearInterval(this.updateInterval);
             this.updateInterval = null;
         }
         
-        // Calculate final stats
-        this.currentActivity.endTime = new Date().toISOString();
-        this.currentActivity.duration = duration;
-        this.currentActivity.steps = this.stepCount;
-        this.currentActivity.gpsPath = this.gpsPath;
-        this.currentActivity.distance = this.calculateTotalDistance();
-        this.currentActivity.calories = this.calculateCalories();
-        this.currentActivity.avgPace = this.calculateAvgPace();
-        this.currentActivity.maxSpeed = Math.max(...this.speedHistory, 0);
-        this.currentActivity.elevationGain = Math.round(this.currentActivity.elevationGain);
-        this.currentActivity.elevationLoss = Math.round(this.currentActivity.elevationLoss);
+        // Finalize current path
+        const completedPath = await this.finalizePath();
         
-        // Save to database
-        const activityId = await saveActivity(this.currentActivity);
-        console.log('[ActivityTracker] Activity saved:', activityId);
+        // Clear current path
+        this.currentPath = null;
         
         // Dispatch event
         window.dispatchEvent(new CustomEvent('activityStopped', {
-            detail: this.currentActivity
+            detail: completedPath
         }));
         
-        const completedActivity = { ...this.currentActivity };
-        this.currentActivity = null;
+        return completedPath;
+    }
+    
+    // Reset path (save current, start new)
+    async resetPath() {
+        if (!this.isTracking) {
+            console.warn('[ActivityTracker] Not tracking, cannot reset');
+            return null;
+        }
         
-        return completedActivity;
+        console.log('[ActivityTracker] Resetting path (save + new)...');
+        
+        // Finalize and save current path
+        const savedPath = await this.finalizePath();
+        
+        // Start new path immediately
+        const now = new Date();
+        this.currentPath = {
+            date: this.currentDate,
+            startTime: now.toISOString(),
+            endTime: null,
+            duration: 0,
+            steps: 0,
+            distance: 0,
+            calories: 0,
+            elevationGain: 0,
+            elevationLoss: 0,
+            minAltitude: null,
+            maxAltitude: null,
+            gpsPath: []
+        };
+        
+        // Reset tracking data
+        this.gpsPath = [];
+        this.stepCount = 0;
+        this.lastStepTime = 0;
+        this.elevationGain = 0;
+        this.elevationLoss = 0;
+        
+        // Keep GPS and sensors running
+        console.log('[ActivityTracker] New path started');
+        
+        return savedPath;
+    }
+    
+    // Finalize and save path
+    async finalizePath() {
+        if (!this.currentPath) return null;
+        
+        const endTime = new Date();
+        const startTime = new Date(this.currentPath.startTime);
+        const durationSeconds = Math.floor((endTime - startTime) / 1000);
+        
+        // Update path with final stats
+        this.currentPath.endTime = endTime.toISOString();
+        this.currentPath.duration = durationSeconds;
+        this.currentPath.steps = this.stepCount;
+        this.currentPath.distance = this.calculateTotalDistance();
+        this.currentPath.calories = this.calculateCalories(durationSeconds);
+        this.currentPath.elevationGain = Math.round(this.elevationGain);
+        this.currentPath.elevationLoss = Math.round(this.elevationLoss);
+        this.currentPath.gpsPath = this.gpsPath;
+        
+        // Save to storage
+        try {
+            const pathId = await saveActivity(this.currentPath);
+            console.log('[ActivityTracker] Path saved:', pathId);
+            
+            // Add to today's paths
+            this.todayPaths.push({ ...this.currentPath, id: pathId });
+            
+            // Enforce 10-path limit
+            await this.enforcePathLimit();
+            
+            return this.currentPath;
+        } catch (error) {
+            console.error('[ActivityTracker] Error saving path:', error);
+            return this.currentPath;
+        }
+    }
+    
+    // Enforce 10-path limit per day
+    async enforcePathLimit() {
+        if (this.todayPaths.length <= 10) return;
+        
+        console.log(`[ActivityTracker] Enforcing 10-path limit (current: ${this.todayPaths.length})`);
+        
+        // Sort by startTime (oldest first)
+        this.todayPaths.sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+        
+        // Delete oldest paths beyond 10
+        const toDelete = this.todayPaths.slice(0, this.todayPaths.length - 10);
+        
+        for (const path of toDelete) {
+            try {
+                await deleteActivity(path.id);
+                console.log('[ActivityTracker] Deleted old path:', path.id);
+            } catch (error) {
+                console.error('[ActivityTracker] Error deleting path:', error);
+            }
+        }
+        
+        // Keep only last 10
+        this.todayPaths = this.todayPaths.slice(-10);
     }
     
     // Start GPS tracking
     startGPSTracking() {
-        if (!('geolocation' in navigator)) {
-            console.error('[ActivityTracker] Geolocation not available');
-            return;
-        }
-        
         const options = {
             enableHighAccuracy: true,
             timeout: 10000,
             maximumAge: 0
         };
         
-        this.watchId = navigator.geolocation.watchPosition(
+        this.gpsWatchId = navigator.geolocation.watchPosition(
             (position) => this.handleGPSUpdate(position),
-            (error) => this.handleGPSError(error),
+            (error) => console.error('[ActivityTracker] GPS error:', error),
             options
         );
         
         console.log('[ActivityTracker] GPS tracking started');
     }
-
-    // Ingest position updates coming from CKGenericApp/CKAndroid bridge
-    // (native side can dispatch custom events or call the exposed functions below)
-    ingestExternalPosition(data) {
-        if (!this.isTracking) return;
-
-        if (!data || typeof data.lat !== 'number' || typeof data.lng !== 'number') {
-            console.warn('[ActivityTracker] Ignoring external position (invalid payload)', data);
-            return;
-        }
-
-        const coords = {
-            latitude: data.lat,
-            longitude: data.lng,
-            altitude: typeof data.altitude === 'number' ? data.altitude : null,
-            speed: typeof data.speed === 'number' ? data.speed : null,
-            accuracy: typeof data.accuracy === 'number' ? data.accuracy : null
-        };
-
-        this.handleGPSUpdate({ coords });
-    }
     
-    // Handle GPS position update
+    // Handle GPS update
     handleGPSUpdate(position) {
         const point = {
             lat: position.coords.latitude,
             lng: position.coords.longitude,
-            timestamp: Date.now(),
             altitude: position.coords.altitude || null,
-            speed: position.coords.speed || null,
+            timestamp: Date.now(),
             accuracy: position.coords.accuracy
         };
         
         this.gpsPath.push(point);
-
-        // Track altitude metrics when altitude is available
+        this.lastGpsPoint = point;
+        
+        // Track altitude
         if (point.altitude !== null) {
             if (this.lastAltitude !== null) {
                 const delta = point.altitude - this.lastAltitude;
-                // Filter noise under 0.5m to avoid jitter
                 if (Math.abs(delta) >= 0.5) {
                     if (delta > 0) {
-                        this.currentActivity.elevationGain += delta;
+                        this.elevationGain += delta;
                     } else {
-                        this.currentActivity.elevationLoss += Math.abs(delta);
+                        this.elevationLoss += Math.abs(delta);
                     }
                 }
             }
-
-            this.lastAltitude = point.altitude;
-
-            this.currentActivity.minAltitude = this.currentActivity.minAltitude === null
-                ? point.altitude
-                : Math.min(this.currentActivity.minAltitude, point.altitude);
-
-            this.currentActivity.maxAltitude = this.currentActivity.maxAltitude === null
-                ? point.altitude
-                : Math.max(this.currentActivity.maxAltitude, point.altitude);
-        }
-        
-        // Track speed for activity detection
-        if (point.speed !== null) {
-            this.speedHistory.push(point.speed * 3.6); // Convert m/s to km/h
             
-            // Auto-detect activity type based on speed
-            if (this.autoDetectActivity) {
-                this.detectActivityType();
+            this.lastAltitude = point.altitude;
+            
+            // Update min/max altitude
+            if (this.currentPath) {
+                this.currentPath.minAltitude = this.currentPath.minAltitude === null
+                    ? point.altitude
+                    : Math.min(this.currentPath.minAltitude, point.altitude);
+                
+                this.currentPath.maxAltitude = this.currentPath.maxAltitude === null
+                    ? point.altitude
+                    : Math.max(this.currentPath.maxAltitude, point.altitude);
             }
         }
-        
-        // Update last position
-        this.lastPosition = point;
-        
-        console.log('[ActivityTracker] GPS point recorded:', point);
         
         // Dispatch event
         window.dispatchEvent(new CustomEvent('gpsUpdated', { detail: point }));
     }
     
-    // Handle GPS error
-    handleGPSError(error) {
-        console.error('[ActivityTracker] GPS error:', error.message);
+    // Start sensor monitoring (10Hz = 0.1s)
+    startSensorMonitoring() {
+        this.sensorCheckInterval = setInterval(() => {
+            this.checkTripleVerification();
+        }, 100); // 0.1 second = 10Hz
         
-        if (error.code === error.PERMISSION_DENIED) {
-            alert('GPS permission denied. Please enable location access.');
-        }
+        console.log('[ActivityTracker] Sensor monitoring started (10Hz)');
     }
     
-    // Auto-detect activity type based on speed
-    detectActivityType() {
-        if (this.speedHistory.length < 5) return;
+    // Listen for sensor events from CKAndroid bridge
+    initSensorListeners() {
+        window.addEventListener('ckgenericapp_accelerometer', (event) => {
+            this.lastAccelReading = event.detail;
+        });
         
-        // Calculate average speed from last 5 points
-        const recentSpeeds = this.speedHistory.slice(-5);
-        const avgSpeed = recentSpeeds.reduce((a, b) => a + b, 0) / recentSpeeds.length;
-        
-        let detectedType = 'walk';
-        
-        if (avgSpeed < 3) {
-            detectedType = 'walk';
-        } else if (avgSpeed >= 3 && avgSpeed < 12) {
-            detectedType = 'run';
-        } else if (avgSpeed >= 12) {
-            detectedType = 'bike';
-        }
-        
-        if (detectedType !== this.activityType) {
-            console.log('[ActivityTracker] Activity type changed:', this.activityType, '->', detectedType);
-            this.activityType = detectedType;
-            if (this.currentActivity) {
-                this.currentActivity.type = detectedType;
-            }
-        }
+        window.addEventListener('ckgenericapp_gyroscope', (event) => {
+            this.lastGyroReading = event.detail;
+        });
     }
     
-    // Start step counting
-    startStepCounting() {
-        // Try native pedometer first
-        if (this.isPedometerAvailable) {
-            this.startNativePedometer();
-        } else {
-            // Fallback to simulated step counting based on GPS
-            this.startSimulatedStepCounting();
-        }
-    }
-
-    // Inject step count coming from native bridge (CKGenericApp)
-    ingestExternalSteps(steps) {
+    // Triple verification step detection
+    checkTripleVerification() {
         if (!this.isTracking) return;
-        if (!Number.isFinite(steps)) {
-            console.warn('[ActivityTracker] Ignoring external steps (invalid payload)', steps);
-            return;
-        }
-
-        this.stepCount = Math.max(0, Math.round(steps));
-        if (this.currentActivity) {
-            this.currentActivity.steps = this.stepCount;
-        }
-    }
-    
-    // Native pedometer (Android WebView)
-    startNativePedometer() {
-        this.stepInterval = setInterval(() => {
-            if (window.CKGenericApp && typeof window.CKGenericApp.getPedometer === 'function') {
-                const steps = window.CKGenericApp.getPedometer();
-                this.stepCount = steps;
-                if (this.currentActivity) {
-                    this.currentActivity.steps = this.stepCount;
-                }
-            }
-        }, 1000);
         
-        console.log('[ActivityTracker] Native pedometer started');
-    }
-    
-    // Simulated step counting based on GPS distance
-    startSimulatedStepCounting() {
-        this.stepInterval = setInterval(() => {
-            if (this.gpsPath.length >= 2) {
-                const distance = this.calculateTotalDistance();
-                // Estimate steps: average stride length 0.75m
-                this.stepCount = Math.floor(distance / 0.75);
-                if (this.currentActivity) {
-                    this.currentActivity.steps = this.stepCount;
-                }
-            }
-        }, 2000);
+        const now = Date.now();
         
-        console.log('[ActivityTracker] Simulated step counting started');
+        // Cooldown check (prevent double counting)
+        if (now - this.lastStepTime < this.stepCooldown) return;
+        
+        // Check all three sensors
+        const gpsMovement = this.checkGPSMovement();
+        const gyroMovement = this.checkGyroMovement();
+        const accelMovement = this.checkAccelMovement();
+        
+        // Step counted ONLY if ALL 3 detect movement
+        if (gpsMovement && gyroMovement && accelMovement) {
+            this.stepCount++;
+            this.lastStepTime = now;
+            
+            if (this.currentPath) {
+                this.currentPath.steps = this.stepCount;
+            }
+        }
     }
     
-    // Start update loop
+    // Check GPS movement
+    checkGPSMovement() {
+        if (!this.sensorsAvailable.gps || !this.lastGpsPoint) return false;
+        if (this.gpsPath.length < 2) return false;
+        
+        const prevPoint = this.gpsPath[this.gpsPath.length - 2];
+        const currPoint = this.lastGpsPoint;
+        
+        const distance = this.calculateDistance(
+            prevPoint.lat, prevPoint.lng,
+            currPoint.lat, currPoint.lng
+        );
+        
+        return distance >= this.settings.gpsThreshold;
+    }
+    
+    // Check gyroscope movement
+    checkGyroMovement() {
+        if (!this.sensorsAvailable.gyroscope || !this.lastGyroReading) return false;
+        
+        const { x, y, z } = this.lastGyroReading;
+        const rotationMagnitude = Math.sqrt(x * x + y * y + z * z);
+        const rotationDegrees = rotationMagnitude * (180 / Math.PI);
+        
+        return rotationDegrees >= this.settings.gyroThreshold;
+    }
+    
+    // Check accelerometer movement
+    checkAccelMovement() {
+        if (!this.sensorsAvailable.accelerometer || !this.lastAccelReading) return false;
+        
+        const { x, y, z } = this.lastAccelReading;
+        const magnitude = Math.sqrt(x * x + y * y + z * z);
+        const force = Math.abs(magnitude - 9.8); // Remove gravity
+        
+        return force >= this.settings.accelThreshold;
+    }
+    
+    // Fallback: GPS-based step estimation
+    estimateStepsFromGPS() {
+        if (this.gpsPath.length < 2) return 0;
+        
+        const distance = this.calculateTotalDistance();
+        const strideLength = 0.75; // meters
+        return Math.floor(distance / strideLength);
+    }
+    
+    // Start update loop (5s)
     startUpdateLoop() {
         this.updateInterval = setInterval(() => {
-            if (this.isTracking) {
-                const duration = Math.floor((Date.now() - this.startTime) / 1000);
+            if (this.isTracking && this.currentPath) {
+                const startTime = new Date(this.currentPath.startTime);
+                const duration = Math.floor((Date.now() - startTime) / 1000);
                 const distance = this.calculateTotalDistance();
+                
+                // Use triple verification steps, fallback to GPS estimation
+                let steps = this.stepCount;
+                if (steps === 0 && !this.sensorsAvailable.gyroscope && !this.sensorsAvailable.accelerometer) {
+                    steps = this.estimateStepsFromGPS();
+                }
                 
                 // Dispatch progress event
                 window.dispatchEvent(new CustomEvent('activityProgress', {
                     detail: {
                         duration,
                         distance,
-                        steps: this.stepCount,
-                        speed: this.lastPosition?.speed ? (this.lastPosition.speed * 3.6).toFixed(1) : 0,
-                        altitude: this.lastAltitude
+                        steps,
+                        altitude: this.lastAltitude,
+                        elevationGain: this.elevationGain
                     }
                 }));
             }
-        }, this.updateFrequency);
+        }, 5000);
     }
     
     // Calculate total distance from GPS path
@@ -395,10 +527,10 @@ class ActivityTracker {
             totalDistance += dist;
         }
         
-        return totalDistance; // in meters
+        return totalDistance; // meters
     }
     
-    // Haversine formula for distance between two GPS points
+    // Haversine formula
     calculateDistance(lat1, lon1, lat2, lon2) {
         const R = 6371000; // Earth radius in meters
         const dLat = this.toRad(lat2 - lat1);
@@ -409,204 +541,120 @@ class ActivityTracker {
                   Math.sin(dLon / 2) * Math.sin(dLon / 2);
         
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        const distance = R * c;
-        
-        return distance;
+        return R * c;
     }
     
     toRad(deg) {
         return deg * (Math.PI / 180);
     }
     
-    // Calculate calories burned
-    calculateCalories() {
-        const durationMinutes = (Date.now() - this.startTime) / 60000;
-        const distanceKm = this.calculateTotalDistance() / 1000;
-        
-        // Basic MET (Metabolic Equivalent) calculation
-        let met = 3.5; // Walking
-        if (this.activityType === 'run') met = 7.0;
-        if (this.activityType === 'bike') met = 6.0;
-        
-        // Calories = MET * weight(kg) * time(hours)
-        // Assume average weight of 70kg
-        const weight = 70;
-        const calories = met * weight * (durationMinutes / 60);
-        
+    // Calculate calories (simplified MET for walking)
+    calculateCalories(durationSeconds) {
+        const met = 3.5; // Walking MET
+        const weight = 70; // Assumed weight in kg
+        const hours = durationSeconds / 3600;
+        const calories = met * weight * hours * this.settings.calorieMultiplier;
         return Math.round(calories);
     }
     
-    // Calculate average pace (min/km)
-    calculateAvgPace() {
-        const durationMinutes = (Date.now() - this.startTime) / 60000;
-        const distanceKm = this.calculateTotalDistance() / 1000;
-        
-        if (distanceKm === 0) return 0;
-        
-        return durationMinutes / distanceKm;
+    // Midnight check (runs every minute)
+    startMidnightCheck() {
+        this.midnightCheckInterval = setInterval(() => {
+            const today = new Date().toISOString().split('T')[0];
+            
+            if (today !== this.currentDate) {
+                console.log('[ActivityTracker] Day changed - executing midnight reset');
+                this.performMidnightReset();
+            }
+        }, 60000); // Check every minute
     }
     
-    // Get current tracking status
+    // Perform midnight reset
+    async performMidnightReset() {
+        const yesterday = this.currentDate;
+        console.log(`[ActivityTracker] Archiving ${yesterday}...`);
+        
+        // Calculate yesterday's totals
+        const totalSteps = this.todayPaths.reduce((sum, p) => sum + p.steps, 0);
+        const totalDistance = this.todayPaths.reduce((sum, p) => sum + p.distance, 0);
+        const totalDuration = this.todayPaths.reduce((sum, p) => sum + p.duration, 0);
+        const totalCalories = this.todayPaths.reduce((sum, p) => sum + p.calories, 0);
+        const totalElevationGain = this.todayPaths.reduce((sum, p) => sum + (p.elevationGain || 0), 0);
+        
+        // Create daily stats entry
+        const dailyStats = {
+            date: yesterday,
+            totalSteps,
+            totalDistance,
+            totalDuration,
+            totalCalories,
+            totalElevationGain,
+            pathCount: this.todayPaths.length,
+            pathIds: this.todayPaths.map(p => p.id)
+        };
+        
+        try {
+            await saveDailyStats(dailyStats);
+            console.log('[ActivityTracker] Daily stats archived:', dailyStats);
+        } catch (error) {
+            console.error('[ActivityTracker] Error archiving daily stats:', error);
+        }
+        
+        // Update current date
+        this.currentDate = new Date().toISOString().split('T')[0];
+        
+        // Clear today's paths
+        this.todayPaths = [];
+        
+        // If tracking, finalize current path and start new one
+        if (this.isTracking) {
+            await this.resetPath();
+        }
+        
+        console.log('[ActivityTracker] Midnight reset complete - fresh day started');
+    }
+    
+    // Get current status
     getStatus() {
         if (!this.isTracking) {
             return {
                 isTracking: false,
-                currentActivity: null
+                todayPathsCount: this.todayPaths.length
             };
         }
         
+        const startTime = new Date(this.currentPath.startTime);
+        const duration = Math.floor((Date.now() - startTime) / 1000);
+        
         return {
             isTracking: true,
-            currentActivity: {
-                type: this.activityType,
-                duration: Math.floor((Date.now() - this.startTime) / 1000),
+            currentPath: {
+                duration,
                 distance: this.calculateTotalDistance(),
                 steps: this.stepCount,
-                pathPoints: this.gpsPath.length
-            }
+                pathPoints: this.gpsPath.length,
+                elevationGain: this.elevationGain
+            },
+            todayPathsCount: this.todayPaths.length,
+            sensorsAvailable: this.sensorsAvailable
         };
-    }
-    
-    // Pause tracking
-    pauseTracking() {
-        if (!this.isTracking) return false;
-        
-        // Stop GPS
-        if (this.watchId !== null) {
-            navigator.geolocation.clearWatch(this.watchId);
-            this.watchId = null;
-        }
-        
-        // Stop intervals
-        if (this.stepInterval) {
-            clearInterval(this.stepInterval);
-            this.stepInterval = null;
-        }
-        
-        if (this.updateInterval) {
-            clearInterval(this.updateInterval);
-            this.updateInterval = null;
-        }
-        
-        console.log('[ActivityTracker] Tracking paused');
-        return true;
-    }
-    
-    // Resume tracking
-    resumeTracking() {
-        if (!this.isTracking) return false;
-        
-        // Restart GPS
-        this.startGPSTracking();
-        
-        // Restart step counting
-        this.startStepCounting();
-        
-        // Restart update loop
-        this.startUpdateLoop();
-        
-        console.log('[ActivityTracker] Tracking resumed');
-        return true;
-    }
-    
-    // Save current activity state to localStorage for persistence
-    saveActivityState() {
-        if (!this.isTracking || !this.currentActivity) return;
-        
-        const state = {
-            isTracking: this.isTracking,
-            currentActivity: this.currentActivity,
-            gpsPath: this.gpsPath,
-            stepCount: this.stepCount,
-            startTime: this.startTime,
-            activityType: this.activityType,
-            lastAltitude: this.lastAltitude
-        };
-        
-        localStorage.setItem('activityTrackerState', JSON.stringify(state));
-        console.log('[ActivityTracker] State saved to localStorage');
-    }
-    
-    // Restore activity state from localStorage
-    async restoreActivityState() {
-        try {
-            const savedState = localStorage.getItem('activityTrackerState');
-            if (!savedState) return false;
-            
-            const state = JSON.parse(savedState);
-            
-            // Restore state
-            this.isTracking = state.isTracking;
-            this.currentActivity = state.currentActivity;
-            this.gpsPath = state.gpsPath || [];
-            this.stepCount = state.stepCount || 0;
-            this.startTime = state.startTime;
-            this.activityType = state.activityType || 'walk';
-            this.lastAltitude = state.lastAltitude || null;
-
-            // Ensure altitude fields exist after restore
-            if (this.currentActivity) {
-                this.currentActivity.elevationGain = this.currentActivity.elevationGain || 0;
-                this.currentActivity.elevationLoss = this.currentActivity.elevationLoss || 0;
-                this.currentActivity.minAltitude = this.currentActivity.minAltitude ?? null;
-                this.currentActivity.maxAltitude = this.currentActivity.maxAltitude ?? null;
-            }
-            
-            // Resume tracking
-            if (this.isTracking) {
-                this.resumeTracking();
-                console.log('[ActivityTracker] Activity state restored and resumed');
-                return true;
-            }
-            
-            return false;
-        } catch (error) {
-            console.error('[ActivityTracker] Error restoring state:', error);
-            localStorage.removeItem('activityTrackerState');
-            return false;
-        }
-    }
-    
-    // Clear saved state
-    clearActivityState() {
-        localStorage.removeItem('activityTrackerState');
-        console.log('[ActivityTracker] State cleared from localStorage');
     }
 }
 
 // Global instance
 const activityTracker = new ActivityTracker();
 
-// Wire CKGenericApp native bridge events (location + sensors)
-window.addEventListener('ckgenericapp_location', (event) => {
-    activityTracker.ingestExternalPosition(event.detail);
+// Initialize sensor listeners
+activityTracker.initSensorListeners();
+
+// Auto-initialize on load
+window.addEventListener('load', async () => {
+    await activityTracker.initialize();
 });
 
-window.addEventListener('ckgenericapp_pedometer', (event) => {
-    if (event.detail && typeof event.detail.steps !== 'undefined') {
-        activityTracker.ingestExternalSteps(event.detail.steps);
-    }
-});
-
-// Expose global callbacks for native code convenience
-window.onCKGenericAppLocation = function(lat, lng, accuracy, altitude, speed) {
-    activityTracker.ingestExternalPosition({ lat, lng, accuracy, altitude, speed });
-};
-
-window.onCKGenericAppSteps = function(steps) {
-    activityTracker.ingestExternalSteps(steps);
-};
-
-// Handle page unload - save current activity
-window.addEventListener('beforeunload', () => {
+// Handle page unload - finalize current path
+window.addEventListener('beforeunload', async () => {
     if (activityTracker.isTracking) {
-        activityTracker.saveActivityState();
+        await activityTracker.finalizePath();
     }
 });
-
-// Periodically save state while tracking (every 30 seconds)
-setInterval(() => {
-    if (activityTracker.isTracking) {
-        activityTracker.saveActivityState();
-    }
-}, 30000);

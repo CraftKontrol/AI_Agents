@@ -10,11 +10,15 @@
 function showGPSOptions(lat, lng, name = '') {
     console.log(`[GPS] Showing navigation options for: ${lat}, ${lng} (${name})`);
     
+    // Close any existing GPS modal first
+    closeGPSModal();
+    
     // Create overlay
     const overlay = document.createElement('div');
     overlay.className = 'gps-overlay';
+    overlay.id = 'gpsOverlay';
     overlay.onclick = function() {
-        document.body.removeChild(overlay);
+        closeGPSModal();
     };
     
     // Create modal
@@ -24,12 +28,26 @@ function showGPSOptions(lat, lng, name = '') {
         e.stopPropagation();
     };
     
+    // Header with close button
+    const header = document.createElement('div');
+    header.className = 'gps-modal-header';
+    
     const title = document.createElement('h3');
     title.innerHTML = `
         <span class="material-symbols-outlined">navigation</span>
         ${getGPSTranslation('openInMaps', detectedLanguage || 'fr')}
     `;
-    modal.appendChild(title);
+    
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'gps-close-btn';
+    closeBtn.innerHTML = '<span class="material-symbols-outlined">close</span>';
+    closeBtn.onclick = function() {
+        closeGPSModal();
+    };
+    
+    header.appendChild(title);
+    header.appendChild(closeBtn);
+    modal.appendChild(header);
     
     // Location info if name provided
     if (name) {
@@ -68,7 +86,7 @@ function showGPSOptions(lat, lng, name = '') {
         `;
         btn.onclick = function() {
             openInGPS(lat, lng, name, option.value);
-            document.body.removeChild(overlay);
+            closeGPSModal();
         };
         buttonContainer.appendChild(btn);
     });
@@ -254,6 +272,17 @@ function getGPSTranslation(key, language = 'fr') {
     };
     
     return translations[language]?.[key] || translations['fr'][key] || key;
+}
+
+/**
+ * Close GPS modal if open
+ */
+function closeGPSModal() {
+    const overlay = document.getElementById('gpsOverlay');
+    if (overlay && overlay.parentNode) {
+        overlay.parentNode.removeChild(overlay);
+        console.log('[GPS] Modal closed');
+    }
 }
 
 /**

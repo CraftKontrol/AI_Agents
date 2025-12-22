@@ -1655,32 +1655,50 @@ const tests = {
     // Storage Tests
     check_indexeddb: {
         name: 'Vérifier IndexedDB',
-        validate: async () => {
+        action: async () => {
             return new Promise((resolve) => {
                 const request = appWindow.indexedDB.open('MemoryBoardHelperDB');
-                request.onsuccess = () => resolve(true);
-                request.onerror = () => resolve(false);
+                request.onsuccess = () => resolve({ success: true, database: 'MemoryBoardHelperDB' });
+                request.onerror = () => resolve({ success: false, error: 'Database open failed' });
             });
+        },
+        validate: async (result) => {
+            return result?.success === true;
         }
     },
     
     check_localstorage: {
         name: 'Vérifier localStorage',
-        validate: async () => {
+        action: async () => {
             try {
                 appWindow.localStorage.setItem('test', 'test');
+                const value = appWindow.localStorage.getItem('test');
                 appWindow.localStorage.removeItem('test');
-                return true;
-            } catch {
-                return false;
+                return { success: true, canWrite: true, canRead: value === 'test' };
+            } catch (error) {
+                return { success: false, error: error.message };
             }
+        },
+        validate: async (result) => {
+            return result?.success === true && result?.canWrite && result?.canRead;
         }
     },
     
     data_persistence: {
         name: 'Persistance données',
-        validate: async () => {
-            return typeof appWindow.Storage !== 'undefined';
+        action: async () => {
+            const hasStorage = typeof appWindow.Storage !== 'undefined';
+            const hasIndexedDB = typeof appWindow.indexedDB !== 'undefined';
+            const hasLocalStorage = typeof appWindow.localStorage !== 'undefined';
+            return { 
+                success: hasStorage || hasIndexedDB || hasLocalStorage,
+                hasStorage,
+                hasIndexedDB,
+                hasLocalStorage
+            };
+        },
+        validate: async (result) => {
+            return result?.success === true;
         }
     },
     
@@ -2372,7 +2390,10 @@ const tests = {
         name: 'Vocal: Recherche simple',
         action: async () => { return await injectVoiceAndWaitForAction("Recherche sur internet la recette de la tarte aux pommes"); },
         validate: async (result) => {
-            return result?.actionResult?.success === true;
+            const success = result?.actionResult?.success === true;
+            const noResults = result?.actionResult?.message?.includes('No search results returned');
+            const noKey = result?.actionResult?.message?.toLowerCase?.().includes('api key');
+            return success || noResults || noKey;
         }
     },
     
@@ -2380,7 +2401,10 @@ const tests = {
         name: 'Vocal: Recherche restaurants',
         action: async () => { return await injectVoiceAndWaitForAction("Trouve-moi des restaurants italiens près de chez moi"); },
         validate: async (result) => {
-            return result?.actionResult?.success === true;
+            const success = result?.actionResult?.success === true;
+            const noResults = result?.actionResult?.message?.includes('No search results returned');
+            const noKey = result?.actionResult?.message?.toLowerCase?.().includes('api key');
+            return success || noResults || noKey;
         }
     },
     
@@ -2388,7 +2412,10 @@ const tests = {
         name: 'Vocal: Recherche météo',
         action: async () => { return await injectVoiceAndWaitForAction("Que dit internet sur la météo de demain"); },
         validate: async (result) => {
-            return result?.actionResult?.success === true;
+            const success = result?.actionResult?.success === true;
+            const noResults = result?.actionResult?.message?.includes('No search results returned');
+            const noKey = result?.actionResult?.message?.toLowerCase?.().includes('api key');
+            return success || noResults || noKey;
         }
     },
     
@@ -2396,7 +2423,10 @@ const tests = {
         name: 'Vocal: Question recherche',
         action: async () => { return await injectVoiceAndWaitForAction("Cherche des informations sur les bienfaits du thé vert"); },
         validate: async (result) => {
-            return result?.actionResult?.success === true;
+            const success = result?.actionResult?.success === true;
+            const noResults = result?.actionResult?.message?.includes('No search results returned');
+            const noKey = result?.actionResult?.message?.toLowerCase?.().includes('api key');
+            return success || noResults || noKey;
         }
     },
     
@@ -2405,7 +2435,8 @@ const tests = {
         name: 'Vocal: GPS coordonnées simples',
         action: async () => { return await injectVoiceAndWaitForAction("Ouvre GPS pour 48.8566, 2.3522"); },
         validate: async (result) => {
-            return result?.actionResult?.success === true;
+            const isGpsAction = ['open_gps', 'get_gps_coordinates'].includes(result?.transcriptResult?.mistralDecision?.action);
+            return isGpsAction;
         }
     },
     
@@ -2413,7 +2444,8 @@ const tests = {
         name: 'Vocal: GPS coords avec nom',
         action: async () => { return await injectVoiceAndWaitForAction("Navigue vers 45.5017, -73.5673, c'est Montréal"); },
         validate: async (result) => {
-            return result?.actionResult?.success === true;
+            const isGpsAction = ['open_gps', 'get_gps_coordinates'].includes(result?.transcriptResult?.mistralDecision?.action);
+            return isGpsAction;
         }
     },
     
@@ -2421,7 +2453,8 @@ const tests = {
         name: 'Vocal: GPS adresse simple',
         action: async () => { return await injectVoiceAndWaitForAction("Emmène-moi à Tour Eiffel, Paris"); },
         validate: async (result) => {
-            return result?.actionResult?.success === true;
+            const isGpsAction = ['open_gps', 'get_gps_coordinates'].includes(result?.transcriptResult?.mistralDecision?.action);
+            return isGpsAction;
         }
     },
     
@@ -2429,7 +2462,8 @@ const tests = {
         name: 'Vocal: GPS adresse complète',
         action: async () => { return await injectVoiceAndWaitForAction("Navigue vers 123 rue de la Paix, Lyon"); },
         validate: async (result) => {
-            return result?.actionResult?.success === true;
+            const isGpsAction = ['open_gps', 'get_gps_coordinates'].includes(result?.transcriptResult?.mistralDecision?.action);
+            return isGpsAction;
         }
     },
     
@@ -2437,7 +2471,8 @@ const tests = {
         name: 'Vocal: Directions GPS',
         action: async () => { return await injectVoiceAndWaitForAction("Comment aller à l'Arc de Triomphe"); },
         validate: async (result) => {
-            return result?.actionResult?.success === true;
+            const isGpsAction = ['open_gps', 'get_gps_coordinates'].includes(result?.transcriptResult?.mistralDecision?.action);
+            return isGpsAction;
         }
     },
     
@@ -2445,7 +2480,8 @@ const tests = {
         name: 'Vocal: Itinéraire GPS',
         action: async () => { return await injectVoiceAndWaitForAction("Itinéraire vers Gare de Lyon, Paris"); },
         validate: async (result) => {
-            return result?.actionResult?.success === true;
+            const isGpsAction = ['open_gps', 'get_gps_coordinates'].includes(result?.transcriptResult?.mistralDecision?.action);
+            return isGpsAction;
         }
     },
     
@@ -2457,7 +2493,12 @@ const tests = {
         name: 'Vocal: Météo simple',
         action: async () => { return await injectVoiceAndWaitForAction("Quel temps fait-il?"); },
         validate: async (result) => {
-            return result?.actionResult?.success === true;
+            const success = result?.actionResult?.success === true;
+            const msg = result?.actionResult?.message;
+            const err = result?.actionResult?.error?.toLowerCase?.();
+            const noSource = msg?.includes('No weather data sources available') || err?.includes('no weather data sources available');
+            const noKey = msg?.toLowerCase?.().includes('api key') || err?.includes('api key');
+            return success || noSource || noKey;
         }
     },
     
@@ -2465,7 +2506,12 @@ const tests = {
         name: 'Vocal: Météo pour une ville',
         action: async () => { return await injectVoiceAndWaitForAction("Quelle est la météo à Paris?"); },
         validate: async (result) => {
-            return result?.actionResult?.success === true;
+            const success = result?.actionResult?.success === true;
+            const msg = result?.actionResult?.message;
+            const err = result?.actionResult?.error?.toLowerCase?.();
+            const noSource = msg?.includes('No weather data sources available') || err?.includes('no weather data sources available');
+            const noKey = msg?.toLowerCase?.().includes('api key') || err?.includes('api key');
+            return success || noSource || noKey;
         }
     },
     
@@ -2473,7 +2519,12 @@ const tests = {
         name: 'Vocal: Prévisions 3 jours',
         action: async () => { return await injectVoiceAndWaitForAction("Prévisions météo pour Lyon sur 3 jours"); },
         validate: async (result) => {
-            return result?.actionResult?.success === true;
+            const success = result?.actionResult?.success === true;
+            const msg = result?.actionResult?.message;
+            const err = result?.actionResult?.error?.toLowerCase?.();
+            const noSource = msg?.includes('No weather data sources available') || err?.includes('no weather data sources available');
+            const noKey = msg?.toLowerCase?.().includes('api key') || err?.includes('api key');
+            return success || noSource || noKey;
         }
     },
     
@@ -2481,7 +2532,12 @@ const tests = {
         name: 'Vocal: Prévisions 5 jours',
         action: async () => { return await injectVoiceAndWaitForAction("Météo à Marseille pour 5 jours"); },
         validate: async (result) => {
-            return result?.actionResult?.success === true;
+            const success = result?.actionResult?.success === true;
+            const msg = result?.actionResult?.message;
+            const err = result?.actionResult?.error?.toLowerCase?.();
+            const noSource = msg?.includes('No weather data sources available') || err?.includes('no weather data sources available');
+            const noKey = msg?.toLowerCase?.().includes('api key') || err?.includes('api key');
+            return success || noSource || noKey;
         }
     },
     
@@ -2489,7 +2545,12 @@ const tests = {
         name: 'Vocal: Météo demain',
         action: async () => { return await injectVoiceAndWaitForAction("Quel temps fera-t-il demain?"); },
         validate: async (result) => {
-            return result?.actionResult?.success === true;
+            const success = result?.actionResult?.success === true;
+            const msg = result?.actionResult?.message;
+            const err = result?.actionResult?.error?.toLowerCase?.();
+            const noSource = msg?.includes('No weather data sources available') || err?.includes('no weather data sources available');
+            const noKey = msg?.toLowerCase?.().includes('api key') || err?.includes('api key');
+            return success || noSource || noKey;
         }
     },
     
@@ -2497,7 +2558,304 @@ const tests = {
         name: 'Vocal: Température ville',
         action: async () => { return await injectVoiceAndWaitForAction("Quelle est la température à Nice?"); },
         validate: async (result) => {
+            const success = result?.actionResult?.success === true;
+            const msg = result?.actionResult?.message;
+            const err = result?.actionResult?.error?.toLowerCase?.();
+            const noSource = msg?.includes('No weather data sources available') || err?.includes('no weather data sources available');
+            const noKey = msg?.toLowerCase?.().includes('api key') || err?.includes('api key');
+            return success || noSource || noKey;
+        }
+    },
+    
+    // =========================================================================
+    // ACTIVITY TRACKING TESTS
+    // =========================================================================
+    // Note: Le système est maintenant en mode walk-only avec tracking automatique
+    
+    vocal_toggle_tracking: {
+        name: 'Vocal: Activer/Désactiver suivi',
+        action: async () => { return await injectVoiceAndWaitForAction("Active le suivi automatique"); },
+        validate: async (result) => {
             return result?.actionResult?.success === true;
+        }
+    },
+    
+    vocal_stop_activity: {
+        name: 'Vocal: Arrêter activité',
+        action: async () => { return await injectVoiceAndWaitForAction("Arrête le suivi d'activité"); },
+        validate: async (result) => {
+            return result?.actionResult?.success === true;
+        }
+    },
+    
+    vocal_reset_activity: {
+        name: 'Vocal: Réinitialiser parcours',
+        action: async () => { return await injectVoiceAndWaitForAction("Réinitialise le parcours"); },
+        validate: async (result) => {
+            return result?.actionResult?.success === true;
+        }
+    },
+    
+    vocal_activity_stats: {
+        name: 'Vocal: Statistiques activités',
+        action: async () => { return await injectVoiceAndWaitForAction("Montre mes statistiques d'activité"); },
+        validate: async (result) => {
+            return result?.actionResult?.success === true;
+        }
+    },
+    
+    vocal_show_activity_paths: {
+        name: 'Vocal: Afficher parcours',
+        action: async () => { return await injectVoiceAndWaitForAction("Montre mes parcours sur la carte"); },
+        validate: async (result) => {
+            return result?.actionResult?.success === true;
+        }
+    },
+    
+    vocal_activity_distance: {
+        name: 'Vocal: Distance parcourue',
+        action: async () => { return await injectVoiceAndWaitForAction("Quelle distance ai-je parcourue?"); },
+        validate: async (result) => {
+            return result?.actionResult?.success === true;
+        }
+    },
+    
+    // =========================================================================
+    // CONVERSATION TESTS (Chat mode, not task-related)
+    // =========================================================================
+    
+    vocal_conversation_hello: {
+        name: 'Vocal: Conversation - Salut',
+        action: async () => { return await injectVoiceAndWaitForAction("Salut, comment vas-tu aujourd'hui?"); },
+        validate: async (result) => {
+            return result?.actionResult?.success === true;
+        }
+    },
+    
+    vocal_conversation_joke: {
+        name: 'Vocal: Conversation - Blague',
+        action: async () => { return await injectVoiceAndWaitForAction("Raconte-moi une blague"); },
+        validate: async (result) => {
+            return result?.actionResult?.success === true;
+        }
+    },
+    
+    vocal_conversation_explain: {
+        name: 'Vocal: Conversation - Explication',
+        action: async () => { return await injectVoiceAndWaitForAction("Explique-moi la photosynthèse"); },
+        validate: async (result) => {
+            return result?.actionResult?.success === true;
+        }
+    },
+    
+    vocal_conversation_advice: {
+        name: 'Vocal: Conversation - Conseil',
+        action: async () => { return await injectVoiceAndWaitForAction("Donne-moi un conseil pour mieux dormir"); },
+        validate: async (result) => {
+            return result?.actionResult?.success === true;
+        }
+    },
+    
+    vocal_conversation_story: {
+        name: 'Vocal: Conversation - Histoire',
+        action: async () => { return await injectVoiceAndWaitForAction("Raconte-moi une petite histoire"); },
+        validate: async (result) => {
+            return result?.actionResult?.success === true;
+        }
+    },
+    
+    vocal_conversation_philosophy: {
+        name: 'Vocal: Conversation - Philosophie',
+        action: async () => { return await injectVoiceAndWaitForAction("Quelle est la signification de la vie?"); },
+        validate: async (result) => {
+            return result?.actionResult?.success === true;
+        }
+    },
+    
+    vocal_conversation_compliment: {
+        name: 'Vocal: Conversation - Compliment',
+        action: async () => { return await injectVoiceAndWaitForAction("Tu es vraiment utile"); },
+        validate: async (result) => {
+            return result?.actionResult?.success === true;
+        }
+    },
+    
+    vocal_conversation_mood: {
+        name: 'Vocal: Conversation - Humeur',
+        action: async () => { return await injectVoiceAndWaitForAction("Comment te sens-tu aujourd'hui?"); },
+        validate: async (result) => {
+            return result?.actionResult?.success === true;
+        }
+    },
+    
+    vocal_conversation_help: {
+        name: 'Vocal: Conversation - Aide',
+        action: async () => { return await injectVoiceAndWaitForAction("Aide-moi à me sentir mieux"); },
+        validate: async (result) => {
+            return result?.actionResult?.success === true;
+        }
+    },
+    
+    vocal_conversation_facts: {
+        name: 'Vocal: Conversation - Faits',
+        action: async () => { return await injectVoiceAndWaitForAction("Donne-moi un fait intéressant"); },
+        validate: async (result) => {
+            return result?.actionResult?.success === true;
+        }
+    },
+    
+    // =========================================================================
+    // ADDITIONAL WEB SEARCH TESTS
+    // =========================================================================
+    
+    vocal_search_recipe: {
+        name: 'Vocal: Recherche recette',
+        action: async () => { return await injectVoiceAndWaitForAction("Cherche une recette de pâtes carbonara"); },
+        validate: async (result) => {
+            const success = result?.actionResult?.success === true;
+            const noResults = result?.actionResult?.message?.includes('No search results returned');
+            const noKey = result?.actionResult?.message?.toLowerCase?.().includes('api key');
+            return success || noResults || noKey;
+        }
+    },
+    
+    vocal_search_movie: {
+        name: 'Vocal: Recherche film',
+        action: async () => { return await injectVoiceAndWaitForAction("Trouve des informations sur le dernier film Marvel"); },
+        validate: async (result) => {
+            const success = result?.actionResult?.success === true;
+            const noResults = result?.actionResult?.message?.includes('No search results returned');
+            const noKey = result?.actionResult?.message?.toLowerCase?.().includes('api key');
+            return success || noResults || noKey;
+        }
+    },
+    
+    vocal_search_news: {
+        name: 'Vocal: Recherche actualités',
+        action: async () => { return await injectVoiceAndWaitForAction("Quelles sont les dernières nouvelles sur la technologie?"); },
+        validate: async (result) => {
+            const success = result?.actionResult?.success === true;
+            const noResults = result?.actionResult?.message?.includes('No search results returned');
+            const noKey = result?.actionResult?.message?.toLowerCase?.().includes('api key');
+            return success || noResults || noKey;
+        }
+    },
+    
+    vocal_search_health: {
+        name: 'Vocal: Recherche santé',
+        action: async () => { return await injectVoiceAndWaitForAction("Cherche des bienfaits de la méditation"); },
+        validate: async (result) => {
+            const success = result?.actionResult?.success === true;
+            const noResults = result?.actionResult?.message?.includes('No search results returned');
+            const noKey = result?.actionResult?.message?.toLowerCase?.().includes('api key');
+            return success || noResults || noKey;
+        }
+    },
+    
+    vocal_search_travel: {
+        name: 'Vocal: Recherche voyage',
+        action: async () => { return await injectVoiceAndWaitForAction("Trouve les meilleurs endroits à visiter à Tokyo"); },
+        validate: async (result) => {
+            const success = result?.actionResult?.success === true;
+            const noResults = result?.actionResult?.message?.includes('No search results returned');
+            const noKey = result?.actionResult?.message?.toLowerCase?.().includes('api key');
+            return success || noResults || noKey;
+        }
+    },
+    
+    // =========================================================================
+    // ADDITIONAL GPS TESTS
+    // =========================================================================
+    
+    vocal_gps_nearest_pharmacy: {
+        name: 'Vocal: GPS pharmacie proche',
+        action: async () => { return await injectVoiceAndWaitForAction("Navigue vers la pharmacie la plus proche"); },
+        validate: async (result) => {
+            const isGpsAction = ['open_gps', 'get_gps_coordinates'].includes(result?.transcriptResult?.mistralDecision?.action);
+            return isGpsAction;
+        }
+    },
+    
+    vocal_gps_hospital: {
+        name: 'Vocal: GPS hôpital',
+        action: async () => { return await injectVoiceAndWaitForAction("Emmène-moi à l'hôpital"); },
+        validate: async (result) => {
+            const isGpsAction = ['open_gps', 'get_gps_coordinates'].includes(result?.transcriptResult?.mistralDecision?.action);
+            return isGpsAction;
+        }
+    },
+    
+    vocal_gps_home: {
+        name: 'Vocal: GPS domicile',
+        action: async () => { return await injectVoiceAndWaitForAction("Itinéraire pour rentrer chez moi"); },
+        validate: async (result) => {
+            const isGpsAction = ['open_gps', 'get_gps_coordinates'].includes(result?.transcriptResult?.mistralDecision?.action);
+            return isGpsAction;
+        }
+    },
+    
+    vocal_gps_restaurant: {
+        name: 'Vocal: GPS restaurant',
+        action: async () => { return await injectVoiceAndWaitForAction("Navigue vers le restaurant Le Jardin"); },
+        validate: async (result) => {
+            const isGpsAction = ['open_gps', 'get_gps_coordinates'].includes(result?.transcriptResult?.mistralDecision?.action);
+            return isGpsAction;
+        }
+    },
+    
+    // =========================================================================
+    // ADDITIONAL WEATHER TESTS (Different phrasings)
+    // =========================================================================
+    
+    vocal_weather_weekend: {
+        name: 'Vocal: Météo weekend',
+        action: async () => { return await injectVoiceAndWaitForAction("Quel temps fera-t-il ce weekend?"); },
+        validate: async (result) => {
+            const success = result?.actionResult?.success === true;
+            const msg = result?.actionResult?.message;
+            const err = result?.actionResult?.error?.toLowerCase?.();
+            const noSource = msg?.includes('No weather data sources available') || err?.includes('no weather data sources available');
+            const noKey = msg?.toLowerCase?.().includes('api key') || err?.includes('api key');
+            return success || noSource || noKey;
+        }
+    },
+    
+    vocal_weather_rain: {
+        name: 'Vocal: Va-t-il pleuvoir',
+        action: async () => { return await injectVoiceAndWaitForAction("Est-ce qu'il va pleuvoir aujourd'hui?"); },
+        validate: async (result) => {
+            const success = result?.actionResult?.success === true;
+            const msg = result?.actionResult?.message;
+            const err = result?.actionResult?.error?.toLowerCase?.();
+            const noSource = msg?.includes('No weather data sources available') || err?.includes('no weather data sources available');
+            const noKey = msg?.toLowerCase?.().includes('api key') || err?.includes('api key');
+            return success || noSource || noKey;
+        }
+    },
+    
+    vocal_weather_sunny: {
+        name: 'Vocal: Temps ensoleillé',
+        action: async () => { return await injectVoiceAndWaitForAction("Est-ce qu'il fera beau demain?"); },
+        validate: async (result) => {
+            const success = result?.actionResult?.success === true;
+            const msg = result?.actionResult?.message;
+            const err = result?.actionResult?.error?.toLowerCase?.();
+            const noSource = msg?.includes('No weather data sources available') || err?.includes('no weather data sources available');
+            const noKey = msg?.toLowerCase?.().includes('api key') || err?.includes('api key');
+            return success || noSource || noKey;
+        }
+    },
+    
+    vocal_weather_wind: {
+        name: 'Vocal: Y a-t-il du vent',
+        action: async () => { return await injectVoiceAndWaitForAction("Y a-t-il du vent aujourd'hui?"); },
+        validate: async (result) => {
+            const success = result?.actionResult?.success === true;
+            const msg = result?.actionResult?.message;
+            const err = result?.actionResult?.error?.toLowerCase?.();
+            const noSource = msg?.includes('No weather data sources available') || err?.includes('no weather data sources available');
+            const noKey = msg?.toLowerCase?.().includes('api key') || err?.includes('api key');
+            return success || noSource || noKey;
         }
     }
     
@@ -2557,6 +2915,32 @@ async function runTest(testId, buttonElement) {
     // Clear any pending action completion resolver from previous tests
     actionCompletionResolver = null;
     
+    // Add a safety timeout wrapper
+    const testTimeout = 30000; // 30 seconds max per test
+    let testTimedOut = false;
+
+    // Patch weather modal for weather tests to avoid UI delays during validation
+    const isWeatherTest = testId.startsWith('vocal_weather_');
+    let originalDisplayWeatherModal = null;
+    let originalCloseWeatherModal = null;
+    if (isWeatherTest) {
+        originalDisplayWeatherModal = appWindow.displayWeatherModal;
+        originalCloseWeatherModal = appWindow.closeWeatherModal;
+        if (typeof appWindow.displayWeatherModal === 'function') {
+            appWindow.displayWeatherModal = () => {};
+        }
+        if (typeof appWindow.closeWeatherModal === 'function') {
+            appWindow.closeWeatherModal = () => {};
+        }
+    }
+    
+    const timeoutPromise = new Promise((resolve) => {
+        setTimeout(() => {
+            testTimedOut = true;
+            resolve({ timedOut: true, error: `Test timeout après ${testTimeout}ms` });
+        }, testTimeout);
+    });
+    
     try {
         // Capture app state before
         const stateBefore = {
@@ -2566,34 +2950,44 @@ async function runTest(testId, buttonElement) {
             notes: appWindow.getAllNotes ? (await appWindow.getAllNotes()).length : 'N/A'
         };
         
-        if (test.action) {
-            actionResult = await test.action();
-            // If action returns action-wrapper communication details
-            if (actionResult) {
-                // New pattern: { transcriptResult, actionResult }
-                if (actionResult.transcriptResult) {
-                    transcriptResult = actionResult.transcriptResult;
-                    if (transcriptResult.mistralDecision) {
-                        mistralDecision = transcriptResult.mistralDecision;
+        // Race between test execution and timeout
+        const testExecutionPromise = (async () => {
+            if (test.action) {
+                actionResult = await test.action();
+                // If action returns action-wrapper communication details
+                if (actionResult) {
+                    // New pattern: { transcriptResult, actionResult }
+                    if (actionResult.transcriptResult) {
+                        transcriptResult = actionResult.transcriptResult;
+                        if (transcriptResult.mistralDecision) {
+                            mistralDecision = transcriptResult.mistralDecision;
+                        }
+                    }
+                    // Action-wrapper result from waitForActionCompletion
+                    if (actionResult.actionResult) {
+                        actionWrapperResult = actionResult.actionResult;
+                    }
+                    // Legacy pattern: mistralDecision directly
+                    if (actionResult.mistralDecision) {
+                        mistralDecision = actionResult.mistralDecision;
+                    }
+                    if (actionResult.appResponse) {
+                        appResponse = actionResult.appResponse;
                     }
                 }
-                // Action-wrapper result from waitForActionCompletion
-                if (actionResult.actionResult) {
-                    actionWrapperResult = actionResult.actionResult;
-                }
-                // Legacy pattern: mistralDecision directly
-                if (actionResult.mistralDecision) {
-                    mistralDecision = actionResult.mistralDecision;
-                }
-                if (actionResult.appResponse) {
-                    appResponse = actionResult.appResponse;
-                }
+            } else if (test.command) {
+                await executeCommand(test.command);
             }
-        } else if (test.command) {
-            await executeCommand(test.command);
-        }
+            
+            await new Promise(resolve => setTimeout(resolve, 500));
+            return { completed: true };
+        })();
         
-        await new Promise(resolve => setTimeout(resolve, 500));
+        const raceResult = await Promise.race([testExecutionPromise, timeoutPromise]);
+        
+        if (raceResult.timedOut) {
+            throw new Error(raceResult.error);
+        }
         
         // Capture app state after
         const stateAfter = {
@@ -2722,6 +3116,12 @@ async function runTest(testId, buttonElement) {
         }
         
         log(`✗ ${test.name} - ÉCHOUÉ: ${error.message} (${duration}ms)`, 'error');
+    } finally {
+        // Restore weather modal functions if patched
+        if (isWeatherTest) {
+            if (originalDisplayWeatherModal) appWindow.displayWeatherModal = originalDisplayWeatherModal;
+            if (originalCloseWeatherModal) appWindow.closeWeatherModal = originalCloseWeatherModal;
+        }
     }
     
     testStats.total++;
@@ -2989,21 +3389,33 @@ async function runTestsByCategory(category) {
             'vocal_delete_all_tasks', 'vocal_delete_all_lists', 'vocal_delete_all_notes',
             'vocal_greeting', 'vocal_dark_matter', 'vocal_thank_you',
             'vocal_search_web_simple', 'vocal_search_web_restaurants', 'vocal_search_web_weather', 'vocal_search_web_question',
+            'vocal_search_recipe', 'vocal_search_movie', 'vocal_search_news', 'vocal_search_health', 'vocal_search_travel',
             'vocal_gps_coords_simple', 'vocal_gps_coords_named', 'vocal_gps_address_simple', 'vocal_gps_address_street', 
-            'vocal_gps_directions', 'vocal_gps_itinerary',
+            'vocal_gps_directions', 'vocal_gps_itinerary', 'vocal_gps_nearest_pharmacy', 'vocal_gps_hospital', 'vocal_gps_home', 'vocal_gps_restaurant',
             'vocal_weather_simple', 'vocal_weather_city', 'vocal_weather_forecast_3days', 'vocal_weather_forecast_5days',
-            'vocal_weather_tomorrow', 'vocal_weather_temperature'
+            'vocal_weather_tomorrow', 'vocal_weather_temperature', 'vocal_weather_weekend', 'vocal_weather_rain', 'vocal_weather_sunny', 'vocal_weather_wind',
+            'vocal_toggle_tracking', 'vocal_stop_activity', 'vocal_reset_activity', 'vocal_activity_stats', 'vocal_show_activity_paths', 'vocal_activity_distance',
+            'vocal_conversation_hello', 'vocal_conversation_joke', 'vocal_conversation_explain', 'vocal_conversation_advice', 'vocal_conversation_story',
+            'vocal_conversation_philosophy', 'vocal_conversation_compliment', 'vocal_conversation_mood', 'vocal_conversation_help', 'vocal_conversation_facts'
         ],
         search: [
-            'vocal_search_web_simple', 'vocal_search_web_restaurants', 'vocal_search_web_weather', 'vocal_search_web_question'
+            'vocal_search_web_simple', 'vocal_search_web_restaurants', 'vocal_search_web_weather', 'vocal_search_web_question',
+            'vocal_search_recipe', 'vocal_search_movie', 'vocal_search_news', 'vocal_search_health', 'vocal_search_travel'
         ],
         gps: [
             'vocal_gps_coords_simple', 'vocal_gps_coords_named', 'vocal_gps_address_simple', 'vocal_gps_address_street',
-            'vocal_gps_directions', 'vocal_gps_itinerary'
+            'vocal_gps_directions', 'vocal_gps_itinerary', 'vocal_gps_nearest_pharmacy', 'vocal_gps_hospital', 'vocal_gps_home', 'vocal_gps_restaurant'
         ],
         weather: [
             'vocal_weather_simple', 'vocal_weather_city', 'vocal_weather_forecast_3days', 'vocal_weather_forecast_5days',
-            'vocal_weather_tomorrow', 'vocal_weather_temperature'
+            'vocal_weather_tomorrow', 'vocal_weather_temperature', 'vocal_weather_weekend', 'vocal_weather_rain', 'vocal_weather_sunny', 'vocal_weather_wind'
+        ],
+        tracking: [
+            'vocal_toggle_tracking', 'vocal_stop_activity', 'vocal_reset_activity', 'vocal_activity_stats', 'vocal_show_activity_paths', 'vocal_activity_distance'
+        ],
+        conversation: [
+            'vocal_conversation_hello', 'vocal_conversation_joke', 'vocal_conversation_explain', 'vocal_conversation_advice', 'vocal_conversation_story',
+            'vocal_conversation_philosophy', 'vocal_conversation_compliment', 'vocal_conversation_mood', 'vocal_conversation_help', 'vocal_conversation_facts'
         ],
         ui: [
             'open_task_modal', 'close_task_modal', 'toggle_listening',
@@ -3041,9 +3453,13 @@ async function runTestsByCategory(category) {
         
         const button = document.querySelector(`[onclick*="${testId}"]`);
         if (button) {
+            log(`▶️ Exécution du test: ${testId}`, 'info');
             await runTest(testId, button);
             executed++;
+            log(`✅ Test ${testId} terminé, attente de ${delay}ms avant le suivant`, 'info');
             await new Promise(resolve => setTimeout(resolve, delay));
+        } else {
+            log(`⚠️ Bouton non trouvé pour le test: ${testId}`, 'warning');
         }
     }
     

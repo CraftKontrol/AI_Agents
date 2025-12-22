@@ -809,106 +809,235 @@ OpenStreetMap: https://www.openstreetmap.org/directions?to={lat},{lng}
 
 **Module:** `activity-tracker.js`, `activity-storage.js`, `activity-stats.js`, `activity-ui.js`
 
-**Purpose:** Continuous automatic fitness tracking with GPS paths, step counting, and statistics
+**Purpose:** Walk-only continuous tracking with triple sensor verification and 10-path daily limit
 
-### Architecture: Automatic Continuous Tracking
+### Architecture: Simplified Walk-Only System
+
+**Core Principles:**
+- **Walk-Only Mode**: Single activity type, no drive/run/bike detection
+- **Triple Verification**: Step counted only if GPS + Gyroscope + Accelerometer all detect movement
+- **10-Path Limit**: Maximum 10 distinct paths per day, oldest auto-deleted when exceeded
+- **Auto-Start**: Tracking begins automatically on page load (no manual start button)
+- **Midnight Reset**: Daily stats archived automatically at midnight, paths cleared
+- **Real-time Sensors**: CKGenericApp provides native sensor data at 10Hz
 
 **Tracking Model:**
-- **NO manual start/stop buttons** - tracking runs continuously in background when enabled
-- **Settings-based** - enabled/disabled via toggle in settings section
-- **Session persistence** - activity state saved to localStorage, restored on page reload
-- **Automatic saving** - state saved every 30 seconds + on page unload
-- **Auto-resume** - tracking continues across page reloads/browser restarts
+- **NO activity type detection** - all movement treated as walking
+- **NO manual start button** - tracking auto-starts on load
+- **Auto-archive** - daily totals saved to `dailyStats` store at midnight
+- **Path management** - max 10 paths/day with automatic cleanup
+- **Reset button** - saves current path, starts new path (keeps tracking active)
+- **Stop button** - temporarily pauses tracking (auto-restarts)
 
 **UI Components:**
 - **Settings Toggle:** `enableActivityTracking` checkbox (localStorage: `activityTrackingEnabled`)
 - **Daily Steps Goal:** Input field (localStorage: `dailyStepsGoal`, default: 10000)
-- **Tracking Status:** Live status indicator showing duration, distance, steps, calories
+- **Sensitivity Sliders:**
+  - GPS Threshold: 0.5-3m (default: 1.5m) - minimum GPS distance for movement detection
+  - Gyro Threshold: 5-45° (default: 15°) - minimum rotation for movement detection
+  - Accel Threshold: 0.05-0.5g (default: 0.15g) - minimum acceleration for movement detection
+  - Calorie Multiplier: 0.5-2x (default: 1x) - personal calorie adjustment
+- **Control Buttons:**
+  - Reset Activity: Saves current path, starts new path (within 10-path limit)
+  - Stop Activity: Temporarily stops tracking (auto-restarts)
+- **Tracking Status:** Live status showing duration, steps, distance, calories, altitude
 - **Dashboard:** 4 stat cards (steps, distance, calories, duration) + weekly chart + goal progress
-- **Path Viewer:** Button to view last 10 GPS paths on OpenStreetMap
-- **Statistics Modal:** Button to view comprehensive stats (today, week, month, personal bests)
+- **Path Viewer:** Button to view last 10 GPS paths on OpenStreetMap with elevation graphs
+- **Statistics Modal:** Today, week, month stats + activity streak (consecutive active days)
 
 **Key Functions:**
 - `toggleActivityTracking()` - Enable/disable automatic tracking (script.js)
 - `saveDailyStepsGoal()` - Save daily goal to localStorage + IndexedDB (script.js)
-- `saveActivityState()` - Persist current activity to localStorage (activity-tracker.js)
-- `restoreActivityState()` - Restore tracking from localStorage on page load (activity-tracker.js)
-- `clearActivityState()` - Remove saved state when tracking disabled (activity-tracker.js)
+- `resetActivity()` - Save current path, start new path (script.js)
+- `stopActivity()` - Temporarily stop tracking (script.js)
+- `resetPath()` - Save current path, start fresh path (activity-tracker.js)
+- `performMidnightReset()` - Archive yesterday, start new day (activity-tracker.js)
+- `enforcePathLimit()` - Delete oldest path when >10 paths/day (activity-tracker.js)
+
+### Triple Verification System
+
+**Purpose:** Prevent false step counts by requiring 3 independent sensor confirmations
+
+**Verification Logic (runs at 10Hz):**
+```javascript
+// Step counted ONLY if ALL three conditions true:
+1. GPS: Position changed by >= gpsMovementThreshold (default: 1.5m)
+2. Gyroscope: Device rotated by >= gyroMovementThreshold (default: 15°)
+3. Accelerometer: Acceleration >= accelMovementThreshold (default: 0.15g)
+
+// If ANY sensor shows no movement → step NOT counted
+```
+
+**Sensor Data Flow:**
+```
+CKGenericApp Native Sensors (10Hz)
+        ↓
+JavaScript Interface Methods:
+- onCKGenericAppLocation(lat, lng, accuracy, altitude, speed)
+- onCKGenericAppGyro(x, y, z)  
+- onCKGenericAppAccel(x, y, z)
+        ↓
+activity-tracker.js checkTripleVerification()
+        ↓
+Step counter incremented (if all 3 pass)
+        ↓
+activityProgress event dispatched
+        ↓
+UI updates real-time
+```
+
+**Threshold Configuration:**
+- **User-Adjustable:** All 3 thresholds configurable via settings sliders
+- **Persistent:** Saved to localStorage, loaded on page load
+- **Real-time:** Changes applied immediately to active tracking
+- **Recommended Ranges:**
+  - GPS: 0.5-3m (lower = more sensitive, more false positives)
+  - Gyro: 5-45° (higher = only counts deliberate turns)
+  - Accel: 0.05-0.5g (higher = only counts strong movements)
+
+### 10-Path Daily System
+
+**Architecture:**
+- **Midnight Boundary:** Day starts at 00:00, previous day auto-archived
+- **Path Counter:** `pathsToday` tracks current day's path count
+- **Auto-Delete:** When 11th path attempted, oldest path deleted from IndexedDB
+- **User Reset:** "Reset Activity" button creates new path (within 10-path limit)
+- **Archive Process:**
+  1. Calculate daily totals (steps, distance, calories, duration, elevation)
+  2. Save to `dailyStats` store with date as key
+  3. Clear `pathsToday` counter to 0
+  4. Start fresh path for new day
+
+**Path Data Structure:**
+```javascript
+{
+  id: auto-increment,
+  type: 'walk',  // Fixed value, no activity detection
+  startTime: '2025-01-15T08:30:00.000Z',
+  endTime: '2025-01-15T09:15:00.000Z',
+  date: '2025-01-15',
+  duration: 2700,  // seconds
+  distance: 3250,  // meters
+  steps: 4100,
+  calories: 180,
+  gpsPath: [{lat, lng, timestamp, altitude, speed, accuracy}, ...],
+  elevationGain: 45,  // meters climbed
+  elevationLoss: 22,  // meters descended
+  minAltitude: 120,
+  maxAltitude: 165
+}
+```
+
+**Daily Stats Archive:**
+```javascript
+{
+  date: '2025-01-15',  // Primary key
+  totalSteps: 12450,
+  totalDistance: 9800,  // meters
+  totalCalories: 540,
+  totalDuration: 7200,  // seconds
+  totalElevationGain: 120,
+  pathsCount: 7  // Number of paths recorded that day
+}
+```
 
 ### Sensor Integration
 
-**Pedometer:**
-- **Native API** (Android WebView): `window.CKGenericApp.getPedometer()`
-- **Fallback**: GPS-based step estimation (0.75m stride length)
-- **Update frequency**: 1-2 seconds
+**CKGenericApp Native Bridge:**
+- **Location (GPS):** `window.CKGenericApp.getLocation()` → `onCKGenericAppLocation(lat, lng, accuracy, altitude, speed)`
+- **Gyroscope:** `window.CKGenericApp.getGyroscope()` → `onCKGenericAppGyro(x, y, z)`
+- **Accelerometer:** `window.CKGenericApp.getAccelerometer()` → `onCKGenericAppAccel(x, y, z)`
+- **Frequency:** 10Hz (100ms intervals) for all sensors
+- **Service:** `SensorMonitoringService.kt` (Kotlin coroutine-based background service)
 
-**CKGenericApp Bridge:**
-- Native side can push data via events `ckgenericapp_location` and `ckgenericapp_pedometer`
-- Global callbacks exposed: `onCKGenericAppLocation(lat, lng, accuracy, altitude, speed)` and `onCKGenericAppSteps(steps)`
-- Bridge hooks feed `ActivityTracker.ingestExternalPosition/ingestExternalSteps` while tracking
+**Web Fallback (when CKGenericApp unavailable):**
+- **GPS Only:** `navigator.geolocation.watchPosition()` at 5-second intervals
+- **No Gyro/Accel:** Triple verification disabled, step counting relies on GPS distance only
+- **Detection:** `typeof window.CKGenericApp !== 'undefined'`
 
-**GPS Tracking:**
-- **API**: `navigator.geolocation.watchPosition()`
-- **High accuracy mode**: enabled
-- **Path points**: `{lat, lng, timestamp, altitude, speed, accuracy}`
-- **Elevation metrics**: cumulative gain/loss with 0.5m noise filter, min/max altitude per session
-- **Update frequency**: 5 seconds
+**Path Points:**
+```javascript
+{
+  lat: 45.678,
+  lng: 9.123,
+  timestamp: Date.now(),
+  altitude: 145.5,  // meters above sea level
+  speed: 1.2,       // meters/second
+  accuracy: 8       // meters (GPS precision)
+}
+```
 
-**Activity Detection:**
-- **Auto-detect type** based on speed:
-  - Walk: < 3 km/h
-  - Run: 3-12 km/h
-  - Bike: > 12 km/h
-- **Speed history**: Last 5 points for averaging
+**Elevation Tracking:**
+- **Gain Calculation:** Sum of positive altitude changes > 0.5m (noise filter)
+- **Loss Calculation:** Sum of negative altitude changes > 0.5m
+- **Min/Max:** Tracked per path for altitude range
+- **Graph Rendering:** Canvas-based elevation profile in path viewer
 
 ### Key Functions
 
-**activity-tracker.js:**
-- `startTracking(type)` - Start GPS + step counting
-- `stopTracking()` - Stop and save activity
-- `pauseTracking()` / `resumeTracking()` - Pause/resume without stopping
-- `calculateTotalDistance()` - Haversine formula for GPS distance
-- `calculateCalories()` - MET-based calculation
-- `calculateAvgPace()` - min/km from duration and distance
-- `getStatus()` - Current tracking state
-- `saveActivityState()` - Save current activity to localStorage for persistence
-- `restoreActivityState()` - Restore saved activity from localStorage on page load
-- `clearActivityState()` - Remove saved state from localStorage
+**activity-tracker.js (NEW ARCHITECTURE):**
+- `startTracking()` - Initialize GPS watch, start verification loop (auto-called on load)
+- `stopTracking()` - Stop GPS watch, pause verification loop
+- `resetPath()` - Save current path to IndexedDB, start new empty path
+- `performMidnightReset()` - Archive yesterday's totals, clear paths, reset counter
+- `enforcePathLimit()` - Delete oldest path when pathsToday > 10
+- `checkTripleVerification()` - Run at 10Hz, verify GPS+Gyro+Accel movement
+- `handleGpsUpdate(position)` - Process new GPS coordinate
+- `handleGyroUpdate(x, y, z)` - Process gyroscope data
+- `handleAccelUpdate(x, y, z)` - Process accelerometer data
+- `calculateMovementMetrics()` - Compute distance, elevation, speed from GPS path
+- `saveActivityState()` - Persist to localStorage every 30s
+- `restoreActivityState()` - Load from localStorage on page load
 
-**activity-storage.js:**
-- `saveActivity(data)` - Save to IndexedDB + update daily stats
-- `getAllActivities()` - Get all activities (sorted newest first)
-- `getLastActivities(count)` - Get last N activities
-- `getActivitiesByDateRange(start, end)` - Date-filtered activities
-- `updateDailyStats(date, activity)` - Aggregate daily totals
-- `getDailyStats(date)` - Get stats for specific day
+**activity-storage.js (UPDATED):**
+- `saveActivity(data)` - Save path to `activities` store (auto-increment ID)
+- `deleteActivity(activityId)` - Remove specific path (used by enforcePathLimit)
+- `getAllActivities()` - Get all paths (sorted newest first)
+- `getLastActivities(count)` - Get last N paths (for path viewer)
+- `getActivitiesByDateRange(start, end)` - Date-filtered paths
+- `saveDailyStats(statsData)` - Save daily totals to `dailyStats` store (NEW)
+- `getAllDailyStats()` - Get all archived days for streak calculation (NEW)
+- `saveActivityGoal(goalData)` - Save user goal to `activityGoals` store (NEW)
 - `exportActivitiesData()` - Export JSON for backup
 
-**activity-stats.js:**
-- `getTodayStats()` - Current day statistics
-- `getWeeklyStats()` - Last 7 days aggregated
-- `getMonthlyStats()` - Last 30 days aggregated
-- `getAllTimeStats()` - Total statistics + personal bests
-- `getActivityStreak()` - Current and longest consecutive days
+**activity-stats.js (UPDATED):**
+- `getTodayStats()` - Current day statistics (real-time)
+- `getWeeklyStats()` - Last 7 days aggregated from dailyStats
+- `getMonthlyStats()` - Last 30 days aggregated from dailyStats
+- `getAllTimeStats()` - Total statistics across all archived days
+- `getActivityStreak()` - Current and longest consecutive active days (NEW)
 - `getGoalProgress()` - Daily goals vs actual
-- `getWeeklyChartData()` - 7-day chart data
-- `getPersonalBests()` - Longest distance, duration, steps, pace, speed
-- `getVoiceSummary(language)` - Text summary for TTS
+- `getWeeklyChartData()` - 7-day chart data for dashboard
+- `getVoiceSummary(language)` - Text summary for TTS (includes streak)
+- `exportStatsCSV()` - Export statistics as CSV file
 
-**activity-ui.js:**
-- `initializeActivitySection()` - Setup UI, restore state, start auto-tracking if enabled
-- `initializeAutoTracking()` - Check settings, restore session, or start new tracking
+**activity-ui.js (UPDATED):**
+- `initializeActivitySection()` - Setup UI, restore state, auto-start if enabled
+- `loadSensitivitySettings()` - Load thresholds from localStorage, apply to tracker (NEW)
+- `updateSensitivitySettings(type, value)` - Update threshold, save to localStorage (NEW)
+- `updateSensitivityDisplay(type, value)` - Update slider value display (NEW)
+- `renderElevationGraph(path)` - Canvas-based altitude profile rendering (NEW)
 - `showTrackingStatus()` / `hideTrackingStatus()` - Show/hide live tracking indicator
-- `updateTrackingStatus()` - Update live stats every 5 seconds
+- `updateTrackingStatus()` - Update live stats every second
 - `updateDashboard()` - Refresh today's stats display every 30 seconds
 - `updateWeeklyChart()` - Canvas-based bar chart
-- `showPathViewer()` - OpenStreetMap modal with 10 last paths
-- `showStatsModal()` - Full statistics modal
+- `showPathViewer()` - OpenStreetMap modal with 10 last paths + elevation graphs
+- `showStatsModal()` - Full statistics modal with streak display
 - `displayActivityPath(activity)` - Draw GPS path on Leaflet map
 
 **script.js (global functions):**
 - `toggleActivityTracking()` - Enable/disable automatic tracking + save state
 - `saveDailyStepsGoal()` - Save daily goal to localStorage + IndexedDB
+- `resetActivity()` - Call tracker.resetPath(), update UI (NEW)
+- `stopActivity()` - Call tracker.stopTracking(), update UI (NEW)
+
+**action-wrapper.js (NEW ACTIONS):**
+- `reset_activity` - Validate tracker available → Execute resetPath() → Return status
+- `stop_activity` - Validate tracker available → Execute stopTracking() → Return status
+- `start_activity` - Already exists, modified for walk-only mode
+- `get_activity_stats` - Already exists, now includes streak data
+- `show_activity_paths` - Already exists, displays 10-path limit
+- `show_activity_stats_modal` - Already exists, shows streak section
 
 ### OpenStreetMap Integration
 
@@ -916,15 +1045,17 @@ OpenStreetMap: https://www.openstreetmap.org/directions?to={lat},{lng}
 
 **Map Features:**
 - **Tile Layer**: OpenStreetMap standard tiles
-- **Polyline**: Color-coded paths (walk=blue, run=red, bike=green)
+- **Polyline**: Blue color for all paths (walk-only mode)
 - **Markers**: Start (green circle), End (red circle)
 - **Auto-fit**: Map bounds adjusted to path
-- **Info Panel**: Overlay with activity details
+- **Info Panel**: Overlay with path details (distance, duration, steps, elevation)
+- **Elevation Graph:** Canvas-based altitude profile below map
 
 **Map Functions:**
 - `initializeMap()` - Create Leaflet map instance
 - `displayActivityPath(activity)` - Draw GPS path with markers
 - `updatePathInfo(activity)` - Update info overlay
+- `renderElevationGraph(path)` - Draw altitude profile on canvas
 
 ### Calculations
 
@@ -933,18 +1064,26 @@ OpenStreetMap: https://www.openstreetmap.org/directions?to={lat},{lng}
 - **Unit**: Meters (displayed as km when > 1000m)
 
 **Steps:**
-- **Native**: From device pedometer if available
-- **Estimated**: distance / 0.75m (average stride length)
+- **Method**: GPS distance-based with triple verification
+- **Formula**: Accumulated when GPS movement + gyro rotation + accel detected
+- **NOT distance-based estimation** - relies on sensor fusion
 
 **Calories:**
-- **Formula**: MET × weight(kg) × time(hours)
-- **MET Values**: Walk=3.5, Run=7.0, Bike=6.0
+- **Formula**: MET × weight(kg) × time(hours) × calorieMultiplier
+- **MET Value**: 3.5 (walking, fixed)
 - **Assumed weight**: 70kg (average)
+- **User Adjustment**: calorieMultiplier slider (0.5-2x)
 
 **Pace:**
 - **Formula**: duration(minutes) / distance(km)
 - **Unit**: min/km
 - **Display**: MM:SS /km format
+
+**Elevation:**
+- **Gain**: Sum of positive altitude changes > 0.5m
+- **Loss**: Sum of negative altitude changes > 0.5m
+- **Noise Filter**: Ignores altitude changes < 0.5m
+- **Range**: Max - Min altitude per path
 
 ### Voice Commands
 

@@ -216,7 +216,7 @@
             <label for="layoutSelect">Layout:</label>
             <select id="layoutSelect">
                 <option value="hierarchical">Hiérarchique</option>
-                <option value="force">Force-directed</option>
+                <option value="force" selected>Force-directed</option>
                 <option value="circular">Circulaire</option>
             </select>
         </div>
@@ -229,6 +229,8 @@
                 <option value="storage">Stockage</option>
                 <option value="ui">Interface UI</option>
                 <option value="voice">Système Vocal</option>
+                <option value="sensors">Capteurs & GPS</option>
+                <option value="activity">Activity Tracking</option>
             </select>
         </div>
         <button onclick="resetView()">Réinitialiser la vue</button>
@@ -270,6 +272,10 @@
                 <div class="legend-color" style="background-color: #ff66cc;"></div>
                 <span class="legend-label">Événements</span>
             </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #ff9800;"></div>
+                <span class="legend-label">Capteurs & GPS</span>
+            </div>
         </div>
     </div>
 
@@ -283,13 +289,13 @@
             // Modules Core
             { id: 1, label: 'script.js\n(Main App)', color: { background: '#4a9eff', border: '#0d4fff' }, group: 'core', level: 0, 
               description: 'Application principale - Gestion UI et orchestration',
-              details: ['Initialisation app', 'Gestion modes écoute', 'Coordonnateur général', 'Temporary listening (10s)', 'Launch greeting (2s delay)'] },
+              details: ['Initialisation app', '3 modes: Manual/Always/Temporary', 'Temporary listening (10s after question)', 'Launch greeting (2s delay)', 'STT/TTS provider routing', 'Heartbeat monitoring (15s)'] },
             { id: 2, label: 'action-wrapper.js', color: { background: '#4a9eff', border: '#0d4fff' }, group: 'core', level: 1,
               description: 'Système unifié d\'exécution d\'actions',
               details: ['Validation → Execution → Verification', 'Dispatch événements (started/completed/error)', '20+ actions enregistrées', 'Communication postMessage'] },
             { id: 3, label: 'mistral-agent.js', color: { background: '#4a9eff', border: '#0d4fff' }, group: 'core', level: 1,
               description: 'Agent IA Mistral pour NLP et décisions',
-              details: ['Classification intents', 'Extraction tâches', '4 prompts (TASK/NAV/CALL/CHAT)', 'Historique 10-20 échanges'] },
+              details: ['Classification intents', 'Extraction tâches', '4 prompts (TASK/NAV/CALL/CHAT)', 'Historique 10-20 échanges', '30+ actions supportées', 'Weather/Activity/GPS actions'] },
             { id: 4, label: 'task-manager.js', color: { background: '#4a9eff', border: '#0d4fff' }, group: 'core', level: 2,
               description: 'CRUD opérations sur les tâches',
               details: ['Max 5 tâches affichées', 'Create/Read/Update/Delete', 'Statuts: pending/completed/snoozed', 'Récurrences: daily/weekly/monthly'] },
@@ -314,17 +320,26 @@
             { id: 11, label: 'gps-navigation.js', color: { background: '#4a9eff', border: '#0d4fff' }, group: 'core', level: 2,
               description: 'Navigation GPS multi-apps',
               details: ['Google Maps/Waze/Apple Maps/OSM', 'Geocoding via Nominatim', 'showGPSOptions modal', 'Voice: "emmène-moi à [address]"'] },
+            { id: 12, label: 'weather.js', color: { background: '#4a9eff', border: '#0d4fff' }, group: 'core', level: 2,
+              description: 'Prévisions météo multi-sources',
+              details: ['3 APIs: OpenWeatherMap/WeatherAPI/Open-Meteo', '5 jours de prévisions', 'Modal UI avec icons', 'Voice: "météo [ville]"', 'Fallback automatique'] },
+            { id: 13, label: 'activity-tracker.js', color: { background: '#4a9eff', border: '#0d4fff' }, group: 'core', level: 2,
+              description: 'Suivi d\'activité physique GPS',
+              details: ['Walk/Run/Bike tracking', 'GPS path recording', 'Step counting', 'Altitude gain/loss', 'Speed & pace calc'] },
+            { id: 14, label: 'activity-stats.js', color: { background: '#4a9eff', border: '#0d4fff' }, group: 'core', level: 2,
+              description: 'Statistiques d\'activité',
+              details: ['Daily aggregation', 'Goals tracking', 'Distance/calories/steps', 'Weekly/monthly summaries'] },
+            { id: 15, label: 'activity-ui.js', color: { background: '#4a9eff', border: '#0d4fff' }, group: 'core', level: 2,
+              description: 'Interface activités',
+              details: ['Activity dashboard', 'Path viewer (map)', 'Stats modal', 'Goal progress bars'] },
+            { id: 16, label: 'activity-storage.js', color: { background: '#4a9eff', border: '#0d4fff' }, group: 'core', level: 2,
+              description: 'Stockage activités IndexedDB',
+              details: ['CRUD activities', 'Daily stats management', 'Goals persistence', 'Batch operations'] },
 
             // APIs Externes
             { id: 20, label: 'Mistral AI\n(mistral-small-latest)', color: { background: '#c62828', border: '#8b0000' }, group: 'api', level: 1,
               description: 'API Mistral pour traitement NLP',
               details: ['Endpoint: /v1/chat/completions', 'temp=0.7, max_tokens=500', 'JSON response', 'Intents: TASK/NAV/CALL/CHAT'] },
-            { id: 21, label: 'Deepgram STT\n(Nova-2)', color: { background: '#c62828', border: '#8b0000' }, group: 'api', level: 1,
-              description: 'Speech-to-Text Deepgram Nova-2',
-              details: ['WEBM_OPUS format', 'Smart formatting', 'VAD auto-stop', 'Spectrum visualization'] },
-            { id: 22, label: 'Deepgram TTS\n(Aura-2)', color: { background: '#c62828', border: '#8b0000' }, group: 'api', level: 1,
-              description: 'Text-to-Speech Deepgram Aura-2',
-              details: ['16+ voices (fr/it/en)', 'MP3 stream', 'Natural, expressive', 'No custom parameters'] },
             { id: 23, label: 'Google Cloud STT', color: { background: '#c62828', border: '#8b0000' }, group: 'api', level: 1,
               description: 'Google Speech-to-Text API',
               details: ['WEBM/OGG/WAV format', '16kHz sample rate', 'VAD auto-stop', 'Automatic punctuation'] },
@@ -337,11 +352,20 @@
             { id: 26, label: 'Nominatim\n(Geocoding)', color: { background: '#c62828', border: '#8b0000' }, group: 'api', level: 1,
               description: 'Geocoding OpenStreetMap gratuit',
               details: ['Address → Coordinates', 'Format: JSON', 'User-Agent required', 'Limit 1 result'] },
+            { id: 27, label: 'Deepgram STT\n(Nova-2)', color: { background: '#c62828', border: '#8b0000' }, group: 'api', level: 1,
+              description: 'Speech-to-Text Deepgram Nova-2',
+              details: ['WEBM_OPUS format', 'Smart formatting', 'VAD auto-stop', 'Spectrum visualization', 'Languages: fr/en/it'] },
+            { id: 28, label: 'Deepgram TTS\n(Aura-2)', color: { background: '#c62828', border: '#8b0000' }, group: 'api', level: 1,
+              description: 'Text-to-Speech Deepgram Aura-2',
+              details: ['16+ voices (fr/it/en)', 'MP3 stream', 'Natural, expressive', 'No custom parameters'] },
+            { id: 29, label: 'Weather APIs', color: { background: '#c62828', border: '#8b0000' }, group: 'api', level: 1,
+              description: 'Multi-source weather data',
+              details: ['OpenWeatherMap', 'WeatherAPI', 'Open-Meteo (free)', 'Fallback cascade', '5-day forecast'] },
 
             // Stockage
-            { id: 30, label: 'IndexedDB\n(MemoryBoardHelperDB v3)', color: { background: '#ffaa44', border: '#ff8800' }, group: 'storage', level: 3,
+            { id: 30, label: 'IndexedDB\n(MemoryBoardHelperDB v4)', color: { background: '#ffaa44', border: '#ff8800' }, group: 'storage', level: 3,
               description: 'Base de données principale',
-              details: ['6 stores: tasks/conversations/settings/notes/lists/actionHistory', 'Auto-increment IDs', 'Indexes on date/status/type/priority', 'Fallback localStorage'] },
+              details: ['9 stores: tasks/conversations/settings/notes/lists/actionHistory/activities/dailyStats/activityGoals', 'Auto-increment IDs', 'Indexes: date/status/type/priority/startTime', 'Fallback localStorage'] },
             { id: 31, label: 'localStorage', color: { background: '#ffaa44', border: '#ff8800' }, group: 'storage', level: 3,
               description: 'Stockage clé-valeur pour settings',
               details: ['API keys (mistral/deepgram/google/tavily)', 'ttsSettings JSON', 'sttProvider/ttsProvider', 'emergencyContact1-3'] },
@@ -362,6 +386,18 @@
             { id: 44, label: 'GPS Options Modal', color: { background: '#2e7d32', border: '#1b5e20' }, group: 'ui', level: 2,
               description: 'Sélection d\'application GPS',
               details: ['4 apps: Google/Waze/Apple/OSM', 'Location name display', 'Coordinates (monospace)', 'Click outside to close'] },
+            { id: 45, label: 'Weather Modal', color: { background: '#2e7d32', border: '#1b5e20' }, group: 'ui', level: 2,
+              description: 'Affichage prévisions météo',
+              details: ['5 jours de prévisions', 'Température/conditions', 'Icons météo', 'Fallback multi-sources'] },
+            { id: 46, label: 'Activity Dashboard', color: { background: '#2e7d32', border: '#1b5e20' }, group: 'ui', level: 2,
+              description: 'Dashboard activités physiques',
+              details: ['Start/stop tracking', 'Real-time stats', 'Activity type selector', 'GPS path display'] },
+            { id: 47, label: 'Activity Stats Modal', color: { background: '#2e7d32', border: '#1b5e20' }, group: 'ui', level: 2,
+              description: 'Statistiques détaillées activités',
+              details: ['Daily/weekly/monthly summaries', 'Goals progress', 'Charts & graphs', 'Activity history'] },
+            { id: 48, label: 'Activity Path Viewer', color: { background: '#2e7d32', border: '#1b5e20' }, group: 'ui', level: 2,
+              description: 'Visualisation parcours GPS',
+              details: ['Map integration (Leaflet)', 'GPS path polyline', 'Elevation profile', 'Speed markers'] },
 
             // Système Vocal
             { id: 50, label: 'Web Speech API\n(Browser STT/TTS)', color: { background: '#9966ff', border: '#6633cc' }, group: 'voice', level: 1,
@@ -373,6 +409,17 @@
             { id: 52, label: 'Voice Activity\nDetection (VAD)', color: { background: '#9966ff', border: '#6633cc' }, group: 'voice', level: 1,
               description: 'Détection de silence pour auto-stop',
               details: ['analyser.getByteFrequencyData', 'Threshold: 30/255', 'Silence: 1500ms continuous', 'Min recording: 500ms'] },
+
+            // Capteurs & Géolocalisation
+            { id: 70, label: 'Geolocation API\n(GPS)', color: { background: '#ff9800', border: '#f57c00' }, group: 'sensors', level: 1,
+              description: 'API géolocalisation navigateur',
+              details: ['watchPosition continuous', 'lat/lng/altitude/speed/accuracy', 'High accuracy mode', 'Position updates every 1s'] },
+            { id: 71, label: 'DeviceMotion\n(Accéléromètre)', color: { background: '#ff9800', border: '#f57c00' }, group: 'sensors', level: 1,
+              description: 'Capteur de mouvement pour compteur de pas',
+              details: ['accelerationIncludingGravity', 'Step detection algorithm', 'Threshold-based counting', 'Real-time step updates'] },
+            { id: 72, label: 'DeviceOrientation\n(Gyroscope)', color: { background: '#ff9800', border: '#f57c00' }, group: 'sensors', level: 1,
+              description: 'Capteur d\'orientation',
+              details: ['alpha/beta/gamma angles', 'Direction tracking', 'Movement pattern detection', 'Activity type inference'] },
 
             // Événements
             { id: 60, label: 'actionStarted\nEvent', color: { background: '#ff66cc', border: '#cc3399' }, group: 'event', level: 1,
@@ -404,14 +451,11 @@
             { from: 1, to: 51, label: 'MediaRecorder setup', arrows: 'to', color: '#9966ff' },
             { from: 51, to: 52, label: 'Audio analysis', arrows: 'to', color: '#9966ff' },
             { from: 52, to: 51, label: 'Auto-stop signal', arrows: 'to', color: '#9966ff', dashes: true },
-            { from: 51, to: 21, label: 'Audio blob', arrows: 'to', color: '#c62828' },
-            { from: 51, to: 23, label: 'Audio blob', arrows: 'to', color: '#c62828' },
+            { from: 51, to: 23, label: 'Audio blob (Google)', arrows: 'to', color: '#c62828' },
             { from: 50, to: 1, label: 'Transcript', arrows: 'to', color: '#9966ff', dashes: true },
-            { from: 21, to: 1, label: 'Transcript', arrows: 'to', color: '#c62828', dashes: true },
-            { from: 23, to: 1, label: 'Transcript', arrows: 'to', color: '#c62828', dashes: true },
+            { from: 23, to: 1, label: 'Transcript (Google)', arrows: 'to', color: '#c62828', dashes: true },
 
             // TTS System
-            { from: 1, to: 22, label: 'synthesize (Deepgram)', arrows: 'to', color: '#c62828' },
             { from: 1, to: 24, label: 'synthesize (Google)', arrows: 'to', color: '#c62828' },
             { from: 1, to: 50, label: 'speak (Browser)', arrows: 'to', color: '#9966ff' },
 
@@ -448,6 +492,37 @@
             { from: 4, to: 30, label: 'tasks store', arrows: 'to;from', color: '#ffaa44' },
             { from: 3, to: 30, label: 'conversations store', arrows: 'to;from', color: '#ffaa44' },
             { from: 8, to: 30, label: 'actionHistory store', arrows: 'to;from', color: '#ffaa44' },
+            { from: 16, to: 30, label: 'activities stores', arrows: 'to;from', color: '#ffaa44' },
+
+            // Weather Integration
+            { from: 2, to: 12, label: 'Get weather', arrows: 'to', color: '#4a9eff' },
+            { from: 12, to: 29, label: 'API calls', arrows: 'to', color: '#c62828' },
+            { from: 12, to: 45, label: 'Display forecast', arrows: 'to', color: '#2e7d32' },
+
+            // Activity Tracking
+            { from: 2, to: 13, label: 'Start/stop activity', arrows: 'to', color: '#4a9eff' },
+            { from: 13, to: 16, label: 'Save activity', arrows: 'to', color: '#4a9eff' },
+            { from: 13, to: 14, label: 'Update stats', arrows: 'to', color: '#4a9eff' },
+            { from: 14, to: 16, label: 'Aggregate data', arrows: 'to;from', color: '#4a9eff' },
+            { from: 15, to: 14, label: 'Display stats', arrows: 'to', color: '#2e7d32' },
+            { from: 15, to: 13, label: 'Show paths', arrows: 'to', color: '#2e7d32' },
+            { from: 15, to: 46, label: 'Render dashboard', arrows: 'to', color: '#2e7d32' },
+            { from: 15, to: 47, label: 'Show stats modal', arrows: 'to', color: '#2e7d32' },
+            { from: 15, to: 48, label: 'Show path viewer', arrows: 'to', color: '#2e7d32' },
+            
+            // Sensors Integration
+            { from: 13, to: 70, label: 'Request position', arrows: 'to', color: '#ff9800' },
+            { from: 70, to: 13, label: 'GPS data stream', arrows: 'to', color: '#ff9800' },
+            { from: 13, to: 71, label: 'Monitor motion', arrows: 'to', color: '#ff9800' },
+            { from: 71, to: 13, label: 'Step events', arrows: 'to', color: '#ff9800' },
+            { from: 13, to: 72, label: 'Track orientation', arrows: 'to', color: '#ff9800' },
+            { from: 72, to: 13, label: 'Direction data', arrows: 'to', color: '#ff9800' },
+            { from: 46, to: 13, label: 'User controls', arrows: 'to', color: '#2e7d32' },
+
+            // Deepgram Integration
+            { from: 51, to: 27, label: 'Audio blob (Deepgram)', arrows: 'to', color: '#c62828' },
+            { from: 27, to: 1, label: 'Transcript', arrows: 'to', color: '#c62828', dashes: true },
+            { from: 1, to: 28, label: 'synthesize (Deepgram)', arrows: 'to', color: '#c62828' },
         ]);
 
         // Options du réseau
@@ -472,19 +547,26 @@
                 storage: { color: { background: '#ffaa44', border: '#ff8800' } },
                 ui: { color: { background: '#2e7d32', border: '#1b5e20' } },
                 voice: { color: { background: '#9966ff', border: '#6633cc' } },
-                event: { color: { background: '#ff66cc', border: '#cc3399' } }
+                event: { color: { background: '#ff66cc', border: '#cc3399' } },
+                sensors: { color: { background: '#ff9800', border: '#f57c00' } }
             },
             layout: {
                 hierarchical: {
-                    enabled: true,
-                    direction: 'UD',
-                    sortMethod: 'directed',
-                    nodeSpacing: 150,
-                    levelSeparation: 180
+                    enabled: false
                 }
             },
             physics: {
-                enabled: false
+                enabled: true,
+                barnesHut: {
+                    gravitationalConstant: -8000,
+                    springLength: 200,
+                    springConstant: 0.04,
+                    avoidOverlap: 0.5
+                },
+                stabilization: {
+                    iterations: 1000,
+                    updateInterval: 25
+                }
             },
             interaction: {
                 hover: true,
@@ -595,6 +677,20 @@
                 edges.forEach(edge => {
                     edges.update({ id: edge.id, hidden: false });
                 });
+            } else if (filter === 'activity') {
+                // Show activity tracking related nodes: 13-16 (modules), 46-48 (UI), 70-72 (sensors), 30 (storage)
+                const activityNodeIds = [13, 14, 15, 16, 30, 46, 47, 48, 70, 71, 72];
+                nodes.forEach(node => {
+                    const shouldShow = activityNodeIds.includes(node.id);
+                    nodes.update({ id: node.id, hidden: !shouldShow });
+                });
+                
+                edges.forEach(edge => {
+                    const fromNode = nodes.get(edge.from);
+                    const toNode = nodes.get(edge.to);
+                    const shouldShow = activityNodeIds.includes(fromNode.id) && activityNodeIds.includes(toNode.id);
+                    edges.update({ id: edge.id, hidden: !shouldShow });
+                });
             } else {
                 nodes.forEach(node => {
                     const shouldShow = node.group === filter;
@@ -628,10 +724,15 @@
             link.click();
         }
 
-        // Initial fit
-        network.once('stabilizationIterationsDone', function() {
-            network.fit();
-        });
+        // Initial fit after physics stabilization
+        setTimeout(() => {
+            network.fit({
+                animation: {
+                    duration: 1000,
+                    easingFunction: 'easeInOutQuad'
+                }
+            });
+        }, 1500);
     </script>
 </body>
 </html>

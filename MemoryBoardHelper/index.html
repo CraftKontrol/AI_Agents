@@ -460,6 +460,24 @@
                         <span id="viewStatsLabel">Statistiques complètes</span>
                     </button>
                 </div>
+
+                <!-- Activity Controls -->
+                <div class="activity-controls">
+                    <button class="btn-secondary" onclick="resetActivity()" id="resetActivityBtn">
+                        <span class="material-symbols-outlined">refresh</span>
+                        <span id="resetActivityText">Réinitialiser le parcours</span>
+                    </button>
+                    <div class="activity-toggle-control">
+                        <label for="enableActivityTrackingMain">
+                            <span class="material-symbols-outlined">track_changes</span>
+                            <span id="enableTrackingMainLabel">Activer le suivi automatique</span>
+                        </label>
+                        <label class="switch">
+                            <input type="checkbox" id="enableActivityTrackingMain" onchange="toggleActivityTracking()">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -839,29 +857,65 @@
             
             <div id="activitySettingsContent" class="section-content" style="display: none;">
                 <div class="setting-card">
-                    <div class="setting-header">
-                        <label for="enableActivityTracking">
-                            <span class="material-symbols-outlined">track_changes</span>
-                            <span id="enableTrackingLabel">Activer le suivi automatique</span>
-                        </label>
-                        <label class="switch">
-                            <input type="checkbox" id="enableActivityTracking" onchange="toggleActivityTracking()">
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                    <p class="setting-description">
-                        Le suivi enregistre automatiquement vos déplacements (pas, distance, GPS) en arrière-plan.
-                        Vous pouvez consulter vos statistiques et parcours à tout moment.
-                    </p>
-                </div>
-
-                <div class="setting-card">
                     <label for="dailyStepsGoal">
                         <span class="material-symbols-outlined">flag</span>
                         <span id="stepsGoalLabel">Objectif de pas quotidien</span>
                     </label>
                     <input type="number" id="dailyStepsGoal" min="1000" max="50000" step="1000" value="10000" onchange="saveDailyStepsGoal()">
                     <p class="setting-description">Nombre de pas à atteindre chaque jour</p>
+                </div>
+
+                <!-- Sensitivity Settings -->
+                <div class="setting-card">
+                    <h3>
+                        <span class="material-symbols-outlined">tune</span>
+                        <span id="sensitivityTitle">Réglage de sensibilité</span>
+                    </h3>
+                    <p class="setting-description">Ajuster les seuils de détection des capteurs pour un comptage de pas précis</p>
+                    
+                    <div class="sensitivity-control">
+                        <label for="gpsThresholdInput">
+                            <span id="gpsThresholdLabel">Mouvement GPS (distance minimale)</span>
+                        </label>
+                        <div class="slider-container">
+                            <input type="range" id="gpsThresholdInput" min="0.5" max="3" step="0.1" value="1.5" 
+                                   oninput="activityUI.updateSensitivitySettings('gps', this.value)">
+                            <span id="gpsThresholdValue" class="slider-value">1.5m</span>
+                        </div>
+                    </div>
+
+                    <div class="sensitivity-control">
+                        <label for="gyroThresholdInput">
+                            <span id="gyroThresholdLabel">Rotation (gyroscope)</span>
+                        </label>
+                        <div class="slider-container">
+                            <input type="range" id="gyroThresholdInput" min="5" max="45" step="5" value="15" 
+                                   oninput="activityUI.updateSensitivitySettings('gyro', this.value)">
+                            <span id="gyroThresholdValue" class="slider-value">15°</span>
+                        </div>
+                    </div>
+
+                    <div class="sensitivity-control">
+                        <label for="accelThresholdInput">
+                            <span id="accelThresholdLabel">Accélération (accéléromètre)</span>
+                        </label>
+                        <div class="slider-container">
+                            <input type="range" id="accelThresholdInput" min="0.05" max="0.5" step="0.05" value="0.15" 
+                                   oninput="activityUI.updateSensitivitySettings('accel', this.value)">
+                            <span id="accelThresholdValue" class="slider-value">0.15g</span>
+                        </div>
+                    </div>
+
+                    <div class="sensitivity-control">
+                        <label for="calorieMultiplierInput">
+                            <span id="calorieMultiplierLabel">Multiplicateur de calories</span>
+                        </label>
+                        <div class="slider-container">
+                            <input type="range" id="calorieMultiplierInput" min="0.5" max="2" step="0.1" value="1" 
+                                   oninput="activityUI.updateSensitivitySettings('calorie', this.value)">
+                            <span id="calorieMultiplierValue" class="slider-value">1.0x</span>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="tracking-status" id="trackingStatus" style="display: none;">

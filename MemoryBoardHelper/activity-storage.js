@@ -1,6 +1,7 @@
 // Activity Storage Module - IndexedDB Operations for Fitness Tracking
 // Handles activities, daily stats, and data persistence
 
+// Reuse store names from main storage.js
 const ACTIVITY_STORES = {
     ACTIVITIES: 'activities',
     DAILY_STATS: 'dailyStats',
@@ -10,75 +11,26 @@ const ACTIVITY_STORES = {
 // Graceful fallback when IndexedDB is unavailable or blocked
 let activityDbUnavailable = false;
 
-// Initialize activity-related stores in existing database
+// Initialize activity-related stores by reusing shared DB from storage.js
 async function initializeActivityStores() {
-    const dbName = 'MemoryBoardHelperDB';
-    const currentVersion = 4; // Increment from version 3 to 4
-    console.log('[ActivityStorage] Opening DB', dbName, 'v', currentVersion);
+    console.log('[ActivityStorage] Waiting for shared DB from storage.js...');
 
-    const openPromise = new Promise((resolve, reject) => {
-        const request = indexedDB.open(dbName, currentVersion);
-
-        request.onerror = () => {
-            console.error('[ActivityStorage] Failed to open database:', request.error);
-            reject(request.error);
-        };
-
-        request.onsuccess = () => {
-            console.log('[ActivityStorage] Database opened successfully');
-            resolve(request.result);
-        };
-
-        request.onupgradeneeded = (event) => {
-            const db = event.target.result;
-            console.log('[ActivityStorage] Upgrading database to version', currentVersion);
-
-            // Create activities store if it doesn't exist
-            if (!db.objectStoreNames.contains(ACTIVITY_STORES.ACTIVITIES)) {
-                const activitiesStore = db.createObjectStore(ACTIVITY_STORES.ACTIVITIES, {
-                    keyPath: 'id',
-                    autoIncrement: true
-                });
-                activitiesStore.createIndex('type', 'type', { unique: false });
-                activitiesStore.createIndex('startTime', 'startTime', { unique: false });
-                activitiesStore.createIndex('date', 'date', { unique: false });
-                console.log('[ActivityStorage] Created activities store');
-            }
-
-            // Create daily stats store if it doesn't exist
-            if (!db.objectStoreNames.contains(ACTIVITY_STORES.DAILY_STATS)) {
-                const dailyStatsStore = db.createObjectStore(ACTIVITY_STORES.DAILY_STATS, {
-                    keyPath: 'date'
-                });
-                dailyStatsStore.createIndex('date', 'date', { unique: true });
-                console.log('[ActivityStorage] Created dailyStats store');
-            }
-
-            // Create activity goals store if it doesn't exist
-            if (!db.objectStoreNames.contains(ACTIVITY_STORES.ACTIVITY_GOALS)) {
-                const goalsStore = db.createObjectStore(ACTIVITY_STORES.ACTIVITY_GOALS, {
-                    keyPath: 'id',
-                    autoIncrement: true
-                });
-                goalsStore.createIndex('type', 'type', { unique: false });
-                console.log('[ActivityStorage] Created activityGoals store');
-            }
-        };
-
-        request.onblocked = () => {
-            console.warn('[ActivityStorage] Database open blocked by another tab/session');
-        };
-    });
-
-    // Prevent hangs: short timeout
-    return Promise.race([
-        openPromise,
-        new Promise((_, reject) => setTimeout(() => reject(new Error('IndexedDB open timeout (0.5s)')), 500))
-    ]).catch((err) => {
+    try {
+        // Wait for storage.js to signal DB is ready (with 10s timeout)
+        const db = await Promise.race([
+            window.dbReady,
+            new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('DB initialization timeout after 10s')), 10000)
+            )
+        ]);
+        
+        console.log('[ActivityStorage] Shared DB ready, using it');
+        return db;
+    } catch (error) {
+        console.error('[ActivityStorage] Failed to get shared DB:', error);
         activityDbUnavailable = true;
-        console.warn('[ActivityStorage] IndexedDB unavailable, fallback to empty results:', err);
         return null;
-    });
+    }
 }
 
 // Save activity to database
@@ -432,16 +384,144 @@ async function exportActivitiesData() {
     }
 }
 
+// Save daily stats (for midnight archiving)
+async function saveDailyStats(statsData) {
+    try {
+        if (activityDbUnavailable) {
+            console.warn('[ActivityStorage] DB unavailable, skipping saveDailyStats');
+            return null;
+        }
+        const db = await initializeActivityStores();
+        if (!db) return null;
+        
+        const transaction = db.transaction([ACTIVITY_STORES.DAILY_STATS], 'readwrite');
+        const store = transaction.objectStore(ACTIVITY_STORES.DAILY_STATS);
+        
+        return new Promise((resolve, reject) => {
+            const request = store.put(statsData);
+            
+            request.onsuccess = () => {
+                console.log('[ActivityStorage] Daily stats saved for', statsData.date);
+                resolve(statsData.date);
+            };
+            
+            request.onerror = () => {
+                console.error('[ActivityStorage] Error saving daily stats:', request.error);
+                reject(request.error);
+            };
+        });
+    } catch (error) {
+        console.error('[ActivityStorage] Error in saveDailyStats:', error);
+        throw error;
+    }
+}
+
+// Get all daily stats
+async function getAllDailyStats() {
+    try {
+        if (activityDbUnavailable) {
+            return [];
+        }
+        const db = await initializeActivityStores();
+        if (!db) return [];
+        
+        const transaction = db.transaction([ACTIVITY_STORES.DAILY_STATS], 'readonly');
+        const store = transaction.objectStore(ACTIVITY_STORES.DAILY_STATS);
+        
+        return new Promise((resolve, reject) => {
+            const request = store.getAll();
+            
+            request.onsuccess = () => {
+                resolve(request.result || []);
+            };
+            
+            request.onerror = () => {
+                console.error('[ActivityStorage] Error getting daily stats:', request.error);
+                reject(request.error);
+            };
+        });
+    } catch (error) {
+        console.error('[ActivityStorage] Error in getAllDailyStats:', error);
+        return [];
+    }
+}
+
+// Save activity goal
+async function saveActivityGoal(goalData) {
+    try {
+        if (activityDbUnavailable) {
+            console.warn('[ActivityStorage] DB unavailable, skipping saveActivityGoal');
+            return null;
+        }
+        const db = await initializeActivityStores();
+        if (!db) return null;
+        
+        const transaction = db.transaction([ACTIVITY_STORES.ACTIVITY_GOALS], 'readwrite');
+        const store = transaction.objectStore(ACTIVITY_STORES.ACTIVITY_GOALS);
+        
+        return new Promise((resolve, reject) => {
+            const request = store.put(goalData);
+            
+            request.onsuccess = () => {
+                console.log('[ActivityStorage] Activity goal saved:', goalData.type);
+                resolve(request.result);
+            };
+            
+            request.onerror = () => {
+                console.error('[ActivityStorage] Error saving activity goal:', request.error);
+                reject(request.error);
+            };
+        });
+    } catch (error) {
+        console.error('[ActivityStorage] Error in saveActivityGoal:', error);
+        throw error;
+    }
+}
+
+// Delete activity by ID
+async function deleteActivity(activityId) {
+    try {
+        if (activityDbUnavailable) {
+            console.warn('[ActivityStorage] DB unavailable, skipping deleteActivity');
+            return false;
+        }
+        const db = await initializeActivityStores();
+        if (!db) return false;
+        
+        const transaction = db.transaction([ACTIVITY_STORES.ACTIVITIES], 'readwrite');
+        const store = transaction.objectStore(ACTIVITY_STORES.ACTIVITIES);
+        
+        return new Promise((resolve, reject) => {
+            const request = store.delete(activityId);
+            
+            request.onsuccess = () => {
+                console.log('[ActivityStorage] Activity deleted:', activityId);
+                resolve(true);
+            };
+            
+            request.onerror = () => {
+                console.error('[ActivityStorage] Error deleting activity:', request.error);
+                reject(request.error);
+            };
+        });
+    } catch (error) {
+        console.error('[ActivityStorage] Error in deleteActivity:', error);
+        return false;
+    }
+}
+
 // Export functions globally
 window.saveActivity = saveActivity;
 window.getAllActivities = getAllActivities;
 window.getLastActivities = getLastActivities;
 window.getActivitiesByDateRange = getActivitiesByDateRange;
-window.getActivityById = getActivityById;
 window.updateDailyStats = updateDailyStats;
 window.getDailyStats = getDailyStats;
 window.getActivityGoals = getActivityGoals;
-window.updateActivityGoal = updateActivityGoal;
 window.exportActivitiesData = exportActivitiesData;
 window.initializeActivityStores = initializeActivityStores;
+window.saveDailyStats = saveDailyStats;
+window.getAllDailyStats = getAllDailyStats;
+window.saveActivityGoal = saveActivityGoal;
+window.deleteActivity = deleteActivity;
 

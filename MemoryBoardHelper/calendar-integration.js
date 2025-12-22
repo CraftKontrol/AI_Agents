@@ -672,11 +672,9 @@ document.addEventListener('DOMContentLoaded', async function() {
     console.log('[Calendar] DOMContentLoaded - waiting for storage...');
     
     try {
-        // Ensure database is initialized
-        if (!db) {
-            console.log('[Calendar] Waiting for database initialization...');
-            await initializeDatabase();
-        }
+        // Wait for database to be ready (initialized by storage.js)
+        console.log('[Calendar] Waiting for database to be ready...');
+        await window.dbReady;
         
         // Give storage a moment to settle
         await new Promise(resolve => setTimeout(resolve, 200));

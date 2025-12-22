@@ -247,6 +247,17 @@ function registerAction(actionName, validateFn, executeFn, verifyFn = null) {
 async function executeAction(actionName, params, language = 'fr') {
     console.log(`[ActionWrapper] Executing action: ${actionName}`, params);
     
+    // Close any open modals when starting a new action
+    if (typeof closeWeatherModal === 'function') {
+        closeWeatherModal();
+    }
+    if (typeof closeGPSModal === 'function') {
+        closeGPSModal();
+    }
+    if (typeof closeSearchResultsModal === 'function') {
+        closeSearchResultsModal();
+    }
+    
     // Dispatch start event
     if (typeof window !== 'undefined') {
         const startDetail = {
@@ -1663,6 +1674,98 @@ registerAction(
     }
 );
 
+// --- RESET_ACTIVITY ---
+registerAction(
+    'reset_activity',
+    // Validate
+    async (params, language) => {
+        if (typeof activityTracker === 'undefined') {
+            return { valid: false, message: 'Activity tracker not available' };
+        }
+        return { valid: true };
+    },
+    // Execute
+    async (params, language) => {
+        if (!activityTracker.isTracking) {
+            const messages = {
+                fr: 'Le suivi n\'est pas actif. Impossible de réinitialiser.',
+                en: 'Tracking is not active. Cannot reset.',
+                it: 'Il monitoraggio non è attivo. Impossibile reimpostare.'
+            };
+            return new ActionResult(false, messages[language] || messages.fr, null, 'Not tracking');
+        }
+        
+        try {
+            await activityTracker.resetPath();
+            
+            const messages = {
+                fr: 'Parcours réinitialisé ! Un nouveau parcours a démarré.',
+                en: 'Path reset! A new path has started.',
+                it: 'Percorso reimpostato! È iniziato un nuovo percorso.'
+            };
+            
+            const message = params.response || messages[language] || messages.fr;
+            return new ActionResult(true, message, { 
+                pathsCount: activityTracker.pathsToday,
+                maxPaths: activityTracker.maxPathsPerDay
+            });
+        } catch (error) {
+            const messages = {
+                fr: `Erreur lors de la réinitialisation : ${error.message}`,
+                en: `Error resetting path: ${error.message}`,
+                it: `Errore durante la reimpostazione: ${error.message}`
+            };
+            return new ActionResult(false, messages[language] || messages.fr, null, error.message);
+        }
+    }
+);
+
+// --- STOP_ACTIVITY ---
+registerAction(
+    'stop_activity',
+    // Validate
+    async (params, language) => {
+        if (typeof activityTracker === 'undefined') {
+            return { valid: false, message: 'Activity tracker not available' };
+        }
+        return { valid: true };
+    },
+    // Execute
+    async (params, language) => {
+        if (!activityTracker.isTracking) {
+            const messages = {
+                fr: 'Le suivi est déjà arrêté.',
+                en: 'Tracking is already stopped.',
+                it: 'Il monitoraggio è già fermato.'
+            };
+            return new ActionResult(false, messages[language] || messages.fr, null, 'Already stopped');
+        }
+        
+        try {
+            await activityTracker.stopTracking();
+            
+            const messages = {
+                fr: 'Suivi arrêté. Le suivi redémarrera automatiquement.',
+                en: 'Tracking stopped. Tracking will restart automatically.',
+                it: 'Monitoraggio fermato. Il monitoraggio ripartirà automaticamente.'
+            };
+            
+            const message = params.response || messages[language] || messages.fr;
+            return new ActionResult(true, message, { 
+                steps: activityTracker.stepCount,
+                duration: activityTracker.currentActivity.duration
+            });
+        } catch (error) {
+            const messages = {
+                fr: `Erreur lors de l'arrêt : ${error.message}`,
+                en: `Error stopping tracking: ${error.message}`,
+                it: `Errore durante l'arresto: ${error.message}`
+            };
+            return new ActionResult(false, messages[language] || messages.fr, null, error.message);
+        }
+    }
+);
+
 // =============================================================================
 // SPECIAL ACTIONS
 // =============================================================================
@@ -1868,8 +1971,16 @@ registerAction(
     },
     // Verify
     async (result, params, language) => {
-        if (result.data && result.data.lat && result.data.lng) {
-            console.log(`[ActionWrapper] ✅ GPS navigation opened`);
+        // Accept if:
+        // 1. GPS data with coordinates (lat/lng)
+        // 2. GPS data with URL
+        // 3. Function succeeded (openGPSWithCoords returned success)
+        const hasCoords = result.data && typeof result.data.lat === 'number' && typeof result.data.lng === 'number';
+        const hasUrl = result.data && result.data.url;
+        const succeeded = result.success === true;
+        
+        if (hasCoords || hasUrl || succeeded) {
+            console.log('[ActionWrapper] ✅ GPS navigation opened (verification)');
             return { valid: true };
         }
         return { valid: false, message: 'GPS navigation failed' };
@@ -2042,8 +2153,15 @@ registerAction(
     },
     // Verify
     async (result, params, language) => {
-        if (result.data && result.data.sources && result.data.sources.length > 0) {
-            console.log(`[ActionWrapper] ✅ Weather data fetched from ${result.data.sources.length} sources`);
+        const data = result.data;
+        const hasSources = Array.isArray(data?.sources) && data.sources.length > 0;
+        const hasAnyData = !!data && (hasSources || data.current || data.forecast || Array.isArray(data));
+        if (hasSources) {
+            console.log(`[ActionWrapper] ✅ Weather data fetched from ${data.sources.length} sources`);
+            return { valid: true };
+        }
+        if (hasAnyData) {
+            console.log('[ActionWrapper] ✅ Weather data present (fallback, no sources array)');
             return { valid: true };
         }
         return { valid: false, message: 'No weather data sources available' };

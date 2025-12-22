@@ -171,22 +171,17 @@ class ActivityUI {
     
     // Initialize automatic tracking based on settings
     async initializeAutoTracking() {
-        // Try to restore previous session first
-        const restored = await activityTracker.restoreActivityState();
-        if (restored) {
-            console.log('[ActivityUI] Previous session restored');
-            const enableCheckbox = document.getElementById('enableActivityTracking');
-            if (enableCheckbox) enableCheckbox.checked = true;
-            this.showTrackingStatus();
-            return;
-        }
-        
         // Check if automatic tracking is enabled in settings
         const trackingEnabled = localStorage.getItem('activityTrackingEnabled') === 'true';
-        const enableCheckbox = document.getElementById('enableActivityTracking');
+        console.log('[ActivityUI] localStorage activityTrackingEnabled:', trackingEnabled);
+        
+        const enableCheckbox = document.getElementById('enableActivityTrackingMain');
         
         if (enableCheckbox) {
             enableCheckbox.checked = trackingEnabled;
+            console.log('[ActivityUI] Checkbox set to:', trackingEnabled);
+        } else {
+            console.warn('[ActivityUI] enableActivityTrackingMain checkbox not found!');
         }
         
         // Load daily steps goal
@@ -537,6 +532,186 @@ class ActivityUI {
         if (modal) modal.style.display = 'none';
     }
     
+    // Render elevation graph on canvas
+    renderElevationGraph(path) {
+        const canvas = document.getElementById('elevationGraphCanvas');
+        if (!canvas) return;
+        
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width;
+        const height = canvas.height;
+        
+        // Clear canvas
+        ctx.clearRect(0, 0, width, height);
+        
+        // Extract altitudes
+        const altitudes = path.map(p => p.altitude).filter(a => Number.isFinite(a));
+        if (altitudes.length < 2) {
+            ctx.fillStyle = '#888';
+            ctx.font = '14px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('No elevation data', width / 2, height / 2);
+            return;
+        }
+        
+        // Calculate min/max
+        const minAlt = Math.min(...altitudes);
+        const maxAlt = Math.max(...altitudes);
+        const range = maxAlt - minAlt || 1;
+        
+        // Padding
+        const padding = { top: 20, right: 20, bottom: 30, left: 50 };
+        const graphWidth = width - padding.left - padding.right;
+        const graphHeight = height - padding.top - padding.bottom;
+        
+        // Scale altitude to graph height
+        const scaleY = (alt) => {
+            return padding.top + graphHeight - ((alt - minAlt) / range) * graphHeight;
+        };
+        
+        // Draw grid lines
+        ctx.strokeStyle = '#3a3a3a';
+        ctx.lineWidth = 1;
+        for (let i = 0; i <= 4; i++) {
+            const y = padding.top + (graphHeight / 4) * i;
+            ctx.beginPath();
+            ctx.moveTo(padding.left, y);
+            ctx.lineTo(width - padding.right, y);
+            ctx.stroke();
+            
+            const alt = maxAlt - (range / 4) * i;
+            ctx.fillStyle = '#888';
+            ctx.font = '12px sans-serif';
+            ctx.textAlign = 'right';
+            ctx.fillText(`${Math.round(alt)}m`, padding.left - 10, y + 4);
+        }
+        
+        // Draw elevation line
+        ctx.strokeStyle = '#4a9eff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        
+        altitudes.forEach((alt, i) => {
+            const x = padding.left + (graphWidth / (altitudes.length - 1)) * i;
+            const y = scaleY(alt);
+            
+            if (i === 0) {
+                ctx.moveTo(x, y);
+            } else {
+                ctx.lineTo(x, y);
+            }
+        });
+        
+        ctx.stroke();
+        
+        // Fill area under line
+        ctx.lineTo(width - padding.right, padding.top + graphHeight);
+        ctx.lineTo(padding.left, padding.top + graphHeight);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(74, 158, 255, 0.2)';
+        ctx.fill();
+        
+        // Draw axis labels
+        ctx.fillStyle = '#e0e0e0';
+        ctx.font = '14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Distance', width / 2, height - 5);
+        
+        ctx.save();
+        ctx.translate(15, height / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillText('Altitude (m)', 0, 0);
+        ctx.restore();
+    }
+    
+    // Load sensitivity settings from localStorage
+    loadSensitivitySettings() {
+        if (typeof activityTracker === 'undefined') return;
+        
+        const gpsThreshold = parseFloat(localStorage.getItem('gpsThreshold') || '1.5');
+        const gyroThreshold = parseFloat(localStorage.getItem('gyroThreshold') || '15');
+        const accelThreshold = parseFloat(localStorage.getItem('accelThreshold') || '0.15');
+        const calorieMultiplier = parseFloat(localStorage.getItem('calorieMultiplier') || '1');
+        
+        // Update UI sliders if they exist
+        const gpsInput = document.getElementById('gpsThresholdInput');
+        const gyroInput = document.getElementById('gyroThresholdInput');
+        const accelInput = document.getElementById('accelThresholdInput');
+        const calorieInput = document.getElementById('calorieMultiplierInput');
+        
+        if (gpsInput) gpsInput.value = gpsThreshold;
+        if (gyroInput) gyroInput.value = gyroThreshold;
+        if (accelInput) accelInput.value = accelThreshold;
+        if (calorieInput) calorieInput.value = calorieMultiplier;
+        
+        // Update value displays
+        this.updateSensitivityDisplay('gps', gpsThreshold);
+        this.updateSensitivityDisplay('gyro', gyroThreshold);
+        this.updateSensitivityDisplay('accel', accelThreshold);
+        this.updateSensitivityDisplay('calorie', calorieMultiplier);
+        
+        // Apply to tracker
+        if (activityTracker) {
+            activityTracker.gpsMovementThreshold = gpsThreshold;
+            activityTracker.gyroMovementThreshold = gyroThreshold;
+            activityTracker.accelMovementThreshold = accelThreshold;
+            activityTracker.calorieMultiplier = calorieMultiplier;
+        }
+    }
+    
+    // Update sensitivity settings
+    updateSensitivitySettings(type, value) {
+        if (typeof activityTracker === 'undefined') return;
+        
+        const numValue = parseFloat(value);
+        
+        switch (type) {
+            case 'gps':
+                localStorage.setItem('gpsThreshold', numValue);
+                if (activityTracker) activityTracker.gpsMovementThreshold = numValue;
+                this.updateSensitivityDisplay('gps', numValue);
+                break;
+            case 'gyro':
+                localStorage.setItem('gyroThreshold', numValue);
+                if (activityTracker) activityTracker.gyroMovementThreshold = numValue;
+                this.updateSensitivityDisplay('gyro', numValue);
+                break;
+            case 'accel':
+                localStorage.setItem('accelThreshold', numValue);
+                if (activityTracker) activityTracker.accelMovementThreshold = numValue;
+                this.updateSensitivityDisplay('accel', numValue);
+                break;
+            case 'calorie':
+                localStorage.setItem('calorieMultiplier', numValue);
+                if (activityTracker) activityTracker.calorieMultiplier = numValue;
+                this.updateSensitivityDisplay('calorie', numValue);
+                break;
+        }
+    }
+    
+    // Update sensitivity value display
+    updateSensitivityDisplay(type, value) {
+        const displayEl = document.getElementById(`${type}ThresholdValue`);
+        if (!displayEl) return;
+        
+        let displayText = '';
+        switch (type) {
+            case 'gps':
+                displayText = `${value.toFixed(1)}m`;
+                break;
+            case 'gyro':
+                displayText = `${value.toFixed(0)}°`;
+                break;
+            case 'accel':
+                displayText = `${value.toFixed(2)}g`;
+                break;
+            case 'calorie':
+                displayText = `${value.toFixed(1)}x`;
+                break;
+        }
+        displayEl.textContent = displayText;
+    }
+    
     // Show path viewer with OpenStreetMap
     async showPathViewer() {
         try {
@@ -827,7 +1002,6 @@ class ActivityUI {
         const monthly = await activityStats.getMonthlyStats();
         const allTime = await activityStats.getAllTimeStats();
         const streak = await activityStats.getActivityStreak();
-        const bests = await activityStats.getPersonalBests();
         
         // Update stats display
         document.getElementById('statsToday').innerHTML = this.formatStatsCard(today, this.t('today'));
@@ -835,9 +1009,6 @@ class ActivityUI {
         document.getElementById('statsMonthly').innerHTML = this.formatStatsCard(monthly, this.t('thisMonth'));
         document.getElementById('statsAllTime').innerHTML = this.formatStatsCard(allTime, this.t('allTime'));
         document.getElementById('statsStreak').innerHTML = this.formatStreakCard(streak);
-        if (bests) {
-            document.getElementById('statsBests').innerHTML = this.formatBestsCard(bests);
-        }
     }
     
     // Format stats card
@@ -927,7 +1098,6 @@ class ActivityUI {
                         <div id="statsMonthly" class="stat-card"></div>
                         <div id="statsAllTime" class="stat-card"></div>
                         <div id="statsStreak" class="stat-card"></div>
-                        <div id="statsBests" class="stat-card"></div>
                     </div>
                 </div>
             </div>

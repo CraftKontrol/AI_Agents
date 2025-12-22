@@ -274,6 +274,61 @@ Enable verbose logging by checking the console for:
 - Check timing: resolver must be set before action triggers
 - Use `injectVoiceAndWaitForAction()` helper
 
+## Activity Tracking Tests
+
+The tracking tests have been simplified to match the new walk-only automatic tracking system:
+
+### Available Tests
+
+1. **vocal_toggle_tracking**: Toggle automatic tracking on/off
+   - Command: "Active le suivi automatique"
+   - Validates tracking state changes
+
+2. **vocal_stop_activity**: Stop current tracking
+   - Command: "Arrête le suivi d'activité"
+   - Validates tracking stops properly
+
+3. **vocal_reset_activity**: Reset current path
+   - Command: "Réinitialise le parcours"
+   - Validates path data is cleared
+
+4. **vocal_activity_stats**: Show activity statistics
+   - Command: "Montre mes statistiques d'activité"
+   - Validates stats modal opens with data
+
+5. **vocal_show_activity_paths**: Display paths on map
+   - Command: "Montre mes parcours sur la carte"
+   - Validates map rendering with paths
+
+6. **vocal_activity_distance**: Get distance traveled
+   - Command: "Quelle distance ai-je parcourue?"
+   - Validates distance calculation
+
+### Removed Tests (Obsolete)
+
+The following tests were removed as the system no longer supports multi-activity modes:
+
+- ❌ `vocal_start_walk` - Tracking is now automatic
+- ❌ `vocal_start_run` - Run mode removed (walk-only)
+- ❌ `vocal_start_bike` - Bike mode removed (walk-only)
+- ❌ `vocal_activity_today` - Generic stats query (use vocal_activity_stats)
+- ❌ `vocal_activity_week` - Generic stats query (use vocal_activity_stats)
+- ❌ `vocal_activity_calories` - Calories removed from tracking
+
+### System Changes
+
+**Walk-Only Mode:**
+- Only walking activity is tracked
+- Triple verification system (GPS + gyroscope + accelerometer)
+- Automatic start/stop based on movement detection
+- No manual activity type selection
+
+**Simplified API:**
+- No `startActivity(type)` - tracking is automatic
+- `toggleActivityTracking()` - enable/disable automatic tracking
+- `resetActivity()` - clear current path
+- `stopActivity()` - stop tracking session
+
 ## Test Categories
 
 - **Task Tests**: CRUD operations on tasks
@@ -283,4 +338,9 @@ Enable verbose logging by checking the console for:
 - **UI Tests**: Modal interactions, button clicks
 - **Storage Tests**: IndexedDB, localStorage validation
 - **Audio Tests**: Sound system, volume control, haptic feedback, repetition detection (10 tests)
-- **Vocal Tests**: Voice command simulation (51 tests)
+- **Vocal Tests**: Voice command simulation (48 tests)
+- **Search Tests**: Web search integration (9 tests)
+- **GPS Tests**: GPS navigation and location services (10 tests)
+- **Weather Tests**: Weather forecast queries (10 tests)
+- **Tracking Tests**: Activity tracking - walk-only mode with automatic tracking (6 tests)
+- **Conversation Tests**: General conversation and chat mode (10 tests)

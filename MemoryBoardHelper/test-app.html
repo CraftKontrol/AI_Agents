@@ -474,6 +474,26 @@
                             <span class="material-symbols-outlined" style="font-size: 16px;">volume_up</span>
                             Audio
                         </button>
+                        <button class="btn btn-secondary" onclick="runTestsByCategory('search')" style="font-size: 12px; padding: 8px;">
+                            <span class="material-symbols-outlined" style="font-size: 16px;">search</span>
+                            Recherche
+                        </button>
+                        <button class="btn btn-secondary" onclick="runTestsByCategory('gps')" style="font-size: 12px; padding: 8px;">
+                            <span class="material-symbols-outlined" style="font-size: 16px;">location_on</span>
+                            GPS
+                        </button>
+                        <button class="btn btn-secondary" onclick="runTestsByCategory('weather')" style="font-size: 12px; padding: 8px;">
+                            <span class="material-symbols-outlined" style="font-size: 16px;">wb_sunny</span>
+                            Météo
+                        </button>
+                        <button class="btn btn-secondary" onclick="runTestsByCategory('tracking')" style="font-size: 12px; padding: 8px;">
+                            <span class="material-symbols-outlined" style="font-size: 16px;">directions_walk</span>
+                            Tracking
+                        </button>
+                        <button class="btn btn-secondary" onclick="runTestsByCategory('conversation')" style="font-size: 12px; padding: 8px;">
+                            <span class="material-symbols-outlined" style="font-size: 16px;">chat</span>
+                            Conversation
+                        </button>
                     </div>
                 </div>
                 
@@ -677,7 +697,7 @@
                     <div class="category-header" onclick="toggleSection('vocalTests')">
                         <span class="category-title">
                             <span class="material-symbols-outlined">mic</span>
-                            Commandes Vocales (60)
+                            Commandes Vocales (54)
                         </span>
                         <span class="material-symbols-outlined">expand_less</span>
                     </div>
@@ -736,6 +756,116 @@
                         <button class="test-button" onclick="runTest('vocal_greeting', this)">Vocal: Bonjour</button>
                         <button class="test-button" onclick="runTest('vocal_dark_matter', this)">Vocal: Matière noire</button>
                         <button class="test-button" onclick="runTest('vocal_thank_you', this)">Vocal: Merci</button>
+                    </div>
+                </div>
+
+                <!-- Web Search Tests -->
+                <div class="test-category">
+                    <div class="category-header" onclick="toggleSection('searchTests')">
+                        <span class="category-title">
+                            <span class="material-symbols-outlined">search</span>
+                            Recherche Web (9)
+                        </span>
+                        <span class="material-symbols-outlined">expand_less</span>
+                    </div>
+                    <div class="category-content" id="searchTests">
+                        <button class="test-button" onclick="runTest('vocal_search_web_simple', this)">Vocal: Recherche simple</button>
+                        <button class="test-button" onclick="runTest('vocal_search_web_restaurants', this)">Vocal: Recherche restaurants</button>
+                        <button class="test-button" onclick="runTest('vocal_search_web_weather', this)">Vocal: Recherche météo</button>
+                        <button class="test-button" onclick="runTest('vocal_search_web_question', this)">Vocal: Question recherche</button>
+                        <button class="test-button" onclick="runTest('vocal_search_recipe', this)">Vocal: Recherche recette</button>
+                        <button class="test-button" onclick="runTest('vocal_search_movie', this)">Vocal: Recherche film</button>
+                        <button class="test-button" onclick="runTest('vocal_search_news', this)">Vocal: Recherche actualités</button>
+                        <button class="test-button" onclick="runTest('vocal_search_health', this)">Vocal: Recherche santé</button>
+                        <button class="test-button" onclick="runTest('vocal_search_travel', this)">Vocal: Recherche voyage</button>
+                    </div>
+                </div>
+
+                <!-- GPS Navigation Tests -->
+                <div class="test-category">
+                    <div class="category-header" onclick="toggleSection('gpsTests')">
+                        <span class="category-title">
+                            <span class="material-symbols-outlined">location_on</span>
+                            Navigation GPS (10)
+                        </span>
+                        <span class="material-symbols-outlined">expand_less</span>
+                    </div>
+                    <div class="category-content" id="gpsTests">
+                        <button class="test-button" onclick="runTest('vocal_gps_coords_simple', this)">Vocal: GPS coordonnées simples</button>
+                        <button class="test-button" onclick="runTest('vocal_gps_coords_named', this)">Vocal: GPS coords avec nom</button>
+                        <button class="test-button" onclick="runTest('vocal_gps_address_simple', this)">Vocal: GPS adresse simple</button>
+                        <button class="test-button" onclick="runTest('vocal_gps_address_street', this)">Vocal: GPS adresse complète</button>
+                        <button class="test-button" onclick="runTest('vocal_gps_directions', this)">Vocal: Directions GPS</button>
+                        <button class="test-button" onclick="runTest('vocal_gps_itinerary', this)">Vocal: Itinéraire GPS</button>
+                        <button class="test-button" onclick="runTest('vocal_gps_nearest_pharmacy', this)">Vocal: GPS pharmacie proche</button>
+                        <button class="test-button" onclick="runTest('vocal_gps_hospital', this)">Vocal: GPS hôpital</button>
+                        <button class="test-button" onclick="runTest('vocal_gps_home', this)">Vocal: GPS domicile</button>
+                        <button class="test-button" onclick="runTest('vocal_gps_restaurant', this)">Vocal: GPS restaurant</button>
+                    </div>
+                </div>
+
+                <!-- Weather Forecast Tests -->
+                <div class="test-category">
+                    <div class="category-header" onclick="toggleSection('weatherTests')">
+                        <span class="category-title">
+                            <span class="material-symbols-outlined">wb_sunny</span>
+                            Prévisions Météo (10)
+                        </span>
+                        <span class="material-symbols-outlined">expand_less</span>
+                    </div>
+                    <div class="category-content" id="weatherTests">
+                        <button class="test-button" onclick="runTest('vocal_weather_simple', this)">Vocal: Météo simple</button>
+                        <button class="test-button" onclick="runTest('vocal_weather_city', this)">Vocal: Météo pour une ville</button>
+                        <button class="test-button" onclick="runTest('vocal_weather_forecast_3days', this)">Vocal: Prévisions 3 jours</button>
+                        <button class="test-button" onclick="runTest('vocal_weather_forecast_5days', this)">Vocal: Prévisions 5 jours</button>
+                        <button class="test-button" onclick="runTest('vocal_weather_tomorrow', this)">Vocal: Météo demain</button>
+                        <button class="test-button" onclick="runTest('vocal_weather_temperature', this)">Vocal: Température ville</button>
+                        <button class="test-button" onclick="runTest('vocal_weather_weekend', this)">Vocal: Météo weekend</button>
+                        <button class="test-button" onclick="runTest('vocal_weather_rain', this)">Vocal: Va-t-il pleuvoir</button>
+                        <button class="test-button" onclick="runTest('vocal_weather_sunny', this)">Vocal: Temps ensoleillé</button>
+                        <button class="test-button" onclick="runTest('vocal_weather_wind', this)">Vocal: Y a-t-il du vent</button>
+                    </div>
+                </div>
+
+                <!-- Activity Tracking Tests -->
+                <div class="test-category">
+                    <div class="category-header" onclick="toggleSection('trackingTests')">
+                        <span class="category-title">
+                            <span class="material-symbols-outlined">directions_walk</span>
+                            Suivi d'Activité (6)
+                        </span>
+                        <span class="material-symbols-outlined">expand_less</span>
+                    </div>
+                    <div class="category-content" id="trackingTests">
+                        <button class="test-button" onclick="runTest('vocal_toggle_tracking', this)">Vocal: Activer/Désactiver suivi</button>
+                        <button class="test-button" onclick="runTest('vocal_stop_activity', this)">Vocal: Arrêter activité</button>
+                        <button class="test-button" onclick="runTest('vocal_reset_activity', this)">Vocal: Réinitialiser parcours</button>
+                        <button class="test-button" onclick="runTest('vocal_activity_stats', this)">Vocal: Statistiques activités</button>
+                        <button class="test-button" onclick="runTest('vocal_show_activity_paths', this)">Vocal: Afficher parcours</button>
+                        <button class="test-button" onclick="runTest('vocal_activity_distance', this)">Vocal: Distance parcourue</button>
+                    </div>
+                </div>
+
+                <!-- Conversation Tests -->
+                <div class="test-category">
+                    <div class="category-header" onclick="toggleSection('conversationTests')">
+                        <span class="category-title">
+                            <span class="material-symbols-outlined">chat</span>
+                            Mode Conversation (10)
+                        </span>
+                        <span class="material-symbols-outlined">expand_less</span>
+                    </div>
+                    <div class="category-content" id="conversationTests">
+                        <button class="test-button" onclick="runTest('vocal_conversation_hello', this)">Vocal: Conversation - Salut</button>
+                        <button class="test-button" onclick="runTest('vocal_conversation_joke', this)">Vocal: Conversation - Blague</button>
+                        <button class="test-button" onclick="runTest('vocal_conversation_explain', this)">Vocal: Conversation - Explication</button>
+                        <button class="test-button" onclick="runTest('vocal_conversation_advice', this)">Vocal: Conversation - Conseil</button>
+                        <button class="test-button" onclick="runTest('vocal_conversation_story', this)">Vocal: Conversation - Histoire</button>
+                        <button class="test-button" onclick="runTest('vocal_conversation_philosophy', this)">Vocal: Conversation - Philosophie</button>
+                        <button class="test-button" onclick="runTest('vocal_conversation_compliment', this)">Vocal: Conversation - Compliment</button>
+                        <button class="test-button" onclick="runTest('vocal_conversation_mood', this)">Vocal: Conversation - Humeur</button>
+                        <button class="test-button" onclick="runTest('vocal_conversation_help', this)">Vocal: Conversation - Aide</button>
+                        <button class="test-button" onclick="runTest('vocal_conversation_facts', this)">Vocal: Conversation - Faits</button>
                     </div>
                 </div>
             </div>

@@ -356,56 +356,98 @@ class ActivityStats {
         return distribution;
     }
     
-    // Calculate personal bests
-    async getPersonalBests() {
-        const allActivities = await getAllActivities();
-
-        if (allActivities.length === 0) {
+    // Calculate activity streak (consecutive days with activity)
+    async getActivityStreak() {
+        try {
+            const allStats = await getAllDailyStats();
+            
+            if (allStats.length === 0) {
+                return { current: 0, longest: 0 };
+            }
+            
+            // Sort by date descending
+            allStats.sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            let currentStreak = 0;
+            let longestStreak = 0;
+            let tempStreak = 0;
+            
+            const today = new Date().toISOString().split('T')[0];
+            let checkDate = new Date(today);
+            
+            // Calculate current streak (consecutive days from today backwards)
+            for (const stat of allStats) {
+                const expectedDate = checkDate.toISOString().split('T')[0];
+                
+                if (stat.date === expectedDate && stat.totalSteps > 0) {
+                    currentStreak++;
+                    tempStreak++;
+                    checkDate.setDate(checkDate.getDate() - 1);
+                } else if (stat.date < expectedDate) {
+                    // Gap in dates, stop current streak
+                    break;
+                }
+            }
+            
+            // Find longest streak in history
+            tempStreak = 0;
+            let previousDate = null;
+            
+            for (const stat of allStats.sort((a, b) => new Date(a.date) - new Date(b.date))) {
+                if (stat.totalSteps > 0) {
+                    if (previousDate) {
+                        const prevDate = new Date(previousDate);
+                        const currDate = new Date(stat.date);
+                        const dayDiff = Math.floor((currDate - prevDate) / (1000 * 60 * 60 * 24));
+                        
+                        if (dayDiff === 1) {
+                            tempStreak++;
+                        } else {
+                            longestStreak = Math.max(longestStreak, tempStreak);
+                            tempStreak = 1;
+                        }
+                    } else {
+                        tempStreak = 1;
+                    }
+                    previousDate = stat.date;
+                } else {
+                    longestStreak = Math.max(longestStreak, tempStreak);
+                    tempStreak = 0;
+                    previousDate = null;
+                }
+            }
+            
+            longestStreak = Math.max(longestStreak, tempStreak);
+            
+            return { 
+                current: currentStreak, 
+                longest: Math.max(longestStreak, currentStreak)
+            };
+        } catch (error) {
+            console.error('[ActivityStats] Error calculating streak:', error);
+            return { current: 0, longest: 0 };
+        }
+    }
+    
+    // Get statistics by period
+    async getStats(period = 'today') {
+        try {
+            switch (period) {
+                case 'today':
+                    return await this.getTodayStats();
+                case 'week':
+                    return await this.getWeeklyStats();
+                case 'month':
+                    return await this.getMonthlyStats();
+                case 'all':
+                    return await this.getAllTimeStats();
+                default:
+                    return await this.getTodayStats();
+            }
+        } catch (error) {
+            console.error('[ActivityStats] Error getting stats:', error);
             return null;
         }
-
-        const bests = {
-            longestDistance: { value: 0, activity: null },
-            longestDuration: { value: 0, activity: null },
-            mostSteps: { value: 0, activity: null },
-            fastestPace: { value: Infinity, activity: null },
-            highestSpeed: { value: 0, activity: null },
-            mostElevationGain: { value: 0, activity: null }
-        };
-
-        allActivities.forEach(activity => {
-            if (activity.distance > bests.longestDistance.value) {
-                bests.longestDistance.value = activity.distance;
-                bests.longestDistance.activity = activity;
-            }
-
-            if (activity.duration > bests.longestDuration.value) {
-                bests.longestDuration.value = activity.duration;
-                bests.longestDuration.activity = activity;
-            }
-
-            if (activity.steps > bests.mostSteps.value) {
-                bests.mostSteps.value = activity.steps;
-                bests.mostSteps.activity = activity;
-            }
-
-            if (activity.avgPace > 0 && activity.avgPace < bests.fastestPace.value) {
-                bests.fastestPace.value = activity.avgPace;
-                bests.fastestPace.activity = activity;
-            }
-
-            if (activity.maxSpeed > bests.highestSpeed.value) {
-                bests.highestSpeed.value = activity.maxSpeed;
-                bests.highestSpeed.activity = activity;
-            }
-
-            if (activity.elevationGain > bests.mostElevationGain.value) {
-                bests.mostElevationGain.value = activity.elevationGain;
-                bests.mostElevationGain.activity = activity;
-            }
-        });
-
-        return bests;
     }
 
     // Export statistics as CSV

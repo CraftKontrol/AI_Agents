@@ -3256,18 +3256,27 @@ body {
 }
 
 .gps-modal {
-    background-color: var(--bg-primary);
-    padding: 30px;
+    background-color: var(--surface-color);
+    padding: 0;
     max-width: 500px;
     width: 90%;
-    border: 2px solid var(--primary-color);
+    border-radius: 0;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
 }
 
+.gps-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 30px;
+    background-color: var(--surface-elevated);
+    border-bottom: 1px solid var(--border-color);
+}
+
 .gps-modal h3 {
-    color: var(--text-primary);
+    color: #ffffff;
     font-size: 24px;
-    margin: 0 0 20px 0;
+    margin: 0;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -3278,14 +3287,35 @@ body {
     color: var(--primary-color);
 }
 
+.gps-close-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.gps-close-btn:hover {
+    color: var(--text-color);
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.gps-close-btn .material-symbols-outlined {
+    font-size: 24px;
+}
+
 .gps-location-info {
     display: flex;
     align-items: center;
     gap: 10px;
     padding: 15px;
+    margin: 20px 30px 15px 30px;
     background-color: rgba(74, 158, 255, 0.1);
     border-left: 3px solid var(--primary-color);
-    margin-bottom: 15px;
 }
 
 .gps-location-info .material-symbols-outlined {
@@ -3300,43 +3330,51 @@ body {
 }
 
 .gps-coords {
-    color: var(--text-secondary);
-    font-size: 16px;
+    color: var(--text-muted);
+    font-size: 14px;
     font-family: 'Courier New', monospace;
-    margin-bottom: 25px;
+    margin: 0 30px 20px 30px;
     padding: 10px;
-    background-color: rgba(255, 255, 255, 0.05);
+    background-color: var(--background-color);
     text-align: center;
+    border-radius: 0;
 }
 
 .gps-options {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 15px;
+    padding: 0 30px 30px 30px;
 }
 
 .gps-option-btn {
-    background-color: var(--bg-secondary);
-    color: var(--text-primary);
-    border: 2px solid var(--primary-color);
-    padding: 20px 15px;
-    font-size: 18px;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    padding: 15px;
+    font-size: 16px;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
     gap: 10px;
+    justify-content: flex-start;
+    border-radius: 0;
 }
 
 .gps-option-btn:hover {
+    background-color: var(--surface-elevated);
+    border-color: var(--primary-color);
+}
+
+.gps-option-btn:active {
     background-color: var(--primary-color);
-    transform: scale(1.05);
-    box-shadow: 0 4px 16px rgba(74, 158, 255, 0.3);
 }
 
 .gps-option-btn .material-symbols-outlined {
-    font-size: 32px;
+    font-size: 24px;
+    color: var(--primary-color);
 }
 
 @media (max-width: 768px) {
@@ -4181,6 +4219,61 @@ input:checked + .slider:before {
 }
 
 .btn-view-option .material-symbols-outlined {
+    font-size: 24px;
+}
+
+/* Activity Controls */
+.activity-controls {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.activity-controls .btn-secondary {
+    padding: 15px 20px;
+    background-color: var(--surface-color);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-size: 16px;
+    transition: all 0.3s ease;
+}
+
+.activity-controls .btn-secondary:hover {
+    border-color: var(--primary-color);
+    background-color: var(--surface-elevated);
+}
+
+.activity-controls .btn-secondary .material-symbols-outlined {
+    font-size: 24px;
+}
+
+.activity-toggle-control {
+    padding: 15px 20px;
+    background-color: var(--surface-color);
+    border: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+}
+
+.activity-toggle-control label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text-color);
+    font-size: 16px;
+    cursor: pointer;
+    margin: 0;
+}
+
+.activity-toggle-control .material-symbols-outlined {
     font-size: 24px;
 }
 

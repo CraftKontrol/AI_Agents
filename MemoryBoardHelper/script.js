@@ -1432,10 +1432,10 @@ function displayLaunchGreeting(message, overdueCount, todayCount, userLanguage =
 document.addEventListener('DOMContentLoaded', async function() {
     console.log('[App] Initializing Memory Board Helper...');
     
-    // Initialize database first
+    // Wait for database to be ready (initialized by storage.js)
     try {
-        await initializeDatabase();
-        console.log('[App] Database initialized successfully');
+        await window.dbReady;
+        console.log('[App] Database ready');
     } catch (error) {
         console.error('[App] Database initialization failed:', error);
         showError('Erreur d\'initialisation de la base de données');
@@ -1455,6 +1455,12 @@ document.addEventListener('DOMContentLoaded', async function() {
     if (typeof activityUI !== 'undefined' && typeof activityUI.initializeActivitySection === 'function') {
         activityUI.initializeActivitySection();
         console.log('[App] Activity tracking initialized');
+    }
+    
+    // Load sensitivity settings for activity tracking
+    if (typeof activityUI !== 'undefined' && typeof activityUI.loadSensitivitySettings === 'function') {
+        activityUI.loadSensitivitySettings();
+        console.log('[App] Activity sensitivity settings loaded');
     }
     
     // Load saved API keys
@@ -6489,11 +6495,26 @@ window.testSoundSystem = testSoundSystem;
 
 // Toggle activity tracking on/off
 async function toggleActivityTracking() {
-    const checkbox = document.getElementById('enableActivityTracking');
+    const checkbox = document.getElementById('enableActivityTrackingMain');
+    if (!checkbox) {
+        console.error('[Activity] Checkbox not found!');
+        return;
+    }
+    
     const isEnabled = checkbox.checked;
+    console.log('[Activity] Toggle called, isEnabled:', isEnabled);
+    
+    // Check if activityTracker is loaded
+    if (typeof activityTracker === 'undefined') {
+        console.error('[Activity] activityTracker not loaded!');
+        speakResponse('Erreur: module de suivi non chargé');
+        checkbox.checked = false;
+        return;
+    }
     
     // Save to localStorage
     localStorage.setItem('activityTrackingEnabled', isEnabled);
+    console.log('[Activity] Saved to localStorage:', isEnabled);
     
     if (isEnabled) {
         // Start tracking automatically
@@ -6511,7 +6532,6 @@ async function toggleActivityTracking() {
         // Stop tracking and clear state
         console.log('[Settings] Disabling activity tracking...');
         await activityTracker.stopTracking();
-        activityTracker.clearActivityState();
         activityUI.hideTrackingStatus();
         speakResponse('Suivi d\'activité désactivé');
     }
@@ -6552,6 +6572,84 @@ async function saveDailyStepsGoal() {
     speakResponse(`Objectif quotidien défini à ${goal} pas`);
 }
 
+// Reset activity path
+async function resetActivity() {
+    if (typeof activityTracker === 'undefined' || !activityTracker.isTracking) {
+        const lang = typeof getCurrentLanguage === 'function' ? getCurrentLanguage() : 'fr';
+        const messages = {
+            fr: 'Le suivi n\'est pas actif',
+            en: 'Tracking is not active',
+            it: 'Il monitoraggio non è attivo'
+        };
+        speakResponse(messages[lang] || messages.fr);
+        return;
+    }
+    
+    try {
+        await activityTracker.resetPath();
+        const lang = typeof getCurrentLanguage === 'function' ? getCurrentLanguage() : 'fr';
+        const messages = {
+            fr: `Parcours réinitialisé ! Parcours ${activityTracker.pathsToday} sur ${activityTracker.maxPathsPerDay}`,
+            en: `Path reset! Path ${activityTracker.pathsToday} of ${activityTracker.maxPathsPerDay}`,
+            it: `Percorso reimpostato! Percorso ${activityTracker.pathsToday} di ${activityTracker.maxPathsPerDay}`
+        };
+        speakResponse(messages[lang] || messages.fr);
+        
+        // Update UI
+        if (typeof activityUI !== 'undefined') {
+            activityUI.updateDashboard();
+        }
+    } catch (error) {
+        console.error('[Activity] Reset error:', error);
+        const lang = typeof getCurrentLanguage === 'function' ? getCurrentLanguage() : 'fr';
+        const messages = {
+            fr: 'Erreur lors de la réinitialisation',
+            en: 'Error resetting path',
+            it: 'Errore durante la reimpostazione'
+        };
+        speakResponse(messages[lang] || messages.fr);
+    }
+}
+
+// Stop activity tracking
+async function stopActivity() {
+    if (typeof activityTracker === 'undefined' || !activityTracker.isTracking) {
+        const lang = typeof getCurrentLanguage === 'function' ? getCurrentLanguage() : 'fr';
+        const messages = {
+            fr: 'Le suivi est déjà arrêté',
+            en: 'Tracking is already stopped',
+            it: 'Il monitoraggio è già fermato'
+        };
+        speakResponse(messages[lang] || messages.fr);
+        return;
+    }
+    
+    try {
+        await activityTracker.stopTracking();
+        const lang = typeof getCurrentLanguage === 'function' ? getCurrentLanguage() : 'fr';
+        const messages = {
+            fr: 'Suivi arrêté temporairement',
+            en: 'Tracking temporarily stopped',
+            it: 'Monitoraggio fermato temporaneamente'
+        };
+        speakResponse(messages[lang] || messages.fr);
+        
+        // Update UI
+        if (typeof activityUI !== 'undefined') {
+            activityUI.updateDashboard();
+        }
+    } catch (error) {
+        console.error('[Activity] Stop error:', error);
+        const lang = typeof getCurrentLanguage === 'function' ? getCurrentLanguage() : 'fr';
+        const messages = {
+            fr: 'Erreur lors de l\'arrêt',
+            en: 'Error stopping tracking',
+            it: 'Errore durante l\'arresto'
+        };
+        speakResponse(messages[lang] || messages.fr);
+    }
+}
+
 // =============================================================================
 // EXPORTS
 // =============================================================================
@@ -6581,4 +6679,6 @@ window.closeContactsGuidanceModal = closeContactsGuidanceModal;
 // Activity tracking functions
 window.toggleActivityTracking = toggleActivityTracking;
 window.saveDailyStepsGoal = saveDailyStepsGoal;
+window.resetActivity = resetActivity;
+window.stopActivity = stopActivity;
 

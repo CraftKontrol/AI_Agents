@@ -2,36 +2,82 @@
 // Manages tasks, conversation history, and settings
 
 const DB_NAME = 'MemoryBoardHelperDB';
-const DB_VERSION = 3;
+const DB_VERSION = 4; // Increment to 4 for activity tracking stores
 const STORES = {
     TASKS: 'tasks',
     CONVERSATIONS: 'conversations',
     SETTINGS: 'settings',
     NOTES: 'notes',
     LISTS: 'lists',
-    ACTION_HISTORY: 'actionHistory'
+    ACTION_HISTORY: 'actionHistory',
+    ACTIVITIES: 'activities',
+    DAILY_STATS: 'dailyStats',
+    ACTIVITY_GOALS: 'activityGoals'
 };
 
 let db = null;
 
+// Promise to signal when DB is ready
+let dbReadyResolve, dbReadyReject;
+window.dbReady = new Promise((resolve, reject) => {
+    dbReadyResolve = resolve;
+    dbReadyReject = reject;
+});
 // Initialize IndexedDB
 async function initializeDatabase() {
+    console.log('[Storage] Starting database initialization...');
+    
+    // Force close any existing connections
+    if (db) {
+        console.log('[Storage] Closing existing DB connection...');
+        db.close();
+        db = null;
+    }
+    
     return new Promise((resolve, reject) => {
         const request = indexedDB.open(DB_NAME, DB_VERSION);
+        console.log('[Storage] IndexedDB open request sent for', DB_NAME, 'version', DB_VERSION);
 
         request.onerror = () => {
             console.error('[Storage] Database failed to open');
+            if (dbReadyReject) {
+                dbReadyReject(request.error);
+                console.log('[Storage] DB ready signal rejected (error)');
+            }
             reject(request.error);
         };
 
         request.onsuccess = () => {
             db = request.result;
             console.log('[Storage] Database initialized successfully');
+            
+            // Export db and STORES globally for other modules
+            window.sharedDB = db;
+            window.STORES = STORES;
+            console.log('[Storage] Shared DB and STORES exported globally');
+            
+            // Signal that DB is ready
+            if (dbReadyResolve) {
+                dbReadyResolve(db);
+                console.log('[Storage] DB ready signal sent');
+            }
+            
             resolve(db);
+        };
+
+        request.onblocked = () => {
+            console.error('[Storage] Database upgrade blocked - close other tabs using this app');
+            if (dbReadyReject) {
+                dbReadyReject(new Error('Database blocked by other tabs'));
+                console.log('[Storage] DB ready signal rejected (blocked)');
+            }
+            reject(new Error('Database blocked'));
         };
 
         request.onupgradeneeded = (event) => {
             db = event.target.result;
+            console.log('[Storage] Database upgrade needed from version', event.oldVersion, 'to', event.newVersion);
+            console.log('[Storage] Existing stores:', Array.from(db.objectStoreNames));
 
             // Create tasks store
             if (!db.objectStoreNames.contains(STORES.TASKS)) {
@@ -81,6 +127,31 @@ async function initializeDatabase() {
                 actionHistoryStore.createIndex('undone', 'undone', { unique: false });
                 console.log('[Storage] Action History store created');
             }
+
+            // Create activities store (for activity tracking)
+            if (!db.objectStoreNames.contains(STORES.ACTIVITIES)) {
+                const activitiesStore = db.createObjectStore(STORES.ACTIVITIES, { keyPath: 'id', autoIncrement: true });
+                activitiesStore.createIndex('type', 'type', { unique: false });
+                activitiesStore.createIndex('startTime', 'startTime', { unique: false });
+                activitiesStore.createIndex('date', 'date', { unique: false });
+                console.log('[Storage] Activities store created');
+            }
+
+            // Create daily stats store (for activity tracking)
+            if (!db.objectStoreNames.contains(STORES.DAILY_STATS)) {
+                const dailyStatsStore = db.createObjectStore(STORES.DAILY_STATS, { keyPath: 'date' });
+                dailyStatsStore.createIndex('date', 'date', { unique: true });
+                console.log('[Storage] Daily Stats store created');
+            }
+
+            // Create activity goals store (for activity tracking)
+            if (!db.objectStoreNames.contains(STORES.ACTIVITY_GOALS)) {
+                const goalsStore = db.createObjectStore(STORES.ACTIVITY_GOALS, { keyPath: 'id', autoIncrement: true });
+                goalsStore.createIndex('type', 'type', { unique: false });
+                console.log('[Storage] Activity Goals store created');
+            }
+            
+            console.log('[Storage] Database upgrade complete');
         };
     });
 }
@@ -628,7 +699,17 @@ if (typeof window !== 'undefined') {
     console.log('[Storage] Functions exposed to window');
 }
 
-// Initialize on load
-initializeDatabase().catch(error => {
+// Initialize on load with timeout
+const DB_INIT_TIMEOUT = 15000; // 15 seconds
+Promise.race([
+    initializeDatabase(),
+    new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Database initialization timeout after 15s')), DB_INIT_TIMEOUT)
+    )
+]).catch(error => {
     console.error('[Storage] Failed to initialize database, using localStorage fallback:', error);
+    if (dbReadyReject) {
+        dbReadyReject(error);
+        console.log('[Storage] DB ready signal rejected (init failed)');
+    }
 });
