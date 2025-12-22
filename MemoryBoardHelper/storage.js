@@ -669,6 +669,119 @@ function isDatabaseReady() {
     return db !== null;
 }
 
+// Export all data to JSON for backup
+async function exportAllData() {
+    console.log('[Storage] Starting full data export...');
+    
+    try {
+        const exportData = {
+            exportDate: new Date().toISOString(),
+            version: '1.0',
+            tasks: [],
+            notes: [],
+            lists: [],
+            conversations: [],
+            settings: {},
+            activityData: {
+                activities: [],
+                dailyStats: [],
+                goals: []
+            }
+        };
+        
+        // Export tasks
+        try {
+            exportData.tasks = await getAllTasks();
+            console.log(`[Storage] Exported ${exportData.tasks.length} tasks`);
+        } catch (e) {
+            console.error('[Storage] Error exporting tasks:', e);
+            exportData.tasks = getTasksFromLocalStorage();
+        }
+        
+        // Export notes
+        try {
+            exportData.notes = await getAllNotes();
+            console.log(`[Storage] Exported ${exportData.notes.length} notes`);
+        } catch (e) {
+            console.error('[Storage] Error exporting notes:', e);
+            exportData.notes = getNotesFromLocalStorage();
+        }
+        
+        // Export lists
+        try {
+            exportData.lists = await getAllLists();
+            console.log(`[Storage] Exported ${exportData.lists.length} lists`);
+        } catch (e) {
+            console.error('[Storage] Error exporting lists:', e);
+            exportData.lists = getListsFromLocalStorage();
+        }
+        
+        // Export conversations
+        try {
+            exportData.conversations = await getAllFromStore(STORES.CONVERSATIONS);
+            console.log(`[Storage] Exported ${exportData.conversations.length} conversations`);
+        } catch (e) {
+            console.error('[Storage] Error exporting conversations:', e);
+        }
+        
+        // Export settings from localStorage
+        try {
+            const settingsKeys = [
+                'mbh_language', 'mbh_apiKey', 'mbh_tavilyApiKey', 
+                'mbh_openWeatherApiKey', 'dailyStepsGoal', 
+                'activityTrackingEnabled', 'audioEnabled', 
+                'audioVolume', 'hapticEnabled'
+            ];
+            settingsKeys.forEach(key => {
+                const value = localStorage.getItem(key);
+                if (value !== null) {
+                    exportData.settings[key] = value;
+                }
+            });
+            console.log(`[Storage] Exported ${Object.keys(exportData.settings).length} settings`);
+        } catch (e) {
+            console.error('[Storage] Error exporting settings:', e);
+        }
+        
+        // Export activity data (if available)
+        try {
+            if (typeof window.getAllActivities === 'function') {
+                exportData.activityData.activities = await window.getAllActivities();
+                console.log(`[Storage] Exported ${exportData.activityData.activities.length} activities`);
+            }
+            if (typeof window.getAllDailyStats === 'function') {
+                exportData.activityData.dailyStats = await window.getAllDailyStats();
+                console.log(`[Storage] Exported ${exportData.activityData.dailyStats.length} daily stats`);
+            }
+            if (typeof window.getActivityGoals === 'function') {
+                exportData.activityData.goals = await window.getActivityGoals();
+                console.log(`[Storage] Exported ${exportData.activityData.goals.length} activity goals`);
+            }
+        } catch (e) {
+            console.error('[Storage] Error exporting activity data:', e);
+        }
+        
+        // Create download link
+        const dataStr = JSON.stringify(exportData, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(dataBlob);
+        
+        const downloadLink = document.createElement('a');
+        downloadLink.href = url;
+        downloadLink.download = `memoryboardhelper-export-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+        URL.revokeObjectURL(url);
+        
+        console.log('[Storage] Export completed successfully');
+        return exportData;
+    } catch (error) {
+        console.error('[Storage] Error during export:', error);
+        throw error;
+    }
+}
+
 // Export functions to window for access by other scripts
 if (typeof window !== 'undefined') {
     window.STORES = STORES;
@@ -695,6 +808,7 @@ if (typeof window !== 'undefined') {
     window.deleteNote = deleteNote;
     window.getNoteById = getNoteById;
     window.isDatabaseReady = isDatabaseReady;
+    window.exportAllData = exportAllData;
     
     console.log('[Storage] Functions exposed to window');
 }

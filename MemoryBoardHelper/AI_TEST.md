@@ -542,6 +542,13 @@ The following tests were removed as the system no longer supports multi-activity
 - **Vocal Tests**: Voice command simulation (48 tests)
 - **Search Tests**: Web search integration (9 tests)
 - **GPS Tests**: GPS navigation and location services (10 tests)
+  - **Basic GPS**: Coordinates and address navigation (6 tests)
+    - Accept `send_address` and `open_gps` actions
+    - Graceful failure handling for geocoding errors
+  - **POI Search**: Point of Interest search with OpenStreetMap (4 tests)
+    - Pharmacy, hospital, home, restaurant searches
+    - Use `search_web` or `conversation` actions
+    - Mistral-powered recommendations and commentary
 - **Weather Tests**: Weather forecast queries (10 tests)
 - **Tracking Tests**: Activity tracking - walk-only mode with automatic tracking (6 tests)
 - **Conversation Tests**: General conversation and chat mode (10 tests)

@@ -6566,6 +6566,58 @@ window.loadSoundSystemSettings = loadSoundSystemSettings;
 window.testSoundSystem = testSoundSystem;
 
 // =============================================================================
+// DATA EXPORT FOR ANDROID SERVICE
+// =============================================================================
+
+/**
+ * Get today's activity data for Android monitoring service
+ * Returns step count and tracking status
+ */
+async function getTodayActivityData() {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        const trackingEnabled = localStorage.getItem('activityTrackingEnabled') === 'true';
+        
+        let steps = 0;
+        let distance = 0;
+        let calories = 0;
+        
+        // Get today's stats from IndexedDB if available
+        if (typeof window.getDailyStats === 'function') {
+            const stats = await window.getDailyStats(today);
+            if (stats) {
+                steps = stats.steps || 0;
+                distance = stats.distance || 0;
+                calories = stats.calories || 0;
+            }
+        }
+        
+        return {
+            date: today,
+            trackingEnabled: trackingEnabled,
+            steps: steps,
+            distance: Math.round(distance),
+            calories: Math.round(calories),
+            timestamp: Date.now()
+        };
+    } catch (error) {
+        console.error('[ActivityData] Error getting today activity data:', error);
+        return {
+            date: new Date().toISOString().split('T')[0],
+            trackingEnabled: false,
+            steps: 0,
+            distance: 0,
+            calories: 0,
+            timestamp: Date.now(),
+            error: error.message
+        };
+    }
+}
+
+// Expose function globally for Android WebView access
+window.getTodayActivityData = getTodayActivityData;
+
+// =============================================================================
 // ACTIVITY TRACKING FUNCTIONS
 // =============================================================================
 

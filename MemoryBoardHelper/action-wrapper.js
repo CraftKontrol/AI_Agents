@@ -2335,16 +2335,19 @@ async function generateSearchSummary(searchData, query, language) {
 /**
  * Close all open modals
  * Comprehensive modal closure system - ensures no modals remain open when executing actions
+ * Note: Only closes EXISTING modals before action execution, not dynamically created ones
  */
 function closeAllModals() {
-    console.log('[ActionWrapper] Closing all modals before action execution...');
+    console.log('[ActionWrapper] Closing all existing modals before action execution...');
     
     // Close settings modal
     if (typeof closeSettingsModal === 'function') {
         closeSettingsModal();
     } else {
         const settingsModal = document.getElementById('settingsModal');
-        if (settingsModal) settingsModal.style.display = 'none';
+        if (settingsModal && settingsModal.style.display !== 'none') {
+            settingsModal.style.display = 'none';
+        }
     }
     
     // Close emergency settings modal
@@ -2352,18 +2355,14 @@ function closeAllModals() {
         closeEmergencySettingsModal();
     } else {
         const emergencyModal = document.getElementById('emergencySettingsModal');
-        if (emergencyModal) emergencyModal.style.display = 'none';
+        if (emergencyModal && emergencyModal.style.display !== 'none') {
+            emergencyModal.style.display = 'none';
+        }
     }
     
-    // Close contacts guidance modal
+    // Close contacts guidance modal (dynamically created)
     if (typeof closeContactsGuidanceModal === 'function') {
         closeContactsGuidanceModal();
-    } else {
-        const contactsGuidanceModal = document.getElementById('contactsGuidanceModal');
-        if (contactsGuidanceModal) {
-            contactsGuidanceModal.style.display = 'none';
-            contactsGuidanceModal.remove();
-        }
     }
     
     // Close task modal
@@ -2371,7 +2370,9 @@ function closeAllModals() {
         closeAddTaskModal();
     } else {
         const taskModal = document.getElementById('addTaskModal');
-        if (taskModal) taskModal.style.display = 'none';
+        if (taskModal && taskModal.style.display !== 'none') {
+            taskModal.style.display = 'none';
+        }
     }
     
     // Close note modal
@@ -2379,7 +2380,9 @@ function closeAllModals() {
         closeAddNoteModal();
     } else {
         const noteModal = document.getElementById('addNoteModal');
-        if (noteModal) noteModal.style.display = 'none';
+        if (noteModal && noteModal.style.display !== 'none') {
+            noteModal.style.display = 'none';
+        }
     }
     
     // Close list modal
@@ -2387,7 +2390,9 @@ function closeAllModals() {
         closeAddListModal();
     } else {
         const listModal = document.getElementById('addListModal');
-        if (listModal) listModal.style.display = 'none';
+        if (listModal && listModal.style.display !== 'none') {
+            listModal.style.display = 'none';
+        }
     }
     
     // Close alarm sound modal
@@ -2395,7 +2400,9 @@ function closeAllModals() {
         closeAlarmSoundModal();
     } else {
         const alarmModal = document.getElementById('alarmSoundModal');
-        if (alarmModal) alarmModal.style.display = 'none';
+        if (alarmModal && alarmModal.style.display !== 'none') {
+            alarmModal.style.display = 'none';
+        }
     }
     
     // Close task popup (view task modal)
@@ -2403,40 +2410,24 @@ function closeAllModals() {
         window.closeTaskPopup();
     } else {
         const taskPopup = document.getElementById('taskPopup');
-        if (taskPopup) taskPopup.style.display = 'none';
+        if (taskPopup && taskPopup.style.display !== 'none') {
+            taskPopup.style.display = 'none';
+        }
     }
     
-    // Close weather modal
+    // Close weather modal (dynamically created)
     if (typeof closeWeatherModal === 'function') {
         closeWeatherModal();
-    } else {
-        const weatherModal = document.getElementById('weatherModal');
-        if (weatherModal) {
-            weatherModal.style.display = 'none';
-            weatherModal.remove();
-        }
     }
     
-    // Close GPS modal
+    // Close GPS modal (dynamically created)
     if (typeof closeGPSModal === 'function') {
         closeGPSModal();
-    } else {
-        const gpsOverlay = document.getElementById('gpsOverlay');
-        if (gpsOverlay) {
-            gpsOverlay.style.display = 'none';
-            gpsOverlay.remove();
-        }
     }
     
-    // Close search results modal
+    // Close search results modal (dynamically created)
     if (typeof closeSearchResultsModal === 'function') {
         closeSearchResultsModal();
-    } else {
-        const searchModal = document.querySelector('.search-results-modal');
-        if (searchModal) {
-            searchModal.style.display = 'none';
-            searchModal.remove();
-        }
     }
     
     // Close activity-related modals
@@ -2449,15 +2440,7 @@ function closeAllModals() {
         }
     }
     
-    // Close any remaining generic modals or overlays
-    const allModals = document.querySelectorAll('.modal, .modal-overlay, [class*="modal"]');
-    allModals.forEach(modal => {
-        if (modal.style.display !== 'none') {
-            modal.style.display = 'none';
-        }
-    });
-    
-    console.log('[ActionWrapper] All modals closed');
+    console.log('[ActionWrapper] Existing modals closed');
 }
 
 /**
