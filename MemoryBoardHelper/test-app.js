@@ -1,11 +1,40 @@
 // Test System for Memory Board Helper
 // Manages test execution and iframe communication
 
+// Error type categorization
+const ERROR_TYPES = {
+    TIMEOUT: { icon: '⏱️', label: 'TIMEOUT', severity: 'critical' },
+    VALIDATION: { icon: '❌', label: 'VALIDATION_FAILED', severity: 'high' },
+    API_ERROR: { icon: '🌐', label: 'API_ERROR', severity: 'medium' },
+    EXECUTION: { icon: '💥', label: 'EXECUTION_ERROR', severity: 'critical' },
+    MOCK_NEEDED: { icon: '🎭', label: 'MOCK_NEEDED', severity: 'low' }
+};
+
+// External API error categorization
+const EXTERNAL_API_ERRORS = {
+    'No search results returned': { type: 'EXPECTED', critical: false },
+    'Address geocoding failed': { type: 'EXPECTED', critical: false },
+    'GPS navigation failed': { type: 'EXPECTED', critical: false },
+    'No weather data sources available': { type: 'EXPECTED', critical: false },
+    'Weather API error': { type: 'EXPECTED', critical: false }
+};
+
 // Test state
 var testStats = {
     total: 0,
     passed: 0,
-    failed: 0
+    failed: 0,
+    timeouts: 0,
+    validationFailures: 0,
+    apiErrors: 0
+};
+
+// Error tracking
+var errorReport = {
+    timeouts: [],
+    validationFails: [],
+    apiErrors: [],
+    executionErrors: []
 };
 
 var appFrame;
@@ -154,7 +183,22 @@ function updateStats() {
 
 // Reset tests
 function resetTests() {
-    testStats = { total: 0, passed: 0, failed: 0 };
+    testStats = { 
+        total: 0, 
+        passed: 0, 
+        failed: 0,
+        timeouts: 0,
+        validationFailures: 0,
+        apiErrors: 0
+    };
+    
+    errorReport = {
+        timeouts: [],
+        validationFails: [],
+        apiErrors: [],
+        executionErrors: []
+    };
+    
     updateStats();
     document.getElementById('progressBar').style.width = '0%';
     
@@ -292,20 +336,55 @@ function waitForActionCompletion(timeout = 10000) {
     
     return new Promise((resolve, reject) => {
         const startTime = Date.now();
+        let lastActionStarted = null;
+        
+        // Track action started
+        const actionStartedHandler = (event) => {
+            if (event.data && event.data.type === 'actionStarted') {
+                lastActionStarted = {
+                    action: event.data.detail.action,
+                    timestamp: Date.now()
+                };
+            }
+        };
+        window.addEventListener('message', actionStartedHandler);
         
         const timeoutId = setTimeout(() => {
+            window.removeEventListener('message', actionStartedHandler);
             const elapsed = Date.now() - startTime;
-            console.log(`[test-app] ⏰ Action TIMEOUT after ${elapsed}ms`);
-            console.log(`[test-app] ❌ No actionCompleted event received within ${timeout}ms`);
-            console.log(`[test-app] This usually means:`);
-            console.log(`[test-app]   1. Mistral returned null/invalid action`);
-            console.log(`[test-app]   2. Action failed validation`);
-            console.log(`[test-app]   3. Action execution threw exception`);
+            
+            // Create detailed timeout error
+            const timeoutError = {
+                type: 'TIMEOUT',
+                elapsed: elapsed,
+                timeout: timeout,
+                lastActionStarted: lastActionStarted,
+                timestamp: new Date().toISOString()
+            };
+            
+            console.log(`\n${'='.repeat(50)}`);
+            console.log(`${ERROR_TYPES.TIMEOUT.icon} TIMEOUT DETECTED`);
+            console.log(`${'='.repeat(50)}`);
+            console.log(`Duration: ${elapsed}ms (timeout: ${timeout}ms)`);
+            if (lastActionStarted) {
+                console.log(`Last action started: ${lastActionStarted.action}`);
+                console.log(`Time since action started: ${Date.now() - lastActionStarted.timestamp}ms`);
+            } else {
+                console.log(`⚠️ NO ACTION WAS STARTED`);
+            }
+            console.log(`\nPossible causes:`);
+            console.log(`  1. Mistral returned null/invalid action`);
+            console.log(`  2. Action validation failed silently`);
+            console.log(`  3. Action execution threw exception`);
+            console.log(`  4. action-wrapper didn't dispatch actionCompleted`);
+            console.log(`${'='.repeat(50)}\n`);
+            
             actionCompletionResolver = null;
-            reject(new Error('Action timeout'));
+            reject(timeoutError);
         }, timeout);
         
         actionCompletionResolver = (data) => {
+            window.removeEventListener('message', actionStartedHandler);
             const elapsed = Date.now() - startTime;
             clearTimeout(timeoutId);
             console.log(`[test-app] ✅ Action completed in ${elapsed}ms`);
@@ -344,11 +423,35 @@ async function injectVoiceAndWaitForAction(transcript, timeout = 15000) {
         
         return { transcriptResult, actionResult };
     } catch (error) {
-        console.error(`\n========== VOICE INJECTION ERROR ==========`);
-        console.error(`[test-app] ❌ Exception: ${error.message}`);
-        console.error(`[test-app] Stack:`, error.stack);
-        console.error(`==========================================\n`);
-        return { transcriptResult: null, error: error.message };
+        // Categorize error type
+        let errorType = 'EXECUTION';
+        if (error.type === 'TIMEOUT') {
+            errorType = 'TIMEOUT';
+        } else if (error.message && error.message.toLowerCase().includes('validation')) {
+            errorType = 'VALIDATION';
+        }
+        
+        const errorIcon = ERROR_TYPES[errorType]?.icon || '❌';
+        
+        console.error(`\n${'='.repeat(50)}`);
+        console.error(`${errorIcon} VOICE INJECTION ERROR [${errorType}]`);
+        console.error(`${'='.repeat(50)}`);
+        console.error(`Message: ${error.message}`);
+        if (error.lastActionStarted) {
+            console.error(`Last action: ${error.lastActionStarted.action}`);
+        }
+        if (error.elapsed) {
+            console.error(`Elapsed: ${error.elapsed}ms`);
+        }
+        console.error(`Stack:`, error.stack || 'N/A');
+        console.error(`${'='.repeat(50)}\n`);
+        
+        return { 
+            transcriptResult: null, 
+            error: error.message,
+            errorType: errorType,
+            errorDetails: error
+        };
     }
 }
 
@@ -3022,30 +3125,68 @@ async function runTest(testId, buttonElement) {
         };
         
         // Pass actionResult to validate function
-        console.log(`\n========== TEST VALIDATION START ==========`);
-        console.log(`[test-app] Test ID: ${testId}`);
-        console.log(`[test-app] Test name: ${test.name}`);
-        console.log(`[test-app] Result structure keys:`, Object.keys(actionResult || {}));
-        console.log(`[test-app] Full result:`, JSON.stringify(actionResult, null, 2));
+        console.log(`\n${'='.repeat(50)}`);
+        console.log(`🔍 TEST VALIDATION START`);
+        console.log(`${'='.repeat(50)}`);
+        console.log(`Test ID: ${testId}`);
+        console.log(`Test name: ${test.name}`);
+        console.log(`Result structure:`, Object.keys(actionResult || {}));
+        
         if (actionResult?.actionResult) {
-            console.log(`[test-app] actionResult.success = ${actionResult.actionResult.success}`);
-            console.log(`[test-app] actionResult.message = ${actionResult.actionResult.message}`);
-            console.log(`[test-app] actionResult.data =`, actionResult.actionResult.data);
+            console.log(`\nAction Result:`);
+            console.log(`  Success: ${actionResult.actionResult.success}`);
+            console.log(`  Message: ${actionResult.actionResult.message}`);
+            console.log(`  Data: ${actionResult.actionResult.data ? Object.keys(actionResult.actionResult.data).join(', ') : 'none'}`);
         }
         if (actionResult?.transcriptResult?.mistralDecision) {
-            console.log(`[test-app] Mistral action: ${actionResult.transcriptResult.mistralDecision.action}`);
+            console.log(`\nMistral Decision:`);
+            console.log(`  Action: ${actionResult.transcriptResult.mistralDecision.action}`);
+            console.log(`  Response: ${actionResult.transcriptResult.mistralDecision.response}`);
         }
         if (actionResult?.error) {
-            console.log(`[test-app] ❌ Error present: ${actionResult.error}`);
+            console.log(`\n${ERROR_TYPES.EXECUTION.icon} Error detected: ${actionResult.error}`);
+            if (actionResult.errorType) {
+                console.log(`  Error type: ${actionResult.errorType}`);
+            }
         }
-        console.log(`==========================================\n`);
+        console.log(`${'='.repeat(50)}\n`);
         
+        const validationStart = Date.now();
         const passed = await test.validate(actionResult);
+        const validationTime = Date.now() - validationStart;
         
-        console.log(`\n========== TEST VALIDATION END ==========`);
-        console.log(`[test-app] Validation result: ${passed ? '✅ PASSED' : '❌ FAILED'}`);
-        console.log(`[test-app] Test ID: ${testId}`);
-        console.log(`==========================================\n`);
+        console.log(`\n${'='.repeat(50)}`);
+        console.log(`${passed ? '✅' : '❌'} TEST VALIDATION END`);
+        console.log(`${'='.repeat(50)}`);
+        console.log(`Test ID: ${testId}`);
+        console.log(`Result: ${passed ? 'PASSED' : 'FAILED'}`);
+        console.log(`Validation time: ${validationTime}ms`);
+        
+        if (!passed) {
+            // Log detailed failure info
+            console.log(`\n${ERROR_TYPES.VALIDATION.icon} VALIDATION FAILURE DETAILS:`);
+            console.log(`  Expected: Test-specific criteria`);
+            console.log(`  Received:`);
+            if (actionResult?.actionResult) {
+                console.log(`    - Action success: ${actionResult.actionResult.success}`);
+                console.log(`    - Action message: ${actionResult.actionResult.message}`);
+            } else if (actionResult?.error) {
+                console.log(`    - Error: ${actionResult.error}`);
+                console.log(`    - Error type: ${actionResult.errorType || 'UNKNOWN'}`);
+            } else {
+                console.log(`    - No actionResult available`);
+            }
+            
+            // Add to error report
+            errorReport.validationFails.push({
+                testId: testId,
+                testName: test.name,
+                timestamp: new Date().toISOString(),
+                actionResult: actionResult,
+                validationTime: validationTime
+            });
+        }
+        console.log(`${'='.repeat(50)}\n`);
         
         log(`   Validation result: ${passed}`, passed ? 'success' : 'error');
         const duration = Date.now() - startTime;
@@ -3095,23 +3236,75 @@ async function runTest(testId, buttonElement) {
             testResult.status = 'passed';
             log(`✓ ${test.name} - RÉUSSI (${duration}ms)`, 'success');
         } else {
-            log(`❌ Test validation failed, throwing error...`, 'error');
-            throw new Error('Validation échouée');
+            // Create detailed validation error
+            const validationError = {
+                type: 'VALIDATION',
+                testId: testId,
+                testName: test.name,
+                actionResult: actionResult,
+                timestamp: new Date().toISOString()
+            };
+            
+            testStats.validationFailures++;
+            log(`${ERROR_TYPES.VALIDATION.icon} Test validation failed, throwing error...`, 'error');
+            throw validationError;
         }
     } catch (error) {
         const duration = Date.now() - startTime;
-        button.className = 'test-button error';
+        
+        // Categorize error
+        let errorType = 'EXECUTION';
+        let errorMessage = error.message || 'Unknown error';
+        
+        if (error.type === 'TIMEOUT') {
+            errorType = 'TIMEOUT';
+            testStats.timeouts++;
+            errorReport.timeouts.push({
+                testId: testId,
+                testName: test.name,
+                elapsed: error.elapsed,
+                lastAction: error.lastActionStarted?.action,
+                timestamp: error.timestamp
+            });
+        } else if (error.type === 'VALIDATION') {
+            errorType = 'VALIDATION';
+            testStats.validationFailures++;
+        } else if (errorMessage.includes('API') || errorMessage.includes('geocoding') || errorMessage.includes('search results')) {
+            errorType = 'API_ERROR';
+            testStats.apiErrors++;
+            errorReport.apiErrors.push({
+                testId: testId,
+                testName: test.name,
+                error: errorMessage,
+                timestamp: new Date().toISOString()
+            });
+        } else {
+            errorReport.executionErrors.push({
+                testId: testId,
+                testName: test.name,
+                error: errorMessage,
+                stack: error.stack,
+                timestamp: new Date().toISOString()
+            });
+        }
+        
+        const errorIcon = ERROR_TYPES[errorType]?.icon || '❌';
+        const errorLabel = ERROR_TYPES[errorType]?.label || 'ERROR';
+        
+        button.className = 'test-button failed';
         const result = document.createElement('div');
-        result.className = 'test-result error';
-        result.textContent = `✗ ${error.message}`;
+        result.className = 'test-result failed';
+        result.textContent = `${errorIcon} ${errorLabel}: ${errorMessage} (${duration}ms)`;
         button.appendChild(result);
         
         testStats.failed++;
         testResult.status = 'failed';
-        testResult.error = error.message;
+        testResult.errorType = errorType;
+        testResult.error = errorMessage;
         testResult.errorStack = error.stack;
-        testResult.duration = duration;
+        testResult.errorDetails = error;
         testResult.endTime = new Date().toISOString();
+        testResult.duration = duration;
         
         // Capture action-wrapper details even on failure
         if (actionWrapperResult) {
@@ -3139,7 +3332,18 @@ async function runTest(testId, buttonElement) {
             testResult.actionError = actionResult.error;
         }
         
-        log(`✗ ${test.name} - ÉCHOUÉ: ${error.message} (${duration}ms)`, 'error');
+        console.log(`\n${'='.repeat(50)}`);
+        console.log(`${errorIcon} TEST FAILED [${errorLabel}]`);
+        console.log(`${'='.repeat(50)}`);
+        console.log(`Test: ${test.name}`);
+        console.log(`Error: ${errorMessage}`);
+        console.log(`Duration: ${duration}ms`);
+        if (error.lastActionStarted) {
+            console.log(`Last action: ${error.lastActionStarted.action}`);
+        }
+        console.log(`${'='.repeat(50)}\n`);
+        
+        log(`${errorIcon} ${test.name} - ÉCHOUÉ [${errorLabel}]: ${errorMessage} (${duration}ms)`, 'error');
     } finally {
         // Restore weather modal functions if patched
         if (isWeatherTest) {
@@ -3150,6 +3354,14 @@ async function runTest(testId, buttonElement) {
     
     testStats.total++;
     updateStats();
+    
+    // Log error summary if test failed
+    if (testResult.status === 'failed') {
+        console.log(`\n📊 Error Statistics:`);
+        console.log(`   Total timeouts: ${testStats.timeouts}`);
+        console.log(`   Total validation failures: ${testStats.validationFailures}`);
+        console.log(`   Total API errors: ${testStats.apiErrors}`);
+    }
     
     // Store test result
     if (!window.testResults) window.testResults = [];
@@ -3169,7 +3381,16 @@ function exportTestResults() {
             total: testStats.total,
             passed: testStats.passed,
             failed: testStats.failed,
+            timeouts: testStats.timeouts,
+            validationFailures: testStats.validationFailures,
+            apiErrors: testStats.apiErrors,
             successRate: testStats.total > 0 ? ((testStats.passed / testStats.total) * 100).toFixed(2) + '%' : '0%'
+        },
+        errorReport: {
+            timeouts: errorReport.timeouts,
+            validationFails: errorReport.validationFails,
+            apiErrors: errorReport.apiErrors,
+            executionErrors: errorReport.executionErrors
         },
         tests: window.testResults,
         environment: {
@@ -3216,6 +3437,78 @@ async function runAllTests() {
     
     log(`Tests terminés: ${testStats.passed}/${testStats.total} réussis`, 
         testStats.failed === 0 ? 'success' : 'warning');
+    
+    // Display error summary
+    displayErrorSummary();
+}
+
+// Display error summary after all tests
+function displayErrorSummary() {
+    if (testStats.failed === 0) {
+        console.log(`\n🎉 Tous les tests ont réussi!`);
+        return;
+    }
+    
+    console.log(`\n${'='.repeat(70)}`);
+    console.log(`📊 RAPPORT D'ERREURS - ${testStats.failed} test(s) échoué(s)`);
+    console.log(`${'='.repeat(70)}\n`);
+    
+    if (errorReport.timeouts.length > 0) {
+        console.log(`${ERROR_TYPES.TIMEOUT.icon} TIMEOUTS (${errorReport.timeouts.length}):`);
+        errorReport.timeouts.forEach(err => {
+            console.log(`  • ${err.testName}`);
+            console.log(`    Durée: ${err.elapsed}ms`);
+            if (err.lastAction) console.log(`    Dernière action: ${err.lastAction}`);
+        });
+        console.log('');
+    }
+    
+    if (errorReport.validationFails.length > 0) {
+        console.log(`${ERROR_TYPES.VALIDATION.icon} VALIDATION FAILURES (${errorReport.validationFails.length}):`);
+        errorReport.validationFails.forEach(err => {
+            console.log(`  • ${err.testName}`);
+            if (err.actionResult?.actionResult) {
+                console.log(`    Action success: ${err.actionResult.actionResult.success}`);
+                console.log(`    Message: ${err.actionResult.actionResult.message}`);
+            }
+        });
+        console.log('');
+    }
+    
+    if (errorReport.apiErrors.length > 0) {
+        console.log(`${ERROR_TYPES.API_ERROR.icon} API ERRORS (${errorReport.apiErrors.length}):`);
+        errorReport.apiErrors.forEach(err => {
+            console.log(`  • ${err.testName}`);
+            console.log(`    ${err.error}`);
+        });
+        console.log('');
+    }
+    
+    if (errorReport.executionErrors.length > 0) {
+        console.log(`${ERROR_TYPES.EXECUTION.icon} EXECUTION ERRORS (${errorReport.executionErrors.length}):`);
+        errorReport.executionErrors.forEach(err => {
+            console.log(`  • ${err.testName}`);
+            console.log(`    ${err.error}`);
+        });
+        console.log('');
+    }
+    
+    console.log(`\n💡 RECOMMANDATIONS:`);
+    if (errorReport.timeouts.length > 0) {
+        console.log(`  • Vérifier que l'action-wrapper dispatch bien les events`);
+        console.log(`  • Augmenter le timeout pour les actions lentes`);
+        console.log(`  • Vérifier que Mistral retourne une action valide`);
+    }
+    if (errorReport.validationFails.length > 0) {
+        console.log(`  • Vérifier les critères de validation des tests`);
+        console.log(`  • S'assurer que les données attendues sont présentes`);
+    }
+    if (errorReport.apiErrors.length > 0) {
+        console.log(`  • Configurer les clés API (Tavily, OpenWeather, etc.)`);
+        console.log(`  • Considérer des mocks pour les services externes`);
+    }
+    
+    console.log(`\n${'='.repeat(70)}\n`);
 }
 
 // =============================================================================

@@ -471,6 +471,7 @@ The app uses **multiple prompts** for different intents:
 2. Test-app uses `executeActionWrapper()` for all actions
 3. All actions emit events for tracking and debugging
 4. Storage operations abstracted through wrapper functions
+5. **Modal Management**: `closeAllModals()` automatically closes ALL open modals before executing any action (settings, tasks, notes, lists, alarms, weather, GPS, search, activity, contacts guidance, etc.)
 
 **calendar-integration.js:** initializeCalendar, taskToEvent, refreshCalendarEvents, handleEventClick, handleEventDrop, getOverdueTasks (visual indicators)
 

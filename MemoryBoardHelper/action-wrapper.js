@@ -247,25 +247,8 @@ function registerAction(actionName, validateFn, executeFn, verifyFn = null) {
 async function executeAction(actionName, params, language = 'fr') {
     console.log(`[ActionWrapper] Executing action: ${actionName}`, params);
     
-    // Close any open modals when starting a new action
-    if (typeof closeWeatherModal === 'function') {
-        closeWeatherModal();
-    }
-    if (typeof closeGPSModal === 'function') {
-        closeGPSModal();
-    }
-    if (typeof closeSearchResultsModal === 'function') {
-        closeSearchResultsModal();
-    }
-    // Close activity-related modals to avoid overlap with new actions
-    if (typeof activityUI !== 'undefined') {
-        if (typeof activityUI.closePathViewer === 'function') {
-            activityUI.closePathViewer();
-        }
-        if (typeof activityUI.closeStatsModal === 'function') {
-            activityUI.closeStatsModal();
-        }
-    }
+    // Close ALL open modals when starting a new action (unified system)
+    closeAllModals();
     
     // Dispatch start event
     if (typeof window !== 'undefined') {
@@ -2351,14 +2334,36 @@ async function generateSearchSummary(searchData, query, language) {
 
 /**
  * Close all open modals
+ * Comprehensive modal closure system - ensures no modals remain open when executing actions
  */
 function closeAllModals() {
+    console.log('[ActionWrapper] Closing all modals before action execution...');
+    
     // Close settings modal
     if (typeof closeSettingsModal === 'function') {
         closeSettingsModal();
     } else {
         const settingsModal = document.getElementById('settingsModal');
         if (settingsModal) settingsModal.style.display = 'none';
+    }
+    
+    // Close emergency settings modal
+    if (typeof closeEmergencySettingsModal === 'function') {
+        closeEmergencySettingsModal();
+    } else {
+        const emergencyModal = document.getElementById('emergencySettingsModal');
+        if (emergencyModal) emergencyModal.style.display = 'none';
+    }
+    
+    // Close contacts guidance modal
+    if (typeof closeContactsGuidanceModal === 'function') {
+        closeContactsGuidanceModal();
+    } else {
+        const contactsGuidanceModal = document.getElementById('contactsGuidanceModal');
+        if (contactsGuidanceModal) {
+            contactsGuidanceModal.style.display = 'none';
+            contactsGuidanceModal.remove();
+        }
     }
     
     // Close task modal
@@ -2394,8 +2399,65 @@ function closeAllModals() {
     }
     
     // Close task popup (view task modal)
-    const taskPopup = document.getElementById('taskPopup');
-    if (taskPopup) taskPopup.style.display = 'none';
+    if (typeof window.closeTaskPopup === 'function') {
+        window.closeTaskPopup();
+    } else {
+        const taskPopup = document.getElementById('taskPopup');
+        if (taskPopup) taskPopup.style.display = 'none';
+    }
+    
+    // Close weather modal
+    if (typeof closeWeatherModal === 'function') {
+        closeWeatherModal();
+    } else {
+        const weatherModal = document.getElementById('weatherModal');
+        if (weatherModal) {
+            weatherModal.style.display = 'none';
+            weatherModal.remove();
+        }
+    }
+    
+    // Close GPS modal
+    if (typeof closeGPSModal === 'function') {
+        closeGPSModal();
+    } else {
+        const gpsOverlay = document.getElementById('gpsOverlay');
+        if (gpsOverlay) {
+            gpsOverlay.style.display = 'none';
+            gpsOverlay.remove();
+        }
+    }
+    
+    // Close search results modal
+    if (typeof closeSearchResultsModal === 'function') {
+        closeSearchResultsModal();
+    } else {
+        const searchModal = document.querySelector('.search-results-modal');
+        if (searchModal) {
+            searchModal.style.display = 'none';
+            searchModal.remove();
+        }
+    }
+    
+    // Close activity-related modals
+    if (typeof activityUI !== 'undefined') {
+        if (typeof activityUI.closePathViewer === 'function') {
+            activityUI.closePathViewer();
+        }
+        if (typeof activityUI.closeStatsModal === 'function') {
+            activityUI.closeStatsModal();
+        }
+    }
+    
+    // Close any remaining generic modals or overlays
+    const allModals = document.querySelectorAll('.modal, .modal-overlay, [class*="modal"]');
+    allModals.forEach(modal => {
+        if (modal.style.display !== 'none') {
+            modal.style.display = 'none';
+        }
+    });
+    
+    console.log('[ActionWrapper] All modals closed');
 }
 
 /**
