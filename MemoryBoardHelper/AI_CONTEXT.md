@@ -358,6 +358,7 @@ The app uses **multiple prompts** for different intents:
    - **Deepgram**: `synthesizeWithDeepgram(text, voice)` → MP3 audio URL → Audio element playback
    - **Google**: `speakWithGoogleTTS(text)` → MP3 base64 → Audio element playback
 4. All methods respect `autoPlay` setting (default: true)
+5. **Playback guard**: `stopActiveTTS/getNextTTSPlaybackId/playBrowserTTS/playAudioSource` ensure the most recent TTS cancels and replaces any previous playback (no overlapping voices)
 5. Audio queue system prevents overlapping speech
 6. Legacy `speakWithGoogleTTS()` maintained for alarm system compatibility
 

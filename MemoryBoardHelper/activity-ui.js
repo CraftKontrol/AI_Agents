@@ -154,7 +154,12 @@ class ActivityUI {
             window.addEventListener('gpsUpdated', (e) => this.onGpsUpdated(e.detail));
 
             // Probe sensors early so native pedometer/geolocation can register
-            await activityTracker.checkSensorAvailability();
+            // But only if activityTracker is available and fully initialized
+            if (typeof activityTracker !== 'undefined' && activityTracker.checkSensorAvailability) {
+                await activityTracker.checkSensorAvailability();
+            } else {
+                console.warn('[ActivityUI] activityTracker not available, skipping sensor check');
+            }
             
             // Load settings and start tracking if enabled
             await this.initializeAutoTracking();
@@ -174,6 +179,12 @@ class ActivityUI {
     
     // Initialize automatic tracking based on settings
     async initializeAutoTracking() {
+        // Safety check: ensure activityTracker is available
+        if (typeof activityTracker === 'undefined') {
+            console.warn('[ActivityUI] activityTracker not available, skipping auto-tracking initialization');
+            return;
+        }
+        
         // Check if automatic tracking is enabled in settings
         const trackingEnabled = localStorage.getItem('activityTrackingEnabled') === 'true';
         console.log('[ActivityUI] localStorage activityTrackingEnabled:', trackingEnabled);
@@ -223,7 +234,7 @@ class ActivityUI {
     
     // Update tracking status with real-time data
     updateTrackingStatus(progressData = null) {
-        if (!activityTracker.isTracking) {
+        if (typeof activityTracker === 'undefined' || !activityTracker.isTracking) {
             return;
         }
         
@@ -263,7 +274,7 @@ class ActivityUI {
     // Update live tracking display (called by activityProgress event)
     onActivityProgress(data) {
         // Update tracking status if visible
-        if (activityTracker.isTracking) {
+        if (typeof activityTracker !== 'undefined' && activityTracker.isTracking) {
             this.updateTrackingStatus(data);
         }
 
@@ -303,7 +314,7 @@ class ActivityUI {
     }
 
     renderLiveDashboard(progressData = null) {
-        if (!progressData || !activityTracker.isTracking) return;
+        if (!progressData || typeof activityTracker === 'undefined' || !activityTracker.isTracking) return;
 
         const stepsEl = document.getElementById('todaySteps');
         const distanceEl = document.getElementById('todayDistance');
@@ -654,7 +665,7 @@ class ActivityUI {
         this.updateSensitivityDisplay('calorie', calorieMultiplier);
         
         // Apply to tracker
-        if (activityTracker) {
+        if (typeof activityTracker !== 'undefined') {
             activityTracker.gpsMovementThreshold = gpsThreshold;
             activityTracker.gyroMovementThreshold = gyroThreshold;
             activityTracker.accelMovementThreshold = accelThreshold;
@@ -671,22 +682,22 @@ class ActivityUI {
         switch (type) {
             case 'gps':
                 localStorage.setItem('gpsThreshold', numValue);
-                if (activityTracker) activityTracker.gpsMovementThreshold = numValue;
+                activityTracker.gpsMovementThreshold = numValue;
                 this.updateSensitivityDisplay('gps', numValue);
                 break;
             case 'gyro':
                 localStorage.setItem('gyroThreshold', numValue);
-                if (activityTracker) activityTracker.gyroMovementThreshold = numValue;
+                activityTracker.gyroMovementThreshold = numValue;
                 this.updateSensitivityDisplay('gyro', numValue);
                 break;
             case 'accel':
                 localStorage.setItem('accelThreshold', numValue);
-                if (activityTracker) activityTracker.accelMovementThreshold = numValue;
+                activityTracker.accelMovementThreshold = numValue;
                 this.updateSensitivityDisplay('accel', numValue);
                 break;
             case 'calorie':
                 localStorage.setItem('calorieMultiplier', numValue);
-                if (activityTracker) activityTracker.calorieMultiplier = numValue;
+                activityTracker.calorieMultiplier = numValue;
                 this.updateSensitivityDisplay('calorie', numValue);
                 break;
         }

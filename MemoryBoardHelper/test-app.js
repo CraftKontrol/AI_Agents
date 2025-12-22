@@ -115,17 +115,41 @@ function log(message, type = 'info') {
     logContainer.scrollTop = logContainer.scrollHeight;
 }
 
+// Ensure every test has an associated button (hidden fallback for run-all)
+function getOrCreateTestButton(testId) {
+    let button = document.querySelector(`[onclick*="${testId}"]`);
+    if (button) return button;
+
+    let container = document.getElementById('autoTestButtons');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'autoTestButtons';
+        container.style.display = 'none';
+        container.setAttribute('aria-hidden', 'true');
+        document.body.appendChild(container);
+    }
+
+    button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'test-button auto-generated';
+    button.dataset.testId = testId;
+    button.textContent = testId;
+    container.appendChild(button);
+    return button;
+}
+
 // Update stats
 function updateStats() {
     document.getElementById('totalTests').textContent = testStats.total;
     document.getElementById('passedTests').textContent = testStats.passed;
     document.getElementById('failedTests').textContent = testStats.failed;
+    const successRate = testStats.total > 0 ? (testStats.passed / testStats.total) * 100 : 0;
+    const successRateEl = document.getElementById('successRate');
+    if (successRateEl) successRateEl.textContent = `${successRate.toFixed(0)}%`;
     
     // Update progress bar
-    if (testStats.total > 0) {
-        const progress = (testStats.passed + testStats.failed) / testStats.total * 100;
-        document.getElementById('progressBar').style.width = progress + '%';
-    }
+    const progress = testStats.total > 0 ? ((testStats.passed + testStats.failed) / testStats.total) * 100 : 0;
+    document.getElementById('progressBar').style.width = progress + '%';
 }
 
 // Reset tests
@@ -3185,11 +3209,9 @@ async function runAllTests() {
     log(`Démarrage de ${testIds.length} tests avec ${delay}ms de délai`, 'info');
     
     for (const testId of testIds) {
-        const button = document.querySelector(`[onclick*="${testId}"]`);
-        if (button) {
-            await runTest(testId, button);
-            await new Promise(resolve => setTimeout(resolve, delay));
-        }
+        const button = getOrCreateTestButton(testId);
+        await runTest(testId, button);
+        await new Promise(resolve => setTimeout(resolve, delay));
     }
     
     log(`Tests terminés: ${testStats.passed}/${testStats.total} réussis`, 
@@ -3450,17 +3472,13 @@ async function runTestsByCategory(category) {
             log(`⚠️ Test non trouvé: ${testId}`, 'warning');
             continue;
         }
-        
-        const button = document.querySelector(`[onclick*="${testId}"]`);
-        if (button) {
-            log(`▶️ Exécution du test: ${testId}`, 'info');
-            await runTest(testId, button);
-            executed++;
-            log(`✅ Test ${testId} terminé, attente de ${delay}ms avant le suivant`, 'info');
-            await new Promise(resolve => setTimeout(resolve, delay));
-        } else {
-            log(`⚠️ Bouton non trouvé pour le test: ${testId}`, 'warning');
-        }
+
+        const button = getOrCreateTestButton(testId);
+        log(`▶️ Exécution du test: ${testId}`, 'info');
+        await runTest(testId, button);
+        executed++;
+        log(`✅ Test ${testId} terminé, attente de ${delay}ms avant le suivant`, 'info');
+        await new Promise(resolve => setTimeout(resolve, delay));
     }
     
     log(`✅ Tests ${category} terminés: ${testStats.passed}/${executed} réussis`, 

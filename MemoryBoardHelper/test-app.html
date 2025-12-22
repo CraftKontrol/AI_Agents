@@ -180,7 +180,7 @@
 
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             gap: 10px;
             margin-bottom: 10px;
         }
@@ -221,6 +221,10 @@
             background-color: var(--primary-color);
             width: 0%;
             transition: width 0.3s ease;
+        }
+
+        #autoTestButtons {
+            display: none;
         }
 
         /* Test Categories */
@@ -532,11 +536,17 @@
                         <div class="stat-value" id="failedTests">0</div>
                         <div class="stat-label">Échoués</div>
                     </div>
+                    <div class="stat-item rate">
+                        <div class="stat-value" id="successRate">0%</div>
+                        <div class="stat-label">Réussite</div>
+                    </div>
                 </div>
                 <div class="progress-bar">
                     <div class="progress-bar-fill" id="progressBar"></div>
                 </div>
             </div>
+
+            <div id="autoTestButtons" aria-hidden="true"></div>
 
             <!-- Test Categories -->
             <div class="test-categories">

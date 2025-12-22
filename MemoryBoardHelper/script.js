@@ -256,8 +256,110 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+// --- TTS Playback Guard (only last speech plays) ---
+let activeTTSPlaybackId = 0;
+let activeTTSAudio = null;
+let activeTTSUtterance = null;
+
+function getNextTTSPlaybackId() {
+    activeTTSPlaybackId += 1;
+    return activeTTSPlaybackId;
+}
+
+function stopActiveTTS() {
+    if (activeTTSAudio) {
+        try {
+            activeTTSAudio.pause();
+            activeTTSAudio.currentTime = 0;
+            activeTTSAudio.src = '';
+        } catch (error) {
+            console.warn('[TTS] Failed to stop audio:', error);
+        }
+        activeTTSAudio = null;
+    }
+    if (typeof speechSynthesis !== 'undefined') {
+        try {
+            speechSynthesis.cancel();
+        } catch (error) {
+            console.warn('[TTS] Failed to cancel speech synthesis:', error);
+        }
+    }
+    activeTTSUtterance = null;
+}
+
+function playAudioSource(src, playbackId, volume = 0.8) {
+    return new Promise((resolve) => {
+        const audio = new Audio(src);
+        audio.volume = volume;
+        activeTTSAudio = audio;
+
+        audio.onended = () => {
+            if (playbackId === activeTTSPlaybackId) {
+                activeTTSAudio = null;
+            }
+            resolve('audio-complete');
+        };
+
+        audio.onerror = (event) => {
+            if (playbackId === activeTTSPlaybackId) {
+                activeTTSAudio = null;
+            }
+            console.error('[TTS] Audio playback error:', event);
+            resolve(null);
+        };
+
+        audio.play().catch((error) => {
+            console.error('[TTS] Audio play() failed:', error);
+            resolve(null);
+        });
+    });
+}
+
+function playBrowserTTS(cleanText, playbackId) {
+    if (!('speechSynthesis' in window)) {
+        return Promise.resolve(null);
+    }
+
+    const sanitizedText = cleanText.replace(/<[^>]+>/g, ' ');
+    const lang = getCurrentLanguage();
+    const utterance = new SpeechSynthesisUtterance(sanitizedText);
+    utterance.lang = lang === 'fr' ? 'fr-FR' : lang === 'it' ? 'it-IT' : 'en-US';
+
+    const ttsSettings = JSON.parse(localStorage.getItem('ttsSettings') || 'null') || DEFAULT_TTS_SETTINGS;
+    utterance.rate = ttsSettings.speakingRate || 0.9;
+    utterance.pitch = (ttsSettings.pitch + 20) / 20;
+    utterance.volume = Math.max(0, Math.min(1, (ttsSettings.volume + 16) / 32));
+
+    return new Promise((resolve) => {
+        activeTTSUtterance = utterance;
+
+        utterance.onend = () => {
+            if (playbackId === activeTTSPlaybackId) {
+                activeTTSUtterance = null;
+            }
+            resolve('browser-speech-synthesis');
+        };
+
+        utterance.onerror = (event) => {
+            if (playbackId === activeTTSPlaybackId) {
+                activeTTSUtterance = null;
+            }
+            console.error('[TTS] Speech synthesis error:', event);
+            resolve(null);
+        };
+
+        speechSynthesis.speak(utterance);
+    });
+}
+
 // --- Patch TTS usage to use settings ---
-async function speakWithGoogleTTS(text, languageCode, apiKey) {
+async function speakWithGoogleTTS(text, languageCode, apiKey, playbackId = null) {
+    const id = playbackId ?? getNextTTSPlaybackId();
+
+    if (playbackId === null) {
+        stopActiveTTS();
+    }
+
     const ttsSettings = JSON.parse(localStorage.getItem('ttsSettings') || 'null') || DEFAULT_TTS_SETTINGS;
     const url = `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`;
     const voiceInfo = getVoiceName(languageCode, ttsSettings.voice);
@@ -290,10 +392,10 @@ async function speakWithGoogleTTS(text, languageCode, apiKey) {
         }
         const data = await response.json();
         const audioContent = data.audioContent;
-        const audio = new Audio(`data:audio/mp3;base64,${audioContent}`);
-        audio.volume = 0.8;
-        await audio.play();
+        const audioSrc = `data:audio/mp3;base64,${audioContent}`;
+        const result = await playAudioSource(audioSrc, id, 0.8);
         console.log('[AlarmSystem] Voice announcement completed');
+        return result;
     } catch (error) {
         console.error('[AlarmSystem] Google TTS error:', error);
         throw error;
@@ -2902,6 +3004,9 @@ async function synthesizeWithDeepgram(text, voice) {
 
 // --- Enhanced TTS with Provider Support ---
 async function synthesizeSpeech(text) {
+    const playbackId = getNextTTSPlaybackId();
+    stopActiveTTS();
+
     const cleanText = text.replace(/\*/g, '');
     const voiceElement = document.getElementById('ttsVoice');
     let voice = voiceElement?.value || 'browser-default';
@@ -2915,23 +3020,7 @@ async function synthesizeSpeech(text) {
     // Browser TTS (Web Speech API)
     if (selectedProvider === 'browser' || !selectedProvider) {
         console.log('[TTS] Using browser speech synthesis');
-        if ('speechSynthesis' in window) {
-            return new Promise((resolve) => {
-                const utterance = new SpeechSynthesisUtterance(cleanText);
-                const lang = getCurrentLanguage();
-                utterance.lang = lang === 'fr' ? 'fr-FR' : lang === 'it' ? 'it-IT' : 'en-US';
-                
-                const ttsSettings = JSON.parse(localStorage.getItem('ttsSettings') || 'null') || DEFAULT_TTS_SETTINGS;
-                utterance.rate = ttsSettings.speakingRate || 0.9;
-                utterance.pitch = (ttsSettings.pitch + 20) / 20;
-                utterance.volume = Math.max(0, Math.min(1, (ttsSettings.volume + 16) / 32));
-                
-                utterance.onend = () => resolve('browser-speech-synthesis');
-                utterance.onerror = () => resolve(null);
-                
-                speechSynthesis.speak(utterance);
-            });
-        }
+        return playBrowserTTS(cleanText, playbackId);
     }
     
     // Deepgram TTS
@@ -2939,7 +3028,7 @@ async function synthesizeSpeech(text) {
         audioUrl = await synthesizeWithDeepgram(cleanText, voice);
         if (!audioUrl) {
             console.log('[TTS] Deepgram failed, trying browser fallback');
-            return synthesizeSpeech(text); // Recursive call will use browser
+            return playBrowserTTS(cleanText, playbackId);
         }
     }
     // Google Cloud TTS
@@ -2949,38 +3038,25 @@ async function synthesizeSpeech(text) {
         const apiKey = getApiKey('google_tts', 'googleTTSApiKey');
         if (apiKey) {
             try {
-                await speakWithGoogleTTS(cleanText, languageCode, apiKey);
-                return 'google-tts-complete';
+                const result = await speakWithGoogleTTS(cleanText, languageCode, apiKey, playbackId);
+                return result || 'google-tts-complete';
             } catch (error) {
                 console.error('[TTS] Google TTS failed:', error);
-                return null;
+                return playBrowserTTS(cleanText, playbackId);
             }
         }
+        console.warn('[TTS] Missing Google TTS API key, falling back to browser');
+        return playBrowserTTS(cleanText, playbackId);
     }
     
     // Play audio if URL was returned
     if (audioUrl) {
         console.log('[TTS] Playing audio from URL:', audioUrl);
-        return new Promise((resolve) => {
-            const audio = new Audio(audioUrl);
-            audio.addEventListener('ended', () => {
-                console.log('[TTS] Audio playback ended');
-                resolve('audio-complete');
-            });
-            audio.addEventListener('error', (e) => {
-                console.error('[TTS] Audio playback error:', e);
-                resolve(null);
-            });
-            audio.play().then(() => {
-                console.log('[TTS] Audio playback started successfully');
-            }).catch((err) => {
-                console.error('[TTS] Audio play() failed:', err);
-                resolve(null);
-            });
-        });
+        return playAudioSource(audioUrl, playbackId);
     }
-    
-    return audioUrl;
+
+    // Default fallback to browser TTS
+    return playBrowserTTS(cleanText, playbackId);
 }
 
 // --- Google STT Implementation ---

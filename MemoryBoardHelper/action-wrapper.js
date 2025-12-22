@@ -257,6 +257,15 @@ async function executeAction(actionName, params, language = 'fr') {
     if (typeof closeSearchResultsModal === 'function') {
         closeSearchResultsModal();
     }
+    // Close activity-related modals to avoid overlap with new actions
+    if (typeof activityUI !== 'undefined') {
+        if (typeof activityUI.closePathViewer === 'function') {
+            activityUI.closePathViewer();
+        }
+        if (typeof activityUI.closeStatsModal === 'function') {
+            activityUI.closeStatsModal();
+        }
+    }
     
     // Dispatch start event
     if (typeof window !== 'undefined') {
@@ -1415,7 +1424,9 @@ registerAction(
             'notes': '.notes-section',
             'lists': '.lists-section',
             'settings': '#settingsModal',
-            'stats': '.stats-section'
+            // Stats should drive user to the activity tracking area
+            'stats': '.activity-section',
+            'activity': '.activity-section'
         };
         
         const selector = sectionMap[section.toLowerCase()];
@@ -1549,7 +1560,7 @@ registerAction(
         
         const activity = await activityTracker.stopTracking();
         
-        if (activity) {
+        if (activity && activity.duration !== undefined) {
             const typeLabels = {
                 walk: { fr: 'Marche', en: 'Walk', it: 'Camminata' },
                 run: { fr: 'Course', en: 'Run', it: 'Corsa' },
@@ -1557,8 +1568,8 @@ registerAction(
             };
             
             const distanceText = typeof activityStats !== 'undefined' 
-                ? activityStats.formatDistance(activity.distance)
-                : `${(activity.distance / 1000).toFixed(2)} km`;
+                ? activityStats.formatDistance(activity.distance || 0)
+                : `${((activity.distance || 0) / 1000).toFixed(2)} km`;
             
             const summary = {
                 fr: `${typeLabels[activity.type]?.fr || 'Activité'} terminée ! ${activity.steps} pas, ${distanceText}, ${activity.calories} kcal`,
@@ -1742,7 +1753,7 @@ registerAction(
         }
         
         try {
-            await activityTracker.stopTracking();
+            const completed = await activityTracker.stopTracking();
             
             const messages = {
                 fr: 'Suivi arrêté. Le suivi redémarrera automatiquement.',
@@ -1751,9 +1762,13 @@ registerAction(
             };
             
             const message = params.response || messages[language] || messages.fr;
+            if (!completed) {
+                return new ActionResult(false, messages[language] || messages.fr, null, 'Not tracking');
+            }
+            
             return new ActionResult(true, message, { 
-                steps: activityTracker.stepCount,
-                duration: activityTracker.currentActivity.duration
+                steps: completed.steps ?? 0,
+                duration: completed.duration ?? 0
             });
         } catch (error) {
             const messages = {

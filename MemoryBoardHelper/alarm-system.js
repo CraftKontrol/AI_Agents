@@ -429,6 +429,15 @@ function getVoiceName(languageCode) {
 
 // Fallback: Browser Web Speech API TTS
 function speakWithBrowserTTS(text) {
+    const hasGuard = typeof stopActiveTTS === 'function' && typeof getNextTTSPlaybackId === 'function' && typeof playBrowserTTS === 'function';
+
+    if (hasGuard) {
+        const playbackId = getNextTTSPlaybackId();
+        stopActiveTTS();
+        playBrowserTTS(text, playbackId);
+        return;
+    }
+
     if ('speechSynthesis' in window) {
         const utterance = new SpeechSynthesisUtterance(text);
         const lang = getCurrentLanguage();
@@ -443,7 +452,7 @@ function speakWithBrowserTTS(text) {
         utterance.volume = 0.8;
         
         speechSynthesis.speak(utterance);
-        console.log('[AlarmSystem] Browser TTS spoken');
+        console.log('[AlarmSystem] Browser TTS spoken (fallback)');
     }
 }
 
