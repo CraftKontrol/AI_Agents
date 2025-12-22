@@ -1065,6 +1065,8 @@ UI updates real-time
 - `saveDailyStepsGoal()` - Save daily goal to localStorage + IndexedDB
 - `resetActivity()` - Call tracker.resetPath(), update UI (NEW)
 - `stopActivity()` - Call tracker.stopTracking(), update UI (NEW)
+- `initCompactTimeDisplay()` - Initialize IntersectionObserver for compact time display (NEW)
+- `updateActivitySubtitle()` - Update activity stats in subtitle when section collapsed (NEW)
 
 **action-wrapper.js (NEW ACTIONS):**
 - `reset_activity` - Validate tracker available → Execute resetPath() → Return status
@@ -1151,6 +1153,20 @@ UI updates real-time
 - Distance (with icon)
 - Calories (with icon)
 - Duration (with icon)
+
+**Collapsible Sections:**
+- Activity section and quick-commands are **collapsed by default** on page load
+- Activity section shows real-time stats in subtitle when collapsed (e.g., "12,450 pas · 9.8 km · 540 cal")
+- Subtitle auto-updates every 30 seconds and during tracking
+- Toggle buttons change text between "Afficher" (show) and "Masquer" (hide)
+
+**Compact Time Display:**
+- Fixed position bar at top of screen (z-index: 999)
+- Only visible when main time-display is scrolled out of view
+- Shows current time + date in single line format
+- Uses IntersectionObserver API for automatic show/hide
+- Backdrop blur effect for better readability
+- Updates every second
 
 **Goal Progress Bar:**
 - Daily steps goal (default: 10,000)

@@ -50,6 +50,13 @@
         </div>
     </header>
 
+    <!-- Fixed compact time display (shown when main time-display is scrolled out) -->
+    <div id="compactTimeDisplay" class="compact-time-display" style="display: none;">
+        <span class="material-symbols-outlined">schedule</span>
+        <span id="compactTime">00:00</span>
+        <span id="compactDate" class="compact-date">-</span>
+    </div>
+
     <main class="main-content">
                 <!-- Modale de sélection du son d'alarme -->
                 <div id="alarmSoundModal" class="modal" style="display: none;">
@@ -420,11 +427,14 @@
             <div class="activity-header">
                 <h2>
                     <span class="material-symbols-outlined">directions_run</span>
-                    <span id="activityTitle">Activités & Exercices</span>
+                    <div class="activity-title-wrapper">
+                        <span id="activityTitle">Activités & Exercices</span>
+                        <span id="activitySubtitle" class="activity-subtitle" style="display: block;">0 pas · 0 m · 0 cal</span>
+                    </div>
                 </h2>
-                <button class="section-toggle" onclick="toggleSection('activityContent')" id="activityToggleBtn">Masquer</button>
+                <button class="section-toggle" onclick="toggleSection('activityContent')" id="activityToggleBtn">Afficher</button>
             </div>
-            <div id="activityContent" class="section-content">
+            <div id="activityContent" class="section-content" style="display: none;">
                 <!-- Today's Summary Dashboard -->
                 <div class="activity-dashboard">
                     <div class="dashboard-grid">
@@ -612,9 +622,9 @@
             <h3>
                 <span class="material-symbols-outlined">bolt</span>
                 <span id="commandsTitle">Commandes rapides</span>
-                <button class="section-toggle" onclick="toggleSection('commandsContent')" id="commandsToggleBtn">Masquer</button>
+                <button class="section-toggle" onclick="toggleSection('commandsContent')" id="commandsToggleBtn">Afficher</button>
             </h3>
-            <div id="commandsContent" class="section-content">
+            <div id="commandsContent" class="section-content" style="display: none;">
             <div class="commands-grid">
                 <!-- Tâches -->
                 <button class="command-btn" onclick="quickAddTask()">

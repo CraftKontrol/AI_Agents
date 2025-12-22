@@ -1531,6 +1531,65 @@ function displayLaunchGreeting(message, overdueCount, todayCount, userLanguage =
 }
 
 // Initialize app
+// Compact time display (shown when main time-display scrolled out)
+function initCompactTimeDisplay() {
+    const mainTimeDisplay = document.querySelector('.time-display');
+    const compactTimeDisplay = document.getElementById('compactTimeDisplay');
+    
+    if (!mainTimeDisplay || !compactTimeDisplay) return;
+    
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            // Show compact display when main display is not visible
+            compactTimeDisplay.style.display = entry.isIntersecting ? 'none' : 'flex';
+        });
+    }, {
+        threshold: 0.1, // Trigger when less than 10% visible
+        rootMargin: '-50px 0px 0px 0px' // Account for header
+    });
+    
+    observer.observe(mainTimeDisplay);
+    
+    // Update compact display every second
+    setInterval(() => {
+        const now = new Date();
+        const compactTime = document.getElementById('compactTime');
+        const compactDate = document.getElementById('compactDate');
+        
+        if (compactTime) {
+            compactTime.textContent = now.toLocaleTimeString('fr-FR', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+        
+        if (compactDate) {
+            compactDate.textContent = now.toLocaleDateString('fr-FR', {
+                weekday: 'short',
+                day: 'numeric',
+                month: 'short'
+            });
+        }
+    }, 1000);
+}
+
+// Update activity subtitle when section is collapsed
+function updateActivitySubtitle() {
+    const subtitle = document.getElementById('activitySubtitle');
+    const activityContent = document.getElementById('activityContent');
+    
+    if (!subtitle || !activityContent) return;
+    
+    // Only update if section is collapsed
+    if (activityContent.style.display === 'none') {
+        const steps = document.getElementById('todaySteps')?.textContent || '0';
+        const distance = document.getElementById('todayDistance')?.textContent || '0 m';
+        const calories = document.getElementById('todayCalories')?.textContent || '0';
+        
+        subtitle.textContent = `${steps} pas · ${distance} · ${calories} cal`;
+    }
+}
+
 document.addEventListener('DOMContentLoaded', async function() {
     console.log('[App] Initializing Memory Board Helper...');
     
@@ -1542,6 +1601,11 @@ document.addEventListener('DOMContentLoaded', async function() {
         console.error('[App] Database initialization failed:', error);
         showError('Erreur d\'initialisation de la base de données');
     }
+    
+    // Initialize compact time display
+    setTimeout(() => {
+        initCompactTimeDisplay();
+    }, 500);
     
     // PHASE 1: Critical systems (tasks, alarms)
     if (typeof initializeTaskManager === 'function') {
@@ -5335,6 +5399,14 @@ function toggleSection(sectionId) {
     if (typeof event !== 'undefined' && event && event.currentTarget) {
         const btn = event.currentTarget;
         btn.textContent = isVisible ? getLocalizedText('show') : getLocalizedText('hide');
+    }
+    
+    // Special handling for activity section: show/hide subtitle
+    if (sectionId === 'activityContent') {
+        const subtitle = document.getElementById('activitySubtitle');
+        if (subtitle) {
+            subtitle.style.display = isVisible ? 'block' : 'none';
+        }
     }
 }
 

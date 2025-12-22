@@ -1092,6 +1092,42 @@ body {
     font-size: 32px;
 }
 
+/* Compact time display (fixed at top) */
+.compact-time-display {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background-color: rgba(42, 42, 42, 0.98);
+    backdrop-filter: blur(10px);
+    padding: 8px 20px;
+    display: none;
+    align-items: center;
+    gap: 12px;
+    z-index: 999;
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    font-size: 18px;
+    color: var(--text-color);
+}
+
+.compact-time-display .material-symbols-outlined {
+    font-size: 24px;
+    color: var(--primary-color);
+}
+
+.compact-time-display #compactTime {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 1px;
+}
+
+.compact-time-display .compact-date {
+    color: var(--text-muted);
+    font-size: 14px;
+    margin-left: auto;
+}
+
 .time-display {
     background-color: var(--surface-color);
     padding: 30px;
@@ -3943,6 +3979,18 @@ body {
     color: #ffffff;
     font-size: 22px;
     margin: 0;
+}
+
+.activity-title-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.activity-subtitle {
+    font-size: 14px;
+    color: var(--text-muted);
+    font-weight: 400;
 }
 
 .activity-header .material-symbols-outlined {

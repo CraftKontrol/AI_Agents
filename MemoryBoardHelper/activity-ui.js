@@ -269,6 +269,11 @@ class ActivityUI {
                 🔥 ${calories} kcal${altitude !== null ? ` | ⛰️ ${altitude} m` : ''}
             `;
         }
+        
+        // Update activity subtitle (if section is collapsed)
+        if (typeof updateActivitySubtitle === 'function') {
+            updateActivitySubtitle();
+        }
     }
     
     // Update live tracking display (called by activityProgress event)
@@ -387,6 +392,11 @@ class ActivityUI {
         
         // Update weekly chart
         await this.updateWeeklyChart();
+        
+        // Update activity subtitle (if section is collapsed)
+        if (typeof updateActivitySubtitle === 'function') {
+            updateActivitySubtitle();
+        }
     }
     
     // Update weekly chart
