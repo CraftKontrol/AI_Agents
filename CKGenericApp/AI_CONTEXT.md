@@ -43,8 +43,9 @@
 **External Links**: Links with `target="_blank"` or new window requests automatically open in default mobile browser via Intent
 
 ### Services (`service/`)
-**MonitoringService**: Foreground service (dataSync), coroutine loop (5min intervals), checks alarms/appointments/news, shows notifications
+**MonitoringService**: Foreground service (dataSync), coroutine loop (5min intervals), checks alarms/appointments/news, shows notifications, **displays daily step count when activity tracking is enabled in MemoryBoardHelper**
 **CKFirebaseMessagingService**: FCM push notification handler (`onMessageReceived`, `onNewToken`)
+**Activity Data Integration**: MonitoringService reads activity data from SharedPreferences (tracking_enabled, today_steps) and updates notification text to show step count
 
 ### Sensor System (`service/SensorMonitoringService.kt`)
 **Purpose**: Provide accelerometer + gyroscope data for activity tracking
@@ -118,6 +119,8 @@ CKAndroid.postMessage(message)                   // Post message to Android
 CKAndroid.getAppVersion()                        // Get app version string
 CKAndroid.scheduleAlarm(id, title, ts, type)     // Schedule alarm
 CKAndroid.cancelAlarm(id)                        // Cancel alarm
+CKAndroid.saveActivityData(enabled, steps)       // Save activity tracking status and step count
+CKAndroid.getActivityData()                      // Get activity data as JSON {"trackingEnabled":bool,"todaySteps":int,"lastUpdate":long}
 
 // Also exposed as window.CKGenericApp with getApiKey + apiKeys object
 window.CKGenericApp.getApiKey('openai')          // Get specific key

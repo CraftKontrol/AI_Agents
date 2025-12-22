@@ -97,6 +97,26 @@ class MonitoringService : Service() {
             .build()
     }
     
+    private fun updateNotificationWithSteps(steps: Int) {
+        val intent = Intent(this, MainActivity::class.java)
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        
+        val notification = NotificationCompat.Builder(this, Constants.NOTIFICATION_CHANNEL_MONITORING)
+            .setContentTitle("CKGenericApp")
+            .setContentText("👣 $steps pas aujourd'hui - Service actif")
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentIntent(pendingIntent)
+            .setOngoing(true)
+            .build()
+        
+        notificationManager.notify(Constants.MONITORING_SERVICE_NOTIFICATION_ID, notification)
+    }
+    
     private fun startMonitoring() {
         serviceScope.launch {
             while (isActive) {
@@ -104,10 +124,34 @@ class MonitoringService : Service() {
                 checkForAlarms()
                 checkForAppointments()
                 checkForNewsUpdates()
+                checkActivityData()
                 
                 // Wait 5 minutes before next check
                 delay(5 * 60 * 1000)
             }
+        }
+    }
+    
+    private suspend fun checkActivityData() {
+        try {
+            // Check if MemoryBoardHelper app is installed/configured
+            val prefsManager = getSharedPreferences("ckgenericapp_prefs", Context.MODE_PRIVATE)
+            val memoryBoardHelperUrl = prefsManager.getString("memoryboardhelper_url", null)
+            
+            if (memoryBoardHelperUrl != null) {
+                // Attempt to read activity data from WebView storage
+                // This is a simplified approach - in production, you'd use a proper data bridge
+                val activityPrefs = getSharedPreferences("memoryboardhelper_activity", Context.MODE_PRIVATE)
+                val trackingEnabled = activityPrefs.getBoolean("tracking_enabled", false)
+                val todaySteps = activityPrefs.getInt("today_steps", 0)
+                
+                if (trackingEnabled && todaySteps > 0) {
+                    Timber.d("Activity tracking enabled with $todaySteps steps")
+                    updateNotificationWithSteps(todaySteps)
+                }
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error checking activity data")
         }
     }
     

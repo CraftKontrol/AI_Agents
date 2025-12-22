@@ -249,4 +249,35 @@ class WebViewJavaScriptInterface(
     fun hasApiKey(keyName: String): Boolean {
         return apiKeysPreferences != null
     }
+    
+    @JavascriptInterface
+    fun saveActivityData(trackingEnabled: Boolean, todaySteps: Int) {
+        try {
+            val activityPrefs = context.getSharedPreferences("memoryboardhelper_activity", Context.MODE_PRIVATE)
+            activityPrefs.edit().apply {
+                putBoolean("tracking_enabled", trackingEnabled)
+                putInt("today_steps", todaySteps)
+                putLong("last_update", System.currentTimeMillis())
+                apply()
+            }
+            Timber.d("Activity data saved: tracking=$trackingEnabled, steps=$todaySteps")
+        } catch (e: Exception) {
+            Timber.e(e, "Error saving activity data")
+        }
+    }
+    
+    @JavascriptInterface
+    fun getActivityData(): String {
+        return try {
+            val activityPrefs = context.getSharedPreferences("memoryboardhelper_activity", Context.MODE_PRIVATE)
+            val trackingEnabled = activityPrefs.getBoolean("tracking_enabled", false)
+            val todaySteps = activityPrefs.getInt("today_steps", 0)
+            val lastUpdate = activityPrefs.getLong("last_update", 0)
+            
+            """{"trackingEnabled":$trackingEnabled,"todaySteps":$todaySteps,"lastUpdate":$lastUpdate}"""
+        } catch (e: Exception) {
+            Timber.e(e, "Error getting activity data")
+            """{"error":"${e.message}"}"""
+        }
+    }
 }
