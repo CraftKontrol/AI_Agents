@@ -596,6 +596,9 @@ class ActivityTracker {
         try {
             await saveDailyStats(dailyStats);
             console.log('[ActivityTracker] Daily stats archived:', dailyStats);
+            
+            // Save to Android if available
+            this.saveToAndroid(false, totalSteps);
         } catch (error) {
             console.error('[ActivityTracker] Error archiving daily stats:', error);
         }
@@ -612,6 +615,18 @@ class ActivityTracker {
         }
         
         console.log('[ActivityTracker] Midnight reset complete - fresh day started');
+    }
+    
+    // Save activity data to Android
+    saveToAndroid(trackingEnabled, steps) {
+        try {
+            if (window.CKAndroid && typeof window.CKAndroid.saveActivityData === 'function') {
+                window.CKAndroid.saveActivityData(trackingEnabled, steps);
+                console.log(`[ActivityTracker] Saved to Android: tracking=${trackingEnabled}, steps=${steps}`);
+            }
+        } catch (error) {
+            console.error('[ActivityTracker] Error saving to Android:', error);
+        }
     }
     
     // Get current status

@@ -3437,6 +3437,43 @@ function exportTestResults() {
         alert('Aucun résultat à exporter. Lancez des tests d\'abord.');
         return;
     }
+
+    // Extract GPS address responses (send_address/open_gps or lat/lng data)
+    const gpsResponses = (window.testResults || [])
+        .filter(test => {
+            const action = test?.mistralDecision?.action || test?.actionWrapper?.actionName;
+            const hasCoords = typeof test?.actionWrapper?.data?.lat === 'number' && typeof test?.actionWrapper?.data?.lng === 'number';
+            const hasDecisionCoords = typeof test?.mistralDecision?.coordinates?.lat === 'number' && typeof test?.mistralDecision?.coordinates?.lng === 'number';
+            const hasAddress = !!(test?.mistralDecision?.address || test?.actionWrapper?.data?.address);
+            return ['send_address', 'open_gps'].includes(action) || hasCoords || hasDecisionCoords || hasAddress;
+        })
+        .map(test => {
+            const awLat = test?.actionWrapper?.data?.lat;
+            const awLng = test?.actionWrapper?.data?.lng;
+            const decisionCoords = test?.mistralDecision?.coordinates;
+            const lat = typeof awLat === 'number' ? awLat : decisionCoords?.lat;
+            const lng = typeof awLng === 'number' ? awLng : decisionCoords?.lng;
+            const decisionAddress = test?.mistralDecision?.address || null;
+            const decisionName = decisionCoords?.name || null;
+            const awName = test?.actionWrapper?.data?.name || null;
+            const awAddress = test?.actionWrapper?.data?.address || null;
+            const coordsString = (typeof lat === 'number' && typeof lng === 'number') ? `${lat},${lng}` : null;
+            const gpsQuery = awAddress || awName || decisionAddress || decisionName || coordsString;
+            return {
+                testId: test.testId,
+                name: test.name,
+                status: test.status,
+                action: test?.mistralDecision?.action || test?.actionWrapper?.actionName || null,
+                address: decisionAddress || awAddress || null,
+                gpsQuery: gpsQuery || null,
+                geocodedName: awName || decisionName || null,
+                response: test?.mistralDecision?.response || test?.actionWrapper?.message || null,
+                language: test?.mistralDecision?.language,
+                coords: (typeof lat === 'number' && typeof lng === 'number') ? { lat, lng } : undefined,
+                data: test?.actionWrapper?.data || null,
+                timestamp: test.endTime || test.startTime
+            };
+        });
     
     const report = {
         timestamp: new Date().toISOString(),
@@ -3456,6 +3493,8 @@ function exportTestResults() {
             executionErrors: errorReport.executionErrors
         },
         tests: window.testResults,
+        gpsResponses,
+        gpsNavEvents: (appWindow && appWindow.gpsNavEvents) ? [...appWindow.gpsNavEvents] : [],
         environment: {
             userAgent: navigator.userAgent,
             url: window.location.href,

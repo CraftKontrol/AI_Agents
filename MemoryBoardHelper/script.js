@@ -6644,6 +6644,17 @@ async function toggleActivityTracking() {
     localStorage.setItem('activityTrackingEnabled', isEnabled);
     console.log('[Activity] Saved to localStorage:', isEnabled);
     
+    // Save to Android if available
+    try {
+        if (window.CKAndroid && typeof window.CKAndroid.saveActivityData === 'function') {
+            const data = await getTodayActivityData();
+            window.CKAndroid.saveActivityData(isEnabled, data.steps);
+            console.log('[Activity] Saved to Android:', isEnabled, data.steps);
+        }
+    } catch (error) {
+        console.error('[Activity] Error saving to Android:', error);
+    }
+    
     if (isEnabled) {
         // Start tracking automatically
         console.log('[Settings] Enabling activity tracking...');

@@ -48,6 +48,7 @@
 - `sound-system.js` - UI sound feedback (pitch variation, repetition detection, haptic)
 - `tavily-search.js` - Web search via Tavily API
 - `gps-navigation.js` - GPS navigation integration (Google Maps, Waze, Apple Maps, OSM)
+- `location-manager.js` - Location tracking and default address management (NEW)
 - `weather.js` - Weather forecast from multiple APIs (OpenWeatherMap, WeatherAPI, Open-Meteo)
 - `test-app.html/js` - Testing system with action-wrapper integration
 
@@ -692,6 +693,24 @@ OpenStreetMap: https://www.openstreetmap.org/directions?to={lat},{lng}
 - `.gps-coords` - Coordinates display
 - `.gps-options` - App selection grid
 - `.gps-option-btn` - Individual app button
+
+**POI Search System:**
+- **Priority 1:** Last known GPS position (< 5 minutes old) from localStorage
+- **Priority 2:** Current GPS position via `navigator.geolocation.getCurrentPosition()`
+- **Priority 3:** Default address from user settings (geocoded to coordinates)
+- Location saved automatically by `location-manager.js` watchPosition
+- Default address configurable in settings modal
+- POI search uses OpenStreetMap Nominatim with `lat` and `lon` parameters for proximity
+
+**location-manager.js:**
+- `saveDefaultAddress()` - Save user's default address from settings
+- `loadDefaultAddress()` - Load default address into settings input
+- `saveLastGPSPosition(lat, lng)` - Save GPS position to localStorage
+- `getLastGPSPosition()` - Get last GPS position if < 5 minutes old
+- `initializeLocationManager()` - Start GPS watch for automatic position updates
+- **Auto-tracking:** watchPosition runs in background with low accuracy to save battery
+- **Storage:** `localStorage.lastGpsPosition` (JSON: {lat, lng, timestamp})
+- **Storage:** `localStorage.defaultAddress` (string: user's address)
 
 ---
 

@@ -1,6 +1,22 @@
 // gps-navigation.js - GPS Navigation Integration for Memory Board Helper
 // Allows opening locations in phone navigation apps (Google Maps, Waze, Apple Maps, etc.)
 
+// Track recent GPS navigation events for debugging/export
+if (!window.gpsNavEvents) window.gpsNavEvents = [];
+function logGPSNavEvent(event) {
+    window.gpsNavEvents.push({
+        ...event,
+        timestamp: new Date().toISOString()
+    });
+    // Keep last 20 events to avoid unbounded growth
+    if (window.gpsNavEvents.length > 20) {
+        window.gpsNavEvents.shift();
+    }
+}
+
+// Remember last query sent to geocoder/navigation
+window.lastGPSQuery = window.lastGPSQuery || null;
+
 /**
  * Open GPS navigation options modal
  * @param {number} lat - Latitude
@@ -9,6 +25,14 @@
  */
 function showGPSOptions(lat, lng, name = '') {
     console.log(`[GPS] Showing navigation options for: ${lat}, ${lng} (${name})`);
+
+    logGPSNavEvent({
+        source: 'showGPSOptions',
+        query: window.lastGPSQuery || null,
+        lat,
+        lng,
+        name
+    });
     
     // Close any existing GPS modal first
     closeGPSModal();
@@ -134,6 +158,16 @@ function openInGPS(lat, lng, name = '', app = 'google') {
     if (url) {
         window.open(url, '_blank');
         console.log(`[GPS] Opened ${app} navigation to: ${name || `${lat}, ${lng}`}`);
+
+        logGPSNavEvent({
+            source: 'openInGPS',
+            query: window.lastGPSQuery || name || `${lat},${lng}`,
+            lat,
+            lng,
+            name,
+            app,
+            url
+        });
         
         // Show success toast
         if (typeof showToast === 'function') {
@@ -150,6 +184,7 @@ function openInGPS(lat, lng, name = '', app = 'google') {
  */
 async function sendAddressToGPS(address, language = 'fr') {
     console.log(`[GPS] Geocoding address: ${address}`);
+    window.lastGPSQuery = address;
     
     try {
         // Geocode address using Nominatim (OpenStreetMap)
@@ -172,12 +207,23 @@ async function sendAddressToGPS(address, language = 'fr') {
             const location = data[0];
             const lat = parseFloat(location.lat);
             const lng = parseFloat(location.lon);
-            const name = location.display_name;
+            const geocodedName = location.display_name;
+            const locationLabel = address; // keep the user request as the visible label
             
             console.log(`[GPS] Geocoded to: ${lat}, ${lng}`);
             
-            // Show GPS options
-            showGPSOptions(lat, lng, name);
+            // Show GPS options with the requested address to avoid mixing with detected position wording
+            showGPSOptions(lat, lng, locationLabel);
+
+            logGPSNavEvent({
+                source: 'sendAddressToGPS',
+                query: address,
+                lat,
+                lng,
+                name: locationLabel,
+                geocodedName,
+                displayName: geocodedName
+            });
             
             return {
                 success: true,
@@ -185,8 +231,10 @@ async function sendAddressToGPS(address, language = 'fr') {
                 data: {
                     lat,
                     lng,
-                    name,
-                    address: location.display_name
+                    name: locationLabel,
+                    geocodedName,
+                    address: geocodedName,
+                    query: address
                 }
             };
         } else {
@@ -214,6 +262,14 @@ async function sendAddressToGPS(address, language = 'fr') {
  */
 function openGPSWithCoords(lat, lng, name = '', language = 'fr') {
     console.log(`[GPS] Opening GPS with coords: ${lat}, ${lng}`);
+    window.lastGPSQuery = window.lastGPSQuery || name || `${lat},${lng}`;
+    logGPSNavEvent({
+        source: 'openGPSWithCoords',
+        query: window.lastGPSQuery,
+        lat,
+        lng,
+        name
+    });
     
     // Validate coordinates
     if (typeof lat !== 'number' || typeof lng !== 'number') {

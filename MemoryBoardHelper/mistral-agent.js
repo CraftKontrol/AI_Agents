@@ -281,7 +281,7 @@ User: "Modifie l'heure de mon rendez-vous à 15h"
 Response: {"action": "update_task", "task": {"description": "rendez-vous", "time": "15:00"}, "response": "Heure modifiée.", "language": "fr"}
 
 🔍 WEB SEARCH ACTION:
-Use "search_web" when user wants to search for information on the internet:
+Use "search_web" ONLY for INFORMATION searches (facts, news, articles, knowledge):
 - "recherche sur internet" / "search the web" / "trova su internet"
 - "cherche des informations sur" / "search for information about" / "cerca informazioni su"
 - "trouve-moi des infos sur" / "find me info about" / "trovami informazioni su"
@@ -289,9 +289,11 @@ Use "search_web" when user wants to search for information on the internet:
 - "que dit internet sur" / "what does the internet say about" / "cosa dice internet su"
 - "recherche [topic]" / "search [topic]" / "cerca [topic]"
 
+IMPORTANT: Do NOT use "search_web" for physical locations (pharmacies, hospitals, restaurants, etc.). Use "send_address" instead!
+
 Examples:
-- "Recherche des restaurants italiens près de chez moi" → {"action": "search_web", "query": "restaurants italiens près de chez moi", "response": "Je recherche...", "language": "fr"}
-- "Trouve-moi des infos sur la météo de demain" → {"action": "search_web", "query": "météo demain", "response": "Je cherche...", "language": "fr"}
+- "Recherche des infos sur les vaccins COVID" → {"action": "search_web", "query": "vaccins COVID", "response": "Je recherche...", "language": "fr"}
+- "Que dit Wikipédia sur Einstein" → {"action": "search_web", "query": "Einstein Wikipedia", "response": "Je cherche...", "language": "fr"}
 - "What is the capital of France" → {"action": "search_web", "query": "capital of France", "response": "Searching...", "language": "en"}
 
 📍 GPS NAVIGATION ACTIONS:
@@ -306,17 +308,31 @@ Examples:
 - "Ouvre GPS pour 48.8566, 2.3522" → {"action": "open_gps", "coordinates": {"lat": 48.8566, "lng": 2.3522, "name": ""}, "response": "J'ouvre la navigation...", "language": "fr"}
 - "Navigue vers 45.5017, -73.5673, c'est Montréal" → {"action": "open_gps", "coordinates": {"lat": 45.5017, "lng": -73.5673, "name": "Montréal"}, "response": "Navigation vers Montréal...", "language": "fr"}
 
-Use "send_address" when user provides a street address or location name:
+Use "send_address" when user provides a street address, location name, OR POI search (pharmacy, hospital, restaurant, etc.):
 - "ouvre GPS pour [address]" / "open GPS for [address]" / "apri GPS per [indirizzo]"
 - "navigue vers [address]" / "navigate to [address]" / "naviga verso [indirizzo]"
 - "emmène-moi à [address]" / "take me to [address]" / "portami a [indirizzo]"
 - "itinéraire vers [address]" / "directions to [address]" / "indicazioni per [indirizzo]"
 - "comment aller à [address]" / "how to get to [address]" / "come andare a [indirizzo]"
 
-Examples:
+POI SEARCHES (use "send_address" with POI keyword as address):
+- "trouve [POI] proche" / "find nearest [POI]" / "trova [POI] vicino"
+- "où est [POI]" / "where is [POI]" / "dov'è [POI]"
+- "cherche [POI]" / "search [POI]" / "cerca [POI]"
+POI types: pharmacie/pharmacy, hôpital/hospital, restaurant, café/cafe, banque/bank, supermarché/supermarket, boulangerie/bakery, station service/gas station, parking, police, médecin/doctor, poste/post office, maison/home/domicile
+
+Examples (Addresses):
 - "Emmène-moi à Tour Eiffel, Paris" → {"action": "send_address", "address": "Tour Eiffel, Paris", "response": "Je cherche l'itinéraire...", "language": "fr"}
 - "Navigue vers 123 rue de la Paix, Lyon" → {"action": "send_address", "address": "123 rue de la Paix, Lyon", "response": "Navigation en cours...", "language": "fr"}
 - "How do I get to Central Park, New York" → {"action": "send_address", "address": "Central Park, New York", "response": "Finding directions...", "language": "en"}
+
+Examples (POI Searches - use POI keyword as address, or combine with user's address if available):
+- "Trouve-moi la pharmacie la plus proche" → {"action": "send_address", "address": "pharmacie près de [adresse utilisateur si disponible]", "response": "Je cherche une pharmacie près de vous...", "language": "fr"}
+- "Trouve l'hôpital le plus proche" → {"action": "send_address", "address": "hôpital près de [adresse utilisateur si disponible]", "response": "Je cherche un hôpital...", "language": "fr"}
+- "Comment rentrer chez moi" → {"action": "send_address", "address": "[adresse utilisateur]", "response": "Je cherche l'itinéraire pour rentrer...", "language": "fr"}
+- "Trouve un bon restaurant italien" → {"action": "send_address", "address": "restaurant italien près de [adresse utilisateur si disponible]", "response": "Je cherche un restaurant...", "language": "fr"}
+- "Find nearest pharmacy" → {"action": "send_address", "address": "pharmacy near [user address if available]", "response": "Looking for a pharmacy...", "language": "en"}
+- "Where is the hospital" → {"action": "send_address", "address": "hospital near [user address if available]", "response": "Finding hospitals...", "language": "en"}
 
 🌤️ WEATHER ACTION:
 
@@ -787,7 +803,7 @@ async function processWithMistral(userMessage, conversationHistory = []) {
     // Detect language first
     const language = await detectLanguage(_userMessage);
     console.log(`[MistralAgent] 🌍 Detected language: ${language}`);
-
+    
     // Détection améliorée avec mots-clés plus larges
     function detectActionByKeywords(text) {
         const txt = text.toLowerCase();
@@ -932,8 +948,27 @@ async function processWithMistral(userMessage, conversationHistory = []) {
         }
     }
     
+    // Contexte localisation (adresse par défaut + dernière position GPS connue)
+    const defaultAddress = localStorage.getItem('defaultAddress') || '';
+    let locationContext = '';
+    if (defaultAddress) {
+        locationContext += `Adresse par défaut (utilisateur) : ${defaultAddress}. `;
+    }
+    try {
+        const lastPosStr = localStorage.getItem('lastGpsPosition');
+        if (lastPosStr) {
+            const lastPos = JSON.parse(lastPosStr);
+            if (lastPos?.lat && lastPos?.lng && lastPos?.timestamp) {
+                const ageSec = Math.max(0, Math.round((Date.now() - lastPos.timestamp) / 1000));
+                locationContext += `Dernière position GPS connue : ${lastPos.lat}, ${lastPos.lng} (il y a ${ageSec}s).`;
+            }
+        }
+    } catch (err) {
+        console.warn('[MistralAgent] Unable to parse lastGpsPosition', err);
+    }
+
     // Ajoute SYSTEM_PROMPT à tous les prompts comme commande générale
-    const fullPrompt = `${SYSTEM_PROMPT}\n\n${mainPrompt}${previousResponsesReminder}\n\nDate et heure actuelles : ${localeDate} à ${localeTime} (${isoDate} ${isoTime}). Utilise TOUJOURS cette date et cette heure comme référence pour "aujourd'hui" et "maintenant".`;
+    const fullPrompt = `${SYSTEM_PROMPT}\n\n${mainPrompt}${previousResponsesReminder}\n\nDate et heure actuelles : ${localeDate} à ${localeTime} (${isoDate} ${isoTime}). Utilise TOUJOURS cette date et cette heure comme référence pour "aujourd'hui" et "maintenant".${locationContext ? `\n\nContexte localisation : ${locationContext}` : ''}`;
 
     // Build messages with compressed history
     const messages = [

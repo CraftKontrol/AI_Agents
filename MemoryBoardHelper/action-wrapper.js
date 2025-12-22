@@ -2006,10 +2006,236 @@ registerAction(
                 throw new Error('GPS navigation module not loaded');
             }
             
-            const address = params.address;
+            let address = params.address;
+            let isPOISearch = false;
+            
+            // Detect POI keywords and enrich query for OpenStreetMap
+            const poiKeywords = {
+                // French
+                'pharmacie': 'pharmacy',
+                'hôpital': 'hospital',
+                'hopital': 'hospital',
+                'médecin': 'doctor',
+                'medecin': 'doctor',
+                'restaurant': 'restaurant',
+                'café': 'cafe',
+                'cafe': 'cafe',
+                'banque': 'bank',
+                'poste': 'post office',
+                'supermarché': 'supermarket',
+                'supermarche': 'supermarket',
+                'boulangerie': 'bakery',
+                'station service': 'gas station',
+                'essence': 'gas station',
+                'parking': 'parking',
+                'police': 'police station',
+                'maison': 'home',
+                'domicile': 'home',
+                'chez moi': 'home',
+                // English
+                'pharmacy': 'pharmacy',
+                'hospital': 'hospital',
+                'doctor': 'doctor',
+                'restaurant': 'restaurant',
+                'cafe': 'cafe',
+                'bank': 'bank',
+                'post office': 'post office',
+                'supermarket': 'supermarket',
+                'bakery': 'bakery',
+                'gas station': 'gas station',
+                'parking': 'parking',
+                'police': 'police station',
+                'home': 'home'
+            };
+            
+            // Check if address contains POI keywords
+            const addressLower = address.toLowerCase();
+            for (const [keyword, poiType] of Object.entries(poiKeywords)) {
+                if (addressLower.includes(keyword)) {
+                    console.log(`[ActionWrapper] POI detected: "${keyword}" → searching for "${poiType}"`);
+                    
+                    // For "home/maison/domicile", use default address
+                    if (poiType === 'home') {
+                        const defaultAddress = localStorage.getItem('defaultAddress');
+                        if (defaultAddress) {
+                            console.log(`[ActionWrapper] Using default address as home: ${defaultAddress}`);
+                            address = defaultAddress;
+                        } else {
+                            // Ask user to configure default address
+                            const messages = {
+                                fr: 'Veuillez configurer votre adresse par défaut dans les paramètres (Localisation).',
+                                en: 'Please configure your default address in settings (Location).',
+                                it: 'Configura il tuo indirizzo predefinito nelle impostazioni (Posizione).'
+                            };
+                            const message = messages[language] || messages.fr;
+                            return new ActionResult(false, message, null, 'Default address not configured');
+                        }
+                    } else {
+                        // For other POIs, mark as POI search and use GPS location
+                        isPOISearch = true;
+                        address = poiType;
+                    }
+                    break;
+                }
+            }
             
             console.log(`[ActionWrapper] Geocoding and opening navigation for: "${address}"`);
             
+            // If POI search, get location and search nearby
+            if (isPOISearch) {
+                console.log(`[ActionWrapper] POI search detected - getting location...`);
+                
+                let lat, lng, locationSource;
+
+                // Track the exact query sent to GPS/geocoder for logging/export
+                if (typeof window !== 'undefined') {
+                    window.lastGPSQuery = address;
+                }
+                
+                try {
+                    // 1. Try to get last known GPS position first (fastest)
+                    const lastGPS = typeof getLastGPSPosition === 'function' ? getLastGPSPosition() : null;
+                    if (lastGPS && lastGPS.lat && lastGPS.lng) {
+                        lat = lastGPS.lat;
+                        lng = lastGPS.lng;
+                        locationSource = 'lastGPS';
+                        console.log(`[ActionWrapper] Using last GPS position: ${lat}, ${lng}`);
+                    }
+                    
+                    // 2. If no recent GPS, try to get current position
+                    if (!lat || !lng) {
+                        console.log(`[ActionWrapper] No recent GPS position, trying to get current location...`);
+                        try {
+                            const position = await new Promise((resolve, reject) => {
+                                if (!navigator.geolocation) {
+                                    reject(new Error('Geolocation not supported'));
+                                    return;
+                                }
+                                
+                                navigator.geolocation.getCurrentPosition(
+                                    (pos) => resolve(pos),
+                                    (err) => reject(err),
+                                    { enableHighAccuracy: true, timeout: 5000, maximumAge: 60000 }
+                                );
+                            });
+                            
+                            lat = position.coords.latitude;
+                            lng = position.coords.longitude;
+                            locationSource = 'currentGPS';
+                            console.log(`[ActionWrapper] Got current GPS position: ${lat}, ${lng}`);
+                            
+                            // Save for future use
+                            if (typeof saveLastGPSPosition === 'function') {
+                                saveLastGPSPosition(lat, lng);
+                            }
+                        } catch (gpsError) {
+                            console.log(`[ActionWrapper] GPS unavailable (${gpsError.message}), falling back to default address...`);
+                            
+                            // 3. Fall back to default address from settings
+                            const defaultAddress = localStorage.getItem('defaultAddress');
+                            if (defaultAddress && defaultAddress.trim()) {
+                                console.log(`[ActionWrapper] Using default address: ${defaultAddress}`);
+                                // Geocode default address to get coordinates
+                                const geocodeResponse = await fetch(
+                                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(defaultAddress)}&limit=1`,
+                                    { headers: { 'User-Agent': 'MemoryBoardHelper/1.0' } }
+                                );
+                                const geocodeData = await geocodeResponse.json();
+                                if (geocodeData && geocodeData.length > 0) {
+                                    lat = parseFloat(geocodeData[0].lat);
+                                    lng = parseFloat(geocodeData[0].lon);
+                                    locationSource = 'defaultAddress';
+                                    console.log(`[ActionWrapper] Geocoded default address to: ${lat}, ${lng}`);
+                                } else {
+                                    throw new Error('Default address not found');
+                                }
+                            } else {
+                                throw new Error('No GPS and no default address configured');
+                            }
+                        }
+                    }
+                    
+                    console.log(`[ActionWrapper] Current position: ${lat}, ${lng}`);
+                    console.log(`[ActionWrapper] Searching for "${address}" near current location...`);
+                    
+                    // Search POI near current location using OpenStreetMap
+                    // Constrain search around the detected location (bounded) and prefer same country
+                    const countryHint = (locationSource === 'defaultAddress' && typeof geocodeData !== 'undefined' && geocodeData[0]?.address?.country_code)
+                        ? geocodeData[0].address.country_code
+                        : '';
+
+                    const response = await fetch(
+                        `https://nominatim.openstreetmap.org/search?` +
+                        `format=json&q=${encodeURIComponent(address)}&` +
+                        `lat=${lat}&lon=${lng}&` +
+                        `limit=1&` +
+                        `addressdetails=1&` +
+                        `bounded=1&` +
+                        `viewbox=${lng-0.1},${lat+0.1},${lng+0.1},${lat-0.1}` +
+                        `${countryHint ? `&countrycodes=${countryHint}` : ''}`,
+                        {
+                            headers: {
+                                'User-Agent': 'MemoryBoardHelper/1.0'
+                            }
+                        }
+                    );
+                    
+                    if (!response.ok) {
+                        throw new Error(`POI search failed: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    if (data && data.length > 0) {
+                        const location = data[0];
+                        const poiLat = parseFloat(location.lat);
+                        const poiLng = parseFloat(location.lon);
+                        const name = location.display_name;
+                        
+                        console.log(`[ActionWrapper] Found POI: ${name} at ${poiLat}, ${poiLng}`);
+                        
+                        // Show GPS options for found POI
+                        if (typeof showGPSOptions === 'function') {
+                            showGPSOptions(poiLat, poiLng, name);
+                        }
+                        
+                        const messages = {
+                            fr: `J'ai trouvé: ${name}`,
+                            en: `Found: ${name}`,
+                            it: `Trovato: ${name}`
+                        };
+                        
+                        const message = params.response || messages[language] || messages.fr;
+                        return new ActionResult(true, message, {
+                            lat: poiLat,
+                            lng: poiLng,
+                            name,
+                            address: location.display_name,
+                            currentPosition: { lat, lng }
+                        });
+                    } else {
+                        const messages = {
+                            fr: `Aucun "${address}" trouvé près de vous`,
+                            en: `No "${address}" found nearby`,
+                            it: `Nessun "${address}" trovato nelle vicinanze`
+                        };
+                        const message = messages[language] || messages.fr;
+                        return new ActionResult(false, message, null, 'No POI found nearby');
+                    }
+                    
+                } catch (gpsError) {
+                    console.error('[ActionWrapper] GPS/POI search error:', gpsError);
+                    const messages = {
+                        fr: 'Impossible d\'accéder à votre position GPS',
+                        en: 'Cannot access your GPS location',
+                        it: 'Impossibile accedere alla tua posizione GPS'
+                    };
+                    const message = messages[language] || messages.fr;
+                    return new ActionResult(false, message, null, gpsError.message);
+                }
+            }
+            
+            // Regular address geocoding
             const result = await sendAddressToGPS(address, language);
             
             const message = params.response || result.message;

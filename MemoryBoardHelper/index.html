@@ -170,6 +170,25 @@
                         </p>
                     </div>
 
+                    <!-- Location Settings -->
+                    <div class="settings-section">
+                        <h3><span class="material-symbols-outlined">location_on</span> Localisation</h3>
+                        <div class="input-group">
+                            <label for="settingsDefaultAddress">Adresse par défaut (pour recherches POI)</label>
+                            <input type="text" id="settingsDefaultAddress" placeholder="Ex: 123 rue de la Paix, Paris">
+                        </div>
+                        <div class="input-group">
+                            <button class="btn-secondary" onclick="saveDefaultAddress()">
+                                <span class="material-symbols-outlined">save</span>
+                                Enregistrer l'adresse
+                            </button>
+                        </div>
+                        <p class="hint" style="margin-top: 10px;">
+                            <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle;">info</span>
+                            Cette adresse sera utilisée pour les recherches de lieux proches (pharmacie, restaurant, etc.) si le GPS n'est pas disponible
+                        </p>
+                    </div>
+
                     <!-- Logs -->
                     <div class="settings-section">
                         <h3><span class="material-symbols-outlined">description</span> Logs</h3>
@@ -1686,6 +1705,7 @@
     <script src="sound-system.js"></script>
     <script src="tavily-search.js"></script>
     <script src="gps-navigation.js"></script>
+    <script src="location-manager.js"></script>
     <script src="weather.js"></script>
     <script src="action-wrapper.js?v=20251222-1315"></script>
     <script src="script-response-handler.js"></script>
