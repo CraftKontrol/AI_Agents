@@ -46,6 +46,14 @@
 **MonitoringService**: Foreground service (dataSync), coroutine loop (5min intervals), checks alarms/appointments/news, shows notifications
 **CKFirebaseMessagingService**: FCM push notification handler (`onMessageReceived`, `onNewToken`)
 
+### Sensor System (`service/SensorMonitoringService.kt`)
+**Purpose**: Provide accelerometer + gyroscope data for activity tracking
+
+**SensorMonitoringService**: `startSensors()` (10Hz), `stopSensors()`, `accelerometerData`, `gyroscopeData`
+**JS Bridge**: `CKAndroid.startSensors()`, `CKAndroid.getAccelerometer()`, `CKAndroid.getGyroscope()`
+**Auto-dispatch**: Events `ckgenericapp_accelerometer`, `ckgenericapp_gyroscope` (100ms interval)
+**Flow**: ShortcutActivity onCreate → start sensors → coroutine dispatcher → WebView events → Memory Helper triple verification
+
 ### Receivers (`receiver/`)
 **BootReceiver**: Listens `BOOT_COMPLETED`/`QUICKBOOT_POWERON`  Restarts MonitoringService
 **AlarmReceiver**: Receives alarm intents  Shows notifications with full-screen intent  Opens app

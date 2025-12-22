@@ -10,6 +10,7 @@ import android.os.Build
 import android.webkit.*
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.craftkontrol.ckgenericapp.service.SensorMonitoringService
 import timber.log.Timber
 
 class CKWebViewClient(private val context: Context) : WebViewClient() {
@@ -155,7 +156,8 @@ class WebViewJavaScriptInterface(
     private val onNotification: (String, String) -> Unit,
     private val apiKeysPreferences: com.craftkontrol.ckgenericapp.data.local.preferences.ApiKeysPreferences? = null,
     private val onScheduleAlarm: ((String, String, Long, String) -> Unit)? = null,
-    private val onCancelAlarm: ((String) -> Unit)? = null
+    private val onCancelAlarm: ((String) -> Unit)? = null,
+    private val sensorMonitoringService: SensorMonitoringService? = null
 ) {
     
     @JavascriptInterface
@@ -180,6 +182,38 @@ class WebViewJavaScriptInterface(
     fun cancelAlarm(alarmId: String) {
         Timber.d("Alarm cancellation request: $alarmId")
         onCancelAlarm?.invoke(alarmId)
+    }
+
+    @JavascriptInterface
+    fun startSensors() {
+        Timber.d("JavaScript called startSensors()")
+        sensorMonitoringService?.startSensors()
+    }
+
+    @JavascriptInterface
+    fun stopSensors() {
+        Timber.d("JavaScript called stopSensors()")
+        sensorMonitoringService?.stopSensors()
+    }
+
+    @JavascriptInterface
+    fun getAccelerometer(): String {
+        val data = sensorMonitoringService?.accelerometerData?.value
+        return if (data != null) {
+            """{"x":${data.x},"y":${data.y},"z":${data.z},"timestamp":${data.timestamp}}"""
+        } else {
+            """{"error":"No accelerometer data available"}"""
+        }
+    }
+
+    @JavascriptInterface
+    fun getGyroscope(): String {
+        val data = sensorMonitoringService?.gyroscopeData?.value
+        return if (data != null) {
+            """{"x":${data.x},"y":${data.y},"z":${data.z},"timestamp":${data.timestamp}}"""
+        } else {
+            """{"error":"No gyroscope data available"}"""
+        }
     }
     
     @JavascriptInterface

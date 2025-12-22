@@ -18,13 +18,17 @@ import android.widget.FrameLayout
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.craftkontrol.ckgenericapp.domain.model.WebApp
 import com.craftkontrol.ckgenericapp.presentation.main.MainViewModel
 import com.craftkontrol.ckgenericapp.presentation.theme.CKGenericAppTheme
+import com.craftkontrol.ckgenericapp.service.SensorMonitoringService
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
 import timber.log.Timber
+import javax.inject.Inject
 
 /**
  * Activity launched from home screen shortcuts
@@ -35,6 +39,7 @@ import timber.log.Timber
 @AndroidEntryPoint
 class ShortcutActivity : ComponentActivity() {
     
+    @Inject lateinit var sensorMonitoringService: SensorMonitoringService
     private var currentAppId: String? = null
     var pendingWebViewPermissionRequest: android.webkit.PermissionRequest? = null
     var currentWebView: WebView? = null
@@ -58,6 +63,9 @@ class ShortcutActivity : ComponentActivity() {
         }
         
         renderContent()
+
+        sensorMonitoringService.startSensors()
+        startSensorEventDispatcher()
     }
     
     override fun onNewIntent(intent: Intent) {
@@ -104,6 +112,39 @@ class ShortcutActivity : ComponentActivity() {
                 webView.loadUrl(webView.url ?: "", headers)
             }
             forceReload = false
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        sensorMonitoringService.stopSensors()
+    }
+
+    private fun startSensorEventDispatcher() {
+        lifecycleScope.launch {
+            sensorMonitoringService.accelerometerData.collect { data ->
+                data?.let {
+                    val js = """
+                        window.dispatchEvent(new CustomEvent('ckgenericapp_accelerometer', {
+                            detail: {x: ${it.x}, y: ${it.y}, z: ${it.z}, timestamp: ${it.timestamp}}
+                        }));
+                    """.trimIndent()
+                    currentWebView?.evaluateJavascript(js, null)
+                }
+            }
+        }
+
+        lifecycleScope.launch {
+            sensorMonitoringService.gyroscopeData.collect { data ->
+                data?.let {
+                    val js = """
+                        window.dispatchEvent(new CustomEvent('ckgenericapp_gyroscope', {
+                            detail: {x: ${it.x}, y: ${it.y}, z: ${it.z}, timestamp: ${it.timestamp}}
+                        }));
+                    """.trimIndent()
+                    currentWebView?.evaluateJavascript(js, null)
+                }
+            }
         }
     }
     
@@ -290,7 +331,8 @@ private fun StandaloneWebView(
                     onCancelAlarm = { alarmId ->
                         Timber.i("Cancelling alarm from ${app.name}: $alarmId")
                         alarmScheduler.cancelAlarm(alarmId)
-                    }
+                    },
+                    sensorMonitoringService = activity.sensorMonitoringService
                 )
                 
                 com.craftkontrol.ckgenericapp.webview.WebViewConfigurator.configure(
