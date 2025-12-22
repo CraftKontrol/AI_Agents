@@ -552,3 +552,122 @@ The following tests were removed as the system no longer supports multi-activity
 - **Weather Tests**: Weather forecast queries (10 tests)
 - **Tracking Tests**: Activity tracking - walk-only mode with automatic tracking (6 tests)
 - **Conversation Tests**: General conversation and chat mode (10 tests)
+
+## Using the Enhanced Error System (v2.0)
+
+### Running Tests with Error Tracking
+
+1. **Run all tests:**
+   ```javascript
+   runAllTests()
+   ```
+   - Automatically displays error summary at end
+   - Statistics updated in real-time
+
+2. **Run single test:**
+   ```javascript
+   runTest('vocal_add_task_simple', buttonElement)
+   ```
+   - Individual error categorization
+   - Detailed console logging
+
+3. **Export results:**
+   ```javascript
+   exportTestResults()
+   ```
+   - Includes `errorReport` section
+   - Statistics with error breakdown
+
+### Reading Error Statistics
+
+**In console:**
+```javascript
+testStats
+// {
+//   total: 163,
+//   passed: 142,
+//   failed: 21,
+//   timeouts: 5,
+//   validationFailures: 7,
+//   apiErrors: 9
+// }
+```
+
+**In exported JSON:**
+```json
+{
+  "summary": {
+    "total": 163,
+    "passed": 142,
+    "failed": 21,
+    "timeouts": 5,
+    "validationFailures": 7,
+    "apiErrors": 9,
+    "successRate": "87.12%"
+  },
+  "errorReport": {
+    "timeouts": [...],
+    "validationFails": [...],
+    "apiErrors": [...],
+    "executionErrors": [...]
+  }
+}
+```
+
+### Analyzing Error Patterns
+
+1. **High timeout rate?**
+   - Check if action-wrapper events are dispatched
+   - Verify Mistral API key is configured
+   - Consider increasing timeout for slow operations
+
+2. **Many validation failures?**
+   - Review test validation criteria
+   - Check if expected data structure changed
+   - Consider test updates needed
+
+3. **Multiple API errors?**
+   - Configure missing API keys
+   - Implement mocks for external services
+   - Update tests to handle gracefully
+
+### Best Practices
+
+✅ **DO:**
+- Check console for detailed error logs
+- Review error summary after test runs
+- Export results for analysis
+- Use error type icons for quick identification
+- Follow recommendations in error reports
+
+❌ **DON'T:**
+- Ignore timeout warnings
+- Skip error summary review
+- Run tests without API keys (if testing API features)
+- Batch run without checking errors
+- Modify timeouts without understanding cause
+
+### Error Report Structure
+
+Each error type includes:
+- **testId** - Unique test identifier
+- **testName** - Human-readable name
+- **timestamp** - When error occurred
+- **Context-specific data**:
+  - Timeouts: `elapsed`, `lastAction`
+  - Validations: `actionResult`, `validationTime`
+  - API errors: `error` message
+  - Execution: `error`, `stack`
+
+### Quick Reference Card
+
+| Icon | Type | Severity | Common Cause | Action |
+|------|------|----------|--------------|--------|
+| ⏱️ | TIMEOUT | Critical | Action didn't complete | Check action-wrapper events |
+| ❌ | VALIDATION | High | Test criteria not met | Review validation logic |
+| 🌐 | API_ERROR | Medium | External API failure | Configure API keys or mock |
+| 💥 | EXECUTION | Critical | Code exception | Check stack trace |
+
+---
+
+**For complete implementation details, see:** [IMPROVEMENTS_ERROR_DETECTION.md](IMPROVEMENTS_ERROR_DETECTION.md)

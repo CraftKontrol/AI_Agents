@@ -39,6 +39,11 @@ class ActivityTracker {
             calorieMultiplier: 1.0  // 0.5x - 2x
         };
         
+        // Debounce timestamps
+        this.lastGpsUpdateTime = 0;
+        this.lastStateSaveTime = 0;
+        this.stateSaveThrottle = 30000; // Save state max once per 30s
+        
         // Sensor availability
         this.sensorsAvailable = {
             gps: false,
@@ -508,7 +513,7 @@ class ActivityTracker {
                     }
                 }));
             }
-        }, 5000);
+        }, 10000); // 10 seconds (reduced from 5s for lower CPU load)
     }
     
     // Calculate total distance from GPS path
@@ -662,9 +667,18 @@ const activityTracker = new ActivityTracker();
 // Initialize sensor listeners
 activityTracker.initSensorListeners();
 
-// Auto-initialize on load
+// Delayed auto-initialization (3s after load) to prevent freezing
 window.addEventListener('load', async () => {
-    await activityTracker.initialize();
+    console.log('[ActivityTracker] Page loaded - delaying initialization by 3 seconds...');
+    setTimeout(async () => {
+        const isEnabled = localStorage.getItem('activityTrackingEnabled') === 'true';
+        if (isEnabled) {
+            console.log('[ActivityTracker] Auto-initializing (enabled in settings)...');
+            await activityTracker.initialize();
+        } else {
+            console.log('[ActivityTracker] Skipping auto-initialization (disabled in settings)');
+        }
+    }, 3000);
 });
 
 // Handle page unload - finalize current path

@@ -54,6 +54,18 @@
 
 **Recent test resilience updates (Dec 2025):** search_task validation tolerates empty result sets when Mistral intent is `search_task`; alarm system check is bypassed in automated runs; web restaurant/weather tests accept geocoding/missing-source responses; weather queries fall back to Open-Meteo (with placeholder data) when no provider succeeds.
 
+**Performance Optimizations (Dec 22, 2025):**
+- **Lazy Initialization:** Staggered loading of components (critical → UI → non-critical)
+- **Activity Tracker Delay:** 3-second startup delay, only if enabled in settings
+- **Sensor Throttling:** Reduced from 10Hz to 5Hz (200ms intervals)
+- **GPS Debouncing:** 1-second minimum interval between GPS updates
+- **State Saving Throttle:** Max once per 30 seconds to reduce localStorage writes
+- **Progress Updates:** Reduced from 5s to 10s intervals for lower CPU usage
+- **IndexedDB Timeout:** 10-second timeout prevents infinite waiting
+- **Request Deduplication:** Prevents duplicate simultaneous API calls to Mistral
+- **Progressive Loading:** Notes/lists/calendar staggered by 500ms each
+- **Non-blocking Operations:** Calendar refresh doesn't block other components
+
 **STT Functions (in script.js):**
 - `initializeSpeechRecognition()` - Setup browser or Google STT
 - `fallbackToGoogleSTT()` - Start Google Cloud STT recording

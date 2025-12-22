@@ -16,6 +16,8 @@ const STORES = {
 };
 
 let db = null;
+let pendingWrites = []; // Batch writes for performance
+let writeTimer = null;
 
 // Promise to signal when DB is ready
 let dbReadyResolve, dbReadyReject;
@@ -23,18 +25,27 @@ window.dbReady = new Promise((resolve, reject) => {
     dbReadyResolve = resolve;
     dbReadyReject = reject;
 });
-// Initialize IndexedDB
+// Initialize IndexedDB with timeout
 async function initializeDatabase() {
     console.log('[Storage] Starting database initialization...');
     
     // Force close any existing connections
     if (db) {
         console.log('[Storage] Closing existing DB connection...');
-        db.close();
+        try {
+            db.close();
+        } catch (e) {
+            console.warn('[Storage] Error closing DB:', e);
+        }
         db = null;
     }
     
-    return new Promise((resolve, reject) => {
+    // Add timeout to prevent infinite waiting
+    const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Database initialization timeout (10s)')), 10000);
+    });
+    
+    const openPromise = new Promise((resolve, reject) => {
         const request = indexedDB.open(DB_NAME, DB_VERSION);
         console.log('[Storage] IndexedDB open request sent for', DB_NAME, 'version', DB_VERSION);
 
@@ -153,6 +164,29 @@ async function initializeDatabase() {
             
             console.log('[Storage] Database upgrade complete');
         };
+    });
+    
+    // Race between timeout and database opening
+    try {
+        return await Promise.race([openPromise, timeoutPromise]);
+    } catch (error) {
+        console.error('[Storage] Database initialization failed:', error);
+        if (dbReadyReject) dbReadyReject(error);
+        throw error;
+    }
+}
+
+// Batch write processing (debounced)
+function processPendingWrites() {
+    if (pendingWrites.length === 0) return;
+    
+    const writes = [...pendingWrites];
+    pendingWrites = [];
+    
+    console.log(`[Storage] Processing ${writes.length} batched writes`);
+    
+    writes.forEach(({ storeName, data, resolve, reject }) => {
+        addToStore(storeName, data).then(resolve).catch(reject);
     });
 }
 

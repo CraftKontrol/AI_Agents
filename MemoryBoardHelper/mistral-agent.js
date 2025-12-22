@@ -4,6 +4,9 @@
 const MISTRAL_API_URL = 'https://api.mistral.ai/v1/chat/completions';
 const MISTRAL_MODEL = 'mistral-small-latest';
 
+// Request deduplication
+const activeRequests = new Map();
+
 // Supported languages
 const SUPPORTED_LANGUAGES = ['fr', 'it', 'en'];
 let detectedLanguage = 'fr';
@@ -771,8 +774,26 @@ async function detectLanguage(text) {
     }
 }
 
-// Process user message with Mistral AI
+// Process user message with Mistral AI (with deduplication)
 async function processWithMistral(userMessage, conversationHistory = []) {
+    // Deduplicate identical requests within 2 seconds
+    const requestKey = `${userMessage}-${conversationHistory.length}`;
+    if (activeRequests.has(requestKey)) {
+        console.log(`[Mistral] Deduplicating request: ${requestKey.substring(0, 50)}...`);
+        return activeRequests.get(requestKey);
+    }
+    
+    const promise = processWithMistralInternal(userMessage, conversationHistory, ...Array.from(arguments).slice(2));
+    
+    activeRequests.set(requestKey, promise);
+    promise.finally(() => {
+        activeRequests.delete(requestKey);
+    });
+    
+    return promise;
+}
+
+async function processWithMistralInternal(userMessage, conversationHistory = []) {
     console.log(`\n========== MISTRAL PROCESSING START ==========`);
     console.log(`[MistralAgent] Input: "${userMessage}"`);
     console.log(`[MistralAgent] History length: ${conversationHistory.length}`);

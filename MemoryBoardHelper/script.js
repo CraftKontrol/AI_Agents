@@ -1,5 +1,5 @@
 // --- Confirmation State for Important Actions ---
-// Cache-bust: 2025-12-18-v13-fixed-navigation-priority
+// Cache-bust: 2025-12-22-performance-optimizations
 let pendingConfirmation = null; // Will store { action, data, language, confirmationMessage }
 
 // --- Temporary Listening for Questions ---
@@ -1543,7 +1543,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         showError('Erreur d\'initialisation de la base de données');
     }
     
-    // Initialize systems that depend on database
+    // PHASE 1: Critical systems (tasks, alarms)
     if (typeof initializeTaskManager === 'function') {
         initializeTaskManager();
     }
@@ -1553,17 +1553,18 @@ document.addEventListener('DOMContentLoaded', async function() {
         setInterval(checkForPreReminders, 120000);
     }
     
-    // Initialize activity tracking UI
-    if (typeof activityUI !== 'undefined' && typeof activityUI.initializeActivitySection === 'function') {
-        activityUI.initializeActivitySection();
-        console.log('[App] Activity tracking initialized');
-    }
-    
-    // Load sensitivity settings for activity tracking
-    if (typeof activityUI !== 'undefined' && typeof activityUI.loadSensitivitySettings === 'function') {
-        activityUI.loadSensitivitySettings();
-        console.log('[App] Activity sensitivity settings loaded');
-    }
+    // PHASE 2: Lazy-load activity tracking UI after 1 second
+    setTimeout(() => {
+        if (typeof activityUI !== 'undefined' && typeof activityUI.initializeActivitySection === 'function') {
+            activityUI.initializeActivitySection();
+            console.log('[App] Activity tracking UI initialized (lazy loaded)');
+        }
+        
+        if (typeof activityUI !== 'undefined' && typeof activityUI.loadSensitivitySettings === 'function') {
+            activityUI.loadSensitivitySettings();
+            console.log('[App] Activity sensitivity settings loaded (lazy loaded)');
+        }
+    }, 1000);
     
     // Load saved API keys
     await loadSavedApiKeys();
@@ -1613,15 +1614,31 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Load conversation history
     await loadConversationHistory();
     
-    // Display tasks
-    if (typeof refreshCalendar === 'function') await refreshCalendar();
-    
-    // Load notes and lists after database is initialized
-    if (typeof loadNotes === 'function') await loadNotes();
-    if (typeof loadLists === 'function') await loadLists();
-    
-    // Fetch last modified date
-    fetchLastModified();
+    // PHASE 3: Lazy-load non-critical UI after 2 seconds (progressive)
+    setTimeout(async () => {
+        console.log('[App] Loading non-critical components (progressive)...');
+        
+        // Display tasks (non-blocking)
+        if (typeof refreshCalendar === 'function') {
+            refreshCalendar().catch(err => console.error('[App] Calendar refresh error:', err));
+        }
+        
+        // Stagger loads to prevent UI freeze
+        setTimeout(async () => {
+            if (typeof loadNotes === 'function') await loadNotes();
+        }, 500);
+        
+        setTimeout(async () => {
+            if (typeof loadLists === 'function') await loadLists();
+        }, 1000);
+        
+        // Fetch last modified date (lowest priority)
+        setTimeout(() => {
+            fetchLastModified();
+        }, 1500);
+        
+        console.log('[App] Non-critical components loading started');
+    }, 2000);
     
     // Start with API section hidden if keys are saved
     checkApiKeysAndHideSection();
