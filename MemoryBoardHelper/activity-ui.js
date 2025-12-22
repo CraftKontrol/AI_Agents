@@ -14,6 +14,9 @@ class ActivityUI {
 
     // Get current language or fallback
     getLang() {
+        if (typeof getCurrentLanguage === 'function') {
+            return getCurrentLanguage();
+        }
         return typeof currentLanguage !== 'undefined' ? currentLanguage : 'fr';
     }
 
@@ -466,7 +469,7 @@ class ActivityUI {
             }
         };
         
-        const lang = translations[currentLanguage] || translations.fr;
+        const lang = translations[this.getLang()] || translations.fr;
         
         const content = `
             <h2>${lang.title}</h2>
@@ -878,6 +881,11 @@ class ActivityUI {
         
         // Update info panel
         this.updatePathInfo(activity);
+        
+        // Render elevation graph
+        if (activity.gpsPath && activity.gpsPath.length > 0) {
+            this.renderElevationGraph(activity.gpsPath);
+        }
     }
     
     // Update path info panel
@@ -891,11 +899,10 @@ class ActivityUI {
             bike: { fr: 'Vélo', en: 'Bike', it: 'Bici' }
         };
         
-        const lang = currentLanguage || 'fr';
+        const lang = this.getLang();
         const typeLabel = typeLabels[activity.type]?.[lang] || activity.type;
         
         infoPanel.innerHTML = `
-            <h3>${typeLabel}</h3>
             <p><strong>Date:</strong> ${new Date(activity.startTime).toLocaleString()}</p>
             <p><strong>Distance:</strong> ${activityStats.formatDistance(activity.distance)}</p>
             <p><strong>Duration:</strong> ${activityStats.formatDuration(activity.duration)}</p>
@@ -971,7 +978,12 @@ class ActivityUI {
                     </div>
                     <div class="map-panel">
                         <div id="activityMap"></div>
+                    </div>
+                    <div class="path-details-panel">
                         <div id="pathInfoPanel" class="path-info-panel"></div>
+                        <div class="elevation-graph-container">
+                            <canvas id="elevationGraphCanvas" width="800" height="100"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1076,7 +1088,6 @@ class ActivityUI {
             <div class="stat-row">
                 <span>${this.t('mostElevationGain')}</span>
                 <span>${Math.round(bests.mostElevationGain.value || 0)} m</span>
-            </div>
         `;
     }
     
