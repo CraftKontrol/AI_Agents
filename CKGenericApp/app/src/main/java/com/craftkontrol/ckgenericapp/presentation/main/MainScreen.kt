@@ -404,6 +404,8 @@ fun ApiKeysSection(
     var scraperApiKey by remember(savedKeys) { mutableStateOf(savedKeys["scraperapi"] ?: "") }
     var brightDataKey by remember(savedKeys) { mutableStateOf(savedKeys["brightdata"] ?: "") }
     var scrapFlyKey by remember(savedKeys) { mutableStateOf(savedKeys["scrapfly"] ?: "") }
+    var deepgramSttKey by remember(savedKeys) { mutableStateOf(savedKeys["deepgram"] ?: "") }
+    var deepgramTtsKey by remember(savedKeys) { mutableStateOf(savedKeys["deepgramtts"] ?: "") }
     var googleTtsKey by remember(savedKeys) { mutableStateOf(savedKeys["google_tts"] ?: "") }
     var googleSttKey by remember(savedKeys) { mutableStateOf(savedKeys["google_stt"] ?: "") }
     
@@ -416,6 +418,8 @@ fun ApiKeysSection(
     var showScraperApi by remember { mutableStateOf(false) }
     var showBrightData by remember { mutableStateOf(false) }
     var showScrapFly by remember { mutableStateOf(false) }
+    var showDeepgramStt by remember { mutableStateOf(false) }
+    var showDeepgramTts by remember { mutableStateOf(false) }
     var showGoogleTts by remember { mutableStateOf(false) }
     var showGoogleStt by remember { mutableStateOf(false) }
     
@@ -557,6 +561,28 @@ fun ApiKeysSection(
             color = MaterialTheme.colorScheme.primary
         )
         Spacer(modifier = Modifier.height(8.dp))
+        
+        ApiKeyField(
+            label = "Deepgram STT (Memory Board)",
+            value = deepgramSttKey,
+            onValueChange = { deepgramSttKey = it },
+            isVisible = showDeepgramStt,
+            onVisibilityToggle = { showDeepgramStt = !showDeepgramStt },
+            onSave = { viewModel.saveApiKey("deepgram", deepgramSttKey) }
+        )
+        
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        ApiKeyField(
+            label = "Deepgram TTS (Memory Board)",
+            value = deepgramTtsKey,
+            onValueChange = { deepgramTtsKey = it },
+            isVisible = showDeepgramTts,
+            onVisibilityToggle = { showDeepgramTts = !showDeepgramTts },
+            onSave = { viewModel.saveApiKey("deepgramtts", deepgramTtsKey) }
+        )
+        
+        Spacer(modifier = Modifier.height(12.dp))
         
         ApiKeyField(
             label = "Google Cloud TTS (AI Search, Memory Board)",

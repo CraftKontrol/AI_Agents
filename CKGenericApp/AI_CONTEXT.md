@@ -172,10 +172,26 @@ adb logcat | findstr CKGenericApp  # View logs
 6. **Localization**: All text must use `stringResource(R.string.key)` for dynamic language updates
 7. **Permissions**: WebView permission requests forwarded to Activity for runtime permission checks
 
+## Supported API Keys
+
+**Stored in DataStore (`ApiKeysPreferences`):**
+- `mistral` - Mistral AI (AI Search, Memory Board, Astral Compute)
+- `deepgram` - Deepgram STT (Memory Board Speech-to-Text, Nova-2 model)
+- `deepgramtts` - Deepgram TTS (Memory Board Text-to-Speech, Aura-2 voices)
+- `google_tts` - Google Cloud TTS (AI Search, Memory Board)
+- `google_stt` - Google Cloud STT (Memory Board)
+- `openweathermap` - OpenWeatherMap (Meteo Agregator)
+- `weatherapi` - WeatherAPI (Meteo Agregator)
+- `tavily` - Tavily Search (AI Search Agregator)
+- `scrapingbee`, `scraperapi`, `brightdata`, `scrapfly` - Web scraping services (AI Search Agregator)
+
+**Injection**: All keys automatically injected into WebViews via `ApiKeyInjectingWebViewClient` as `window.CKGenericApp.apiKeys` object
+**Access**: `CKAndroid.getApiKey('keyName')` or `window.CKGenericApp.getApiKey('keyName')` from JavaScript
+
 ## Common Tasks
 
 **Add New App**: Insert into Room database via WebAppRepository  Auto-loads in MainScreen
-**Add API Key Service**: Add to PreferencesManager  Update MainScreen API Keys section  Available in JS bridge
+**Add API Key Service**: Add to MainScreen state vars + ApiKeyField + save via `viewModel.saveApiKey()`  Auto-injected into WebViews
 **Add Translation**: Add string to `values/strings.xml` + `values-fr/strings.xml` + `values-it/strings.xml`
 **Add Alarm Type**: Update AlarmReceiver emoji mapping + notification channel logic
 **Debug WebView**: Enable `WebView.setWebContentsDebuggingEnabled(true)` in debug builds (already done)
