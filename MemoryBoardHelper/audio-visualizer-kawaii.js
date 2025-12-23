@@ -120,10 +120,10 @@ class KawaiiAudioVisualizer {
             y: this.height / 2
         };
 
-        this.ringRadius = Math.min(this.width, this.height) * 0.48;
+        this.ringRadius = Math.min(this.width, this.height) * 0.35;
 
         this.eyeRadius = this.ringRadius * 0.17;
-        const eyeSpacing = this.ringRadius * 0.5;
+        const eyeSpacing = this.ringRadius * 0.40;
 
         this.leftEyePos = {
             x: this.faceCenter.x - eyeSpacing,
