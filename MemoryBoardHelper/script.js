@@ -87,6 +87,58 @@ function updateTTSValue(type, val) {
     saveTTSSettings();
 }
 
+// --- Load Browser Voices Dynamically ---
+function loadBrowserVoices() {
+    if (typeof speechSynthesis === 'undefined') {
+        console.log('[Browser Voices] Speech synthesis not available');
+        return;
+    }
+    
+    const voices = speechSynthesis.getVoices();
+    console.log('[Browser Voices] Loading', voices.length, 'voices');
+    
+    if (voices.length === 0) {
+        console.log('[Browser Voices] No voices available yet, waiting...');
+        return;
+    }
+    
+    const voiceSelect = document.getElementById('ttsVoice');
+    if (!voiceSelect) return;
+    
+    // Find or create the browser optgroup
+    let browserOptgroup = voiceSelect.querySelector('optgroup[data-provider="browser"]');
+    if (!browserOptgroup) {
+        browserOptgroup = document.createElement('optgroup');
+        browserOptgroup.label = 'Navigateur - Browser';
+        browserOptgroup.setAttribute('data-provider', 'browser');
+        voiceSelect.insertBefore(browserOptgroup, voiceSelect.firstChild);
+    }
+    
+    // Clear existing browser options except default
+    const existingOptions = browserOptgroup.querySelectorAll('option:not([value="browser-default"])');
+    existingOptions.forEach(opt => opt.remove());
+    
+    // Add all available browser voices
+    voices.forEach((voice, index) => {
+        const option = document.createElement('option');
+        option.value = voice.name;
+        option.setAttribute('data-provider', 'browser');
+        option.textContent = `${voice.name} (${voice.lang})`;
+        browserOptgroup.appendChild(option);
+    });
+    
+    console.log('[Browser Voices] Loaded', voices.length, 'voices into selector');
+    
+    // Restore saved voice selection if it exists
+    const savedSettings = JSON.parse(localStorage.getItem('ttsSettings') || 'null');
+    if (savedSettings && savedSettings.voice) {
+        const currentProvider = localStorage.getItem('ttsProvider') || 'browser';
+        if (currentProvider === 'browser') {
+            voiceSelect.value = savedSettings.voice;
+        }
+    }
+}
+
 // --- Floating Voice Button Logic ---
 function initFloatingVoiceButton() {
     const voiceBtn = document.getElementById('voiceBtn');
@@ -241,6 +293,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loadSSMLSettings();
     loadProviderSettings();
     initFloatingVoiceButton();
+    loadBrowserVoices(); // Load browser voices dynamically
     
     // Save on change
     ['ttsVoice','ttsSpeakingRate','ttsPitch','ttsVolume','autoPlayTTS'].forEach(id => {
@@ -258,6 +311,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (ttsProviderSelect) {
         ttsProviderSelect.addEventListener('change', saveProviderSettings);
+    }
+    
+    // Listen for voiceschanged event to reload voices when they become available
+    if (typeof speechSynthesis !== 'undefined' && speechSynthesis.onvoiceschanged !== undefined) {
+        speechSynthesis.onvoiceschanged = loadBrowserVoices;
     }
 });
 
