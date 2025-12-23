@@ -43,9 +43,9 @@
 **External Links**: Links with `target="_blank"` or new window requests automatically open in default mobile browser via Intent
 
 ### Services (`service/`)
-**MonitoringService**: Foreground service (dataSync), coroutine loop (5min intervals), checks alarms/appointments/news, shows notifications, **displays daily step count when activity tracking is enabled in MemoryBoardHelper**
+**MonitoringService**: Foreground service (dataSync), coroutine loop (30s for activity, 5min for alarms/appointments), checks activity tracking status, **displays daily step count in notification when activity tracking is enabled in MemoryBoardHelper** with localized text (fr/en/it), shows notifications for alarms/appointments/news
 **CKFirebaseMessagingService**: FCM push notification handler (`onMessageReceived`, `onNewToken`)
-**Activity Data Integration**: MonitoringService reads activity data from SharedPreferences (tracking_enabled, today_steps) and updates notification text to show step count
+**Activity Data Integration**: MonitoringService reads activity data from SharedPreferences (tracking_enabled, today_steps, last_update) and updates notification text with step count. Data is considered fresh if last_update is within 2 minutes. When tracking is disabled or data is stale, notification reverts to default text.
 
 ### Sensor System (`service/SensorMonitoringService.kt`)
 **Purpose**: Provide accelerometer + gyroscope data for activity tracking
@@ -119,7 +119,7 @@ CKAndroid.postMessage(message)                   // Post message to Android
 CKAndroid.getAppVersion()                        // Get app version string
 CKAndroid.scheduleAlarm(id, title, ts, type)     // Schedule alarm
 CKAndroid.cancelAlarm(id)                        // Cancel alarm
-CKAndroid.saveActivityData(enabled, steps)       // Save activity tracking status and step count
+CKAndroid.saveActivityData(enabled, steps)       // Save activity tracking status and step count (updates MonitoringService notification)
 CKAndroid.getActivityData()                      // Get activity data as JSON {"trackingEnabled":bool,"todaySteps":int,"lastUpdate":long}
 
 // Also exposed as window.CKGenericApp with getApiKey + apiKeys object

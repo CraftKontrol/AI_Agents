@@ -10,6 +10,7 @@
     <string name="notification_channel_alarms_name">Allarmi</string>
     <string name="notification_channel_alarms_description">Allarmi di attività e appuntamenti con suono</string>
     <string name="monitoring_service_running">Monitoraggio delle tue app in background</string>
+    <string name="monitoring_service_with_steps">👣 %1$d passi oggi - Servizio attivo</string>
     
     <!-- Permessi -->
     <string name="permission_camera">Il permesso della fotocamera è necessario per le videochiamate</string>

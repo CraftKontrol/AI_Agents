@@ -108,7 +108,7 @@ class MonitoringService : Service() {
         
         val notification = NotificationCompat.Builder(this, Constants.NOTIFICATION_CHANNEL_MONITORING)
             .setContentTitle("CKGenericApp")
-            .setContentText("👣 $steps pas aujourd'hui - Service actif")
+            .setContentText(getString(R.string.monitoring_service_with_steps, steps))
             .setSmallIcon(R.drawable.ic_notification)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
@@ -118,37 +118,45 @@ class MonitoringService : Service() {
     }
     
     private fun startMonitoring() {
+        // Check activity data frequently (every 30 seconds)
         serviceScope.launch {
             while (isActive) {
-                // Monitor for alarms, appointments, news updates, etc.
+                checkActivityData()
+                delay(30 * 1000) // 30 seconds
+            }
+        }
+        
+        // Check alarms/appointments less frequently (every 5 minutes)
+        serviceScope.launch {
+            while (isActive) {
                 checkForAlarms()
                 checkForAppointments()
                 checkForNewsUpdates()
-                checkActivityData()
-                
-                // Wait 5 minutes before next check
-                delay(5 * 60 * 1000)
+                delay(5 * 60 * 1000) // 5 minutes
             }
         }
     }
     
     private suspend fun checkActivityData() {
         try {
-            // Check if MemoryBoardHelper app is installed/configured
-            val prefsManager = getSharedPreferences("ckgenericapp_prefs", Context.MODE_PRIVATE)
-            val memoryBoardHelperUrl = prefsManager.getString("memoryboardhelper_url", null)
+            // Read activity data from shared preferences
+            val activityPrefs = getSharedPreferences("memoryboardhelper_activity", Context.MODE_PRIVATE)
+            val trackingEnabled = activityPrefs.getBoolean("tracking_enabled", false)
+            val todaySteps = activityPrefs.getInt("today_steps", 0)
+            val lastUpdate = activityPrefs.getLong("last_update", 0)
             
-            if (memoryBoardHelperUrl != null) {
-                // Attempt to read activity data from WebView storage
-                // This is a simplified approach - in production, you'd use a proper data bridge
-                val activityPrefs = getSharedPreferences("memoryboardhelper_activity", Context.MODE_PRIVATE)
-                val trackingEnabled = activityPrefs.getBoolean("tracking_enabled", false)
-                val todaySteps = activityPrefs.getInt("today_steps", 0)
-                
-                if (trackingEnabled && todaySteps > 0) {
-                    Timber.d("Activity tracking enabled with $todaySteps steps")
-                    updateNotificationWithSteps(todaySteps)
-                }
+            // Check if data is recent (within last 2 minutes)
+            val isDataRecent = (System.currentTimeMillis() - lastUpdate) < (2 * 60 * 1000)
+            
+            if (trackingEnabled && isDataRecent) {
+                // Update notification with step count (even if 0)
+                Timber.d("Activity tracking active with $todaySteps steps")
+                updateNotificationWithSteps(todaySteps)
+            } else {
+                // Reset to default notification
+                Timber.d("Activity tracking inactive or data stale")
+                val notification = createForegroundNotification()
+                notificationManager.notify(Constants.MONITORING_SERVICE_NOTIFICATION_ID, notification)
             }
         } catch (e: Exception) {
             Timber.e(e, "Error checking activity data")

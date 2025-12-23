@@ -9,8 +9,7 @@
     <string name="notification_channel_alerts_description">Notifications importantes de vos applications</string>
     <string name="notification_channel_alarms_name">Alarmes</string>
     <string name="notification_channel_alarms_description">Alarmes de tâches et de rendez-vous avec son</string>
-    <string name="monitoring_service_running">Surveillance de vos applications en arrière-plan</string>
-    
+    <string name="monitoring_service_running">Surveillance de vos applications en arrière-plan</string>    <string name="monitoring_service_with_steps">👣 %1$d pas aujourd\'hui - Service actif</string>    
     <!-- Permissions -->
     <string name="permission_camera">La permission d\'accès à la caméra est requise pour les appels vidéo</string>
     <string name="permission_microphone">La permission d\'accès au microphone est requise pour l\'audio</string>

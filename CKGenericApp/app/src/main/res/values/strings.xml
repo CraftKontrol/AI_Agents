@@ -10,6 +10,7 @@
     <string name="notification_channel_alarms_name">Alarms</string>
     <string name="notification_channel_alarms_description">Task and appointment alarms with sound</string>
     <string name="monitoring_service_running">Monitoring your apps in background</string>
+    <string name="monitoring_service_with_steps">👣 %1$d steps today - Service active</string>
     
     <!-- Permissions -->
     <string name="permission_camera">Camera permission is required for video calls</string>
