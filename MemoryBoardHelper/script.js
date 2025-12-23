@@ -2516,6 +2516,10 @@ function updateTTSProviderVoices() {
     
     const selectedProvider = ttsSelect.value;
     
+    // Get current saved voice settings
+    const savedSettings = JSON.parse(localStorage.getItem('ttsSettings') || 'null');
+    const currentVoiceValue = voiceSelect.value;
+    
     // Show only voices for the selected provider
     const options = voiceSelect.querySelectorAll('option, optgroup');
     options.forEach(opt => {
@@ -2529,12 +2533,20 @@ function updateTTSProviderVoices() {
         }
     });
     
-    // Select first valid option for the provider
-    const firstValidOption = voiceSelect.querySelector(`option[data-provider="${selectedProvider}"]`);
-    if (firstValidOption) {
-        voiceSelect.value = firstValidOption.value;
-        // Save TTS settings with the new voice
-        saveTTSSettings();
+    // Check if current voice is valid for the selected provider
+    const currentVoiceOption = voiceSelect.querySelector(`option[value="${currentVoiceValue}"][data-provider="${selectedProvider}"]`);
+    
+    if (currentVoiceOption) {
+        // Current voice is valid, keep it
+        voiceSelect.value = currentVoiceValue;
+    } else {
+        // Current voice not valid for this provider, select first valid option
+        const firstValidOption = voiceSelect.querySelector(`option[data-provider="${selectedProvider}"]`);
+        if (firstValidOption) {
+            voiceSelect.value = firstValidOption.value;
+            // Trigger change event to save new voice
+            voiceSelect.dispatchEvent(new Event('change'));
+        }
     }
     
     // Show/hide SSML section (only available for Google TTS)
