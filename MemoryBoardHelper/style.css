@@ -3304,22 +3304,22 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 20px 30px;
+    padding: 15px 20px;
     background-color: var(--surface-elevated);
     border-bottom: 1px solid var(--border-color);
 }
 
 .gps-modal h3 {
     color: #ffffff;
-    font-size: 24px;
+    font-size: 20px;
     margin: 0;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
 }
 
 .gps-modal h3 .material-symbols-outlined {
-    font-size: 28px;
+    font-size: 24px;
     color: var(--primary-color);
 }
 
@@ -3347,9 +3347,9 @@ body {
 .gps-location-info {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 15px;
-    margin: 20px 30px 15px 30px;
+    gap: 8px;
+    padding: 10px;
+    margin: 15px 20px 10px 20px;
     background-color: rgba(74, 158, 255, 0.1);
     border-left: 3px solid var(--primary-color);
 }
@@ -3361,16 +3361,16 @@ body {
 
 .gps-location-info span:last-child {
     color: var(--text-primary);
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 500;
 }
 
 .gps-coords {
     color: var(--text-muted);
-    font-size: 14px;
+    font-size: 13px;
     font-family: 'Courier New', monospace;
-    margin: 0 30px 20px 30px;
-    padding: 10px;
+    margin: 0 20px 15px 20px;
+    padding: 8px;
     background-color: var(--background-color);
     text-align: center;
     border-radius: 0;
@@ -3379,22 +3379,22 @@ body {
 .gps-options {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 15px;
-    padding: 0 30px 30px 30px;
+    gap: 10px;
+    padding: 0 20px 20px 20px;
 }
 
 .gps-option-btn {
     background-color: var(--background-color);
     color: var(--text-color);
     border: 1px solid var(--border-color);
-    padding: 15px;
-    font-size: 16px;
+    padding: 12px;
+    font-size: 15px;
     cursor: pointer;
     transition: all 0.2s ease;
     display: flex;
     flex-direction: row;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     justify-content: flex-start;
     border-radius: 0;
 }
@@ -3409,7 +3409,7 @@ body {
 }
 
 .gps-option-btn .material-symbols-outlined {
-    font-size: 24px;
+    font-size: 22px;
     color: var(--primary-color);
 }
 
