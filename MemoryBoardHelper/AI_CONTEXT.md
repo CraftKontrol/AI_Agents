@@ -591,7 +591,7 @@ The app uses **multiple prompts** for different intents:
 
 ---
 
-## 🔍 Web Search (Tavily)
+##  Web Search (Tavily)
 
 **Module:** `tavily-search.js`
 

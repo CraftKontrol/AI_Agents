@@ -324,8 +324,8 @@
               description: 'Prévisions météo multi-sources',
               details: ['3 APIs: OpenWeatherMap/WeatherAPI/Open-Meteo', '5 jours de prévisions', 'Modal UI avec icons', 'Voice: "météo [ville]"', 'Fallback automatique'] },
             { id: 13, label: 'activity-tracker.js', color: { background: '#4a9eff', border: '#0d4fff' }, group: 'core', level: 2,
-              description: 'Suivi d\'activité physique GPS',
-              details: ['Walk/Run/Bike tracking', 'GPS path recording', 'Step counting', 'Altitude gain/loss', 'Speed & pace calc'] },
+              description: 'Suivi d\'activité physique GPS (optimisé)',
+              details: ['Walk/Run/Bike tracking', 'GPS path recording', 'Step counting', 'Altitude gain/loss', 'Speed & pace calc', '3s startup delay', 'Sensor throttle 200ms (5Hz)', 'GPS debounce 1s', 'State save throttle 30s'] },
             { id: 14, label: 'activity-stats.js', color: { background: '#4a9eff', border: '#0d4fff' }, group: 'core', level: 2,
               description: 'Statistiques d\'activité',
               details: ['Daily aggregation', 'Goals tracking', 'Distance/calories/steps', 'Weekly/monthly summaries'] },
@@ -335,6 +335,12 @@
             { id: 16, label: 'activity-storage.js', color: { background: '#4a9eff', border: '#0d4fff' }, group: 'core', level: 2,
               description: 'Stockage activités IndexedDB',
               details: ['CRUD activities', 'Daily stats management', 'Goals persistence', 'Batch operations'] },
+            { id: 17, label: 'location-manager.js', color: { background: '#4a9eff', border: '#0d4fff' }, group: 'core', level: 2,
+              description: 'Gestion localisation et adresses par défaut',
+              details: ['Default address storage', 'Location tracking', 'Address validation', 'GPS coordination'] },
+            { id: 18, label: 'script-response-handler.js', color: { background: '#4a9eff', border: '#0d4fff' }, group: 'core', level: 1,
+              description: 'Gestionnaire de réponses séparé',
+              details: ['Response processing', 'TTS routing', 'Error handling', 'UI feedback'] },
 
             // APIs Externes
             { id: 20, label: 'Mistral AI\n(mistral-small-latest)', color: { background: '#c62828', border: '#8b0000' }, group: 'api', level: 1,
@@ -435,6 +441,7 @@
 
         const edges = new vis.DataSet([
             // Main App Flows
+            { from: 1, to: 18, label: 'Process response', arrows: 'to', color: '#4a9eff' },
             { from: 1, to: 3, label: 'Voice transcript', arrows: 'to', color: '#4a9eff', dashes: false },
             { from: 3, to: 2, label: 'Mistral decision', arrows: 'to', color: '#4a9eff' },
             { from: 2, to: 4, label: 'Task actions', arrows: 'to', color: '#4a9eff' },
@@ -442,6 +449,8 @@
             { from: 2, to: 9, label: 'Trigger sound', arrows: 'to', color: '#4a9eff' },
             { from: 2, to: 10, label: 'Search web', arrows: 'to', color: '#4a9eff' },
             { from: 2, to: 11, label: 'Open GPS', arrows: 'to', color: '#4a9eff' },
+            { from: 2, to: 17, label: 'Location ops', arrows: 'to', color: '#4a9eff' },
+            { from: 17, to: 11, label: 'Default address', arrows: 'to', color: '#4a9eff' },
             { from: 4, to: 5, label: 'CRUD ops', arrows: 'to', color: '#4a9eff' },
             { from: 5, to: 30, label: 'Read/Write', arrows: 'to;from', color: '#ffaa44' },
             { from: 5, to: 31, label: 'Fallback', arrows: 'to;from', color: '#ffaa44', dashes: true },
@@ -679,7 +688,7 @@
                 });
             } else if (filter === 'activity') {
                 // Show activity tracking related nodes: 13-16 (modules), 46-48 (UI), 70-72 (sensors), 30 (storage)
-                const activityNodeIds = [13, 14, 15, 16, 30, 46, 47, 48, 70, 71, 72];
+                const activityNodeIds = [13, 14, 15, 16, 17, 30, 46, 47, 48, 70, 71, 72];
                 nodes.forEach(node => {
                     const shouldShow = activityNodeIds.includes(node.id);
                     nodes.update({ id: node.id, hidden: !shouldShow });
