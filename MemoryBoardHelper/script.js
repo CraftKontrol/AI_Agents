@@ -28,7 +28,7 @@ function getApiKey(keyName, localStorageKey = null) {
 
 // --- TTS Settings Logic ---
 const DEFAULT_TTS_SETTINGS = {
-    voice: 'fr-FR-Neural2-A',
+    voice: 'browser-default',  // Changed from 'fr-FR-Neural2-A' for better compatibility
     speakingRate: 0.9,
     pitch: 0,
     volume: 2,
@@ -50,6 +50,7 @@ const DEFAULT_SSML_SETTINGS = {
 
 function loadTTSSettings() {
     const settings = JSON.parse(localStorage.getItem('ttsSettings') || 'null') || DEFAULT_TTS_SETTINGS;
+    console.log('[TTS Settings] Loading settings:', settings);
     // Update UI
     const voiceSel = document.getElementById('ttsVoice');
     if (voiceSel) voiceSel.value = settings.voice;
@@ -72,9 +73,13 @@ function saveTTSSettings() {
         autoPlay: document.getElementById('autoPlayTTS')?.checked ?? DEFAULT_TTS_SETTINGS.autoPlay
     };
     localStorage.setItem('ttsSettings', JSON.stringify(settings));
+    console.log('[TTS Settings] Saved settings:', settings);
 }
 
-function updateTTSVoice(val) { saveTTSSettings(); }
+function updateTTSVoice(val) { 
+    console.log('[TTS Settings] Voice changed to:', val);
+    saveTTSSettings(); 
+}
 function updateTTSValue(type, val) {
     if (type === 'speakingRate') document.getElementById('speakingRateValue').textContent = val + 'x';
     if (type === 'pitch') document.getElementById('pitchValue').textContent = val;
@@ -315,10 +320,32 @@ function playAudioSource(src, playbackId, volume = 0.8) {
     });
 }
 
-function playBrowserTTS(cleanText, playbackId) {
+async function playBrowserTTS(cleanText, playbackId) {
     if (!('speechSynthesis' in window)) {
         return Promise.resolve(null);
     }
+
+    // Wait for voices to be loaded
+    let voices = speechSynthesis.getVoices();
+    if (voices.length === 0) {
+        console.log('[Browser TTS] Waiting for voices to load...');
+        await new Promise(resolve => {
+            const checkVoices = () => {
+                voices = speechSynthesis.getVoices();
+                if (voices.length > 0) {
+                    resolve();
+                }
+            };
+            if (speechSynthesis.onvoiceschanged !== undefined) {
+                speechSynthesis.onvoiceschanged = checkVoices;
+            }
+            // Timeout after 1 second
+            setTimeout(resolve, 1000);
+        });
+        voices = speechSynthesis.getVoices();
+    }
+    
+    console.log('[Browser TTS] Available voices:', voices.length);
 
     const sanitizedText = cleanText.replace(/<[^>]+>/g, ' ');
     const lang = getCurrentLanguage();
@@ -329,6 +356,25 @@ function playBrowserTTS(cleanText, playbackId) {
     utterance.rate = ttsSettings.speakingRate || 0.9;
     utterance.pitch = (ttsSettings.pitch + 20) / 20;
     utterance.volume = Math.max(0, Math.min(1, (ttsSettings.volume + 16) / 32));
+    
+    // Select the correct voice based on saved settings
+    const selectedVoice = ttsSettings.voice;
+    console.log('[Browser TTS] Selected voice from settings:', selectedVoice);
+    console.log('[Browser TTS] Looking for voice in', voices.length, 'available voices');
+    
+    // Try to find matching voice by name
+    if (selectedVoice && selectedVoice !== 'browser-default') {
+        const matchingVoice = voices.find(v => v.name === selectedVoice);
+        if (matchingVoice) {
+            utterance.voice = matchingVoice;
+            console.log('[Browser TTS] Using voice:', matchingVoice.name);
+        } else {
+            console.warn('[Browser TTS] Voice not found:', selectedVoice, 'Using default');
+            console.warn('[Browser TTS] Available voices:', voices.map(v => v.name).join(', '));
+        }
+    } else {
+        console.log('[Browser TTS] Using system default voice');
+    }
 
     return new Promise((resolve) => {
         activeTTSUtterance = utterance;
@@ -2633,11 +2679,13 @@ function updateTTSProviderVoices() {
     if (currentVoiceOption) {
         // Current voice is valid, keep it
         voiceSelect.value = currentVoiceValue;
+        console.log('[TTS Provider] Keeping current voice:', currentVoiceValue);
     } else {
         // Current voice not valid for this provider, select first valid option
         const firstValidOption = voiceSelect.querySelector(`option[data-provider="${selectedProvider}"]`);
         if (firstValidOption) {
             voiceSelect.value = firstValidOption.value;
+            console.log('[TTS Provider] Switching to first valid voice for provider', selectedProvider + ':', firstValidOption.value);
             // Trigger change event to save new voice
             voiceSelect.dispatchEvent(new Event('change'));
         }
@@ -2645,6 +2693,24 @@ function updateTTSProviderVoices() {
     
     // Show/hide SSML section (only available for Google TTS)
     toggleSSMLSection(selectedProvider === 'google');
+    
+    // Show/hide TTS parameters (not available for Deepgram)
+    toggleTTSParameters(selectedProvider !== 'deepgram');
+}
+
+function toggleTTSParameters(show) {
+    const parameterCards = document.querySelectorAll('.tts-card');
+    // Skip the first card (voice selector), only hide parameters
+    for (let i = 1; i < parameterCards.length; i++) {
+        const card = parameterCards[i];
+        card.style.display = show ? '' : 'none';
+    }
+    
+    if (!show) {
+        console.log('[TTS Provider] Hiding parameters (not supported by Deepgram)');
+    } else {
+        console.log('[TTS Provider] Showing parameters (supported by current provider)');
+    }
 }
 
 function toggleSSMLSection(show) {
@@ -3201,6 +3267,19 @@ async function synthesizeSpeech(text) {
     // Get selected TTS provider
     const selectedProvider = localStorage.getItem('ttsProvider') || 'browser';
     console.log(`[TTS] Using selected provider: ${selectedProvider}`);
+    console.log(`[TTS] Using voice: ${voice}`);
+    
+    // Validate voice compatibility with provider
+    if (selectedProvider === 'deepgram' && !voice.startsWith('aura-')) {
+        console.warn('[TTS] Voice incompatible with Deepgram, falling back to browser');
+        return playBrowserTTS(cleanText, playbackId);
+    }
+    if (selectedProvider === 'google' && !voice.includes('-Neural2-') && !voice.includes('-Wavenet-') && !voice.includes('-Standard-')) {
+        if (voice !== 'browser-default') {
+            console.warn('[TTS] Voice incompatible with Google TTS, falling back to browser');
+            return playBrowserTTS(cleanText, playbackId);
+        }
+    }
     
     let audioUrl = null;
     
@@ -3210,8 +3289,9 @@ async function synthesizeSpeech(text) {
         return playBrowserTTS(cleanText, playbackId);
     }
     
-    // Deepgram TTS
+    // Deepgram TTS (does NOT support speakingRate, pitch, volume parameters)
     if (selectedProvider === 'deepgram') {
+        console.log('[TTS] Using Deepgram (parameters not supported)');
         audioUrl = await synthesizeWithDeepgram(cleanText, voice);
         if (!audioUrl) {
             console.log('[TTS] Deepgram failed, trying browser fallback');
