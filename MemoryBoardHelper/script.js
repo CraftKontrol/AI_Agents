@@ -380,78 +380,55 @@ function playAudioSource(src, playbackId, volume = 0.8) {
 
 // Normalize text for TTS - convert numbers and abbreviations to words
 function normalizeTextForTTS(text, lang = 'fr') {
+    console.log('[TTS Normalize] INPUT:', text);
+    console.log('[TTS Normalize] Language:', lang);
+    
     let normalized = text;
     
     // Remove HTML tags
     normalized = normalized.replace(/<[^>]+>/g, ' ');
+    console.log('[TTS Normalize] After HTML removal:', normalized);
     
-    // Temperature and units abbreviations
+    // Temperature and units abbreviations (more specific patterns first)
     const replacements = {
         fr: {
             '°C': ' degrés Celsius',
             '°F': ' degrés Fahrenheit',
             '°': ' degrés',
-            'deg': ' degrés',
-            ' C ': ' Celsius ',
-            ' F ': ' Fahrenheit ',
             'km/h': ' kilomètres par heure',
-            'km': ' kilomètres',
             'm/s': ' mètres par seconde',
-            ' m ': ' mètres ',
-            ' mm': ' millimètres',
-            ' cm': ' centimètres',
+            ' mm ': ' millimètres ',
+            ' cm ': ' centimètres ',
+            ' km ': ' kilomètres ',
             '%': ' pour cent',
-            'h': ' heures',
-            'min': ' minutes',
-            's': ' secondes',
-            'kg': ' kilogrammes',
-            'g': ' grammes',
-            'ml': ' millilitres',
-            'l': ' litres'
+            ' kg ': ' kilogrammes ',
+            ' ml ': ' millilitres ',
         },
         en: {
             '°C': ' degrees Celsius',
             '°F': ' degrees Fahrenheit',
             '°': ' degrees',
-            'deg': ' degrees',
-            ' C ': ' Celsius ',
-            ' F ': ' Fahrenheit ',
             'km/h': ' kilometers per hour',
-            'km': ' kilometers',
             'm/s': ' meters per second',
-            ' m ': ' meters ',
-            ' mm': ' millimeters',
-            ' cm': ' centimeters',
+            ' mm ': ' millimeters ',
+            ' cm ': ' centimeters ',
+            ' km ': ' kilometers ',
             '%': ' percent',
-            'h': ' hours',
-            'min': ' minutes',
-            's': ' seconds',
-            'kg': ' kilograms',
-            'g': ' grams',
-            'ml': ' milliliters',
-            'l': ' liters'
+            ' kg ': ' kilograms ',
+            ' ml ': ' milliliters ',
         },
         it: {
             '°C': ' gradi Celsius',
             '°F': ' gradi Fahrenheit',
             '°': ' gradi',
-            'deg': ' gradi',
-            ' C ': ' Celsius ',
-            ' F ': ' Fahrenheit ',
             'km/h': ' chilometri all\'ora',
-            'km': ' chilometri',
             'm/s': ' metri al secondo',
-            ' m ': ' metri ',
-            ' mm': ' millimetri',
-            ' cm': ' centimetri',
+            ' mm ': ' millimetri ',
+            ' cm ': ' centimetri ',
+            ' km ': ' chilometri ',
             '%': ' percento',
-            'h': ' ore',
-            'min': ' minuti',
-            's': ' secondi',
-            'kg': ' chilogrammi',
-            'g': ' grammi',
-            'ml': ' millilitri',
-            'l': ' litri'
+            ' kg ': ' chilogrammi ',
+            ' ml ': ' millilitri ',
         }
     };
     
@@ -459,20 +436,33 @@ function normalizeTextForTTS(text, lang = 'fr') {
     const langReplacements = replacements[lang] || replacements['fr'];
     for (const [abbr, full] of Object.entries(langReplacements)) {
         const regex = new RegExp(abbr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+        const before = normalized;
         normalized = normalized.replace(regex, full);
+        if (before !== normalized) {
+            console.log(`[TTS Normalize] Replaced "${abbr}" with "${full}"`);
+        }
     }
+    
+    console.log('[TTS Normalize] After abbreviations:', normalized);
     
     // Convert standalone numbers to words
     normalized = normalized.replace(/\b(\d+)\b/g, (match, num) => {
         const number = parseInt(num);
-        if (number >= 0 && number <= 100) {
-            return numberToWords(number, lang);
+        if (number >= 0 && number <= 9999) {
+            const word = numberToWords(number, lang);
+            console.log(`[TTS Normalize] Number ${num} -> ${word}`);
+            return word;
         }
-        return match; // Keep large numbers as is
+        return match; // Keep very large numbers as is
     });
+    
+    console.log('[TTS Normalize] After number conversion:', normalized);
     
     // Clean up multiple spaces
     normalized = normalized.replace(/\s+/g, ' ').trim();
+    
+    console.log('[TTS Normalize] OUTPUT:', normalized);
+    console.log('---');
     
     return normalized;
 }
@@ -486,7 +476,7 @@ function numberToWords(num, lang = 'fr') {
             11: 'onze', 12: 'douze', 13: 'treize', 14: 'quatorze', 15: 'quinze',
             16: 'seize', 17: 'dix-sept', 18: 'dix-huit', 19: 'dix-neuf', 20: 'vingt',
             30: 'trente', 40: 'quarante', 50: 'cinquante', 60: 'soixante',
-            70: 'soixante-dix', 80: 'quatre-vingts', 90: 'quatre-vingt-dix', 100: 'cent'
+            70: 'soixante-dix', 80: 'quatre-vingts', 90: 'quatre-vingt-dix', 100: 'cent', 1000: 'mille'
         },
         en: {
             0: 'zero', 1: 'one', 2: 'two', 3: 'three', 4: 'four', 5: 'five',
@@ -494,7 +484,7 @@ function numberToWords(num, lang = 'fr') {
             11: 'eleven', 12: 'twelve', 13: 'thirteen', 14: 'fourteen', 15: 'fifteen',
             16: 'sixteen', 17: 'seventeen', 18: 'eighteen', 19: 'nineteen', 20: 'twenty',
             30: 'thirty', 40: 'forty', 50: 'fifty', 60: 'sixty',
-            70: 'seventy', 80: 'eighty', 90: 'ninety', 100: 'one hundred'
+            70: 'seventy', 80: 'eighty', 90: 'ninety', 100: 'one hundred', 1000: 'one thousand'
         },
         it: {
             0: 'zero', 1: 'uno', 2: 'due', 3: 'tre', 4: 'quattro', 5: 'cinque',
@@ -502,7 +492,7 @@ function numberToWords(num, lang = 'fr') {
             11: 'undici', 12: 'dodici', 13: 'tredici', 14: 'quattordici', 15: 'quindici',
             16: 'sedici', 17: 'diciassette', 18: 'diciotto', 19: 'diciannove', 20: 'venti',
             30: 'trenta', 40: 'quaranta', 50: 'cinquanta', 60: 'sessanta',
-            70: 'settanta', 80: 'ottanta', 90: 'novanta', 100: 'cento'
+            70: 'settanta', 80: 'ottanta', 90: 'novanta', 100: 'cento', 1000: 'mille'
         }
     };
     
@@ -530,7 +520,86 @@ function numberToWords(num, lang = 'fr') {
         }
     }
     
-    return num.toString(); // Fallback for numbers > 100
+    // Handle hundreds (100-999)
+    if (num >= 100 && num < 1000) {
+        const hundreds = Math.floor(num / 100);
+        const remainder = num % 100;
+        
+        if (lang === 'fr') {
+            let result = '';
+            if (hundreds === 1) {
+                result = 'cent';
+            } else {
+                result = numberToWords(hundreds, lang) + ' cent';
+            }
+            if (remainder > 0) {
+                result += ' ' + numberToWords(remainder, lang);
+            } else if (hundreds > 1) {
+                result += 's'; // "cents" for multiples
+            }
+            return result;
+        } else if (lang === 'en') {
+            let result = numberToWords(hundreds, lang) + ' hundred';
+            if (remainder > 0) {
+                result += ' and ' + numberToWords(remainder, lang);
+            }
+            return result;
+        } else if (lang === 'it') {
+            let result = '';
+            if (hundreds === 1) {
+                result = 'cento';
+            } else {
+                result = numberToWords(hundreds, lang) + 'cento';
+            }
+            if (remainder > 0) {
+                result += ' ' + numberToWords(remainder, lang);
+            }
+            return result;
+        }
+    }
+    
+    // Handle thousands (1000-9999)
+    if (num >= 1000 && num < 10000) {
+        const thousands = Math.floor(num / 1000);
+        const remainder = num % 1000;
+        
+        if (lang === 'fr') {
+            let result = '';
+            if (thousands === 1) {
+                result = 'mille';
+            } else {
+                result = numberToWords(thousands, lang) + ' mille';
+            }
+            if (remainder > 0) {
+                result += ' ' + numberToWords(remainder, lang);
+            }
+            return result;
+        } else if (lang === 'en') {
+            let result = '';
+            if (thousands === 1) {
+                result = 'one thousand';
+            } else {
+                result = numberToWords(thousands, lang) + ' thousand';
+            }
+            if (remainder > 0) {
+                result += ' ' + numberToWords(remainder, lang);
+            }
+            return result;
+        } else if (lang === 'it') {
+            let result = '';
+            if (thousands === 1) {
+                result = 'mille';
+            } else {
+                result = numberToWords(thousands, lang) + 'mila';
+            }
+            if (remainder > 0) {
+                result += ' ' + numberToWords(remainder, lang);
+            }
+            return result;
+        }
+    }
+    
+    return num.toString(); // Fallback for very large numbers
 }
 
 async function playBrowserTTS(cleanText, playbackId) {
@@ -562,6 +631,8 @@ async function playBrowserTTS(cleanText, playbackId) {
 
     const lang = getCurrentLanguage();
     const normalizedText = normalizeTextForTTS(cleanText, lang);
+    console.log('[Browser TTS] FINAL TEXT TO SPEAK:', normalizedText);
+    
     const utterance = new SpeechSynthesisUtterance(normalizedText);
     utterance.lang = lang === 'fr' ? 'fr-FR' : lang === 'it' ? 'it-IT' : 'en-US';
 
@@ -629,6 +700,7 @@ async function speakWithGoogleTTS(text, languageCode, apiKey, playbackId = null)
     // Normalize text for TTS (convert numbers and abbreviations)
     const lang = languageCode.split('-')[0]; // Extract 'fr' from 'fr-FR'
     const normalizedText = isSSML ? text : normalizeTextForTTS(text, lang);
+    console.log('[Google TTS] FINAL TEXT TO SPEAK:', normalizedText);
     
     const requestBody = {
         input: isSSML ? { ssml: normalizedText } : { text: normalizedText },
@@ -1539,19 +1611,105 @@ async function launchGreeting() {
             return;
         }
         
-        // Get overdue tasks
+        // Get all data
         const overdueTasks = await window.getOverdueTasks();
         const todayTasks = await getTodayTasks();
+        const allTasks = await getAllTasks();
+        const allLists = await getAllLists();
+        const allNotes = await getAllNotes();
+        
+        // Get user language early (needed for weather API)
+        const userLanguage = localStorage.getItem('appLanguage') || 'fr';
+        
+        // Get activity tracking stats
+        let activitySummary = null;
+        if (typeof getActivityStats === 'function') {
+            try {
+                const stats = await getActivityStats();
+                if (stats && stats.totalDistance > 0) {
+                    activitySummary = {
+                        distance: stats.totalDistance,
+                        duration: stats.totalDuration,
+                        sessions: stats.sessionCount
+                    };
+                }
+            } catch (err) {
+                console.log('[Greeting] Activity stats unavailable:', err.message);
+            }
+        }
+        
+        // Get weather data
+        let weatherData = null;
+        if (typeof getWeatherForLocation === 'function') {
+            try {
+                // Get GPS coordinates
+                let locationQuery = 'Paris, France'; // Fallback
+                
+                if (typeof getCurrentLocation === 'function') {
+                    try {
+                        const position = await getCurrentLocation();
+                        if (position && position.lat && position.lng) {
+                            // Use GPS coordinates format "lat,lng"
+                            locationQuery = `${position.lat},${position.lng}`;
+                            console.log('[Greeting] Using GPS coordinates:', locationQuery);
+                        }
+                    } catch (gpsErr) {
+                        console.log('[Greeting] GPS unavailable, using fallback location:', gpsErr.message);
+                    }
+                }
+                
+                const weatherResponse = await getWeatherForLocation(locationQuery, 'current', userLanguage);
+                
+                // Extract weather from first available source
+                if (weatherResponse && weatherResponse.sources && weatherResponse.sources.length > 0) {
+                    const firstSource = weatherResponse.sources[0];
+                    if (firstSource.data) {
+                        weatherData = {
+                            temperature: firstSource.data.temperature,
+                            description: firstSource.data.description,
+                            humidity: firstSource.data.humidity,
+                            windSpeed: firstSource.data.windSpeed,
+                            feelsLike: firstSource.data.feelsLike
+                        };
+                    }
+                }
+            } catch (err) {
+                console.log('[Greeting] Weather data unavailable:', err.message);
+            }
+        }
         
         // Build context for Mistral
         const now = new Date();
-        // Detect language from localStorage or use default 'fr'
-        const userLanguage = localStorage.getItem('appLanguage') || 'fr';
         const locale = userLanguage === 'fr' ? 'fr-FR' : (userLanguage === 'it' ? 'it-IT' : 'en-US');
         const timeStr = now.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
         const dateStr = now.toLocaleDateString(locale, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
         
         let contextMessage = `Current time: ${timeStr}\nDate: ${dateStr}\n\n`;
+        
+        // Add summary counts
+        contextMessage += `USER DATA SUMMARY:\n`;
+        contextMessage += `- Tasks: ${allTasks.length} total (${overdueTasks.length} overdue, ${todayTasks.length} today)\n`;
+        contextMessage += `- Lists: ${allLists.length}\n`;
+        contextMessage += `- Notes: ${allNotes.length}\n`;
+        
+        if (activitySummary) {
+            contextMessage += `- Activity: ${activitySummary.distance.toFixed(2)} km (${activitySummary.sessions} sessions)\n`;
+        }
+        
+        if (weatherData) {
+            contextMessage += `- Weather: ${weatherData.temperature}°C, ${weatherData.description}`;
+            if (weatherData.feelsLike && weatherData.feelsLike !== weatherData.temperature) {
+                contextMessage += ` (ressenti ${weatherData.feelsLike}°C)`;
+            }
+            contextMessage += `\n`;
+        }
+        
+        contextMessage += '\n';
+        
+        // Debug: Log the full context message
+        console.log('[Greeting] Context message sent to Mistral:');
+        console.log(contextMessage);
+        console.log('[Greeting] Weather data:', weatherData);
         
         if (overdueTasks.length > 0) {
             contextMessage += `OVERDUE TASKS (${overdueTasks.length}):\n`;
@@ -1571,11 +1729,9 @@ async function launchGreeting() {
         // Get Mistral API key
         const mistralApiKey = localStorage.getItem('mistralApiKey');
         console.log('[App] Mistral API key check:', mistralApiKey ? 'Found' : 'Not found');
-        console.log('[App] localStorage keys:', Object.keys(localStorage));
         
         if (!mistralApiKey) {
             console.log('[App] No Mistral API key, skipping launch greeting');
-            console.log('[App] Checking CKGenericApp.apiKeys...', window.CKGenericApp?.apiKeys);
             return;
         }
         
@@ -2369,12 +2525,6 @@ function containsQuestion(text) {
  * Activate temporary listening mode after a question
  */
 async function activateTemporaryListening() {
-    // Don't activate if already in always-listening mode
-    if (listeningMode === 'always-listening') {
-        console.log('[App] Already in always-listening mode, skipping temporary listening');
-        return;
-    }
-    
     // Don't activate if already in temporary listening
     if (isTemporaryListening) {
         console.log('[App] Already in temporary listening mode');
@@ -2389,6 +2539,18 @@ async function activateTemporaryListening() {
     isTemporaryListening = true;
     console.log(`[App] Activating temporary listening for ${TEMPORARY_LISTENING_DURATION}ms`);
     
+    // If in always-listening mode with wake word, temporarily bypass wake word requirement
+    if (listeningMode === 'always-listening' && wakeWordEnabled) {
+        console.log('[App] In always-listening with wake word - will bypass wake word for next response');
+        // Just set the timeout, recognition is already running
+        temporaryListeningTimeout = setTimeout(() => {
+            console.log('[App] Temporary listening timeout reached');
+            deactivateTemporaryListening();
+        }, TEMPORARY_LISTENING_DURATION);
+        return;
+    }
+    
+    // If NOT in always-listening, start listening
     // Visual feedback
     const voiceBtn = document.getElementById('voiceBtn');
     if (voiceBtn) {
@@ -2502,6 +2664,9 @@ async function handleSpeechResult(event) {
     // Update activity timestamp
     lastRecognitionActivity = Date.now();
     
+    // Track if we were in temporary listening mode (before deactivating)
+    const wasTemporaryListening = isTemporaryListening;
+    
     // Deactivate temporary listening if active
     if (isTemporaryListening) {
         console.log('[App] User responded during temporary listening');
@@ -2527,7 +2692,8 @@ async function handleSpeechResult(event) {
     }
     
     // In always-listening mode with wake word enabled
-    if (listeningMode === 'always-listening' && wakeWordEnabled) {
+    // BUT: Skip wake word check if user was responding during temporary listening
+    if (listeningMode === 'always-listening' && wakeWordEnabled && !wasTemporaryListening) {
         if (!isListeningForCommand) {
             // Check if transcript contains wake word
             if (detectWakeWord(transcript)) {
@@ -3427,6 +3593,12 @@ async function processAudioWithDeepgram(audioBlob) {
 // --- Deepgram TTS ---
 async function synthesizeWithDeepgram(text, voice) {
     console.log('[Deepgram TTS] Starting synthesis with voice:', voice);
+    
+    // Normalize text for TTS
+    const lang = getCurrentLanguage();
+    const normalizedText = normalizeTextForTTS(text, lang);
+    console.log('[Deepgram TTS] FINAL TEXT TO SPEAK:', normalizedText);
+    
     const apiKey = getApiKey('deepgramtts', 'apiKey_deepgramtts');
     
     if (!apiKey) {
@@ -3446,10 +3618,10 @@ async function synthesizeWithDeepgram(text, voice) {
     console.log(`[Deepgram TTS] Using model: ${model}`);
     
     const url = `https://api.deepgram.com/v1/speak?model=${model}`;
-    const requestBody = { text: text };
+    const requestBody = { text: normalizedText };
     
     console.log('[Deepgram TTS] Request URL:', url);
-    console.log('[Deepgram TTS] Text length:', text.length, 'characters');
+    console.log('[Deepgram TTS] Text length:', normalizedText.length, 'characters');
     
     try {
         const response = await fetch(url, {
