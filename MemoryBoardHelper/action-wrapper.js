@@ -740,6 +740,21 @@ registerAction(
     // Validate
     async (params, language) => {
         const tasks = await getAllTasks();
+        
+        // Case 1: Direct taskId provided (from popup edit)
+        if (params.taskId) {
+            const task = tasks.find(t => t.id === params.taskId);
+            if (!task) {
+                return { 
+                    valid: false, 
+                    message: getLocalizedText('taskNotFound', language) 
+                };
+            }
+            params._resolvedTask = task;
+            return { valid: true };
+        }
+        
+        // Case 2: Search by description (from voice command)
         const description = params.task?.description?.toLowerCase() || '';
         
         if (!description) {
@@ -770,12 +785,20 @@ registerAction(
     async (params, language) => {
         const taskToUpdate = params._resolvedTask;
         const updates = {};
-        if (params.task.date) updates.date = params.task.date;
-        if (params.task.time) updates.time = params.task.time;
-        if (params.task.description) updates.description = params.task.description;
-        if (params.task.type) updates.type = params.task.type;
-        if (params.task.priority) updates.priority = params.task.priority;
-        if (params.task.recurrence) updates.recurrence = params.task.recurrence;
+        
+        // Case 1: Direct updates object provided (from popup)
+        if (params.updates) {
+            Object.assign(updates, params.updates);
+        }
+        // Case 2: Updates from params.task (from voice command)
+        else if (params.task) {
+            if (params.task.date) updates.date = params.task.date;
+            if (params.task.time) updates.time = params.task.time;
+            if (params.task.description) updates.description = params.task.description;
+            if (params.task.type) updates.type = params.task.type;
+            if (params.task.priority) updates.priority = params.task.priority;
+            if (params.task.recurrence) updates.recurrence = params.task.recurrence;
+        }
 
         const updatedTask = { ...taskToUpdate, ...updates, updatedAt: new Date().toISOString() };
 

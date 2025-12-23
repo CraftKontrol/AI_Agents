@@ -403,15 +403,3 @@ if (typeof window !== 'undefined') {
     window.getLastActionId = getLastActionId;
     window.clearHistory = clearHistory;
 }
-
-// Export functions for module usage
-export { 
-    ACTION_TYPES, 
-    recordAction, 
-    undoLastAction, 
-    showUndoButton, 
-    hideUndoButton, 
-    showToast, 
-    getLastActionId, 
-    clearHistory 
-};

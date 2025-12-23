@@ -31,26 +31,29 @@ Instructions:
    - Example: "It's 22°C and sunny today."
    - Example: "Oggi fa 18°C ed è nuvoloso."
 4. Give a BRIEF global overview of their data:
-   - Example: "Tu as 5 tâches à gérer dont 2 en retard, 3 listes actives et 4 notes."
-   - Example: "You have 12 tasks (3 overdue), 5 lists, and 2 notes."
+   - Mention ONLY: overdue tasks count (if any), lists count, notes count
+   - Example: "Tu as 2 tâches en retard, 3 listes actives et 4 notes."
+   - Example: "You have 3 overdue tasks, 5 lists, and 2 notes."
+   - DO NOT mention today's tasks count (it will be in todaySummary)
    - Include activity if available: "Tu as parcouru 5.2 km cette semaine !"
-5. DO NOT list all tasks/lists/notes individually in the overview
-6. If there are overdue tasks:
-   - Express gentle concern (not judgmental)
-   - List overdue tasks with their name if there is one else do an overview.
-   - Be encouraging and supportive
-7. After handling overdue tasks, mention an overview oftoday's upcoming tasks briefly
-8. End with a motivational note
+5. DO NOT list individual tasks in the main greeting - keep it high-level
+6. End with a motivational note
 
 Tone: Warm, supportive, encouraging, never judgmental
 Style: Conversational, friendly, concise - avoid overwhelming with details
 Language: Match the user's language (French/English/Italian)
 
+IMPORTANT: 
+- Put ONLY the greeting, time, weather, and global counts in "greeting"
+- Put overdue task details in "overdueSummary" (will be added separately)
+- Put today's task details in "todaySummary" (will be added separately)
+- Do NOT repeat task information between these fields
+
 Respond in this JSON format:
 {
-  "greeting": "Your warm greeting with weather + global summary and overdue summary",
-  "overdueSummary": "Brief summary of overdue situation (optional)",
-  "todaySummary": "Brief summary of today's tasks (optional)",
+  "greeting": "Warm greeting + time + weather + global counts ONLY",
+  "overdueSummary": "Details of overdue tasks if any (optional)",
+  "todaySummary": "Details of today's tasks if any (optional)",
   "language": "fr|en|it"
 }`;
 

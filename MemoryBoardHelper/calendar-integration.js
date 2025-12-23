@@ -309,14 +309,15 @@ async function handleEventDrop(info) {
     console.log(`[Calendar] Dropping task ${task.id} from ${originalDate} ${originalTime || 'all-day'} to ${newDate} ${newTime || 'all-day'}`);
     
     try {
+        // Update local task object
         task.date = newDate;
         task.time = newTime;
         
-        // Update in storage
-        const result = await saveTask(task);
+        // Update in storage with full task object (updateInStore expects complete object with id)
+        const result = await updateInStore('tasks', task);
         
         if (!result) {
-            throw new Error('Save operation failed');
+            throw new Error('Update operation failed');
         }
         
         // Update extended props with new data
