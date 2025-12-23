@@ -31,10 +31,6 @@ Instructions:
    - Example: "It's 22°C and sunny today."
    - Example: "Oggi fa 18°C ed è nuvoloso."
 4. Give a BRIEF global overview of their data:
-   - Mention ONLY: overdue tasks count (if any), lists count, notes count
-   - Example: "Tu as 2 tâches en retard, 3 listes actives et 4 notes."
-   - Example: "You have 3 overdue tasks, 5 lists, and 2 notes."
-   - DO NOT mention today's tasks count (it will be in todaySummary)
    - Include activity if available: "Tu as parcouru 5.2 km cette semaine !"
 5. DO NOT list individual tasks in the main greeting - keep it high-level
 6. End with a motivational note
