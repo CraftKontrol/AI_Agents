@@ -182,6 +182,9 @@ class ActivityTracker {
         // Start update loop
         this.startUpdateLoop();
         
+        // Update CKGenericApp with initial state
+        this.updateCKGenericAppSteps(0);
+        
         // Dispatch event
         window.dispatchEvent(new CustomEvent('activityStarted', {
             detail: { startTime: this.currentPath.startTime }
@@ -223,6 +226,9 @@ class ActivityTracker {
         
         // Clear current path
         this.currentPath = null;
+        
+        // Update CKGenericApp - tracking stopped
+        this.updateCKGenericAppSteps(0);
         
         // Dispatch event
         window.dispatchEvent(new CustomEvent('activityStopped', {
@@ -512,6 +518,9 @@ class ActivityTracker {
                         elevationGain: this.elevationGain
                     }
                 }));
+                
+                // Update CKGenericApp notification if available
+                this.updateCKGenericAppSteps(steps);
             }
         }, 10000); // 10 seconds (reduced from 5s for lower CPU load)
     }
@@ -658,6 +667,25 @@ class ActivityTracker {
             todayPathsCount: this.todayPaths.length,
             sensorsAvailable: this.sensorsAvailable
         };
+    }
+    
+    // Update CKGenericApp with current step count
+    updateCKGenericAppSteps(steps) {
+        try {
+            // Check if we're running in CKGenericApp WebView
+            if (typeof window.CKAndroid !== 'undefined' && window.CKAndroid.saveActivityData) {
+                const isTrackingEnabled = this.isTracking;
+                window.CKAndroid.saveActivityData(isTrackingEnabled, steps);
+                console.log(`[ActivityTracker] Sent to CKGenericApp: tracking=${isTrackingEnabled}, steps=${steps}`);
+            }
+        } catch (error) {
+            console.error('[ActivityTracker] Error updating CKGenericApp:', error);
+        }
+    }
+    
+    // Save activity data to Android (DEPRECATED - use updateCKGenericAppSteps)
+    saveToAndroid(trackingEnabled, steps) {
+        this.updateCKGenericAppSteps(steps);
     }
 }
 
