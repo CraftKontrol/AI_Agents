@@ -2263,8 +2263,9 @@ function updateActivitySubtitle() {
         const steps = document.getElementById('todaySteps')?.textContent || '0';
         const distance = document.getElementById('todayDistance')?.textContent || '0 m';
         const calories = document.getElementById('todayCalories')?.textContent || '0';
+        const duration = document.getElementById('todayDuration')?.textContent || '0s';
         
-        subtitle.textContent = `${steps} pas · ${distance} · ${calories} cal`;
+        subtitle.textContent = `${steps} pas · ${distance} · ${calories} cal · ${duration}`;
     }
 }
 
