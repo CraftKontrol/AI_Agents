@@ -439,8 +439,13 @@ function speakWithBrowserTTS(text) {
     }
 
     if ('speechSynthesis' in window) {
-        const utterance = new SpeechSynthesisUtterance(text);
+        // Normalize text for TTS
         const lang = getCurrentLanguage();
+        const normalizedText = typeof normalizeTextForTTS === 'function' 
+            ? normalizeTextForTTS(text, lang) 
+            : text.replace(/<[^>]+>/g, ' ');
+            
+        const utterance = new SpeechSynthesisUtterance(normalizedText);
         const langCodes = {
             fr: 'fr-FR',
             it: 'it-IT',

@@ -378,6 +378,161 @@ function playAudioSource(src, playbackId, volume = 0.8) {
     });
 }
 
+// Normalize text for TTS - convert numbers and abbreviations to words
+function normalizeTextForTTS(text, lang = 'fr') {
+    let normalized = text;
+    
+    // Remove HTML tags
+    normalized = normalized.replace(/<[^>]+>/g, ' ');
+    
+    // Temperature and units abbreviations
+    const replacements = {
+        fr: {
+            '°C': ' degrés Celsius',
+            '°F': ' degrés Fahrenheit',
+            '°': ' degrés',
+            'deg': ' degrés',
+            ' C ': ' Celsius ',
+            ' F ': ' Fahrenheit ',
+            'km/h': ' kilomètres par heure',
+            'km': ' kilomètres',
+            'm/s': ' mètres par seconde',
+            ' m ': ' mètres ',
+            ' mm': ' millimètres',
+            ' cm': ' centimètres',
+            '%': ' pour cent',
+            'h': ' heures',
+            'min': ' minutes',
+            's': ' secondes',
+            'kg': ' kilogrammes',
+            'g': ' grammes',
+            'ml': ' millilitres',
+            'l': ' litres'
+        },
+        en: {
+            '°C': ' degrees Celsius',
+            '°F': ' degrees Fahrenheit',
+            '°': ' degrees',
+            'deg': ' degrees',
+            ' C ': ' Celsius ',
+            ' F ': ' Fahrenheit ',
+            'km/h': ' kilometers per hour',
+            'km': ' kilometers',
+            'm/s': ' meters per second',
+            ' m ': ' meters ',
+            ' mm': ' millimeters',
+            ' cm': ' centimeters',
+            '%': ' percent',
+            'h': ' hours',
+            'min': ' minutes',
+            's': ' seconds',
+            'kg': ' kilograms',
+            'g': ' grams',
+            'ml': ' milliliters',
+            'l': ' liters'
+        },
+        it: {
+            '°C': ' gradi Celsius',
+            '°F': ' gradi Fahrenheit',
+            '°': ' gradi',
+            'deg': ' gradi',
+            ' C ': ' Celsius ',
+            ' F ': ' Fahrenheit ',
+            'km/h': ' chilometri all\'ora',
+            'km': ' chilometri',
+            'm/s': ' metri al secondo',
+            ' m ': ' metri ',
+            ' mm': ' millimetri',
+            ' cm': ' centimetri',
+            '%': ' percento',
+            'h': ' ore',
+            'min': ' minuti',
+            's': ' secondi',
+            'kg': ' chilogrammi',
+            'g': ' grammi',
+            'ml': ' millilitri',
+            'l': ' litri'
+        }
+    };
+    
+    // Apply abbreviation replacements
+    const langReplacements = replacements[lang] || replacements['fr'];
+    for (const [abbr, full] of Object.entries(langReplacements)) {
+        const regex = new RegExp(abbr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+        normalized = normalized.replace(regex, full);
+    }
+    
+    // Convert standalone numbers to words
+    normalized = normalized.replace(/\b(\d+)\b/g, (match, num) => {
+        const number = parseInt(num);
+        if (number >= 0 && number <= 100) {
+            return numberToWords(number, lang);
+        }
+        return match; // Keep large numbers as is
+    });
+    
+    // Clean up multiple spaces
+    normalized = normalized.replace(/\s+/g, ' ').trim();
+    
+    return normalized;
+}
+
+// Convert numbers to words in multiple languages
+function numberToWords(num, lang = 'fr') {
+    const numbers = {
+        fr: {
+            0: 'zéro', 1: 'un', 2: 'deux', 3: 'trois', 4: 'quatre', 5: 'cinq',
+            6: 'six', 7: 'sept', 8: 'huit', 9: 'neuf', 10: 'dix',
+            11: 'onze', 12: 'douze', 13: 'treize', 14: 'quatorze', 15: 'quinze',
+            16: 'seize', 17: 'dix-sept', 18: 'dix-huit', 19: 'dix-neuf', 20: 'vingt',
+            30: 'trente', 40: 'quarante', 50: 'cinquante', 60: 'soixante',
+            70: 'soixante-dix', 80: 'quatre-vingts', 90: 'quatre-vingt-dix', 100: 'cent'
+        },
+        en: {
+            0: 'zero', 1: 'one', 2: 'two', 3: 'three', 4: 'four', 5: 'five',
+            6: 'six', 7: 'seven', 8: 'eight', 9: 'nine', 10: 'ten',
+            11: 'eleven', 12: 'twelve', 13: 'thirteen', 14: 'fourteen', 15: 'fifteen',
+            16: 'sixteen', 17: 'seventeen', 18: 'eighteen', 19: 'nineteen', 20: 'twenty',
+            30: 'thirty', 40: 'forty', 50: 'fifty', 60: 'sixty',
+            70: 'seventy', 80: 'eighty', 90: 'ninety', 100: 'one hundred'
+        },
+        it: {
+            0: 'zero', 1: 'uno', 2: 'due', 3: 'tre', 4: 'quattro', 5: 'cinque',
+            6: 'sei', 7: 'sette', 8: 'otto', 9: 'nove', 10: 'dieci',
+            11: 'undici', 12: 'dodici', 13: 'tredici', 14: 'quattordici', 15: 'quindici',
+            16: 'sedici', 17: 'diciassette', 18: 'diciotto', 19: 'diciannove', 20: 'venti',
+            30: 'trenta', 40: 'quaranta', 50: 'cinquanta', 60: 'sessanta',
+            70: 'settanta', 80: 'ottanta', 90: 'novanta', 100: 'cento'
+        }
+    };
+    
+    const langNumbers = numbers[lang] || numbers['fr'];
+    
+    if (langNumbers[num] !== undefined) {
+        return langNumbers[num];
+    }
+    
+    // Handle compound numbers (21-99)
+    if (num > 20 && num < 100) {
+        const tens = Math.floor(num / 10) * 10;
+        const ones = num % 10;
+        
+        if (lang === 'fr') {
+            if (num >= 70 && num < 80) {
+                return 'soixante-' + langNumbers[num - 60];
+            } else if (num >= 90 && num < 100) {
+                return 'quatre-vingt-' + langNumbers[num - 80];
+            } else {
+                return langNumbers[tens] + (ones > 0 ? '-' + langNumbers[ones] : '');
+            }
+        } else {
+            return langNumbers[tens] + (ones > 0 ? '-' + langNumbers[ones] : '');
+        }
+    }
+    
+    return num.toString(); // Fallback for numbers > 100
+}
+
 async function playBrowserTTS(cleanText, playbackId) {
     if (!('speechSynthesis' in window)) {
         return Promise.resolve(null);
@@ -405,9 +560,9 @@ async function playBrowserTTS(cleanText, playbackId) {
     
     console.log('[Browser TTS] Available voices:', voices.length);
 
-    const sanitizedText = cleanText.replace(/<[^>]+>/g, ' ');
     const lang = getCurrentLanguage();
-    const utterance = new SpeechSynthesisUtterance(sanitizedText);
+    const normalizedText = normalizeTextForTTS(cleanText, lang);
+    const utterance = new SpeechSynthesisUtterance(normalizedText);
     utterance.lang = lang === 'fr' ? 'fr-FR' : lang === 'it' ? 'it-IT' : 'en-US';
 
     const ttsSettings = JSON.parse(localStorage.getItem('ttsSettings') || 'null') || DEFAULT_TTS_SETTINGS;
@@ -471,8 +626,12 @@ async function speakWithGoogleTTS(text, languageCode, apiKey, playbackId = null)
     // Detect if text contains SSML tags
     const isSSML = text.includes('<speak>') || text.includes('<emphasis>') || text.includes('<break');
     
+    // Normalize text for TTS (convert numbers and abbreviations)
+    const lang = languageCode.split('-')[0]; // Extract 'fr' from 'fr-FR'
+    const normalizedText = isSSML ? text : normalizeTextForTTS(text, lang);
+    
     const requestBody = {
-        input: isSSML ? { ssml: text } : { text },
+        input: isSSML ? { ssml: normalizedText } : { text: normalizedText },
         voice: {
             languageCode,
             name: voiceInfo.name,
@@ -508,22 +667,31 @@ async function speakWithGoogleTTS(text, languageCode, apiKey, playbackId = null)
 
 // Patch getVoiceName to allow override
 function getVoiceName(languageCode, overrideName) {
-    const voices = {
-        'fr-FR-Neural2-A': { name: 'fr-FR-Neural2-A', ssmlGender: 'FEMALE' },
-        'fr-FR-Neural2-D': { name: 'fr-FR-Neural2-D', ssmlGender: 'MALE' },
-        'it-IT-Neural2-A': { name: 'it-IT-Neural2-A', ssmlGender: 'FEMALE' },
-        'it-IT-Neural2-D': { name: 'it-IT-Neural2-D', ssmlGender: 'MALE' },
-        'en-US-Neural2-C': { name: 'en-US-Neural2-C', ssmlGender: 'MALE' },
-        'en-US-Neural2-F': { name: 'en-US-Neural2-F', ssmlGender: 'FEMALE' }
-    };
-    if (overrideName && voices[overrideName]) return voices[overrideName];
-    // fallback by language
+    // If override voice is provided and looks valid, use it directly
+    if (overrideName && overrideName.includes('-')) {
+        // Extract gender from voice name pattern
+        const gender = detectVoiceGender(overrideName);
+        console.log('[Google TTS] Using selected voice:', overrideName, 'Gender:', gender);
+        return { name: overrideName, ssmlGender: gender };
+    }
+    
+    // Fallback to defaults by language
     const langDefaults = {
-        'fr-FR': 'fr-FR-Neural2-A',
-        'it-IT': 'it-IT-Neural2-A',
-        'en-US': 'en-US-Neural2-C'
+        'fr-FR': { name: 'fr-FR-Neural2-A', ssmlGender: 'FEMALE' },
+        'it-IT': { name: 'it-IT-Neural2-A', ssmlGender: 'FEMALE' },
+        'en-US': { name: 'en-US-Neural2-C', ssmlGender: 'MALE' }
     };
-    return voices[langDefaults[languageCode] || 'fr-FR-Neural2-A'];
+    
+    const defaultVoice = langDefaults[languageCode] || langDefaults['fr-FR'];
+    console.log('[Google TTS] Using default voice:', defaultVoice.name);
+    return defaultVoice;
+}
+
+// Detect voice gender from name pattern (female voices typically end with A, C, E, F, H)
+function detectVoiceGender(voiceName) {
+    const lastChar = voiceName.charAt(voiceName.length - 1).toUpperCase();
+    const femaleLetters = ['A', 'C', 'E', 'F', 'H'];
+    return femaleLetters.includes(lastChar) ? 'FEMALE' : 'MALE';
 }
 // --- Focus automatique sur l'heure après inactivité utilisateur ---
 let focusTimer = null;
