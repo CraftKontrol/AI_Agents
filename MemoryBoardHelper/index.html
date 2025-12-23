@@ -52,7 +52,7 @@
 
     <!-- Fixed compact time display (shown when main time-display is scrolled out) -->
     <div id="compactTimeDisplay" class="compact-time-display" style="display: none;">
-        <span class="material-symbols-outlined">schedule</span>
+        <canvas id="compactClockCanvas" width="24" height="24"></canvas>
         <span id="compactTime">00:00</span>
         <span id="compactDate" class="compact-date">-</span>
     </div>
@@ -91,21 +91,6 @@
                     <button class="close-btn" onclick="closeSettingsModal()">×</button>
                 </div>
                 <div class="modal-body">
-                    <!-- Wake Word Settings -->
-                    <div class="settings-section">
-                        <h3><span class="material-symbols-outlined">chat</span> Mot de réveil</h3>
-                        <div class="input-group">
-                            <label for="settingsWakeWord">Mot de réveil personnalisé :</label>
-                            <input type="text" id="settingsWakeWord" placeholder="Ex: Bonjour, Salut...">
-                        </div>
-                        <div class="input-group">
-                            <label class="checkbox-label">
-                                <input type="checkbox" id="settingsWakeWordEnabled">
-                                <span>Activer le mot de réveil</span>
-                            </label>
-                        </div>
-                    </div>
-
                     <!-- Alarm Sound Settings -->
                     <div class="settings-section">
                         <h3><span class="material-symbols-outlined">alarm</span> Son d'alarme</h3>
@@ -128,21 +113,6 @@
                                 <input type="checkbox" id="settingsAutoPlayTTS">
                                 <span>Lecture automatique des réponses vocales</span>
                             </label>
-                        </div>
-                    </div>
-
-                    <!-- SSML Settings -->
-                    <div class="settings-section">
-                        <h3><span class="material-symbols-outlined">mic</span> SSML (Modulation vocale avancée)</h3>
-                        <div class="input-group">
-                            <label class="checkbox-label">
-                                <input type="checkbox" id="settingsSsmlEnabled">
-                                <span>Activer SSML</span>
-                            </label>
-                        </div>
-                        <div class="input-group">
-                            <label for="settingsCustomKeywords">Mots-clés personnalisés (séparés par virgules) :</label>
-                            <input type="text" id="settingsCustomKeywords" placeholder="important, urgent, attention...">
                         </div>
                     </div>
 
@@ -355,14 +325,9 @@
         </div>
 
         <section class="time-display">
-            <h2>
-                <span class="material-symbols-outlined">schedule</span>
-                <span id="timeDisplayTitle">Heure actuelle</span>
-               
-            </h2>
             <div id="timeDisplayContent" class="section-content">
                 <div class="current-time">
-                    <span class="material-symbols-outlined">schedule</span>
+                    <canvas id="mainClockCanvas" width="48" height="48"></canvas>
                     <div class="time-info">
                         <div id="currentTime" class="time-text" tabindex="0">00:00</div>
                         <div id="currentDate" class="date-text">Chargement...</div>
@@ -375,7 +340,9 @@
             <h2>
                 <span class="material-symbols-outlined">mic</span>
                 <span id="voiceInteractionTitle">Interaction vocale</span>
-                <button class="section-toggle" onclick="toggleSection('voiceInteractionContent')" id="voiceToggleBtn">Masquer</button>
+                <button class="section-toggle" onclick="toggleSection('voiceInteractionContent')" id="voiceToggleBtn">
+                    <span class="material-symbols-outlined">expand_less</span>
+                </button>
             </h2>
             <div id="voiceInteractionContent" class="section-content">
             <div class="voice-status">
@@ -428,11 +395,13 @@
                 <h2>
                     <span class="material-symbols-outlined">directions_run</span>
                     <div class="activity-title-wrapper">
-                        <span id="activityTitle">Activités & Exercices</span>
+                        <span id="activityTitle">Activités</span>
                         <span id="activitySubtitle" class="activity-subtitle" style="display: block;">0 pas · 0 m · 0 cal</span>
                     </div>
                 </h2>
-                <button class="section-toggle" onclick="toggleSection('activityContent')" id="activityToggleBtn">Afficher</button>
+                <button class="section-toggle" onclick="toggleSection('activityContent')" id="activityToggleBtn">
+                    <span class="material-symbols-outlined">expand_more</span>
+                </button>
             </div>
             <div id="activityContent" class="section-content" style="display: none;">
                 <!-- Today's Summary Dashboard -->
@@ -526,12 +495,15 @@
         </section>
 
         <section class="calendar-section">
-            <div class="calendar-header">
-                <h2>
-                    <span class="material-symbols-outlined">calendar_month</span>
-                    <span id="calendarTitle">Mon Calendrier</span>
-                </h2>
-                <button class="section-toggle" onclick="toggleSection('calendarContent')" id="calendarToggleBtn">Masquer</button>
+            <div style="display: flex; gap: 10px; justify-content: space-between; width: 100%; align-items: center;">
+            <h3>
+                <span class="material-symbols-outlined">calendar_month</span>
+                <span id="calendarTitle">Mon Calendrier</span>
+               
+            </h3>
+             <button class="section-toggle" onclick="toggleSection('calendarContent')" id="calendarToggleBtn">
+                    <span class="material-symbols-outlined">expand_less</span>
+                </button>
             </div>
             <div id="calendarContent" class="section-content">
                 <div class="calendar-controls">
@@ -576,20 +548,21 @@
 
         <!-- Notes Section -->
         <section class="notes-section">
-            <div class="section-header">
-                <h2>
-                    <span class="material-symbols-outlined">note</span>
-                    <span id="notesTitle">Mes Notes</span>
-                </h2>
-                <div style="display: flex; gap: 10px; align-items: center;">
-                    <button class="btn-add" onclick="openAddNoteModal()">
+            <div style="display: flex; gap: 10px; justify-content: space-between; width: 100%; align-items: center;">
+            <h3>
+                <span class="material-symbols-outlined">note</span>
+                <span id="notesTitle">Mes Notes</span>
+               
+            </h3>
+             <button class="section-toggle" onclick="toggleSection('notesContent')" id="notesToggleBtn">
+                    <span class="material-symbols-outlined">expand_less</span>
+                </button>
+            </div>
+            <div id="notesContent" class="section-content">
+            <button class="btn-add" onclick="openAddNoteModal()">
                         <span class="material-symbols-outlined">add</span>
                         <span id="addNoteBtnText">Nouvelle note</span>
                     </button>
-                    <button class="section-toggle" onclick="toggleSection('notesContent')" id="notesToggleBtn">Masquer</button>
-                </div>
-            </div>
-            <div id="notesContent" class="section-content">
                 <div id="notesContainer" class="notes-grid">
                     <p class="empty-message" id="emptyNotesMessage">Aucune note pour le moment</p>
                 </div>
@@ -598,20 +571,21 @@
 
         <!-- Lists Section -->
         <section class="lists-section">
-            <div class="section-header">
-                <h2>
-                    <span class="material-symbols-outlined">checklist</span>
-                    <span id="listsTitle">Mes Listes</span>
-                </h2>
-                <div style="display: flex; gap: 10px; align-items: center;">
-                    <button class="btn-add" onclick="openAddListModal()">
+            <div style="display: flex; gap: 10px; justify-content: space-between; width: 100%; align-items: center;">
+            <h3>
+                <span class="material-symbols-outlined">checklist</span>
+                <span id="listsTitle">Mes Listes</span>
+               
+            </h3>
+             <button class="section-toggle" onclick="toggleSection('listsContent')" id="listsToggleBtn">
+                    <span class="material-symbols-outlined">expand_less</span>
+                </button>
+            </div>
+            <div id="listsContent" class="section-content">
+             <button class="btn-add" onclick="openAddListModal()">
                         <span class="material-symbols-outlined">add</span>
                         <span id="addListBtnText">Nouvelle liste</span>
                     </button>
-                    <button class="section-toggle" onclick="toggleSection('listsContent')" id="listsToggleBtn">Masquer</button>
-                </div>
-            </div>
-            <div id="listsContent" class="section-content">
                 <div id="listsContainer" class="lists-grid">
                     <p class="empty-message" id="emptyListsMessage">Aucune liste pour le moment</p>
                 </div>
@@ -619,11 +593,16 @@
         </section>
 
         <section class="quick-commands">
+            <div style="display: flex; gap: 10px; justify-content: space-between; width: 100%; align-items: center;">
             <h3>
                 <span class="material-symbols-outlined">bolt</span>
                 <span id="commandsTitle">Commandes rapides</span>
-                <button class="section-toggle" onclick="toggleSection('commandsContent')" id="commandsToggleBtn">Afficher</button>
+               
             </h3>
+             <button class="section-toggle" onclick="toggleSection('commandsContent')" id="commandsToggleBtn">
+                    <span class="material-symbols-outlined">expand_more</span>
+                </button>
+            </div>
             <div id="commandsContent" class="section-content" style="display: none;">
             <div class="commands-grid">
                 <!-- Tâches -->
@@ -736,20 +715,21 @@
 
         <!-- API Key Management Section -->
         <section class="api-management-section">
-            <h2>
+            <div style="display: flex; gap: 10px; justify-content: space-between; width: 100%; align-items: center;">
+            <h3>
                 <span class="material-symbols-outlined">vpn_key</span>
                 <span id="apiKeysTitle">Gestion des clés API</span>
-                <button class="section-toggle" onclick="toggleSection('apiKeysContent')" id="apiToggleBtn">Masquer</button>
-            </h2>
-            
+                
+            </h3>
+            <button class="section-toggle" onclick="toggleSection('apiKeysContent')" id="apiToggleBtn">
+                    <span class="material-symbols-outlined">expand_less</span>
+                </button>
+            </div>  
             <div id="apiKeysContent" class="section-content">
                 <!-- STT/TTS Provider Selection -->
                 <div class="provider-selection">
                     <div class="provider-card">
-                        <h3>
-                            <span class="material-symbols-outlined">mic</span>
-                            <span>Fournisseur STT</span>
-                        </h3>
+                        <h3>Fournisseur STT</h3>
                         <select id="sttProvider" onchange="saveProviderSettings()">
                             <option value="browser" selected>Navigateur (Gratuit)</option>
                             <option value="deepgram">Deepgram API</option>
@@ -759,10 +739,7 @@
                     </div>
                     
                     <div class="provider-card">
-                        <h3>
-                            <span class="material-symbols-outlined">record_voice_over</span>
-                            <span>Fournisseur TTS</span>
-                        </h3>
+                        <h3>Fournisseur TTS</h3>
                         <select id="ttsProvider" onchange="updateTTSProviderVoices(); saveProviderSettings();">
                             <option value="browser" selected>Navigateur (Gratuit)</option>
                             <option value="deepgram">Deepgram API</option>
@@ -784,10 +761,7 @@
                     </div>
                     
                     <div class="api-key-card">
-                        <h3>
-                            <span class="material-symbols-outlined">mic</span>
-                            Deepgram STT
-                        </h3>
+                        <h3>Deepgram STT</h3>
                         <div class="api-input-wrapper">
                             <input type="password" id="apiKey_deepgram" placeholder="Entrez la clé API Deepgram...">
                             <button class="btn-delete" onclick="deleteApiKey('deepgram')" title="Supprimer">×</button>
@@ -797,10 +771,7 @@
                     </div>
 
                     <div class="api-key-card">
-                        <h3>
-                            <span class="material-symbols-outlined">record_voice_over</span>
-                            Deepgram TTS
-                        </h3>
+                        <h3>Deepgram TTS</h3>
                         <div class="api-input-wrapper">
                             <input type="password" id="apiKey_deepgramtts" placeholder="Entrez la clé API Deepgram...">
                             <button class="btn-delete" onclick="deleteApiKey('deepgramtts')" title="Supprimer">×</button>
@@ -830,10 +801,7 @@
                     </div>
                     
                     <div class="api-key-card">
-                        <h3>
-                            <span class="material-symbols-outlined">travel_explore</span>
-                            Tavily Search
-                        </h3>
+                        <h3>Tavily Search</h3>
                         <div class="api-input-wrapper">
                             <input type="password" id="apiKey_tavily" placeholder="Entrez la clé API Tavily...">
                             <button class="btn-delete" onclick="deleteApiKey('tavily')" title="Supprimer">×</button>
@@ -843,10 +811,7 @@
                     </div>
                     
                     <div class="api-key-card">
-                        <h3>
-                            <span class="material-symbols-outlined">partly_cloudy_day</span>
-                            OpenWeatherMap
-                        </h3>
+                        <h3>OpenWeatherMap</h3>
                         <div class="api-input-wrapper">
                             <input type="password" id="apiKey_openweathermap" placeholder="Entrez la clé API OpenWeatherMap...">
                             <button class="btn-delete" onclick="deleteApiKey('openweathermap')" title="Supprimer">×</button>
@@ -856,10 +821,7 @@
                     </div>
                     
                     <div class="api-key-card">
-                        <h3>
-                            <span class="material-symbols-outlined">cloud</span>
-                            WeatherAPI.com
-                        </h3>
+                        <h3>WeatherAPI.com</h3>
                         <div class="api-input-wrapper">
                             <input type="password" id="apiKey_weatherapi" placeholder="Entrez la clé API WeatherAPI...">
                             <button class="btn-delete" onclick="deleteApiKey('weatherapi')" title="Supprimer">×</button>
@@ -869,10 +831,7 @@
                     </div>
                     
                     <div class="api-key-card no-key-required">
-                        <h3>
-                            <span class="material-symbols-outlined">wb_sunny</span>
-                            Open-Meteo
-                        </h3>
+                        <h3>Open-Meteo</h3>
                         <div class="no-key-notice">
                             <span>✓ Pas de clé API requise</span>
                         </div>
@@ -893,11 +852,16 @@
 
         <!-- Activity Tracking Settings -->
         <section class="activity-settings-section">
-            <h2>
+            <div style="display: flex; gap: 10px; justify-content: space-between; width: 100%; align-items: center;">
+            <h3>
                 <span class="material-symbols-outlined">directions_run</span>
                 <span id="activitySettingsTitle">Suivi d'activité</span>
-                <button class="section-toggle" onclick="toggleSection('activitySettingsContent')" id="activitySettingsToggleBtn">Afficher</button>
-            </h2>
+               
+            </h3>
+             <button class="section-toggle" onclick="toggleSection('activitySettingsContent')" id="activitySettingsToggleBtn">
+                    <span class="material-symbols-outlined">expand_more</span>
+                </button>
+            </div>
             
             <div id="activitySettingsContent" class="section-content" style="display: none;">
                 <div class="setting-card">
@@ -982,11 +946,16 @@
 
         <!-- Mistral Conversation Settings -->
         <section class="mistral-settings-section">
-            <h2>
+            <div style="display: flex; gap: 10px; justify-content: space-between; width: 100%; align-items: center;">
+            <h3>
                 <span class="material-symbols-outlined">smart_toy</span>
-                <span id="mistralSettingsTitle">Paramètres de conversation Mistral</span>
-                <button class="section-toggle" onclick="toggleSection('mistralSettingsContent')" id="mistralToggleBtn">Afficher</button>
-            </h2>
+                <span id="mistralSettingsTitle">Paramètres de conversation</span>
+               
+            </h3>
+             <button class="section-toggle" onclick="toggleSection('mistralSettingsContent')" id="mistralToggleBtn">
+                    <span class="material-symbols-outlined">expand_more</span>
+                </button>
+            </div>
             
             <div id="mistralSettingsContent" class="section-content" style="display: none;">
                 <div class="mistral-settings-grid">
@@ -1080,7 +1049,7 @@
                 <div class="mistral-actions">
                     <button class="btn-reset" onclick="resetMistralSettings()">
                         <span class="material-symbols-outlined">restart_alt</span>
-                        <span id="resetToDefaultBtn">Réinitialiser par défaut</span>
+                        <span id="resetToDefaultBtn">Réinitialiser</span>
                     </button>
                     <button class="btn-save" onclick="saveMistralSettings()">
                         <span class="material-symbols-outlined">save</span>
@@ -1092,11 +1061,16 @@
 
         <!-- Wake Word Configuration Section -->
         <section class="wake-word-section">
-            <h2>
+            <div style="display: flex; gap: 10px; justify-content: space-between; width: 100%; align-items: center;">
+            <h3>
                 <span class="material-symbols-outlined">keyboard_voice</span>
                 <span id="wakeWordTitle">Mot de Réveil</span>
-                <button class="section-toggle" onclick="toggleSection('wakeWordContent')" id="wakeWordToggleBtn">Afficher</button>
-            </h2>
+               
+            </h3>
+             <button class="section-toggle" onclick="toggleSection('wakeWordContent')" id="wakeWordToggleBtn">
+                    <span class="material-symbols-outlined">expand_more</span>
+                </button>
+            </div>
             <div class="wake-word-content section-content" id="wakeWordContent" style="display: none;">
                 <div class="wake-word-info">
                     <p id="wakeWordDescription">
@@ -1137,13 +1111,16 @@
         </section>
                 <!-- Text-to-Speech Configuration -->
         <section class="tts-section">
-            <h2>
+            <div style="display: flex; gap: 10px; justify-content: space-between; width: 100%; align-items: center;">
+            <h3>
                 <span class="material-symbols-outlined">speaker</span>
-                <span id="ttsSettingsTitle">Paramètres de synthèse vocale</span>
-                <button class="section-toggle" onclick="toggleSection('ttsContent')" id="ttsToggleBtn">
-                    <span id="ttsShowBtn">Afficher</span>
+                <span id="ttsSettingsTitle">Synthèse vocale</span>
+               
+            </h3>
+             <button class="section-toggle" onclick="toggleSection('ttsContent')" id="ttsToggleBtn">
+                    <span class="material-symbols-outlined">expand_more</span>
                 </button>
-            </h2>
+            </div>
             <div id="ttsContent" class="section-content" style="display: none;">
                 <div class="tts-grid">
                     <div class="tts-card">

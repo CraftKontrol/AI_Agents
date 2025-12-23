@@ -1570,7 +1570,101 @@ function initCompactTimeDisplay() {
                 month: 'short'
             });
         }
+        
+        // Update clock canvases
+        drawClock('compactClockCanvas', 24);
+        drawClock('mainClockCanvas', 48);
     }, 1000);
+    
+    // Initial draw
+    drawClock('compactClockCanvas', 24);
+    drawClock('mainClockCanvas', 48);
+}
+
+// Draw analog clock on canvas
+function drawClock(canvasId, size) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    const now = new Date();
+    const hours = now.getHours() % 12;
+    const minutes = now.getMinutes();
+    const seconds = now.getSeconds();
+    
+    const centerX = size / 2;
+    const centerY = size / 2;
+    const radius = size / 2 - 2;
+    
+    // Determine if this is the compact clock
+    const isCompact = size === 24;
+    
+    // Clear canvas
+    ctx.clearRect(0, 0, size, size);
+    
+    // Draw clock face
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+    ctx.strokeStyle = '#4a9eff';
+    ctx.lineWidth = isCompact ? 0.5 : 2;
+    ctx.stroke();
+    
+    // Draw hour marks
+    ctx.fillStyle = '#4a9eff';
+    for (let i = 0; i < 12; i++) {
+        const angle = (i * 30) * Math.PI / 180;
+        const markRadius = radius - 3;
+        const x = centerX + markRadius * Math.sin(angle);
+        const y = centerY - markRadius * Math.cos(angle);
+        ctx.beginPath();
+        ctx.arc(x, y, isCompact ? 0.5 : 1, 0, 2 * Math.PI);
+        ctx.fill();
+    }
+    
+    // Draw hour hand
+    const hourAngle = ((hours + minutes / 60) * 30) * Math.PI / 180;
+    const hourHandLength = radius * 0.5;
+    ctx.beginPath();
+    ctx.moveTo(centerX, centerY);
+    ctx.lineTo(
+        centerX + hourHandLength * Math.sin(hourAngle),
+        centerY - hourHandLength * Math.cos(hourAngle)
+    );
+    ctx.strokeStyle = '#e0e0e0';
+    ctx.lineWidth = isCompact ? 1 : 2;
+    ctx.stroke();
+    
+    // Draw minute hand
+    const minuteAngle = ((minutes + seconds / 60) * 6) * Math.PI / 180;
+    const minuteHandLength = radius * 0.7;
+    ctx.beginPath();
+    ctx.moveTo(centerX, centerY);
+    ctx.lineTo(
+        centerX + minuteHandLength * Math.sin(minuteAngle),
+        centerY - minuteHandLength * Math.cos(minuteAngle)
+    );
+    ctx.strokeStyle = '#e0e0e0';
+    ctx.lineWidth = isCompact ? 0.5 : 1.5;
+    ctx.stroke();
+    
+    // Draw second hand
+    const secondAngle = (seconds * 6) * Math.PI / 180;
+    const secondHandLength = radius * 0.8;
+    ctx.beginPath();
+    ctx.moveTo(centerX, centerY);
+    ctx.lineTo(
+        centerX + secondHandLength * Math.sin(secondAngle),
+        centerY - secondHandLength * Math.cos(secondAngle)
+    );
+    ctx.strokeStyle = '#4a9eff';
+    ctx.lineWidth = isCompact ? 0.3 : 1;
+    ctx.stroke();
+    
+    // Draw center dot
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, isCompact ? 1 : 2, 0, 2 * Math.PI);
+    ctx.fillStyle = '#4a9eff';
+    ctx.fill();
 }
 
 // Update activity subtitle when section is collapsed
@@ -5407,10 +5501,13 @@ function toggleSection(sectionId) {
     section.style.display = isVisible ? 'none' : 'block';
     playUiSound(isVisible ? 'ui_toggle_off' : 'ui_toggle_on');
     
-    // Only update button text if event exists (clicked via button)
+    // Update button icon if event exists (clicked via button)
     if (typeof event !== 'undefined' && event && event.currentTarget) {
         const btn = event.currentTarget;
-        btn.textContent = isVisible ? getLocalizedText('show') : getLocalizedText('hide');
+        const icon = btn.querySelector('.material-symbols-outlined');
+        if (icon) {
+            icon.textContent = isVisible ? 'expand_more' : 'expand_less';
+        }
     }
     
     // Special handling for activity section: show/hide subtitle
@@ -5837,18 +5934,11 @@ function saveAlarmSound() {
 function openSettingsModal() {
     playUiSound('ui_open');
     // Load current settings into modal
-    const wakeWord = localStorage.getItem('wakeWord') || '';
-    const wakeWordEnabled = localStorage.getItem('wakeWordEnabled') === 'true';
     const alarmSound = localStorage.getItem('alarmSound') || 'gentle-alarm.mp3';
     const ttsSettings = JSON.parse(localStorage.getItem('ttsSettings') || 'null') || DEFAULT_TTS_SETTINGS;
-    const ssmlSettings = JSON.parse(localStorage.getItem('ssmlSettings') || 'null') || DEFAULT_SSML_SETTINGS;
 
-    document.getElementById('settingsWakeWord').value = wakeWord;
-    document.getElementById('settingsWakeWordEnabled').checked = wakeWordEnabled;
     document.getElementById('settingsAlarmSound').value = alarmSound;
     document.getElementById('settingsAutoPlayTTS').checked = ttsSettings.autoPlay;
-    document.getElementById('settingsSsmlEnabled').checked = ssmlSettings.enabled;
-    document.getElementById('settingsCustomKeywords').value = ssmlSettings.customKeywords || '';
 
     // Load Sound System settings
     if (typeof soundManager !== 'undefined') {
@@ -5869,14 +5959,7 @@ function closeSettingsModal() {
 
 function saveSettings() {
     playUiSound('ui_success');
-    // Save Wake Word
-    const wakeWord = document.getElementById('settingsWakeWord').value.trim();
-    const wakeWordEnabled = document.getElementById('settingsWakeWordEnabled').checked;
-    if (wakeWord) {
-        localStorage.setItem('wakeWord', wakeWord);
-    }
-    localStorage.setItem('wakeWordEnabled', wakeWordEnabled.toString());
-
+    
     // Save Alarm Sound
     const alarmSound = document.getElementById('settingsAlarmSound').value;
     localStorage.setItem('alarmSound', alarmSound);
@@ -5890,12 +5973,6 @@ function saveSettings() {
     const ttsSettings = JSON.parse(localStorage.getItem('ttsSettings') || 'null') || DEFAULT_TTS_SETTINGS;
     ttsSettings.autoPlay = document.getElementById('settingsAutoPlayTTS').checked;
     localStorage.setItem('ttsSettings', JSON.stringify(ttsSettings));
-
-    // Save SSML Settings
-    const ssmlSettings = JSON.parse(localStorage.getItem('ssmlSettings') || 'null') || DEFAULT_SSML_SETTINGS;
-    ssmlSettings.enabled = document.getElementById('settingsSsmlEnabled').checked;
-    ssmlSettings.customKeywords = document.getElementById('settingsCustomKeywords').value.trim();
-    localStorage.setItem('ssmlSettings', JSON.stringify(ssmlSettings));
 
     // Save Sound System Settings
     if (typeof soundManager !== 'undefined') {
