@@ -50,6 +50,7 @@
 - `gps-navigation.js` - GPS navigation integration (Google Maps, Waze, Apple Maps, OSM)
 - `location-manager.js` - Location tracking and default address management (NEW)
 - `weather.js` - Weather forecast from multiple APIs (OpenWeatherMap, WeatherAPI, Open-Meteo)
+- `audio-visualizer-kawaii.js` - Kawaii neon audio visualizer for TTS with animated face (NEW)
 - `test-app.html/js` - Testing system with action-wrapper integration
 
 **Recent test resilience updates (Dec 2025):** search_task validation tolerates empty result sets when Mistral intent is `search_task`; alarm system check is bypassed in automated runs; web restaurant/weather tests accept geocoding/missing-source responses; weather queries fall back to Open-Meteo (with placeholder data) when no provider succeeds.
@@ -1023,6 +1024,7 @@ UI updates real-time
 - `calculateMovementMetrics()` - Compute distance, elevation, speed from GPS path
 - `saveActivityState()` - Persist to localStorage every 30s
 - `restoreActivityState()` - Load from localStorage on page load
+- `updateCKGenericAppSteps(steps)` - Send step count to CKGenericApp via `window.CKAndroid.saveActivityData(enabled, steps)` for MonitoringService notification display (called every 10s during tracking, on start/stop/reset). MonitoringService checks every 30s and shows localized notification with step count.
 
 **activity-storage.js (UPDATED):**
 - `saveActivity(data)` - Save path to `activities` store (auto-increment ID)
@@ -1241,8 +1243,140 @@ UI updates real-time
 ## 📚 Dependencies
 
 **CDN:** Material Symbols, FullCalendar 6.1.10, Leaflet 1.9.4
-**APIs:** Web Speech, IndexedDB, localStorage, Notification, Geolocation, Tavily, Nominatim (Geocoding), OpenWeatherMap, WeatherAPI.com, Open-Meteo
+**APIs:** Web Speech, Web Audio API (audio visualizer), IndexedDB, localStorage, Notification, Geolocation, Tavily, Nominatim (Geocoding), OpenWeatherMap, WeatherAPI.com, Open-Meteo
 
 ---
+
+## 🎨 Kawaii Audio Visualizer
+
+**Module:** `audio-visualizer-kawaii.js`
+
+**Purpose:** Real-time animated kawaii neon face that visualizes TTS audio with emotional expressions
+
+### Architecture
+
+**Components:**
+- **Eyes**: Animated circles/shapes that blink randomly and change based on message type
+  - Normal: Cyan circles
+  - Success: Green stars ⭐
+  - Error: Red X marks ❌
+  - Warning: Orange triangles ⚠️
+  - Question: Blue hearts 💙
+- **Eyebrows**: Arcs that express emotion (raised for happy/curious, lowered for sad/angry)
+- **Mouth**: Smiling arc with FFT 512 frequency bars overlay
+- **Background**: Dark space theme with twinkling stars
+
+### Key Features
+
+**Web Audio API Integration:**
+- `AudioContext` + `AnalyserNode` for real-time frequency analysis
+- FFT Size: 512 bins
+- Smoothing: 0.75
+- Connects to `<audio>` elements (Google TTS, Deepgram TTS)
+- Browser TTS shows animated mouth without audio connection
+
+**Emotion Detection:**
+- `detectMessageType(text)` analyzes response text for keywords
+- Supports fr/en/it languages
+- Message types: normal, success, error, warning, question
+- Eyes and eyebrows change based on detected emotion
+
+**Animations:**
+- Random eye blinking (2-5 second intervals)
+- Smooth blink animation (150ms duration)
+- Idle mouth wave when no audio
+- FFT bars oscillate on smile curve (±30px amplitude)
+- Star twinkle in background
+
+**User Interaction:**
+- Fixed overlay (z-index: 999999) - appears above everything
+- Click anywhere to close
+- Auto-closes 2 seconds after TTS ends
+- Hover effect (border glow)
+- Fade in/out animations
+
+### API
+
+```javascript
+// Global instance
+kawaiiVisualizer = new KawaiiAudioVisualizer('kawaii-visualizer-canvas');
+
+// Initialize Web Audio API
+await kawaiiVisualizer.initialize();
+
+// Connect audio element (Google/Deepgram TTS)
+kawaiiVisualizer.connectAudioElement(audioElement);
+
+// Start with emotion
+kawaiiVisualizer.start(messageType); // 'normal', 'success', 'error', 'warning', 'question'
+
+// Change emotion during playback
+kawaiiVisualizer.setEmotion('success');
+
+// Close manually
+kawaiiVisualizer.close();
+
+// Stop animation
+kawaiiVisualizer.stop();
+```
+
+### Integration Flow
+
+```
+TTS Request
+    ↓
+detectMessageType(text) → 'success' | 'error' | 'warning' | 'question' | 'normal'
+    ↓
+synthesizeSpeech(text)
+    ↓
+Browser TTS: playBrowserTTSWithVisualizer()
+    ↓ or ↓
+Google/Deepgram: playAudioSourceWithVisualizer()
+    ↓
+kawaiiVisualizer.start(messageType)
+    ↓
+Animation loop (60fps):
+- Update blinks
+- Get FFT data
+- Draw stars
+- Draw brows (emotion-based)
+- Draw eyes (emotion-based shapes)
+- Draw mouth (smile + FFT bars)
+    ↓
+Audio ends → wait 2s → kawaiiVisualizer.close()
+    ↓ or ↓
+User clicks → kawaiiVisualizer.close() (immediate)
+```
+
+### Styling
+
+**Canvas:** 400×300px (responsive to container)
+**Container:** Fixed bottom center, 30px border radius, backdrop blur
+**Colors:** 
+- Background: `#0A0A14`
+- Cyan: `#00FFFF` (normal eyes)
+- Green: `#00FF88` (success)
+- Orange: `#FFAA44` (warning)
+- Red: `#FF4444` (error)
+- Blue: `#4A9EFF` (question)
+- Gradient mouth: Pink → Purple → Blue
+
+**Neon Effect:**
+- `shadowBlur: 20px`
+- `shadowColor` matches element color
+- `lineWidth: 4px` for outlines
+
+### Performance
+
+- 60 FPS via `requestAnimationFrame`
+- HiDPI support (devicePixelRatio scaling)
+- Efficient FFT sampling (64 bars from 512 bins)
+- Blink timing via `setTimeout` (not frame-by-frame checks)
+- Canvas cleared once per frame
+
+---
+
+**Update this file when:** schema changes, new actions, new modules, new business rules
+
 
 **Update this file when:** schema changes, new actions, new modules, new business rules

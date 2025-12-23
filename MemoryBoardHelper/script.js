@@ -7,6 +7,42 @@ let temporaryListeningTimeout = null;
 let isTemporaryListening = false;
 const TEMPORARY_LISTENING_DURATION = 10000; // 10 seconds
 
+// --- Message Type Detection for Kawaii Visualizer ---
+function detectMessageType(text) {
+    const lower = text.toLowerCase();
+    
+    // Success keywords (multiple languages)
+    if (/terminé|complété|réussi|parfait|bravo|excellent|succès|fait|validé|ok|d'accord/i.test(text) ||
+        /completed|success|done|perfect|great|excellent|finished/i.test(text) ||
+        /completato|successo|perfetto|eccellente|finito/i.test(text)) {
+        return 'success';
+    }
+    
+    // Error keywords
+    if (/erreur|échec|impossible|problème|désolé|raté|échoué|ne fonctionne pas/i.test(text) ||
+        /error|failed|impossible|problem|sorry|doesn't work/i.test(text) ||
+        /errore|fallito|impossibile|problema|scusa/i.test(text)) {
+        return 'error';
+    }
+    
+    // Warning keywords
+    if (/attention|prudent|rappel|important|urgent|alerte|vigilant/i.test(text) ||
+        /warning|careful|reminder|important|urgent|alert/i.test(text) ||
+        /attenzione|prudente|promemoria|importante|urgente/i.test(text)) {
+        return 'warning';
+    }
+    
+    // Question detection
+    if (text.includes('?') || 
+        /voulez-vous|souhaitez-vous|puis-je|pouvez-vous|est-ce que|comment|pourquoi|quand|qui|quoi|où/i.test(text) ||
+        /do you want|would you like|can I|can you|how|why|when|who|what|where/i.test(text) ||
+        /vuoi|vorresti|posso|puoi|come|perché|quando|chi|cosa|dove/i.test(text)) {
+        return 'question';
+    }
+    
+    return 'normal';
+}
+
 // Helper function to get API key from CKGenericApp or localStorage
 function getApiKey(keyName, localStorageKey = null) {
     // Try CKGenericApp first (Android WebView)
@@ -378,6 +414,105 @@ function playAudioSource(src, playbackId, volume = 0.8) {
     });
 }
 
+// --- Visualizer Wrapper Functions ---
+async function playBrowserTTSWithVisualizer(cleanText, playbackId, messageType) {
+    // Start visualizer
+    if (typeof kawaiiVisualizer !== 'undefined' && kawaiiVisualizer) {
+        // Speech Synthesis API can't be wired to WebAudio analyser, simulate FFT
+        kawaiiVisualizer.startFFTSimulation();
+        kawaiiVisualizer.start(messageType);
+    }
+    
+    const result = await playBrowserTTS(cleanText, playbackId);
+    
+    // Auto-close visualizer after 2 seconds
+    if (typeof kawaiiVisualizer !== 'undefined' && kawaiiVisualizer) {
+        setTimeout(() => {
+            kawaiiVisualizer.stopFFTSimulation();
+            kawaiiVisualizer.close();
+        }, 2000);
+    }
+    
+    return result;
+}
+
+async function playAudioSourceWithVisualizer(src, playbackId, messageType) {
+    // Start visualizer and connect audio
+    if (typeof kawaiiVisualizer !== 'undefined' && kawaiiVisualizer) {
+        const audio = new Audio(src);
+        const ttsSettings = JSON.parse(localStorage.getItem('ttsSettings') || 'null') || DEFAULT_TTS_SETTINGS;
+        audio.volume = Math.max(0, Math.min(1, (ttsSettings.volume + 16) / 32));
+        
+        // Connect audio to visualizer
+        kawaiiVisualizer.connectAudioElement(audio);
+        kawaiiVisualizer.start(messageType);
+        
+        activeTTSAudio = audio;
+        
+        return new Promise((resolve) => {
+            audio.onended = () => {
+                if (playbackId === activeTTSPlaybackId) {
+                    activeTTSAudio = null;
+                }
+                
+                // Auto-close visualizer after 2 seconds
+                setTimeout(() => {
+                    if (kawaiiVisualizer) kawaiiVisualizer.close();
+                }, 2000);
+                
+                resolve('audio-complete');
+            };
+
+            audio.onerror = (event) => {
+                if (playbackId === activeTTSPlaybackId) {
+                    activeTTSAudio = null;
+                }
+                console.error('[TTS] Audio playback error:', event);
+                if (kawaiiVisualizer) kawaiiVisualizer.close();
+                resolve(null);
+            };
+
+            audio.play().catch((error) => {
+                console.error('[TTS] Audio play() failed:', error);
+                if (kawaiiVisualizer) kawaiiVisualizer.close();
+                resolve(null);
+            });
+        });
+    }
+    
+    // Fallback without visualizer
+    return playAudioSource(src, playbackId);
+}
+
+async function speakWithGoogleTTSWithVisualizer(text, languageCode, apiKey, playbackId, messageType) {
+    // Start visualizer and then play through visualizer pipeline
+    if (typeof kawaiiVisualizer !== 'undefined' && kawaiiVisualizer) {
+        kawaiiVisualizer.start(messageType);
+    }
+
+    try {
+        // Get audio source without playing
+        const audioSrc = await speakWithGoogleTTS(text, languageCode, apiKey, playbackId, true);
+
+        // Play via visualizer (connects analyser)
+        const result = await playAudioSourceWithVisualizer(audioSrc, playbackId, messageType);
+
+        // Auto-close visualizer after 2 seconds
+        if (typeof kawaiiVisualizer !== 'undefined' && kawaiiVisualizer) {
+            setTimeout(() => {
+                kawaiiVisualizer.close();
+            }, 2000);
+        }
+
+        return result;
+    } catch (error) {
+        if (typeof kawaiiVisualizer !== 'undefined' && kawaiiVisualizer) {
+            kawaiiVisualizer.close();
+        }
+        throw error;
+    }
+}
+
 // Normalize text for TTS - convert numbers and abbreviations to words
 function normalizeTextForTTS(text, lang = 'fr') {
     console.log('[TTS Normalize] INPUT:', text);
@@ -456,7 +591,7 @@ function normalizeTextForTTS(text, lang = 'fr') {
         return match; // Keep very large numbers as is
     });
     
-    console.log('[TTS Normalize] After number conversion:', normalized);
+    
     
     // Clean up multiple spaces
     normalized = normalized.replace(/\s+/g, ' ').trim();
@@ -663,9 +798,22 @@ async function playBrowserTTS(cleanText, playbackId) {
     return new Promise((resolve) => {
         activeTTSUtterance = utterance;
 
+        // Sync visualizer envelope with speech boundaries (word/char)
+        if (typeof kawaiiVisualizer !== 'undefined' && kawaiiVisualizer && kawaiiVisualizer.isSimulatingFFT) {
+            utterance.onboundary = () => {
+                kawaiiVisualizer.triggerSpeechBeat(1);
+            };
+            utterance.onstart = () => {
+                kawaiiVisualizer.triggerSpeechBeat(1.5);
+            };
+        }
+
         utterance.onend = () => {
             if (playbackId === activeTTSPlaybackId) {
                 activeTTSUtterance = null;
+            }
+            if (typeof kawaiiVisualizer !== 'undefined' && kawaiiVisualizer) {
+                kawaiiVisualizer.stopFFTSimulation();
             }
             resolve('browser-speech-synthesis');
         };
@@ -673,6 +821,9 @@ async function playBrowserTTS(cleanText, playbackId) {
         utterance.onerror = (event) => {
             if (playbackId === activeTTSPlaybackId) {
                 activeTTSUtterance = null;
+            }
+            if (typeof kawaiiVisualizer !== 'undefined' && kawaiiVisualizer) {
+                kawaiiVisualizer.stopFFTSimulation();
             }
             console.error('[TTS] Speech synthesis error:', event);
             resolve(null);
@@ -683,7 +834,7 @@ async function playBrowserTTS(cleanText, playbackId) {
 }
 
 // --- Patch TTS usage to use settings ---
-async function speakWithGoogleTTS(text, languageCode, apiKey, playbackId = null) {
+async function speakWithGoogleTTS(text, languageCode, apiKey, playbackId = null, returnAudioSrc = false) {
     const id = playbackId ?? getNextTTSPlaybackId();
 
     if (playbackId === null) {
@@ -728,6 +879,11 @@ async function speakWithGoogleTTS(text, languageCode, apiKey, playbackId = null)
         const data = await response.json();
         const audioContent = data.audioContent;
         const audioSrc = `data:audio/mp3;base64,${audioContent}`;
+
+        if (returnAudioSrc) {
+            return audioSrc;
+        }
+
         const result = await playAudioSource(audioSrc, id, 0.8);
         console.log('[AlarmSystem] Voice announcement completed');
         return result;
@@ -3662,20 +3818,24 @@ async function synthesizeSpeech(text) {
     const voiceElement = document.getElementById('ttsVoice');
     let voice = voiceElement?.value || 'browser-default';
     
+    // Detect message type for visualizer
+    const messageType = detectMessageType(cleanText);
+    
     // Get selected TTS provider
     const selectedProvider = localStorage.getItem('ttsProvider') || 'browser';
     console.log(`[TTS] Using selected provider: ${selectedProvider}`);
     console.log(`[TTS] Using voice: ${voice}`);
+    console.log(`[TTS] Message type detected: ${messageType}`);
     
     // Validate voice compatibility with provider
     if (selectedProvider === 'deepgram' && !voice.startsWith('aura-')) {
         console.warn('[TTS] Voice incompatible with Deepgram, falling back to browser');
-        return playBrowserTTS(cleanText, playbackId);
+        return playBrowserTTSWithVisualizer(cleanText, playbackId, messageType);
     }
     if (selectedProvider === 'google' && !voice.includes('-Neural2-') && !voice.includes('-Wavenet-') && !voice.includes('-Standard-')) {
         if (voice !== 'browser-default') {
             console.warn('[TTS] Voice incompatible with Google TTS, falling back to browser');
-            return playBrowserTTS(cleanText, playbackId);
+            return playBrowserTTSWithVisualizer(cleanText, playbackId, messageType);
         }
     }
     
@@ -3684,7 +3844,7 @@ async function synthesizeSpeech(text) {
     // Browser TTS (Web Speech API)
     if (selectedProvider === 'browser' || !selectedProvider) {
         console.log('[TTS] Using browser speech synthesis');
-        return playBrowserTTS(cleanText, playbackId);
+        return playBrowserTTSWithVisualizer(cleanText, playbackId, messageType);
     }
     
     // Deepgram TTS (does NOT support speakingRate, pitch, volume parameters)
@@ -3693,7 +3853,7 @@ async function synthesizeSpeech(text) {
         audioUrl = await synthesizeWithDeepgram(cleanText, voice);
         if (!audioUrl) {
             console.log('[TTS] Deepgram failed, trying browser fallback');
-            return playBrowserTTS(cleanText, playbackId);
+            return playBrowserTTSWithVisualizer(cleanText, playbackId, messageType);
         }
     }
     // Google Cloud TTS
@@ -3703,25 +3863,25 @@ async function synthesizeSpeech(text) {
         const apiKey = getApiKey('google_tts', 'googleTTSApiKey');
         if (apiKey) {
             try {
-                const result = await speakWithGoogleTTS(cleanText, languageCode, apiKey, playbackId);
+                const result = await speakWithGoogleTTSWithVisualizer(cleanText, languageCode, apiKey, playbackId, messageType);
                 return result || 'google-tts-complete';
             } catch (error) {
                 console.error('[TTS] Google TTS failed:', error);
-                return playBrowserTTS(cleanText, playbackId);
+                return playBrowserTTSWithVisualizer(cleanText, playbackId, messageType);
             }
         }
         console.warn('[TTS] Missing Google TTS API key, falling back to browser');
-        return playBrowserTTS(cleanText, playbackId);
+        return playBrowserTTSWithVisualizer(cleanText, playbackId, messageType);
     }
     
-    // Play audio if URL was returned
+    // Play audio if URL was returned (Deepgram)
     if (audioUrl) {
         console.log('[TTS] Playing audio from URL:', audioUrl);
-        return playAudioSource(audioUrl, playbackId);
+        return playAudioSourceWithVisualizer(audioUrl, playbackId, messageType);
     }
 
     // Default fallback to browser TTS
-    return playBrowserTTS(cleanText, playbackId);
+    return playBrowserTTSWithVisualizer(cleanText, playbackId, messageType);
 }
 
 // --- Google STT Implementation ---

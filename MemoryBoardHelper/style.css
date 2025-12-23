@@ -4690,3 +4690,63 @@ input:checked + .slider:before {
         height: 100vh;
     }
 }
+
+/* --- Kawaii Audio Visualizer --- */
+#kawaii-visualizer-container {
+    position: fixed;
+    bottom: 50%;
+    left: 50%;
+    width: 100%;
+    height: 100%;
+    transform: translate(-50%, 50%);
+    background: rgba(10, 10, 20, 0.95);
+    backdrop-filter: blur(15px);
+    border-radius: 30px;
+    border: 2px solid rgba(74, 158, 255, 0.3);
+    box-shadow: 0 0 40px rgba(74, 158, 255, 0.4);
+    display: none;
+    z-index: 999999;
+    pointer-events: auto;
+    cursor: pointer;
+    transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+}
+
+#kawaii-visualizer-container.active {
+    display: block;
+    animation: fadeInScale 0.3s ease-out;
+}
+
+#kawaii-visualizer-container.hiding {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.9);
+}
+
+#kawaii-visualizer-container:hover {
+    border-color: rgba(74, 158, 255, 0.6);
+    box-shadow: 0 0 50px rgba(74, 158, 255, 0.6);
+}
+
+#kawaii-visualizer-canvas {
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+@keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%) scale(1);
+    }
+}
+
+/* Responsive for mobile */
+@media (max-width: 480px) {
+    #kawaii-visualizer-container {
+
+    }
+}
+
