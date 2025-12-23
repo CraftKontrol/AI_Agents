@@ -6289,7 +6289,14 @@ function toggleEmergencyPanel() {
 
 function callEmergencyContact(contactNumber) {
     const phone = document.getElementById(`contact${contactNumber}Phone`).textContent;
-    window.location.href = `tel:${phone}`;
+    
+    // Create a temporary link element and click it (works better on mobile)
+    const a = document.createElement('a');
+    a.href = `tel:${phone}`;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
 }
 
 // Ouvre la modale de configuration des contacts d'urgence
