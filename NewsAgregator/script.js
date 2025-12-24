@@ -15,6 +15,7 @@ let alternativeSourcesData = null;
 let currentAlternativeCategory = 'presse_standard';
 let alternativeSourcesFilter = '';
 let displayMode = 'columns'; // 'columns' or 'feed'
+let failedImages = new Set(); // Cache of failed image URLs
 
 // Translations
 const translations = {
@@ -775,50 +776,86 @@ function parseArticle(item, source, isAtom = false) {
                       item.querySelector('published')?.textContent;
         }
         
-        // Try to get image from multiple sources
-        // 1. Media content
+        // Try to get image from multiple sources with comprehensive fallbacks
+        const imageUrls = [];
+        
+        // 1. Media content (RSS media namespace)
         const mediaContent = item.querySelector('media\\:content, content[url]');
         if (mediaContent) {
-            imageUrl = mediaContent.getAttribute('url') || '';
+            imageUrls.push(mediaContent.getAttribute('url') || '');
         }
         
         // 2. Media thumbnail
-        if (!imageUrl) {
-            const mediaThumbnail = item.querySelector('media\\:thumbnail, thumbnail');
-            if (mediaThumbnail) {
-                imageUrl = mediaThumbnail.getAttribute('url') || '';
-            }
+        const mediaThumbnail = item.querySelector('media\\:thumbnail, thumbnail');
+        if (mediaThumbnail) {
+            imageUrls.push(mediaThumbnail.getAttribute('url') || '');
         }
         
-        // 3. Enclosure
-        if (!imageUrl) {
-            const enclosure = item.querySelector('enclosure');
-            if (enclosure && enclosure.getAttribute('type')?.startsWith('image/')) {
-                imageUrl = enclosure.getAttribute('url') || '';
+        // 3. Enclosure (image attachments)
+        const enclosures = item.querySelectorAll('enclosure');
+        enclosures.forEach(enclosure => {
+            if (enclosure.getAttribute('type')?.startsWith('image/')) {
+                imageUrls.push(enclosure.getAttribute('url') || '');
             }
+        });
+        
+        // 4. OpenGraph and Twitter cards meta tags
+        const ogTags = item.querySelectorAll('meta[property^="og:image"], meta[name^="og:image"], meta[property="twitter:image"], meta[name="twitter:image"]');
+        ogTags.forEach(tag => {
+            const content = tag.getAttribute('content') || tag.getAttribute('value');
+            if (content) imageUrls.push(content);
+        });
+        
+        // 5. iTunes image (for podcasts/media feeds)
+        const itunesImage = item.querySelector('itunes\\:image');
+        if (itunesImage) {
+            imageUrls.push(itunesImage.getAttribute('href') || '');
         }
         
-        // 4. og:image meta tag
-        if (!imageUrl) {
-            const ogImage = item.querySelector('meta[property="og:image"], meta[name="og:image"]');
-            if (ogImage) {
-                imageUrl = ogImage.getAttribute('content') || '';
-            }
-        }
-        
-        // 5. Extract from description/content HTML
-        if (!imageUrl && description) {
-            // Try multiple image patterns
+        // 6. Extract from description/content HTML with enhanced patterns
+        if (description) {
+            // Pattern 1: Standard img tags with various quote styles
             const imgPatterns = [
-                /<img[^>]+src=["']([^"']+)["']/i,
-                /<img[^>]+src=([^\s>]+)/i,
-                /url\(["']?([^"')]+\.(jpg|jpeg|png|gif|webp))["']?\)/i
+                /<img[^>]+src=["']([^"']+)["']/gi,
+                /<img[^>]+src=([^\s>]+)/gi,
+                /<img[^>]+data-src=["']([^"']+)["']/gi, // Lazy loaded images
+                /<img[^>]+data-lazy-src=["']([^"']+)["']/gi
             ];
             
             for (const pattern of imgPatterns) {
-                const match = description.match(pattern);
-                if (match && match[1]) {
-                    imageUrl = match[1];
+                let match;
+                while ((match = pattern.exec(description)) !== null) {
+                    if (match[1]) imageUrls.push(match[1]);
+                }
+            }
+            
+            // Pattern 2: CSS background images
+            const bgPatterns = [
+                /background-image:\s*url\(["']?([^"')]+)["']?\)/gi,
+                /url\(["']?([^"')]+\.(jpg|jpeg|png|gif|webp|svg))["']?\)/gi
+            ];
+            
+            for (const pattern of bgPatterns) {
+                let match;
+                while ((match = pattern.exec(description)) !== null) {
+                    if (match[1]) imageUrls.push(match[1]);
+                }
+            }
+            
+            // Pattern 3: Direct image URLs in content
+            const urlPattern = /(https?:\/\/[^\s<>"']+\.(jpg|jpeg|png|gif|webp|svg)(\?[^\s<>"']*)?)(?=[\s<>"']|$)/gi;
+            let match;
+            while ((match = urlPattern.exec(description)) !== null) {
+                if (match[1]) imageUrls.push(match[1]);
+            }
+        }
+        
+        // Select the first valid image URL from collected candidates
+        for (const candidateUrl of imageUrls) {
+            if (candidateUrl && candidateUrl.trim()) {
+                const cleanedUrl = cleanImageUrl(candidateUrl.trim(), link);
+                if (cleanedUrl && !failedImages.has(cleanedUrl)) {
+                    imageUrl = cleanedUrl;
                     break;
                 }
             }
@@ -884,16 +921,26 @@ function cleanText(text) {
 function cleanImageUrl(imageUrl, articleLink) {
     if (!imageUrl) return '';
     
-    // Decode HTML entities
+    // Decode HTML entities and URL encoding
     imageUrl = imageUrl
         .replace(/&amp;/g, '&')
         .replace(/&lt;/g, '<')
         .replace(/&gt;/g, '>')
         .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&#x2F;/g, '/')
         .trim();
     
-    // Remove leading/trailing quotes or whitespace
-    imageUrl = imageUrl.replace(/^["']|["']$/g, '').trim();
+    // Remove leading/trailing quotes, parentheses, or whitespace
+    imageUrl = imageUrl.replace(/^["'()\s]+|["'()\s]+$/g, '').trim();
+    
+    // Remove any backslashes (escape characters)
+    imageUrl = imageUrl.replace(/\\/g, '');
+    
+    // Handle data URLs (skip them - they're often fallback placeholders)
+    if (imageUrl.startsWith('data:')) {
+        return '';
+    }
     
     // Handle relative URLs
     if (imageUrl.startsWith('//')) {
@@ -905,7 +952,7 @@ function cleanImageUrl(imageUrl, articleLink) {
             const url = new URL(articleLink);
             imageUrl = url.origin + imageUrl;
         } catch (e) {
-            console.warn('Could not resolve relative image URL:', imageUrl);
+            console.warn('Could not resolve absolute path:', imageUrl);
             return '';
         }
     } else if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
@@ -915,20 +962,51 @@ function cleanImageUrl(imageUrl, articleLink) {
             const basePath = url.pathname.substring(0, url.pathname.lastIndexOf('/') + 1);
             imageUrl = url.origin + basePath + imageUrl;
         } catch (e) {
-            console.warn('Could not resolve relative image URL:', imageUrl);
+            console.warn('Could not resolve relative path:', imageUrl);
             return '';
         }
     }
     
-    // Validate URL format
+    // Validate URL format and content
     try {
-        new URL(imageUrl);
-        // Check if it's likely an image (has image extension or is from known CDN)
-        const hasImageExtension = /\.(jpg|jpeg|png|gif|webp|svg)(\?|$)/i.test(imageUrl);
-        const isImageCDN = /\/(image|img|media|upload|photo|picture)\//i.test(imageUrl) || 
-                          /(cdn|cloudinary|imgur|imagekit|cloudfront)/.test(imageUrl);
+        const urlObj = new URL(imageUrl);
         
-        if (hasImageExtension || isImageCDN || imageUrl.includes('media')) {
+        // Blacklist common placeholder/tracking images
+        const blacklistPatterns = [
+            /\/1x1\./,
+            /\/pixel\./,
+            /\/tracking\./,
+            /\/spacer\./,
+            /\/blank\./,
+            /\/transparent\./,
+            /\/ajax-loader\./,
+            /\/spinner\./,
+            /feedburner\.com/,
+            /b\.scorecardresearch\.com/,
+            /pixel\.wp\.com/
+        ];
+        
+        if (blacklistPatterns.some(pattern => pattern.test(imageUrl))) {
+            return '';
+        }
+        
+        // Check if it's likely a real image
+        const hasImageExtension = /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)(\?|$|#)/i.test(imageUrl);
+        const isImagePath = /\/(image|img|media|upload|photo|picture|asset|content|static|file)\//i.test(imageUrl);
+        const isImageCDN = /(cdn|cloudinary|imgur|imgix|imagekit|cloudfront|akamai|fastly|gstatic)/i.test(urlObj.hostname);
+        const hasImageParam = /[?&](image|img|media|photo|picture)=/i.test(imageUrl);
+        
+        // Accept if URL has clear image indicators
+        if (hasImageExtension || isImagePath || isImageCDN || hasImageParam) {
+            // Additional check: URL shouldn't be suspiciously short (likely a pixel)
+            if (imageUrl.length > 30 || hasImageExtension) {
+                return imageUrl;
+            }
+        }
+        
+        // Fallback: accept URLs from article domain that might be images
+        const articleHost = new URL(articleLink).hostname;
+        if (urlObj.hostname === articleHost && imageUrl.length > 40) {
             return imageUrl;
         }
     } catch (e) {
@@ -1062,12 +1140,16 @@ function renderNewsCard(article, showCategory = false) {
     
     return `
         <div class="news-card ${isRead ? 'read' : ''}" data-article-id="${articleId}">
-            ${article.imageUrl ? 
+            ${article.imageUrl && !failedImages.has(article.imageUrl) ? 
                 `<img src="${article.imageUrl}" 
                       alt="${escapedTitle}" 
                       class="news-image" 
                       loading="lazy"
-                      onerror="handleImageError(this)">` :
+                      decoding="async"
+                      referrerpolicy="no-referrer"
+                      crossorigin="anonymous"
+                      onerror="handleImageError(this)"
+                      onload="console.log('✓ Image loaded:', this.src.substring(0, 60) + '...')">` :
                 `<div class="news-image placeholder"><span class="material-symbols-outlined">image</span></div>`
             }
             <div class="news-content">
@@ -1094,23 +1176,63 @@ function renderNewsCard(article, showCategory = false) {
     `;
 }
 
-// Handle image loading errors
+// Handle image loading errors with multiple fallback strategies
 function handleImageError(img) {
-    // Try to reload once in case it was a temporary error
+    const originalSrc = img.src;
+    
+    // Add to failed images cache
+    if (originalSrc) {
+        failedImages.add(originalSrc);
+        console.warn('❌ Image failed to load:', originalSrc);
+    }
+    
+    // Try to reload once with cache-busting in case it was a temporary error
     if (!img.dataset.retried) {
         img.dataset.retried = 'true';
-        const originalSrc = img.src;
+        
+        // Add timestamp to bypass cache
+        const separator = originalSrc.includes('?') ? '&' : '?';
+        const cacheBustedUrl = `${originalSrc}${separator}retry=${Date.now()}`;
+        
         img.src = '';
         setTimeout(() => {
-            img.src = originalSrc;
-        }, 1000);
+            img.src = cacheBustedUrl;
+            console.log('🔄 Retrying image load:', cacheBustedUrl);
+        }, 500);
+    } else if (!img.dataset.retriedTwice) {
+        // Second attempt: try without query parameters (some servers don't like them)
+        img.dataset.retriedTwice = 'true';
+        
+        try {
+            const url = new URL(originalSrc);
+            const cleanUrl = `${url.origin}${url.pathname}`;
+            
+            if (cleanUrl !== originalSrc) {
+                img.src = '';
+                setTimeout(() => {
+                    img.src = cleanUrl;
+                    console.log('🔄 Second retry without params:', cleanUrl);
+                }, 500);
+                return;
+            }
+        } catch (e) {
+            // URL parsing failed, proceed to placeholder
+        }
+        
+        // If we couldn't create a different URL, show placeholder
+        replaceWithPlaceholder(img);
     } else {
-        // Replace with placeholder
-        const placeholder = document.createElement('div');
-        placeholder.className = 'news-image placeholder';
-        placeholder.innerHTML = '<span class="material-symbols-outlined">image</span>';
-        img.parentNode.replaceChild(placeholder, img);
+        // All attempts failed, replace with placeholder
+        replaceWithPlaceholder(img);
     }
+}
+
+function replaceWithPlaceholder(img) {
+    const placeholder = document.createElement('div');
+    placeholder.className = 'news-image placeholder';
+    placeholder.innerHTML = '<span class="material-symbols-outlined">image</span>';
+    img.parentNode.replaceChild(placeholder, img);
+    console.log('🖼️ Replaced with placeholder');
 }
 
 // UI helpers
