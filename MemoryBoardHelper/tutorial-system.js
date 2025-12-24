@@ -1250,6 +1250,36 @@ async function tutorialPrevious() {
 }
 
 async function tutorialSkip() {
+    // Si on est à l'étape 0 (welcome), fermer le tutoriel au lieu de passer à l'étape suivante
+    if (tutorialSystem && tutorialSystem.currentStep === 0) {
+        console.log('[Tutorial] Skipping welcome step - closing tutorial');
+        
+        // Mark as skipped (not completed)
+        localStorage.setItem('tutorialSkipped', 'true');
+        localStorage.setItem('tutorialSkippedDate', new Date().toISOString());
+        localStorage.removeItem('tutorialCurrentStep');
+        
+        // Hide tutorial
+        if (tutorialSystem) {
+            tutorialSystem.hide();
+        } else {
+            const overlay = document.getElementById('tutorialOverlay');
+            const modal = document.getElementById('tutorialModal');
+            if (overlay) overlay.style.display = 'none';
+            if (modal) modal.style.display = 'none';
+        }
+        
+        // Show message
+        setTimeout(() => {
+            if (typeof showToast === 'function') {
+                showToast('Tutoriel annulé. Vous pouvez le relancer depuis les paramètres.', 'info');
+            }
+        }, 400);
+        
+        return;
+    }
+    
+    // Pour les autres étapes, comportement normal
     if (typeof executeAction !== 'function') return;
     const lang = tutorialSystem?.language || (typeof getCurrentLanguage === 'function' ? getCurrentLanguage() : 'fr');
     await executeAction('tutorial_skip_step', {}, lang);
