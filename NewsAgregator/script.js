@@ -1138,9 +1138,14 @@ function renderNewsCard(article, showCategory = false) {
     
     const categoryBadge = showCategory ? `<span class="news-category-badge">${translations[currentLanguage][article.category] || article.category}</span>` : '';
     
+    // Validate image URL before rendering
+    const hasValidImage = article.imageUrl && 
+                         isValidImageUrl(article.imageUrl) && 
+                         !failedImages.has(article.imageUrl);
+    
     return `
         <div class="news-card ${isRead ? 'read' : ''}" data-article-id="${articleId}">
-            ${article.imageUrl && !failedImages.has(article.imageUrl) ? 
+            ${hasValidImage ? 
                 `<img src="${article.imageUrl}" 
                       alt="${escapedTitle}" 
                       class="news-image" 
@@ -1176,14 +1181,73 @@ function renderNewsCard(article, showCategory = false) {
     `;
 }
 
+// Validate if URL is a proper image URL before rendering
+function isValidImageUrl(url) {
+    if (!url || typeof url !== 'string') return false;
+    
+    // Check for common invalid patterns
+    if (url.trim() === '' || 
+        url === 'undefined' || 
+        url === 'null' || 
+        url.startsWith('file://') ||
+        url === window.location.href ||
+        url.includes('index.html')) {
+        return false;
+    }
+    
+    // Must start with http:// or https://
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        return false;
+    }
+    
+    // Try to parse as URL
+    try {
+        const urlObj = new URL(url);
+        // Must have a valid hostname
+        if (!urlObj.hostname || urlObj.hostname === 'localhost') {
+            return false;
+        }
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
 // Handle image loading errors with multiple fallback strategies
 function handleImageError(img) {
     const originalSrc = img.src;
     
-    // Add to failed images cache
-    if (originalSrc) {
-        failedImages.add(originalSrc);
-        console.warn('❌ Image failed to load:', originalSrc);
+    // Extract the actual image URL (remove retry params and proxy if present)
+    let actualSrc = originalSrc;
+    try {
+        // Remove proxy prefix if present
+        if (originalSrc.includes('wsrv.nl/?url=')) {
+            actualSrc = decodeURIComponent(originalSrc.split('wsrv.nl/?url=')[1].split('&')[0]);
+        } else if (originalSrc.includes('images.weserv.nl/?url=')) {
+            actualSrc = decodeURIComponent(originalSrc.split('images.weserv.nl/?url=')[1].split('&')[0]);
+        } else {
+            // Remove retry params
+            const url = new URL(originalSrc);
+            if (url.searchParams.has('retry')) {
+                url.searchParams.delete('retry');
+                actualSrc = url.toString();
+            }
+        }
+    } catch (e) {
+        actualSrc = originalSrc;
+    }
+    
+    // If the image URL is invalid (like file:// or index.html), immediately replace
+    if (!isValidImageUrl(actualSrc)) {
+        console.warn('❌ Invalid image URL detected:', actualSrc);
+        failedImages.add(actualSrc);
+        replaceWithPlaceholder(img);
+        return;
+    }
+    
+    // Log the error (but don't add to cache yet - we need to try retries first)
+    if (!img.dataset.retried) {
+        console.warn('❌ Image failed to load (attempt 1/3):', actualSrc);
     }
     
     // Try to reload once with cache-busting in case it was a temporary error
@@ -1191,48 +1255,80 @@ function handleImageError(img) {
         img.dataset.retried = 'true';
         
         // Add timestamp to bypass cache
-        const separator = originalSrc.includes('?') ? '&' : '?';
-        const cacheBustedUrl = `${originalSrc}${separator}retry=${Date.now()}`;
+        const separator = actualSrc.includes('?') ? '&' : '?';
+        const cacheBustedUrl = `${actualSrc}${separator}retry=${Date.now()}`;
         
-        img.src = '';
+        // Directly replace src without clearing it first to avoid file:// error
         setTimeout(() => {
             img.src = cacheBustedUrl;
-            console.log('🔄 Retrying image load:', cacheBustedUrl);
-        }, 500);
+            console.log('🔄 Retry 1/3: Cache-busting', actualSrc.substring(0, 60) + '...');
+        }, 100);
     } else if (!img.dataset.retriedTwice) {
         // Second attempt: try without query parameters (some servers don't like them)
         img.dataset.retriedTwice = 'true';
+        console.warn('❌ Image failed to load (attempt 2/3):', actualSrc);
         
         try {
-            const url = new URL(originalSrc);
+            const url = new URL(actualSrc);
             const cleanUrl = `${url.origin}${url.pathname}`;
             
-            if (cleanUrl !== originalSrc) {
-                img.src = '';
+            if (cleanUrl !== actualSrc && !cleanUrl.includes('retry=')) {
+                // Directly replace src without clearing it first to avoid file:// error
                 setTimeout(() => {
                     img.src = cleanUrl;
-                    console.log('🔄 Second retry without params:', cleanUrl);
-                }, 500);
+                    console.log('🔄 Retry 2/3: Without parameters', cleanUrl.substring(0, 60) + '...');
+                }, 100);
                 return;
             }
         } catch (e) {
-            // URL parsing failed, proceed to placeholder
+            // URL parsing failed, try proxy
         }
         
-        // If we couldn't create a different URL, show placeholder
-        replaceWithPlaceholder(img);
+        // Try with image proxy for CORS issues
+        tryImageProxy(img, actualSrc);
+    } else if (!img.dataset.retriedThrice) {
+        // Third attempt: try with image proxy for CORS/SSL issues
+        img.dataset.retriedThrice = 'true';
+        console.warn('❌ Image failed to load (attempt 3/3):', actualSrc);
+        tryImageProxy(img, actualSrc);
     } else {
-        // All attempts failed, replace with placeholder
+        // All attempts failed, NOW add to cache and replace with placeholder
+        console.error('💥 All retry attempts failed for:', actualSrc);
+        failedImages.add(actualSrc);
+        replaceWithPlaceholder(img);
+    }
+}
+
+function tryImageProxy(img, originalUrl) {
+    // Use wsrv.nl (weserv) image proxy - free service that handles CORS and SSL issues
+    // This service optimizes and caches images while solving CORS problems
+    try {
+        const encodedUrl = encodeURIComponent(originalUrl);
+        // Use weserv.nl - a free, fast image proxy and cache service
+        const proxyUrl = `https://wsrv.nl/?url=${encodedUrl}&w=400&output=webp&q=75`;
+        
+        // Directly replace src without clearing it first to avoid file:// error
+        setTimeout(() => {
+            img.src = proxyUrl;
+            console.log('🔄 Retry 3/3: Via image proxy');
+        }, 100);
+    } catch (e) {
+        console.error('Failed to create proxy URL:', e);
         replaceWithPlaceholder(img);
     }
 }
 
 function replaceWithPlaceholder(img) {
-    const placeholder = document.createElement('div');
-    placeholder.className = 'news-image placeholder';
-    placeholder.innerHTML = '<span class="material-symbols-outlined">image</span>';
-    img.parentNode.replaceChild(placeholder, img);
-    console.log('🖼️ Replaced with placeholder');
+    // Instead of showing a placeholder, hide the entire news card
+    const newsCard = img.closest('.news-card');
+    if (newsCard) {
+        newsCard.style.display = 'none';
+        console.log('🚫 Article hidden (no valid image)');
+    } else {
+        // Fallback: just hide the image
+        img.style.display = 'none';
+        console.log('🖼️ Image hidden');
+    }
 }
 
 // UI helpers
