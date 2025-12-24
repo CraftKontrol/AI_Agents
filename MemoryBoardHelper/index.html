@@ -184,6 +184,12 @@
                                 Exporter toutes les données
                             </button>
                         </div>
+                        <div class="input-group" style="margin-top: 15px;">
+                            <button class="btn-secondary" onclick="restartTutorial()">
+                                <span class="material-symbols-outlined">school</span>
+                                Relancer le tutoriel
+                            </button>
+                        </div>
                         <p class="hint" style="margin-top: 10px;">
                             <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle;">info</span>
                             Exporte toutes vos tâches, notes, listes, conversations, activités et paramètres en JSON
@@ -1659,6 +1665,13 @@
         <canvas id="kawaii-visualizer-canvas"></canvas>
     </div>
 
+    <!-- Tutorial System Containers -->
+    <div id="tutorialOverlay" class="tutorial-overlay" style="display:none;"></div>
+    <div id="tutorialModal" class="tutorial-modal" style="display:none;"></div>
+    <div id="tutorialArrow" class="tutorial-arrow" style="display:none;">
+        <span class="material-symbols-outlined">arrow_downward</span>
+    </div>
+
     <!-- FullCalendar JS -->
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
     <!-- Leaflet JS for OpenStreetMap -->
@@ -1674,12 +1687,13 @@
     <script src="task-manager.js"></script>
     <script src="alarm-system.js"></script>
     <script src="calendar-integration.js"></script>
-    <script src="sound-system.js"></script>
+    <script src="sound-system.js?v=20251224-1600"></script>
     <script src="tavily-search.js"></script>
     <script src="gps-navigation.js"></script>
     <script src="location-manager.js"></script>
     <script src="weather.js"></script>
-    <script src="action-wrapper.js?v=20251222-1315"></script>
+    <script src="action-wrapper.js?v=20251224-1600"></script>
+    <script src="tutorial-system.js"></script>
     <script src="audio-visualizer-kawaii.js"></script>
     <script src="script-response-handler.js"></script>
     <script src="script.js"></script>

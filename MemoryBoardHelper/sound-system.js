@@ -6,8 +6,21 @@
 class SoundManager {
     constructor() {
         this.enabled = this.loadSetting('soundEnabled', true);
-        this.volume = this.loadSetting('soundVolume', 0.7); // 0.0 - 1.0
+        
+        // Force reset volume if it's the old default (0.7)
+        const savedVolume = this.loadSetting('soundVolume', 0.4);
+        if (savedVolume === 0.7) {
+            console.log('[SoundSystem] Resetting volume from 0.7 to 0.4 (new default)');
+            this.volume = 0.4;
+            this.saveSetting('soundVolume', 0.4);
+        } else {
+            this.volume = savedVolume;
+        }
+        
         this.hapticEnabled = this.loadSetting('hapticEnabled', true);
+        
+        // Flag to temporarily suppress UI sounds (for batch operations)
+        this.suppressUiSounds = false;
         
         // Track action history for variant detection
         this.actionHistory = []; // Max 10 entries
@@ -51,6 +64,16 @@ class SoundManager {
             'undo': 'special-undo.mp3',
             'call': 'special-call.mp3',
             'conversation': 'special-conversation.mp3',
+
+            // Tutorial actions
+            'tutorial_start': 'navigation-goto.mp3',
+            'tutorial_next_step': 'task-update.mp3',
+            'tutorial_skip_step': 'special-undo.mp3',
+            'tutorial_complete': 'task-complete.mp3',
+            'tutorial_reset': 'task-delete.mp3',
+            'tutorial_validate_current': 'task-search.mp3',
+            'tutorial_previous_step': 'special-undo.mp3',
+            'tutorial_goto_step': 'navigation-goto.mp3',
 
             // UI meta actions (reuse existing sounds)
             'ui_open': 'navigation-goto.mp3',
@@ -107,6 +130,12 @@ class SoundManager {
         if (!this.enabled && !force) return;
         if (!this.soundsLoaded) return;
         
+        // Check if UI sounds are temporarily suppressed
+        if (this.suppressUiSounds && actionType.startsWith('ui_')) {
+            console.log(`[SoundSystem] ⏸️  UI sound "${actionType}" suppressed (batch operation)`);
+            return;
+        }
+        
         // Get sound file for this action
         const soundFile = this.soundMap[actionType];
         if (!soundFile) {
@@ -120,23 +149,24 @@ class SoundManager {
         // Record this action in history
         this.recordAction(actionType);
         
+        console.log(`[SoundSystem] 🔊 Action: "${actionType}" → File: "${soundFile}" (${variantLevel})`);
+        
         // Play the sound with modifications
-        this.playSoundWithEffects(soundFile, variantLevel);
+        this.playSoundWithEffects(soundFile, variantLevel, actionType);
         
         // Trigger haptic feedback
         if (this.hapticEnabled) {
             this.triggerHaptic(variantLevel);
         }
-        
-        console.log(`[SoundSystem] Playing: ${actionType} (${variantLevel})`);
     }
     
     /**
      * Play sound with pitch and playback rate modifications
      * @param {string} soundFile - Filename (e.g., 'task-add.mp3')
      * @param {string} variantLevel - 'normal' | 'variant' | 'tired'
+     * @param {string} actionType - Action name for logging
      */
-    playSoundWithEffects(soundFile, variantLevel) {
+    playSoundWithEffects(soundFile, variantLevel, actionType) {
         const soundKey = soundFile.replace('.mp3', '');
         const audio = this.soundLibrary[soundKey];
         
@@ -147,9 +177,9 @@ class SoundManager {
         
         // Clone audio to allow simultaneous playback
         const audioClone = audio.cloneNode();
-        // Add audible randomness: pitch and slight loudness variation
+        // Add subtle randomness: pitch and slight loudness variation
         const randomPitch = Math.random() * 0.5 - 0.25; // -0.25 to +0.25
-        const randomVolume = 0.85 + Math.random() * 0.3; // 0.85 - 1.15
+        const randomVolume = 0.9 + Math.random() * 0.2; // 0.9 - 1.1 (reduced variation)
         audioClone.volume = Math.max(0, Math.min(1, this.volume * randomVolume));
         
         // Calculate final playback rate based on variant
@@ -168,6 +198,14 @@ class SoundManager {
         
         // Clamp playback rate to valid range (0.5 - 2.0)
         audioClone.playbackRate = Math.max(0.5, Math.min(2.0, baseRate));
+        
+        // Detailed logging
+        console.log(`[SoundSystem]   📊 Base volume: ${this.volume.toFixed(3)}`);
+        console.log(`[SoundSystem]   📊 Random multiplier: ${randomVolume.toFixed(3)}`);
+        console.log(`[SoundSystem]   📊 Final volume: ${audioClone.volume.toFixed(3)}`);
+        console.log(`[SoundSystem]   📊 Random pitch: ${randomPitch.toFixed(3)}`);
+        console.log(`[SoundSystem]   📊 Base rate: ${baseRate.toFixed(3)}`);
+        console.log(`[SoundSystem]   📊 Final playback rate: ${audioClone.playbackRate.toFixed(3)}`);
         
         // Play the sound
         audioClone.play().catch(err => {

@@ -4750,3 +4750,403 @@ input:checked + .slider:before {
     }
 }
 
+/* ========================================
+   TUTORIAL SYSTEM
+   ======================================== */
+
+/* Tutorial Overlay */
+.tutorial-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.92);
+    z-index: 999999;
+    backdrop-filter: blur(4px);
+    animation: fadeIn 0.3s ease;
+}
+
+/* Tutorial Modal */
+.tutorial-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--surface-color);
+    border: 2px solid var(--primary-color);
+    box-shadow: 0 10px 50px rgba(0, 0, 0, 0.5);
+    padding: 30px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    z-index: 1000000;
+    animation: fadeIn 0.3s ease;
+}
+
+.tutorial-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.tutorial-modal-header h2 {
+    color: #ffffff;
+    font-size: 22px;
+    margin: 0;
+}
+
+.tutorial-step-counter {
+    color: var(--text-muted);
+    font-size: 14px;
+    background: var(--background-color);
+    padding: 5px 12px;
+    border: 1px solid var(--border-color);
+}
+
+.tutorial-modal-body {
+    margin-bottom: 25px;
+}
+
+.tutorial-message {
+    color: var(--text-color);
+    font-size: 16px;
+    margin-bottom: 15px;
+    line-height: 1.6;
+}
+
+.tutorial-details {
+    background: var(--background-color);
+    border: 1px solid var(--border-color);
+    padding: 15px;
+    margin: 15px 0;
+    color: var(--text-color);
+}
+
+.tutorial-details h3 {
+    color: var(--primary-color);
+    font-size: 16px;
+    margin-bottom: 10px;
+}
+
+.tutorial-details ul {
+    margin: 10px 0;
+    padding-left: 20px;
+}
+
+.tutorial-details li {
+    margin: 8px 0;
+    line-height: 1.5;
+}
+
+.tutorial-details a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.tutorial-details a:hover {
+    text-decoration: underline;
+}
+
+/* Tutorial Forms */
+.tutorial-form {
+    margin: 20px 0;
+}
+
+.tutorial-form label {
+    display: block;
+    color: var(--text-color);
+    font-weight: 500;
+    margin-bottom: 8px;
+}
+
+.tutorial-form input,
+.tutorial-form select {
+    width: 100%;
+    padding: 12px;
+    background: var(--background-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    font-size: 16px;
+    margin-bottom: 15px;
+}
+
+.tutorial-form input:focus,
+.tutorial-form select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.1);
+}
+
+.tutorial-link {
+    display: inline-block;
+    color: var(--primary-color);
+    text-decoration: none;
+    font-size: 14px;
+    margin-top: 10px;
+}
+
+.tutorial-link:hover {
+    text-decoration: underline;
+}
+
+.tutorial-hint {
+    color: var(--text-muted);
+    font-size: 13px;
+    margin-top: -10px;
+    margin-bottom: 15px;
+}
+
+.tutorial-voice-preview {
+    background: var(--background-color);
+    border: 1px solid var(--border-color);
+    padding: 15px;
+    margin-top: 15px;
+    display: none;
+}
+
+.tutorial-test-result {
+    background: var(--background-color);
+    border: 1px solid var(--border-color);
+    padding: 15px;
+    margin-top: 15px;
+    display: none;
+}
+
+.tutorial-success {
+    color: var(--success-color);
+}
+
+.tutorial-error {
+    color: var(--error-color);
+}
+
+/* Tutorial Highlight Container */
+.tutorial-highlight-container {
+    margin-top: 20px;
+    padding: 20px;
+    background: rgba(74, 158, 255, 0.05);
+    border: 2px solid var(--primary-color);
+    border-radius: 8px;
+    box-shadow: 0 0 30px rgba(74, 158, 255, 0.3);
+}
+
+/* Tutorial Voice Interaction Container */
+#tutorialVoiceInteractionContainer {
+    margin-top: 25px;
+    padding: 20px;
+    background: rgba(74, 158, 255, 0.1);
+    border: 1px solid var(--primary-color);
+    border-radius: 8px;
+}
+
+#tutorialVoiceInteractionContainer .voice-interaction {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    border: none;
+}
+
+/* Tutorial Voice Section */
+.tutorial-voice-section {
+    margin-top: 25px;
+    padding: 20px;
+    background: rgba(74, 158, 255, 0.1);
+    border: 1px solid var(--primary-color);
+    border-radius: 8px;
+    text-align: center;
+}
+
+.tutorial-mic-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 15px 30px;
+    background: var(--primary-color);
+    color: #ffffff;
+    border: none;
+    border-radius: 50px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.tutorial-mic-button:hover {
+    background: #6ab0ff;
+    transform: scale(1.05);
+}
+
+.tutorial-mic-button.listening {
+    background: var(--error-color);
+    animation: micPulse 1.5s ease-in-out infinite;
+}
+
+.tutorial-mic-button .material-symbols-outlined {
+    font-size: 24px;
+}
+
+.tutorial-voice-status {
+    margin-top: 15px;
+    font-size: 14px;
+    color: var(--text-color);
+    min-height: 20px;
+}
+
+.tutorial-vumeter {
+    display: none;
+    margin-top: 15px;
+    height: 60px;
+    position: relative;
+}
+
+.tutorial-vumeter.active {
+    display: block;
+}
+
+.tutorial-vumeter-bars {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 3px;
+    height: 100%;
+}
+
+.tutorial-vumeter-bar {
+    width: 4px;
+    background: linear-gradient(to top, var(--success-color), var(--warning-color), var(--error-color));
+    border-radius: 2px;
+    transition: height 0.1s ease;
+    height: 10%;
+}
+
+@keyframes micPulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.7);
+    }
+    50% {
+        box-shadow: 0 0 0 15px rgba(255, 68, 68, 0);
+    }
+}
+
+/* Tutorial Footer */
+.tutorial-modal-footer {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    padding-top: 15px;
+    border-top: 1px solid var(--border-color);
+}
+
+.tutorial-btn {
+    padding: 12px 25px;
+    border: none;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tutorial-btn-primary {
+    background: var(--primary-color);
+    color: #ffffff;
+}
+
+.tutorial-btn-primary:hover {
+    background: #6ab0ff;
+}
+
+.tutorial-btn-primary:disabled {
+    background: var(--text-muted);
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.tutorial-btn-secondary {
+    background: transparent;
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+}
+
+.tutorial-btn-secondary:hover {
+    background: var(--surface-elevated);
+}
+
+/* Tutorial Arrow */
+.tutorial-arrow {
+    position: absolute;
+    z-index: 1000002;
+    color: var(--primary-color);
+    font-size: 40px;
+    animation: tutorialBounce 1s infinite;
+    pointer-events: none;
+}
+
+@keyframes tutorialBounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-15px);
+    }
+}
+
+/* Highlight Element */
+.tutorial-highlight {
+    position: relative !important;
+    z-index: 1000001 !important;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.85),
+                0 0 30px var(--primary-color) !important;
+    border: 3px solid var(--primary-color) !important;
+    animation: tutorialPulse 2s infinite;
+}
+
+@keyframes tutorialPulse {
+    0%, 100% {
+        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.85), 0 0 30px var(--primary-color);
+    }
+    50% {
+        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.85), 0 0 45px var(--primary-color);
+    }
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .tutorial-modal {
+        width: 95%;
+        padding: 20px;
+        max-height: 90vh;
+    }
+    
+    .tutorial-modal-header h2 {
+        font-size: 18px;
+    }
+    
+    .tutorial-message {
+        font-size: 14px;
+    }
+    
+    .tutorial-modal-footer {
+        flex-direction: column;
+    }
+    
+    .tutorial-btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .tutorial-modal {
+        padding: 15px;
+    }
+    
+    .tutorial-btn {
+        padding: 10px 20px;
+        font-size: 14px;
+    }
+}

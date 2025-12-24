@@ -2421,6 +2421,510 @@ registerAction(
     }
 );
 
+// =============================================================================
+// TUTORIAL ACTIONS
+// =============================================================================
+
+// --- START_TUTORIAL ---
+registerAction(
+    'start_tutorial',
+    // Validate
+    async (params, language) => {
+        const completed = localStorage.getItem('tutorialCompleted') === 'true';
+        if (completed) {
+            return { valid: false, message: getLocalizedText('tutorialAlreadyCompleted', language) };
+        }
+        return { valid: true };
+    },
+    // Execute
+    async (params, language) => {
+        try {
+            // Initialize tutorial system if not already
+            if (!window.tutorialSystem) {
+                if (typeof TutorialSystem === 'undefined') {
+                    // Load tutorial-system.js dynamically
+                    const script = document.createElement('script');
+                    script.src = 'tutorial-system.js';
+                    document.head.appendChild(script);
+                    
+                    // Wait for load
+                    await new Promise((resolve, reject) => {
+                        script.onload = resolve;
+                        script.onerror = () => reject(new Error('Failed to load tutorial-system.js'));
+                        setTimeout(() => reject(new Error('Timeout loading tutorial-system.js')), 5000);
+                    });
+                }
+                
+                window.tutorialSystem = new TutorialSystem();
+                window.tutorialSystem.init();
+            }
+            
+            // Reset tutorial state
+            localStorage.removeItem('tutorialCompleted');
+            localStorage.setItem('tutorialCurrentStep', '0');
+            localStorage.setItem('tutorialStartedDate', new Date().toISOString());
+            
+            // Show first step
+            window.tutorialSystem.showStep(0);
+            
+            return new ActionResult(
+                true,
+                'Tutorial started',
+                { stepIndex: 0 }
+            );
+        } catch (error) {
+            console.error('[ActionWrapper] start_tutorial error:', error);
+            return new ActionResult(
+                false,
+                error.message,
+                null,
+                error
+            );
+        }
+    }
+);
+
+// --- TUTORIAL_NEXT_STEP ---
+registerAction(
+    'tutorial_next_step',
+    // Validate
+    async (params, language) => {
+        if (!window.tutorialSystem) {
+            return { valid: false, message: 'Tutorial system not initialized' };
+        }
+        
+        const currentStep = window.tutorialSystem.currentStep;
+        if (currentStep >= window.tutorialSystem.steps.length - 1) {
+            return { valid: false, message: 'Already at last step' };
+        }
+        
+        return { valid: true };
+    },
+    // Execute
+    async (params, language) => {
+        try {
+            const currentStep = window.tutorialSystem.currentStep;
+            const step = window.tutorialSystem.steps[currentStep];
+            
+            // Validate current step if required
+            if (step.requireValidation) {
+                const validation = await executeAction('tutorial_validate_current', {}, language);
+                if (!validation.success) {
+                    return validation; // Return validation failure
+                }
+            }
+            
+            // Check skip condition
+            const nextStepIndex = currentStep + 1;
+            const nextStep = window.tutorialSystem.steps[nextStepIndex];
+            
+            if (nextStep.skipCondition && nextStep.skipCondition()) {
+                // Skip this step, go to next
+                window.tutorialSystem.showStep(nextStepIndex + 1);
+                localStorage.setItem('tutorialCurrentStep', String(nextStepIndex + 1));
+            } else {
+                // Show next step
+                window.tutorialSystem.showStep(nextStepIndex);
+                localStorage.setItem('tutorialCurrentStep', String(nextStepIndex));
+            }
+            
+            return new ActionResult(
+                true,
+                'Moved to next step',
+                { stepIndex: window.tutorialSystem.currentStep }
+            );
+        } catch (error) {
+            console.error('[ActionWrapper] tutorial_next_step error:', error);
+            return new ActionResult(false, error.message, null, error);
+        }
+    }
+);
+
+// --- TUTORIAL_PREVIOUS_STEP ---
+registerAction(
+    'tutorial_previous_step',
+    // Validate
+    async (params, language) => {
+        if (!window.tutorialSystem) {
+            return { valid: false, message: 'Tutorial system not initialized' };
+        }
+        
+        const currentStep = window.tutorialSystem.currentStep;
+        if (currentStep <= 0) {
+            return { valid: false, message: 'Already at first step' };
+        }
+        
+        return { valid: true };
+    },
+    // Execute
+    async (params, language) => {
+        try {
+            const prevStepIndex = window.tutorialSystem.currentStep - 1;
+            window.tutorialSystem.showStep(prevStepIndex);
+            localStorage.setItem('tutorialCurrentStep', String(prevStepIndex));
+            
+            return new ActionResult(
+                true,
+                'Moved to previous step',
+                { stepIndex: prevStepIndex }
+            );
+        } catch (error) {
+            console.error('[ActionWrapper] tutorial_previous_step error:', error);
+            return new ActionResult(false, error.message, null, error);
+        }
+    }
+);
+
+// --- TUTORIAL_GOTO_STEP ---
+registerAction(
+    'tutorial_goto_step',
+    // Validate
+    async (params, language) => {
+        if (!window.tutorialSystem) {
+            return { valid: false, message: 'Tutorial system not initialized' };
+        }
+        
+        const stepIndex = params.stepIndex;
+        if (typeof stepIndex !== 'number' || stepIndex < 0 || stepIndex >= window.tutorialSystem.steps.length) {
+            return { valid: false, message: 'Invalid step index' };
+        }
+        
+        return { valid: true };
+    },
+    // Execute
+    async (params, language) => {
+        try {
+            const stepIndex = params.stepIndex;
+            window.tutorialSystem.showStep(stepIndex);
+            localStorage.setItem('tutorialCurrentStep', String(stepIndex));
+            
+            return new ActionResult(
+                true,
+                `Jumped to step ${stepIndex}`,
+                { stepIndex }
+            );
+        } catch (error) {
+            console.error('[ActionWrapper] tutorial_goto_step error:', error);
+            return new ActionResult(false, error.message, null, error);
+        }
+    }
+);
+
+// --- TUTORIAL_VALIDATE_CURRENT ---
+registerAction(
+    'tutorial_validate_current',
+    // Validate
+    async (params, language) => {
+        if (!window.tutorialSystem) {
+            return { valid: false, message: 'Tutorial system not initialized' };
+        }
+        return { valid: true };
+    },
+    // Execute
+    async (params, language) => {
+        try {
+            const currentStep = window.tutorialSystem.currentStep;
+            const step = window.tutorialSystem.steps[currentStep];
+            
+            // Validate based on step type
+            switch (step.name) {
+                case 'tts_provider':
+                    const providerSelect = document.getElementById('tutorialTtsProvider');
+                    const provider = providerSelect?.value || localStorage.getItem('ttsProvider');
+                    if (!provider) {
+                        return new ActionResult(false, 'Sélectionnez un provider TTS');
+                    }
+                    // Save selection
+                    if (providerSelect?.value) {
+                        localStorage.setItem('ttsProvider', providerSelect.value);
+                        
+                        // Apply TTS provider immediately
+                        if (typeof loadProviderSettings === 'function') {
+                            loadProviderSettings();
+                        }
+                    }
+                    break;
+                    
+                case 'tts_api_key':
+                    const ttsProvider = localStorage.getItem('ttsProvider');
+                    if (ttsProvider === 'browser') {
+                        return new ActionResult(true, 'No API key needed for browser TTS');
+                    }
+                    
+                    const apiKeyInput = document.getElementById('tutorialTtsApiKey');
+                    const apiKeyField = ttsProvider === 'deepgram' ? 'apiKey_deepgramtts' : 'googleTTSApiKey';
+                    const apiKey = (apiKeyInput?.value || localStorage.getItem(apiKeyField) || '').trim();
+                    if (!apiKey || apiKey.length < 20) {
+                        return new ActionResult(false, 'Entrez une clé API valide');
+                    }
+                    // Save key (trimmed)
+                    if (apiKeyInput?.value) {
+                        localStorage.setItem(apiKeyField, apiKey);
+                    }
+                    break;
+                    
+                case 'voice_selection':
+                    const voiceSelect = document.getElementById('tutorialVoiceSelect');
+                    const selectedVoice = voiceSelect?.value;
+                    const settings = JSON.parse(localStorage.getItem('ttsSettings') || '{}');
+                    if (!selectedVoice && !settings.selectedVoice) {
+                        return new ActionResult(false, 'Sélectionnez une voix');
+                    }
+                    // Save voice
+                    if (selectedVoice) {
+                        settings.selectedVoice = selectedVoice;
+                        localStorage.setItem('ttsSettings', JSON.stringify(settings));
+                        
+                        // Apply TTS settings immediately
+                        if (typeof loadProviderSettings === 'function') {
+                            loadProviderSettings();
+                        }
+                        if (typeof updateTTSProviderVoices === 'function') {
+                            updateTTSProviderVoices();
+                        }
+                    }
+                    break;
+                    
+                case 'mistral_api_key':
+                    const mistralKey = document.getElementById('tutorialMistralApiKey')?.value || localStorage.getItem('mistralApiKey');
+                    if (!mistralKey || mistralKey.length < 30) {
+                        return new ActionResult(false, 'Entrez une clé API Mistral valide');
+                    }
+                    
+                    // Save key
+                    localStorage.setItem('mistralApiKey', mistralKey);
+                    break;
+                    
+                case 'default_address':
+                    const address = document.getElementById('tutorialAddressInput')?.value || localStorage.getItem('defaultAddress');
+                    if (!address || address.length < 10) {
+                        return new ActionResult(false, 'Entrez une adresse complète');
+                    }
+                    
+                    // Save address
+                    if (document.getElementById('tutorialAddressInput')?.value) {
+                        localStorage.setItem('defaultAddress', address);
+                    }
+                    break;
+                    
+                case 'emergency_contact':
+                    const name = document.getElementById('tutorialContactName')?.value || localStorage.getItem('emergencyContact1');
+                    const phone = document.getElementById('tutorialContactPhone')?.value || localStorage.getItem('emergencyContact1_phone');
+                    
+                    if (!name || !phone || phone.length < 10) {
+                        return new ActionResult(false, 'Entrez le nom et le numéro du contact');
+                    }
+                    
+                    // Save contact
+                    if (document.getElementById('tutorialContactName')?.value) {
+                        localStorage.setItem('emergencyContact1', name);
+                        localStorage.setItem('emergencyContact1_phone', phone);
+                    }
+                    break;
+                    
+                default:
+                    // No validation needed for demo steps
+                    return new ActionResult(true, 'Validation passed');
+            }
+            
+            return new ActionResult(true, 'Validation passed');
+        } catch (error) {
+            console.error('[ActionWrapper] tutorial_validate_current error:', error);
+            return new ActionResult(false, error.message, null, error);
+        }
+    }
+);
+
+// --- TUTORIAL_TEST_TTS ---
+registerAction(
+    'tutorial_test_tts',
+    // Validate
+    async (params, language) => {
+        const voice = params.voice;
+        if (!voice) {
+            return { valid: false, message: 'Voice parameter required' };
+        }
+        return { valid: true };
+    },
+    // Execute
+    async (params, language) => {
+        try {
+            const testText = {
+                fr: 'Bonjour, je suis votre assistant vocal.',
+                en: 'Hello, I am your voice assistant.',
+                it: 'Ciao, sono il tuo assistente vocale.'
+            };
+            
+            // Test TTS
+            if (typeof synthesizeSpeech === 'function') {
+                await synthesizeSpeech(testText[language] || testText.fr);
+                return new ActionResult(true, 'TTS test successful');
+            } else {
+                return new ActionResult(false, 'synthesizeSpeech function not available');
+            }
+        } catch (error) {
+            console.error('[ActionWrapper] tutorial_test_tts error:', error);
+            return new ActionResult(false, 'TTS test failed: ' + error.message, null, error);
+        }
+    }
+);
+
+// --- TUTORIAL_TEST_MISTRAL ---
+registerAction(
+    'tutorial_test_mistral',
+    // Validate
+    async (params, language) => {
+        const apiKey = params.apiKey;
+        if (!apiKey || apiKey.length < 30) {
+            return { valid: false, message: 'Valid API key required' };
+        }
+        return { valid: true };
+    },
+    // Execute
+    async (params, language) => {
+        try {
+            const apiKey = params.apiKey;
+            
+            // Test API call
+            const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: 'mistral-small-latest',
+                    messages: [{ role: 'user', content: 'test' }],
+                    max_tokens: 10
+                })
+            });
+            
+            if (!response.ok) {
+                return new ActionResult(false, `API error: ${response.status}`);
+            }
+            
+            // Save key if test successful
+            localStorage.setItem('mistralApiKey', apiKey);
+            
+            return new ActionResult(true, 'Mistral API connection successful');
+        } catch (error) {
+            console.error('[ActionWrapper] tutorial_test_mistral error:', error);
+            return new ActionResult(false, 'Mistral test failed: ' + error.message, null, error);
+        }
+    }
+);
+
+// --- TUTORIAL_SKIP_STEP ---
+registerAction(
+    'tutorial_skip_step',
+    // Validate
+    async (params, language) => {
+        if (!window.tutorialSystem) {
+            return { valid: false, message: 'Tutorial system not initialized' };
+        }
+        
+        const currentStep = window.tutorialSystem.steps[window.tutorialSystem.currentStep];
+        if (currentStep.requireValidation) {
+            return { valid: false, message: 'Cannot skip required step' };
+        }
+        
+        return { valid: true };
+    },
+    // Execute
+    async (params, language) => {
+        try {
+            // Mark step as skipped
+            const skippedSteps = JSON.parse(localStorage.getItem('tutorialSkippedSteps') || '[]');
+            skippedSteps.push(window.tutorialSystem.currentStep);
+            localStorage.setItem('tutorialSkippedSteps', JSON.stringify(skippedSteps));
+            
+            // Go to next step (without playing its sound - this action will play skip sound)
+            const nextResult = await executeAction('tutorial_next_step', {}, language);
+            
+            // Return success for skip action (plays skip sound)
+            return new ActionResult(
+                nextResult.success,
+                'Step skipped',
+                nextResult.data
+            );
+        } catch (error) {
+            console.error('[ActionWrapper] tutorial_skip_step error:', error);
+            return new ActionResult(false, error.message, null, error);
+        }
+    }
+);
+
+// --- TUTORIAL_COMPLETE ---
+registerAction(
+    'tutorial_complete',
+    // Validate
+    async (params, language) => {
+        if (!window.tutorialSystem) {
+            return { valid: false, message: 'Tutorial system not initialized' };
+        }
+        
+        const currentStep = window.tutorialSystem.currentStep;
+        const lastStepIndex = window.tutorialSystem.steps.length - 1;
+        
+        if (currentStep !== lastStepIndex) {
+            return { valid: false, message: 'Not at last step' };
+        }
+        
+        return { valid: true };
+    },
+    // Execute
+    async (params, language) => {
+        try {
+            // Mark tutorial as completed
+            localStorage.setItem('tutorialCompleted', 'true');
+            localStorage.setItem('tutorialCompletedDate', new Date().toISOString());
+            
+            // Hide tutorial
+            window.tutorialSystem.hide();
+            
+            // Trigger launch greeting
+            if (typeof checkAndGreet === 'function') {
+                setTimeout(() => checkAndGreet(), 2000);
+            }
+            
+            return new ActionResult(
+                true,
+                'Tutorial completed successfully',
+                { completed: true }
+            );
+        } catch (error) {
+            console.error('[ActionWrapper] tutorial_complete error:', error);
+            return new ActionResult(false, error.message, null, error);
+        }
+    }
+);
+
+// --- TUTORIAL_RESET ---
+registerAction(
+    'tutorial_reset',
+    // Validate
+    async (params, language) => {
+        return { valid: true };
+    },
+    // Execute
+    async (params, language) => {
+        try {
+            // Clear tutorial state
+            localStorage.removeItem('tutorialCompleted');
+            localStorage.removeItem('tutorialCurrentStep');
+            localStorage.removeItem('tutorialCompletedDate');
+            localStorage.removeItem('tutorialStartedDate');
+            localStorage.removeItem('tutorialSkippedSteps');
+            
+            // Start from beginning
+            return await executeAction('start_tutorial', {}, language);
+        } catch (error) {
+            console.error('[ActionWrapper] tutorial_reset error:', error);
+            return new ActionResult(false, error.message, null, error);
+        }
+    }
+);
+
 /**
  * Generate a conversational summary of weather data using Mistral
  * @param {Object} weatherData - Weather data from performWeatherQuery
@@ -2647,6 +3151,11 @@ function ensureSectionExpanded(sectionClass) {
 function closeAllModals() {
     console.log('[ActionWrapper] Closing all existing modals before action execution...');
     
+    // Temporarily suppress UI sounds to avoid sound spam when closing multiple modals
+    if (typeof soundManager !== 'undefined') {
+        soundManager.suppressUiSounds = true;
+    }
+    
     // Close settings modal
     if (typeof closeSettingsModal === 'function') {
         closeSettingsModal();
@@ -2745,6 +3254,11 @@ function closeAllModals() {
         if (typeof activityUI.closeStatsModal === 'function') {
             activityUI.closeStatsModal();
         }
+    }
+    
+    // Re-enable UI sounds
+    if (typeof soundManager !== 'undefined') {
+        soundManager.suppressUiSounds = false;
     }
     
     console.log('[ActionWrapper] Existing modals closed');

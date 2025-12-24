@@ -396,6 +396,21 @@ function playAudioSource(src, playbackId, volume = 0.8) {
             if (playbackId === activeTTSPlaybackId) {
                 activeTTSAudio = null;
             }
+            
+            // Check if in tutorial and auto-advance for demo steps (only after USER interaction)
+            if (window.tutorialSystem && window.tutorialSystem.currentStep >= 8 && !window.tutorialWaitingForTTS && window.tutorialUserInteracted) {
+                const currentStep = window.tutorialSystem.steps[window.tutorialSystem.currentStep];
+                if (currentStep && currentStep.type === 'demo' && !currentStep.requireValidation) {
+                    console.log('[Tutorial] User interaction Audio TTS ended for demo step, auto-advancing in 3s...');
+                    window.tutorialUserInteracted = false; // Reset flag
+                    setTimeout(() => {
+                        if (typeof tutorialNext === 'function') {
+                            tutorialNext();
+                        }
+                    }, 3000);
+                }
+            }
+            
             resolve('audio-complete');
         };
 
@@ -453,6 +468,21 @@ async function playAudioSourceWithVisualizer(src, playbackId, messageType) {
             audio.onended = () => {
                 if (playbackId === activeTTSPlaybackId) {
                     activeTTSAudio = null;
+                }
+                
+                // Check if in tutorial and auto-advance for demo steps (only after USER interaction)
+                if (window.tutorialSystem && window.tutorialSystem.currentStep >= 8 && !window.tutorialWaitingForTTS && window.tutorialUserInteracted) {
+                    const currentStep = window.tutorialSystem.steps[window.tutorialSystem.currentStep];
+                    if (currentStep && currentStep.type === 'demo' && !currentStep.requireValidation) {
+                        console.log('[Tutorial] Visualizer Audio TTS ended for demo step, auto-advancing in 3s...');
+                        window.tutorialUserInteracted = false; // Reset flag
+                        setTimeout(() => {
+                            if (typeof tutorialNext === 'function') {
+                                console.log('[Tutorial] Calling tutorialNext() after TTS completion');
+                                tutorialNext();
+                            }
+                        }, 3000);
+                    }
                 }
                 
                 // Auto-close visualizer after 2 seconds
@@ -815,6 +845,21 @@ async function playBrowserTTS(cleanText, playbackId) {
             if (typeof kawaiiVisualizer !== 'undefined' && kawaiiVisualizer) {
                 kawaiiVisualizer.stopFFTSimulation();
             }
+            
+            // Check if in tutorial and auto-advance for demo steps (only after USER interaction)
+            if (window.tutorialSystem && window.tutorialSystem.currentStep >= 8 && !window.tutorialWaitingForTTS && window.tutorialUserInteracted) {
+                const currentStep = window.tutorialSystem.steps[window.tutorialSystem.currentStep];
+                if (currentStep && currentStep.type === 'demo' && !currentStep.requireValidation) {
+                    console.log('[Tutorial] User interaction TTS ended for demo step, auto-advancing in 3s...');
+                    window.tutorialUserInteracted = false; // Reset flag
+                    setTimeout(() => {
+                        if (typeof tutorialNext === 'function') {
+                            tutorialNext();
+                        }
+                    }, 3000);
+                }
+            }
+            
             resolve('browser-speech-synthesis');
         };
 
@@ -825,8 +870,15 @@ async function playBrowserTTS(cleanText, playbackId) {
             if (typeof kawaiiVisualizer !== 'undefined' && kawaiiVisualizer) {
                 kawaiiVisualizer.stopFFTSimulation();
             }
-            console.error('[TTS] Speech synthesis error:', event);
-            resolve(null);
+            
+            // Ignore "interrupted" errors (normal when switching voices or stopping)
+            if (event.error === 'interrupted') {
+                console.log('[TTS] Speech interrupted (normal behavior)');
+                resolve('interrupted');
+            } else {
+                console.error('[TTS] Speech synthesis error:', event.error);
+                resolve(null);
+            }
         };
 
         speechSynthesis.speak(utterance);
@@ -842,8 +894,13 @@ async function speakWithGoogleTTS(text, languageCode, apiKey, playbackId = null,
     }
 
     const ttsSettings = JSON.parse(localStorage.getItem('ttsSettings') || 'null') || DEFAULT_TTS_SETTINGS;
+    console.log('[Google TTS] API Key length:', apiKey ? apiKey.length : 0);
+    console.log('[Google TTS] API Key first 20 chars:', apiKey ? apiKey.substring(0, 20) : 'NULL');
+    console.log('[Google TTS] API Key last 10 chars:', apiKey ? apiKey.substring(apiKey.length - 10) : 'NULL');
     const url = `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`;
+    console.log('[Google TTS] ttsSettings.voice:', ttsSettings.voice);
     const voiceInfo = getVoiceName(languageCode, ttsSettings.voice);
+    console.log('[Google TTS] voiceInfo:', voiceInfo);
     
     // Detect if text contains SSML tags
     const isSSML = text.includes('<speak>') || text.includes('<emphasis>') || text.includes('<break');
@@ -867,6 +924,9 @@ async function speakWithGoogleTTS(text, languageCode, apiKey, playbackId = null,
             volumeGainDb: ttsSettings.volume
         }
     };
+    
+    console.log('[Google TTS] Request body:', JSON.stringify(requestBody, null, 2));
+    
     try {
         const response = await fetch(url, {
             method: 'POST',
@@ -874,7 +934,13 @@ async function speakWithGoogleTTS(text, languageCode, apiKey, playbackId = null,
             body: JSON.stringify(requestBody)
         });
         if (!response.ok) {
-            throw new Error(`TTS API error: ${response.status}`);
+            const errorData = await response.json().catch(() => null);
+            console.error('[Google TTS] API error response:', errorData);
+            if (errorData && errorData.error) {
+                console.error('[Google TTS] Error details:', errorData.error.message);
+                console.error('[Google TTS] Error code:', errorData.error.code);
+            }
+            throw new Error(`TTS API error: ${response.status} - ${errorData?.error?.message || 'Unknown error'}`);
         }
         const data = await response.json();
         const audioContent = data.audioContent;
@@ -2401,38 +2467,54 @@ document.addEventListener('DOMContentLoaded', async function() {
     
     console.log('[App] Initialization complete');
     
-    // Show launch greeting after a short delay
-    // Wait for CKGenericApp API keys if in WebView, otherwise show immediately
-    const isInCKGenericApp = typeof window.CKAndroid !== 'undefined';
+    // Check if tutorial has been completed
+    const tutorialCompleted = localStorage.getItem('tutorialCompleted') === 'true';
     
-    if (isInCKGenericApp) {
-        console.log('[App] Detected CKGenericApp environment - waiting for API keys before greeting');
-        // Wait for API keys event or timeout after 5 seconds
-        let greetingShown = false;
-        
-        const showGreetingOnce = () => {
-            if (!greetingShown) {
-                greetingShown = true;
-                launchGreeting();
+    if (!tutorialCompleted) {
+        console.log('[App] Tutorial not completed - starting tutorial instead of greeting');
+        // Skip launch greeting and start tutorial after a short delay
+        setTimeout(async () => {
+            if (typeof executeAction === 'function') {
+                const lang = typeof getCurrentLanguage === 'function' ? getCurrentLanguage() : 'fr';
+                await executeAction('start_tutorial', {}, lang);
+            } else {
+                console.error('[App] executeAction not available for tutorial');
             }
-        };
-        
-        // Listen for keys ready event
-        window.addEventListener('ckgenericapp_keys_ready', () => {
-            console.log('[App] API keys ready - showing greeting');
-            setTimeout(showGreetingOnce, 500);
-        }, { once: true });
-        
-        // Fallback timeout in case event doesn't fire
-        setTimeout(() => {
-            console.log('[App] Greeting timeout reached - showing anyway');
-            showGreetingOnce();
-        }, 5000);
+        }, 1000);
     } else {
-        console.log('[App] Regular browser environment - showing greeting normally');
-        setTimeout(() => {
-            launchGreeting();
-        }, 2000);
+        // Show launch greeting after a short delay
+        // Wait for CKGenericApp API keys if in WebView, otherwise show immediately
+        const isInCKGenericApp = typeof window.CKAndroid !== 'undefined';
+        
+        if (isInCKGenericApp) {
+            console.log('[App] Detected CKGenericApp environment - waiting for API keys before greeting');
+            // Wait for API keys event or timeout after 5 seconds
+            let greetingShown = false;
+            
+            const showGreetingOnce = () => {
+                if (!greetingShown) {
+                    greetingShown = true;
+                    launchGreeting();
+                }
+            };
+            
+            // Listen for keys ready event
+            window.addEventListener('ckgenericapp_keys_ready', () => {
+                console.log('[App] API keys ready - showing greeting');
+                setTimeout(showGreetingOnce, 500);
+            }, { once: true });
+            
+            // Fallback timeout in case event doesn't fire
+            setTimeout(() => {
+                console.log('[App] Greeting timeout reached - showing anyway');
+                showGreetingOnce();
+            }, 5000);
+        } else {
+            console.log('[App] Regular browser environment - showing greeting normally');
+            setTimeout(() => {
+                launchGreeting();
+            }, 2000);
+        }
     }
 });
 
@@ -2968,6 +3050,12 @@ async function processSpeechTranscript(transcript) {
         // Navigation effectuée, on bloque le reste
         console.log('[App] Navigation vocale exécutée:', transcript);
         return;
+    }
+    
+    // Set flag for tutorial auto-advancement (user just interacted)
+    if (window.tutorialSystem && window.tutorialSystem.currentStep >= 8) {
+        window.tutorialUserInteracted = true;
+        console.log('[Tutorial] User interaction detected, set tutorialUserInteracted flag');
     }
     
     // Sinon, traitement normal (Mistral, ajout de tâche, etc.)
@@ -3875,6 +3963,8 @@ async function synthesizeSpeech(text) {
         const lang = getCurrentLanguage();
         const languageCode = lang === 'fr' ? 'fr-FR' : lang === 'it' ? 'it-IT' : 'en-US';
         const apiKey = getApiKey('google_tts', 'googleTTSApiKey');
+        console.log('[TTS] Google TTS check - apiKey:', apiKey ? `${apiKey.substring(0, 10)}...` : 'NULL');
+        console.log('[TTS] localStorage googleTTSApiKey:', localStorage.getItem('googleTTSApiKey') ? 'EXISTS' : 'NULL');
         if (apiKey) {
             try {
                 const result = await speakWithGoogleTTSWithVisualizer(cleanText, languageCode, apiKey, playbackId, messageType);
@@ -6663,6 +6753,23 @@ function saveSettings() {
     loadSoundSystemSettings();
 }
 
+// Restart tutorial
+async function restartTutorial() {
+    if (confirm('Voulez-vous vraiment relancer le tutoriel ? La page va se recharger.')) {
+        // Reset tutorial state
+        localStorage.removeItem('tutorialCompleted');
+        localStorage.removeItem('tutorialCurrentStep');
+        localStorage.removeItem('tutorialStartedDate');
+        localStorage.removeItem('tutorialSkippedSteps');
+        
+        // Close settings modal
+        closeSettingsModal();
+        
+        // Reload page to start tutorial
+        location.reload();
+    }
+}
+
 function resetAllSettings() {
     if (!confirm('⚠️ ATTENTION ⚠️\n\nCette action va :\n- Réinitialiser tous les paramètres\n- Supprimer toutes les clés API\n- Effacer toutes les tâches\n- Effacer l\'historique des conversations\n- Supprimer les contacts d\'urgence\n- Réinitialiser tous les réglages audio\n\nCette action est IRRÉVERSIBLE.\n\nÊtes-vous absolument sûr de vouloir continuer ?')) {
         return;
@@ -7666,4 +7773,15 @@ window.toggleActivityTracking = toggleActivityTracking;
 window.saveDailyStepsGoal = saveDailyStepsGoal;
 window.resetActivity = resetActivity;
 window.stopActivity = stopActivity;
+
+// Tutorial functions
+window.resetTutorial = async function() {
+    if (typeof executeAction === 'function') {
+        const lang = typeof getCurrentLanguage === 'function' ? getCurrentLanguage() : 'fr';
+        await executeAction('tutorial_reset', {}, lang);
+    } else {
+        console.error('[App] executeAction not available for resetTutorial');
+    }
+};
+window.restartTutorial = restartTutorial;
 

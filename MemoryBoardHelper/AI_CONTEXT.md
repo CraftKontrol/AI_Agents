@@ -1232,7 +1232,313 @@ UI updates real-time
 
 ---
 
-## 🐛 Debug
+## � Tutorial System
+
+**Module:** `tutorial-system.js`
+
+**Purpose:** Interactive onboarding system with visual highlights, vocal guidance, and step-by-step configuration validation
+
+### Architecture
+
+**Files:**
+- `tutorial-system.js` - TutorialSystem class, 20-step configuration, global handlers
+- `action-wrapper.js` - 10 tutorial actions (start, next, previous, goto, validate, test_tts, test_mistral, skip, complete, reset)
+- `script.js` - Startup logic (check tutorialCompleted, skip greeting if false, start tutorial)
+- `test-app.js` - 8 automated tests for tutorial flow
+- `index.html` - Tutorial containers (#tutorialOverlay, #tutorialModal, #tutorialArrow)
+- `style.css` - Complete tutorial styling (~300 lines)
+
+### 20-Step Tutorial Flow
+
+**Phase 1: Welcome & TTS Setup (Steps 0-5)**
+- Step 0: Welcome message
+- Step 1: TTS provider selection (browser, google, deepgram)
+- Step 2: TTS API key (skipped if browser selected via skipCondition)
+- Step 3: Voice selection dropdown
+- Step 4: Test voice button → tutorial_test_tts
+- Step 5: Confirm TTS working
+
+**Phase 2: Mistral AI (Steps 6-7)**
+- Step 6: Mistral API key input
+- Step 7: Test Mistral button → tutorial_test_mistral
+
+**Phase 3: Core Settings (Steps 8-10)**
+- Step 8: Home address configuration (highlights #addressInput)
+- Step 9: Emergency contacts setup (highlights .contacts-section)
+- Step 10: Confirm settings
+
+**Phase 4: Feature Demos (Steps 11-18)**
+- Step 11: Voice recognition demo
+- Step 12: Calendar features
+- Step 13: Task creation
+- Step 14: Notes & lists
+- Step 15: Weather feature
+- Step 16: Web search
+- Step 17: GPS navigation
+- Step 18: Activity tracking
+
+**Phase 5: Completion (Step 19)**
+- Step 19: Tutorial complete, enable greeting
+
+### Tutorial Actions (in action-wrapper.js)
+
+```javascript
+// Registered in action-wrapper.js after WEATHER ACTIONS
+
+'start_tutorial': {
+    validator: (params) => true, // Always valid
+    executor: async (params) => {
+        // Load tutorial-system.js dynamically if needed
+        // Initialize TutorialSystem
+        // Show step 0
+        return { success: true, step: 0 };
+    },
+    verifier: (result) => result.success === true
+}
+
+'tutorial_next_step': {
+    validator: (params) => true,
+    executor: async (params) => {
+        // Validate current step via tutorial_validate_current
+        // Check skipCondition (e.g., TTS API key for browser TTS)
+        // Advance to next step
+        // Update localStorage.tutorialCurrentStep
+        return { success: true, currentStep: N };
+    },
+    verifier: (result) => result.success === true
+}
+
+'tutorial_previous_step': {
+    validator: (params) => true,
+    executor: async (params) => {
+        // Go back to previous step
+        return { success: true, currentStep: N };
+    },
+    verifier: (result) => result.success === true
+}
+
+'tutorial_goto_step': {
+    validator: (params) => params.stepIndex !== undefined,
+    executor: async (params) => {
+        // Jump to specific step index
+        return { success: true, currentStep: params.stepIndex };
+    },
+    verifier: (result) => result.success === true
+}
+
+'tutorial_validate_current': {
+    validator: (params) => true,
+    executor: async (params) => {
+        // Switch statement based on current step
+        // Step 1: Check ttsSettings.provider exists
+        // Step 3: Check ttsSettings.selectedVoice exists
+        // Step 6: Check mistralSettings.apiKey exists
+        // Step 8: Check localStorage.defaultAddress exists
+        // Step 9: Check emergencyContacts array.length > 0
+        // Others: Always valid
+        return { success: true/false, message: "Validation message" };
+    },
+    verifier: (result) => result.success === true
+}
+
+'tutorial_test_tts': {
+    validator: (params) => true,
+    executor: async (params) => {
+        // Use synthesizeSpeech() from script.js
+        // Test phrase: "Bonjour, je suis votre assistant vocal" (fr/en/it)
+        return { success: true, message: "TTS test successful" };
+    },
+    verifier: (result) => result.success === true
+}
+
+'tutorial_test_mistral': {
+    validator: (params) => true,
+    executor: async (params) => {
+        // Make test API call to Mistral endpoint
+        // Use user's API key from form or localStorage
+        // Save key if successful
+        return { success: true/false, message: "Mistral test result" };
+    },
+    verifier: (result) => result.success === true
+}
+
+'tutorial_skip_step': {
+    validator: (params) => true,
+    executor: async (params) => {
+        // Mark step as skipped in localStorage
+        // Advance to next step
+        return { success: true, skippedStep: N };
+    },
+    verifier: (result) => result.success === true
+}
+
+'tutorial_complete': {
+    validator: (params) => true,
+    executor: async (params) => {
+        // Set localStorage.tutorialCompleted = 'true'
+        // Clear tutorialCurrentStep
+        // Trigger checkAndGreet() to enable greeting
+        return { success: true };
+    },
+    verifier: (result) => result.success === true
+}
+
+'tutorial_reset': {
+    validator: (params) => true,
+    executor: async (params) => {
+        // Clear tutorialCompleted
+        // Clear tutorialCurrentStep
+        // Clear tutorialStartedDate
+        // Clear tutorialSkippedSteps
+        return { success: true };
+    },
+    verifier: (result) => result.success === true
+}
+```
+
+### TutorialSystem Class
+
+**Constructor:**
+```javascript
+new TutorialSystem();
+// Properties:
+// - currentStep: 0
+// - overlayEl, modalEl, arrowEl, contentEl, footerEl (DOM references)
+```
+
+**Methods:**
+```javascript
+start() // Show overlay, load step 0
+showStep(stepIndex) // Render step, highlight element, position arrow, update modal
+nextStep() // Validate → advance
+previousStep() // Go back
+skipStep() // Mark skipped, advance
+highlightElement(selector) // Add .tutorial-highlight class, remove on next step
+positionArrow(selector) // Calculate arrow position, animate bounce
+updateModal(stepConfig) // Render modal content (title, description, form, buttons)
+renderForm(formType, formData) // Dynamic form rendering (TTS provider, API key, voice select, address, contacts)
+close() // Hide overlay, cleanup highlights
+```
+
+### Storage Keys
+
+- `tutorialCompleted` - "true" when tutorial finished
+- `tutorialCurrentStep` - Integer (0-19), current step index
+- `tutorialStartedDate` - ISO timestamp of first start
+- `tutorialSkippedSteps` - JSON array of skipped step indices
+
+### UI Components
+
+**Overlay:** Full-screen rgba(0,0,0,0.92) backdrop, z-index: 10000
+**Modal:** Centered fixed, 600px max-width, scrollable, z-index: 10001
+**Highlight:** Box-shadow spotlight (0 0 0 9999px rgba(0,0,0,0.8)), pulse animation, z-index: 10002
+**Arrow:** Animated down arrow (Material Symbol), bounce keyframes, z-index: 10003
+
+**Animations:**
+- `@keyframes tutorialPulse` - 2s infinite glow (0-20px shadowBlur)
+- `@keyframes tutorialBounce` - 1s infinite up/down (10px translateY)
+
+### Startup Integration (script.js)
+
+```javascript
+document.addEventListener('DOMContentLoaded', async function() {
+    // ... database initialization ...
+    
+    const tutorialCompleted = localStorage.getItem('tutorialCompleted') === 'true';
+    
+    if (!tutorialCompleted) {
+        console.log('[App] Tutorial not completed - starting tutorial instead of greeting');
+        setTimeout(async () => {
+            if (typeof executeAction === 'function') {
+                await executeAction('start_tutorial', {}, currentLanguage);
+            }
+        }, 1000);
+    } else {
+        // Normal greeting flow
+    }
+});
+```
+
+### Test Coverage (test-app.js)
+
+8 automated tests:
+- `vocal_start_tutorial` - Launch tutorial, verify modal visible
+- `vocal_tutorial_next` - Navigate to next step
+- `vocal_tutorial_validate_tts` - TTS validation with fake settings
+- `vocal_tutorial_test_tts` - Voice test
+- `vocal_tutorial_validate_mistral` - Mistral validation (graceful failure expected with test key)
+- `vocal_tutorial_skip_step` - Skip functionality
+- `vocal_tutorial_complete` - Mark as completed
+- `vocal_tutorial_reset` - Reset tutorial state
+
+### Internationalization
+
+All 20 steps have content in 3 languages (fr, en, it) in TUTORIAL_STEPS array:
+```javascript
+TUTORIAL_STEPS = [
+    {
+        title: { fr: "Bienvenue !", en: "Welcome!", it: "Benvenuto!" },
+        description: { fr: "...", en: "...", it: "..." },
+        highlight: null,
+        arrowPosition: null,
+        form: null,
+        buttons: { ... },
+        validator: null,
+        skipCondition: null
+    },
+    // ... 19 more steps
+];
+```
+
+### Global Functions (in script.js exports)
+
+```javascript
+window.resetTutorial = async function() {
+    if (typeof executeAction === 'function') {
+        await executeAction('tutorial_reset', {}, currentLanguage);
+    }
+};
+```
+
+### User Flow
+
+```
+App Launch
+    ↓
+Check localStorage.tutorialCompleted
+    ↓
+If false → Skip greeting → executeAction('start_tutorial')
+    ↓
+Show step 0 (welcome)
+    ↓
+User clicks "Suivant" → tutorial_next_step
+    ↓
+Step 1: Select TTS provider
+    ↓
+Step 2: API key (or skip if browser TTS)
+    ↓
+Step 3: Choose voice
+    ↓
+Step 4: Test voice → tutorial_test_tts
+    ↓
+Step 5: Confirm working
+    ↓
+... (Mistral, settings, feature demos) ...
+    ↓
+Step 19: Tutorial complete
+    ↓
+User clicks "Terminer" → tutorial_complete
+    ↓
+Set tutorialCompleted = true
+    ↓
+Trigger checkAndGreet() → Welcome greeting plays
+    ↓
+Normal app usage
+```
+
+---
+
+## �🐛 Debug
 
 **Console:** `[Storage]`, `[TaskManager]`, `[AlarmSystem]`, `[Calendar]`, `[Tavily]`, `[GPS]`, `[Weather]`, `[ActivityTracker]`, `[ActivityStats]`, `[ActivityUI]` prefixes
 **Inspect:** `getAllFromStore(STORES.TASKS)`, `localStorage.getItem('mistralApiKey')`, `localStorage.getItem('apiKey_tavily')`, `localStorage.getItem('apiKey_openweathermap')`, `getAllActivities()`, `activityTracker.getStatus()`

@@ -498,6 +498,10 @@
                             <span class="material-symbols-outlined" style="font-size: 16px;">chat</span>
                             Conversation
                         </button>
+                        <button class="btn btn-secondary" onclick="runTestsByCategory('tutorial')" style="font-size: 12px; padding: 8px;">
+                            <span class="material-symbols-outlined" style="font-size: 16px;">school</span>
+                            Tutoriel
+                        </button>
                     </div>
                 </div>
                 
@@ -876,6 +880,27 @@
                         <button class="test-button" onclick="runTest('vocal_conversation_mood', this)">Vocal: Conversation - Humeur</button>
                         <button class="test-button" onclick="runTest('vocal_conversation_help', this)">Vocal: Conversation - Aide</button>
                         <button class="test-button" onclick="runTest('vocal_conversation_facts', this)">Vocal: Conversation - Faits</button>
+                    </div>
+                </div>
+
+                <!-- Tutorial Tests -->
+                <div class="test-category">
+                    <div class="category-header" onclick="toggleSection('tutorialTests')">
+                        <span class="category-title">
+                            <span class="material-symbols-outlined">school</span>
+                            Système Tutoriel (8)
+                        </span>
+                        <span class="material-symbols-outlined">expand_less</span>
+                    </div>
+                    <div class="category-content" id="tutorialTests">
+                        <button class="test-button" onclick="runTest('vocal_start_tutorial', this)">Démarrer tutoriel</button>
+                        <button class="test-button" onclick="runTest('vocal_tutorial_next', this)">Tutoriel suivant</button>
+                        <button class="test-button" onclick="runTest('vocal_tutorial_validate_tts', this)">Validation TTS tutoriel</button>
+                        <button class="test-button" onclick="runTest('vocal_tutorial_test_tts', this)">Test TTS tutoriel</button>
+                        <button class="test-button" onclick="runTest('vocal_tutorial_validate_mistral', this)">Validation Mistral tutoriel</button>
+                        <button class="test-button" onclick="runTest('vocal_tutorial_skip_step', this)">Passer étape tutoriel</button>
+                        <button class="test-button" onclick="runTest('vocal_tutorial_complete', this)">Compléter tutoriel</button>
+                        <button class="test-button" onclick="runTest('vocal_tutorial_reset', this)">Réinitialiser tutoriel</button>
                     </div>
                 </div>
             </div>
