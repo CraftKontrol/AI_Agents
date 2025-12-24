@@ -1449,8 +1449,14 @@ registerAction(
             return new ActionResult(true, message, { section, selector });
         }
         
-        // For other sections, scroll to them
+        // For other sections, ensure they are expanded first, then scroll to them
         if (targetElement) {
+            // Expand the section if it's collapsible
+            ensureSectionExpanded(selector);
+            
+            // Small delay to allow expansion animation
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
             targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
             
             const message = params.response || getLocalizedResponse('navigationSuccess', language);
@@ -2580,6 +2586,58 @@ async function generateSearchSummary(searchData, query, language) {
 // =============================================================================
 // HELPER FUNCTIONS
 // =============================================================================
+
+/**
+ * Ensure a section is expanded/unfolded before navigating to it
+ * @param {string} sectionClass - CSS class of the section (e.g., 'activity-section')
+ */
+function ensureSectionExpanded(sectionClass) {
+    const section = document.querySelector(sectionClass);
+    if (!section) {
+        console.log(`[ActionWrapper] Section ${sectionClass} not found`);
+        return;
+    }
+    
+    // Find the section content within this section
+    const sectionContent = section.querySelector('.section-content');
+    if (!sectionContent) {
+        console.log(`[ActionWrapper] No section-content found in ${sectionClass}`);
+        return;
+    }
+    
+    // Check if section is currently hidden
+    const isHidden = sectionContent.style.display === 'none' || 
+                     window.getComputedStyle(sectionContent).display === 'none';
+    
+    if (isHidden) {
+        console.log(`[ActionWrapper] Expanding section ${sectionClass}`);
+        sectionContent.style.display = 'block';
+        
+        // Update toggle button icon if exists
+        const toggleBtn = section.querySelector('.section-toggle');
+        if (toggleBtn) {
+            const icon = toggleBtn.querySelector('.material-symbols-outlined');
+            if (icon) {
+                icon.textContent = 'expand_less';
+            }
+        }
+        
+        // Play UI sound if available
+        if (typeof playUiSound === 'function') {
+            playUiSound('ui_toggle_on');
+        }
+        
+        // Special handling for activity section subtitle
+        if (sectionClass === '.activity-section') {
+            const subtitle = document.getElementById('activitySubtitle');
+            if (subtitle) {
+                subtitle.style.display = 'block';
+            }
+        }
+    } else {
+        console.log(`[ActionWrapper] Section ${sectionClass} already expanded`);
+    }
+}
 
 /**
  * Close all open modals
