@@ -18,6 +18,20 @@ class CKWebViewClient(private val context: Context) : WebViewClient() {
     override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
         val url = request?.url?.toString() ?: return false
         
+        // Handle special URL schemes (tel:, mailto:, sms:, etc.)
+        if (url.startsWith("tel:") || url.startsWith("mailto:") || url.startsWith("sms:")) {
+            try {
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(intent)
+                Timber.d("Opening special URL scheme: $url")
+                return true
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to open URL scheme: $url")
+                return false
+            }
+        }
+        
         // Check if this is a request that should open in external browser
         // This handles target="_blank" links and external URLs
         val isMainFrame = request.isForMainFrame

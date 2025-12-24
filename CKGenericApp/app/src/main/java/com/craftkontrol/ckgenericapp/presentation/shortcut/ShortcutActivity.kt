@@ -419,6 +419,20 @@ private class ApiKeyInjectingWebViewClient(
         val url = request?.url?.toString() ?: return false
         val context = view?.context ?: return false
         
+        // Handle special URL schemes (tel:, mailto:, sms:, etc.)
+        if (url.startsWith("tel:") || url.startsWith("mailto:") || url.startsWith("sms:")) {
+            try {
+                val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(intent)
+                Timber.d("Opening special URL scheme: $url")
+                return true
+            } catch (e: Exception) {
+                Timber.e(e, "Failed to open URL scheme: $url")
+                return false
+            }
+        }
+        
         // Check if this is a request that should open in external browser
         // This handles target="_blank" links and new window requests
         val isMainFrame = request.isForMainFrame

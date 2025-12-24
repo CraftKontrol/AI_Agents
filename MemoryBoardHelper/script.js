@@ -2272,6 +2272,19 @@ function updateActivitySubtitle() {
 document.addEventListener('DOMContentLoaded', async function() {
     console.log('[App] Initializing Memory Board Helper...');
     
+    // Debug: Check if CKAndroid bridge is available
+    if (typeof CKAndroid !== 'undefined') {
+        console.log('[App] ✅ CKAndroid bridge detected');
+        console.log('[App] CKAndroid methods:', Object.keys(CKAndroid));
+        if (typeof CKAndroid.makeCall === 'function') {
+            console.log('[App] ✅ makeCall method available');
+        } else {
+            console.log('[App] ⚠️ makeCall method NOT available');
+        }
+    } else {
+        console.log('[App] ⚠️ CKAndroid bridge NOT detected (running in web browser)');
+    }
+    
     // Wait for database to be ready (initialized by storage.js)
     try {
         await window.dbReady;
@@ -6292,18 +6305,20 @@ function callEmergencyContact(contactNumber) {
     
     // Use CKGenericApp bridge if available (Android WebView)
     if (typeof CKAndroid !== 'undefined' && typeof CKAndroid.makeCall === 'function') {
+        console.log('[Emergency] Using CKAndroid.makeCall for:', phone);
         CKAndroid.makeCall(phone);
-    } else if (typeof CKGenericApp !== 'undefined' && typeof CKGenericApp.makeCall === 'function') {
-        CKGenericApp.makeCall(phone);
-    } else {
-        // Fallback for web browsers - create temporary link
-        const a = document.createElement('a');
-        a.href = `tel:${phone}`;
-        a.style.display = 'none';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        return;
     }
+    
+    if (typeof CKGenericApp !== 'undefined' && typeof CKGenericApp.makeCall === 'function') {
+        console.log('[Emergency] Using CKGenericApp.makeCall for:', phone);
+        CKGenericApp.makeCall(phone);
+        return;
+    }
+    
+    // Fallback: Use window.location only in web browsers (not WebView)
+    console.log('[Emergency] Using window.location fallback for:', phone);
+    window.location.href = `tel:${phone}`;
 }
 
 // Ouvre la modale de configuration des contacts d'urgence
