@@ -73,8 +73,15 @@ class ActivityTracker {
         // Start midnight check
         this.startMidnightCheck();
         
-        // Auto-start tracking
-        await this.startTracking();
+        // Try to restore tracking state from localStorage
+        const savedState = this.loadTrackingState();
+        if (savedState && savedState.isTracking && savedState.date === this.currentDate) {
+            console.log('[ActivityTracker] Restoring tracking state from before reload...');
+            await this.restoreTracking(savedState);
+        } else {
+            // Auto-start tracking only if not restored
+            await this.startTracking();
+        }
         
         console.log('[ActivityTracker] Initialization complete');
     }
@@ -97,6 +104,81 @@ class ActivityTracker {
         this.settings = { ...this.settings, ...newSettings };
         localStorage.setItem('activitySettings', JSON.stringify(this.settings));
         console.log('[ActivityTracker] Settings saved:', this.settings);
+    }
+    
+    // Save tracking state to localStorage
+    saveTrackingState() {
+        if (!this.isTracking || !this.currentPath) return;
+        
+        const state = {
+            isTracking: this.isTracking,
+            date: this.currentDate,
+            currentPath: this.currentPath,
+            stepCount: this.stepCount,
+            gpsPath: this.gpsPath,
+            elevationGain: this.elevationGain,
+            elevationLoss: this.elevationLoss,
+            lastAltitude: this.lastAltitude,
+            savedAt: Date.now()
+        };
+        
+        try {
+            localStorage.setItem('activityTrackingState', JSON.stringify(state));
+            console.log('[ActivityTracker] State saved to localStorage');
+        } catch (error) {
+            console.error('[ActivityTracker] Error saving tracking state:', error);
+        }
+    }
+    
+    // Load tracking state from localStorage
+    loadTrackingState() {
+        try {
+            const stored = localStorage.getItem('activityTrackingState');
+            if (!stored) return null;
+            
+            const state = JSON.parse(stored);
+            
+            // Check if state is not too old (max 12 hours)
+            const age = Date.now() - state.savedAt;
+            if (age > 12 * 60 * 60 * 1000) {
+                console.log('[ActivityTracker] Saved state is too old, ignoring');
+                localStorage.removeItem('activityTrackingState');
+                return null;
+            }
+            
+            return state;
+        } catch (error) {
+            console.error('[ActivityTracker] Error loading tracking state:', error);
+            return null;
+        }
+    }
+    
+    // Restore tracking from saved state
+    async restoreTracking(state) {
+        console.log('[ActivityTracker] Restoring tracking state...');
+        
+        this.isTracking = true;
+        this.currentPath = state.currentPath;
+        this.stepCount = state.stepCount || 0;
+        this.gpsPath = state.gpsPath || [];
+        this.elevationGain = state.elevationGain || 0;
+        this.elevationLoss = state.elevationLoss || 0;
+        this.lastAltitude = state.lastAltitude || null;
+        
+        // Restart GPS and sensors
+        if (this.sensorsAvailable.gps) {
+            this.startGPSTracking();
+        }
+        this.startSensorMonitoring();
+        this.startUpdateLoop();
+        
+        // Update UI
+        this.updateCKGenericAppSteps(this.stepCount);
+        window.dispatchEvent(new CustomEvent('activityRestored', {
+            detail: { startTime: this.currentPath.startTime, steps: this.stepCount }
+        }));
+        
+        console.log(`[ActivityTracker] Tracking restored - ${this.stepCount} steps, ${this.gpsPath.length} GPS points`);
     }
     
     // Load today's paths from IndexedDB
@@ -226,6 +308,10 @@ class ActivityTracker {
         
         // Clear current path
         this.currentPath = null;
+        
+        // Clear saved state from localStorage
+        localStorage.removeItem('activityTrackingState');
+        console.log('[ActivityTracker] Cleared saved tracking state');
         
         // Update CKGenericApp - tracking stopped
         this.updateCKGenericAppSteps(0);
@@ -521,6 +607,9 @@ class ActivityTracker {
                 
                 // Update CKGenericApp notification if available
                 this.updateCKGenericAppSteps(steps);
+                
+                // Save tracking state periodically
+                this.saveTrackingState();
             }
         }, 10000); // 10 seconds (reduced from 5s for lower CPU load)
     }

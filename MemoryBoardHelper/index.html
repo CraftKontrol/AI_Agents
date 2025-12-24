@@ -23,22 +23,24 @@
             <h1 id="appTitle">Memory Board Helper</h1>
             <p id="appSubtitle">Votre assistant mémoire intelligent</p>
             </div>
-            <button class="icon-btn" onclick="openSettingsModal()" title="Paramètres">
-                <span class="material-symbols-outlined">settings</span>
-            </button>
         </div>
         <div class="header-controls">
-            
-            <div class="mode-toggle">
-                <button id="modeToggleBtn" class="mode-btn" onclick="toggleListeningMode()">
-                    <span class="material-symbols-outlined" id="modeIcon">mic_off</span>
-                    <span id="modeText">Mode Manuel</span>
-                </button>
+            <div class="voice-status-compact" id="voiceStatusCompact">
+                <span class="material-symbols-outlined" id="voiceStatusIconCompact">mic_off</span>
+                <span id="voiceStatusTextCompact" class="status-text">Inactif</span>
             </div>
-            <div class="emergency-quick-access">
-                <button class="emergency-btn" onclick="toggleEmergencyPanel()">
+            
+            <div class="header-buttons">
+                <button class="icon-btn" onclick="toggleListeningMode()" title="Basculer mode vocal" id="modeToggleBtnCompact">
+                    <span class="material-symbols-outlined" id="modeIconCompact">mic_off</span>
+                </button>
+                
+                <button class="icon-btn" onclick="openSettingsModal()" title="Paramètres">
+                    <span class="material-symbols-outlined">settings</span>
+                </button>
+                
+                <button class="icon-btn icon-btn-emergency" onclick="toggleEmergencyPanel()" title="Urgence">
                     <span class="material-symbols-outlined">local_hospital</span>
-                    <span id="emergencyBtnText">Urgence</span>
                 </button>
             </div>
         </div>
@@ -351,19 +353,13 @@
                 </button>
             </h2>
             <div id="voiceInteractionContent" class="section-content">
-            <div class="voice-status">
-                <div class="status-indicator" id="voiceStatus">
-                    <span class="material-symbols-outlined" id="voiceStatusIcon">mic_off</span>
-                    <span id="voiceStatusText">Mode vocal désactivé</span>
-                </div>
-                <div class="listening-indicator" id="listeningIndicator" style="display: none;">
-                    <div class="pulse"></div>
-                    <span id="listeningText">Écoute en cours...</span>
-                </div>
-                <div class="wake-word-indicator" id="wakeWordIndicator" style="display: none;">
-                    <span class="material-symbols-outlined">chat</span>
-                    <span id="wakeWordIndicatorText">Je vous écoute...</span>
-                </div>
+            <div class="listening-indicator" id="listeningIndicator" style="display: none;">
+                <div class="pulse"></div>
+                <span id="listeningText">Écoute en cours...</span>
+            </div>
+            <div class="wake-word-indicator" id="wakeWordIndicator" style="display: none;">
+                <span class="material-symbols-outlined">chat</span>
+                <span id="wakeWordIndicatorText">Je vous écoute...</span>
             </div>
 
             <div class="voice-controls">

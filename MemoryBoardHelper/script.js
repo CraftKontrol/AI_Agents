@@ -6061,18 +6061,42 @@ function showListeningIndicator(show, voiceDetected = false) {
 }
 
 function updateVoiceStatus(status) {
+    // Old status indicator (if still present in page)
     const voiceStatus = document.getElementById('voiceStatus');
     const statusIcon = document.getElementById('voiceStatusIcon');
     const statusText = document.getElementById('voiceStatusText');
     
+    // New compact status in header
+    const voiceStatusCompact = document.getElementById('voiceStatusCompact');
+    const statusIconCompact = document.getElementById('voiceStatusIconCompact');
+    const statusTextCompact = document.getElementById('voiceStatusTextCompact');
+    const modeIconCompact = document.getElementById('modeIconCompact');
+    const modeToggleBtnCompact = document.getElementById('modeToggleBtnCompact');
+    
     if (status === 'active') {
-        voiceStatus.classList.add('active');
-        statusIcon.textContent = 'mic';
-        statusText.textContent = getLocalizedText('voiceActive');
+        // Old status (if present)
+        if (voiceStatus) voiceStatus.classList.add('active');
+        if (statusIcon) statusIcon.textContent = 'mic';
+        if (statusText) statusText.textContent = getLocalizedText('voiceActive');
+        
+        // New compact status
+        if (voiceStatusCompact) voiceStatusCompact.classList.add('active');
+        if (statusIconCompact) statusIconCompact.textContent = 'mic';
+        if (statusTextCompact) statusTextCompact.textContent = 'Actif';
+        if (modeIconCompact) modeIconCompact.textContent = 'mic';
+        if (modeToggleBtnCompact) modeToggleBtnCompact.classList.add('active');
     } else {
-        voiceStatus.classList.remove('active');
-        statusIcon.textContent = 'mic_off';
-        statusText.textContent = getLocalizedText('voiceInactive');
+        // Old status (if present)
+        if (voiceStatus) voiceStatus.classList.remove('active');
+        if (statusIcon) statusIcon.textContent = 'mic_off';
+        if (statusText) statusText.textContent = getLocalizedText('voiceInactive');
+        
+        // New compact status
+        if (voiceStatusCompact) voiceStatusCompact.classList.remove('active');
+        if (statusIconCompact) statusIconCompact.textContent = 'mic_off';
+        if (statusTextCompact) statusTextCompact.textContent = 'Inactif';
+        if (modeIconCompact) modeIconCompact.textContent = 'mic_off';
+        if (modeToggleBtnCompact) modeToggleBtnCompact.classList.remove('active');
     }
 }
 
@@ -7193,13 +7217,12 @@ async function loadLists() {
                         </div>
                     </div>
                     <ul class="list-items">
-                        ${list.items.slice(0, 5).map(item => `
+                        ${list.items.map(item => `
                             <li class="${item.completed ? 'completed' : ''}">
                                 <input type="checkbox" ${item.completed ? 'checked' : ''} onclick="event.stopPropagation(); toggleListItem(${list.id}, '${escapeHtml(item.text)}')">
                                 <span>${escapeHtml(item.text)}</span>
                             </li>
                         `).join('')}
-                        ${list.items.length > 5 ? `<li style="color: var(--text-muted); font-style: italic;">... et ${list.items.length - 5} autres</li>` : ''}
                     </ul>
                     <div class="list-card-footer">
                         <span class="list-category-badge">${getCategoryName(list.category)}</span>
