@@ -280,4 +280,18 @@ class WebViewJavaScriptInterface(
             """{"error":"${e.message}"}"""
         }
     }
+    
+    @JavascriptInterface
+    fun makeCall(phoneNumber: String) {
+        try {
+            Timber.d("Making phone call to: $phoneNumber")
+            val intent = Intent(Intent.ACTION_DIAL).apply {
+                data = Uri.parse("tel:$phoneNumber")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            Timber.e(e, "Error making phone call to: $phoneNumber")
+        }
+    }
 }
