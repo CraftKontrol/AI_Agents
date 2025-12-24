@@ -6290,13 +6290,20 @@ function toggleEmergencyPanel() {
 function callEmergencyContact(contactNumber) {
     const phone = document.getElementById(`contact${contactNumber}Phone`).textContent;
     
-    // Create a temporary link element and click it (works better on mobile)
-    const a = document.createElement('a');
-    a.href = `tel:${phone}`;
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    // Use CKGenericApp bridge if available (Android WebView)
+    if (typeof CKAndroid !== 'undefined' && typeof CKAndroid.makeCall === 'function') {
+        CKAndroid.makeCall(phone);
+    } else if (typeof CKGenericApp !== 'undefined' && typeof CKGenericApp.makeCall === 'function') {
+        CKGenericApp.makeCall(phone);
+    } else {
+        // Fallback for web browsers - create temporary link
+        const a = document.createElement('a');
+        a.href = `tel:${phone}`;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
 }
 
 // Ouvre la modale de configuration des contacts d'urgence
