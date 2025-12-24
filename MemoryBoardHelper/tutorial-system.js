@@ -956,6 +956,7 @@ class TutorialSystem {
         const hasHighlight = step.highlightSelector;
         const hideHighlightContainer = step.id === 9 || (step.id >= 10 && !hasHighlight);
         const isLastStep = step.id === this.steps.length - 1;
+        const skipButtonText = step.id === 0 ? 'Passer pour cette fois' : 'Passer';
         
         this.modalElement.innerHTML = `
             <div class="tutorial-modal-header">
@@ -971,7 +972,7 @@ class TutorialSystem {
             </div>
             <div class="tutorial-modal-footer">
                 ${step.id > 0 ? '<button class="tutorial-btn tutorial-btn-secondary" onclick="tutorialPrevious()">Précédent</button>' : ''}
-                ${step.requireValidation ? '' : '<button class="tutorial-btn tutorial-btn-secondary" onclick="tutorialSkip()">Passer</button>'}
+                ${step.requireValidation ? '' : `<button class="tutorial-btn tutorial-btn-secondary" onclick="tutorialSkip()">${skipButtonText}</button>`}
                 <button class="tutorial-btn tutorial-btn-primary" id="tutorialNextBtn" onclick="${isLastStep ? 'tutorialComplete()' : 'tutorialNext()'}">
                     ${content.actionButton}
                 </button>
@@ -1231,7 +1232,7 @@ async function tutorialNext() {
         return;
     }
     
-    const lang = tutorialSystem?.language || (typeof getCurrentLanguage === 'function' ? getCurrentLanguage() : 'fr');
+    const lang = window.tutorialSystem?.language || (typeof getCurrentLanguage === 'function' ? getCurrentLanguage() : 'fr');
     console.log('[Tutorial] Calling tutorial_next_step with lang:', lang);
     const result = await executeAction('tutorial_next_step', {}, lang);
     console.log('[Tutorial] tutorial_next_step result:', result);
@@ -1245,13 +1246,17 @@ async function tutorialNext() {
 
 async function tutorialPrevious() {
     if (typeof executeAction !== 'function') return;
-    const lang = tutorialSystem?.language || (typeof getCurrentLanguage === 'function' ? getCurrentLanguage() : 'fr');
+    const lang = window.tutorialSystem?.language || (typeof getCurrentLanguage === 'function' ? getCurrentLanguage() : 'fr');
     await executeAction('tutorial_previous_step', {}, lang);
 }
 
 async function tutorialSkip() {
+    console.log('[Tutorial] tutorialSkip() called');
+    console.log('[Tutorial] window.tutorialSystem exists:', !!window.tutorialSystem);
+    console.log('[Tutorial] currentStep:', window.tutorialSystem?.currentStep);
+    
     // Si on est à l'étape 0 (welcome), fermer le tutoriel au lieu de passer à l'étape suivante
-    if (tutorialSystem && tutorialSystem.currentStep === 0) {
+    if (window.tutorialSystem && window.tutorialSystem.currentStep === 0) {
         console.log('[Tutorial] Skipping welcome step - closing tutorial');
         
         // Mark as skipped (not completed)
@@ -1260,14 +1265,7 @@ async function tutorialSkip() {
         localStorage.removeItem('tutorialCurrentStep');
         
         // Hide tutorial
-        if (tutorialSystem) {
-            tutorialSystem.hide();
-        } else {
-            const overlay = document.getElementById('tutorialOverlay');
-            const modal = document.getElementById('tutorialModal');
-            if (overlay) overlay.style.display = 'none';
-            if (modal) modal.style.display = 'none';
-        }
+        window.tutorialSystem.hide();
         
         // Show message
         setTimeout(() => {
@@ -1280,8 +1278,9 @@ async function tutorialSkip() {
     }
     
     // Pour les autres étapes, comportement normal
+    console.log('[Tutorial] Normal skip - calling executeAction');
     if (typeof executeAction !== 'function') return;
-    const lang = tutorialSystem?.language || (typeof getCurrentLanguage === 'function' ? getCurrentLanguage() : 'fr');
+    const lang = window.tutorialSystem?.language || (typeof getCurrentLanguage === 'function' ? getCurrentLanguage() : 'fr');
     await executeAction('tutorial_skip_step', {}, lang);
 }
 
@@ -1294,8 +1293,8 @@ async function tutorialComplete() {
     localStorage.removeItem('tutorialCurrentStep');
     
     // Hide tutorial with animation
-    if (tutorialSystem) {
-        tutorialSystem.hide();
+    if (window.tutorialSystem) {
+        window.tutorialSystem.hide();
     } else {
         // Fallback: hide directly if tutorialSystem not available
         const overlay = document.getElementById('tutorialOverlay');
@@ -1317,7 +1316,7 @@ async function tutorialComplete() {
 
 async function tutorialGotoStep(stepIndex) {
     if (typeof executeAction !== 'function') return;
-    const lang = tutorialSystem?.language || (typeof getCurrentLanguage === 'function' ? getCurrentLanguage() : 'fr');
+    const lang = window.tutorialSystem?.language || (typeof getCurrentLanguage === 'function' ? getCurrentLanguage() : 'fr');
     await executeAction('tutorial_goto_step', { stepIndex }, lang);
 }
 
