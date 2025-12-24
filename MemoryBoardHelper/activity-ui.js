@@ -333,7 +333,9 @@ class ActivityUI {
             return;
         }
 
-        const steps = progressData.steps ?? activityTracker.stepCount ?? 0;
+        // TOUJOURS utiliser le comptage interne (activityTracker.stepCount)
+        // JAMAIS le comptage du téléphone
+        const steps = activityTracker.stepCount ?? 0;
         const distance = progressData.distance ?? 0; // meters
         const durationSec = progressData.duration ?? 0;
 
@@ -344,7 +346,7 @@ class ActivityUI {
         else if (type === 'bike') met = 6.0;
         const calories = Math.round(met * 70 * (durationSec / 3600));
 
-        const elevationGain = activityTracker.currentActivity?.elevationGain ?? 0;
+        const elevationGain = activityTracker.currentPath?.elevationGain ?? 0;
 
         stepsEl.textContent = steps.toLocaleString();
         distanceEl.textContent = distance >= 1000 ? `${(distance / 1000).toFixed(2)} km` : `${Math.round(distance)} m`;
@@ -370,11 +372,34 @@ class ActivityUI {
     
     // Update dashboard with today's stats
     async updateDashboard() {
+        // Si le tracking est actif, ne pas écraser les valeurs en temps réel
+        // La fonction renderLiveDashboard gère déjà l'affichage pendant le tracking
+        if (typeof activityTracker !== 'undefined' && activityTracker.isTracking) {
+            console.log('[ActivityUI] Skipping dashboard update - tracking in progress (using live data)');
+            // Update only the goal text and weekly chart
+            const goals = await getActivityGoals();
+            const dailyStepsGoal = goals.find(g => g.type === 'daily_steps')?.target || 10000;
+            
+            // Update goal text with current step count (from displayed value, not DB)
+            const currentSteps = parseInt(document.getElementById('todaySteps')?.textContent.replace(/,/g, '') || '0', 10);
+            document.getElementById('stepsGoalText').textContent = `${currentSteps.toLocaleString()} / ${dailyStepsGoal.toLocaleString()}`;
+            
+            // Update weekly chart
+            await this.updateWeeklyChart();
+            
+            // Update activity subtitle (if section is collapsed)
+            if (typeof updateActivitySubtitle === 'function') {
+                updateActivitySubtitle();
+            }
+            return;
+        }
+        
+        // Si le tracking est arrêté, récupérer les stats sauvegardées dans la DB
         const today = await activityStats.getTodayStats();
         const goals = await getActivityGoals();
         const dailyStepsGoal = goals.find(g => g.type === 'daily_steps')?.target || 10000;
         
-        // Update stats
+        // Update stats from database
         document.getElementById('todaySteps').textContent = today.totalSteps.toLocaleString();
         document.getElementById('todayDistance').textContent = activityStats.formatDistance(today.totalDistance);
         document.getElementById('todayCalories').textContent = today.totalCalories;
@@ -388,7 +413,7 @@ class ActivityUI {
         // Update goal progress
         const progress = (today.totalSteps / dailyStepsGoal) * 100;
         document.getElementById('stepsProgress').style.width = `${Math.min(progress, 100)}%`;
-        document.getElementById('stepsGoalText').textContent = `${today.totalSteps} / ${dailyStepsGoal.toLocaleString()}`;
+        document.getElementById('stepsGoalText').textContent = `${today.totalSteps.toLocaleString()} / ${dailyStepsGoal.toLocaleString()}`;
         
         // Update weekly chart
         await this.updateWeeklyChart();
