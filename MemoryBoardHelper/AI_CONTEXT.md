@@ -51,6 +51,7 @@
 - `location-manager.js` - Location tracking and default address management (NEW)
 - `weather.js` - Weather forecast from multiple APIs (OpenWeatherMap, WeatherAPI, Open-Meteo)
 - `audio-visualizer-kawaii.js` - Kawaii neon audio visualizer for TTS with animated face (NEW)
+- `tutorial-system.js` - Interactive onboarding tutorial with step-by-step guidance (NEW)
 - `test-app.html/js` - Testing system with action-wrapper integration
 
 **Recent test resilience updates (Dec 2025):** search_task validation tolerates empty result sets when Mistral intent is `search_task`; alarm system check is bypassed in automated runs; web restaurant/weather tests accept geocoding/missing-source responses; weather queries fall back to Open-Meteo (with placeholder data) when no provider succeeds.
@@ -425,12 +426,90 @@ The app uses **multiple prompts** for different intents:
 
 **mistral-agent.js:** sendToMistralAgent, detectLanguage, extractTaskFromResponse, getCompressedConversationHistory
 
-**script.js (Temporary Listening System):**
-- `containsQuestion(text)` - Detects if response contains a question (? or keywords)
-- `activateTemporaryListening()` - Starts 10s listening after question
-- `deactivateTemporaryListening()` - Stops temporary listening
-- `speakResponse(text)` - Modified to trigger temporary listening after questions
-- Global vars: `temporaryListeningTimeout`, `isTemporaryListening`, `TEMPORARY_LISTENING_DURATION` (10000ms)
+**script.js (Main Functions - 100+ functions):**
+
+**TTS Core:**
+- `synthesizeSpeech(text, lang)` - Main TTS entry, routes to browser/Deepgram/Google
+- `speakWithGoogleTTS(text, langCode, apiKey, playbackId, returnAudioSrc)` - Google Cloud TTS
+- `speakWithGoogleTTSWithVisualizer(...)` - Google TTS + kawaii visualizer
+- `playBrowserTTS(cleanText, playbackId)` - Browser SpeechSynthesis
+- `playBrowserTTSWithVisualizer(...)` - Browser TTS + visualizer
+- `playAudioSource(src, playbackId, volume)` - Audio element playback
+- `playAudioSourceWithVisualizer(...)` - Audio + visualizer
+- `stopActiveTTS()` - Cancel active speech
+- `getNextTTSPlaybackId()` - Generate unique playback ID
+- `normalizeTextForTTS(text, lang)` - Abbreviation/number conversion
+- `numberToWords(num, lang)` - Digit → word conversion (0-9999)
+- `getVoiceName(languageCode, overrideName)` - Google voice selection
+- `detectVoiceGender(voiceName)` - Gender detection from voice name
+
+**TTS Settings:**
+- `loadTTSSettings()` - Load from localStorage → UI
+- `saveTTSSettings()` - Save UI → localStorage
+- `updateTTSVoice(val)` - Update selected voice
+- `updateTTSValue(type, val)` - Update rate/pitch/volume
+- `loadBrowserVoices()` - Populate voice dropdown
+- `updateTTSProviderVoices()` - Filter voices by provider
+
+**SSML Settings:**
+- `loadSSMLSettings()` - Load SSML config
+- `saveSSMLSettings()` - Save SSML config
+- `resetSSMLSettings()` - Reset to defaults
+- `updateSSMLSettings()` - Apply SSML changes
+- `updateSSMLValue(type, val)` - Update SSML parameter
+- `toggleSSMLControls(enabled)` - Show/hide SSML UI
+
+**STT Functions:**
+- `initializeSpeechRecognition()` - Setup browser or API STT
+- `fallbackToGoogleSTT()` - Switch to Google STT
+- `startGoogleSTTRecording(apiKey)` - Start audio recording
+- `stopGoogleSTTRecording(apiKey)` - Stop & process audio
+- `sendAudioToGoogleSTT(audioBlob, apiKey)` - Upload to Google API
+- `blobToBase64(blob)` - Audio conversion
+
+**Voice Interaction:**
+- `handleVoiceInteraction(transcript, lang)` - Main voice processing
+- `speakResponse(text, messageType)` - Speak + temporary listening
+- `containsQuestion(text)` - Detect questions in response
+- `activateTemporaryListening()` - 10s auto-listening
+- `deactivateTemporaryListening()` - Stop temp listening
+
+**UI Management:**
+- `initFloatingVoiceButton()` - Sticky voice button
+- `focusVoiceInteraction()` - Auto-scroll to voice section
+- `resetFocusTimer()` - Reset inactivity timer
+- `setVoiceButtonsHighlight(highlight)` - Visual pulsing
+
+**Confirmation:**
+- `isConfirmation(text, language)` - Yes/no detection
+- `disableAutoModeByButton()` - Disable always-listening
+
+**Quick Actions:**
+- `quickAddTask()`, `quickAddRecursiveTask()`, `quickAddNote()`, `quickAddList()`, `quickAddMedication()`
+- `quickShowTodayTasks()`, `quickShowWeekTasks()`, `quickShowMonthTasks()`, `quickShowYearTasks()`
+- `quickShowTime()`, `commandWhatWeek()`, `commandWhatMonth()`, `commandWhatYear()`
+
+**Task Operations:**
+- `completeTask(taskId)` - Mark task complete
+- `deleteOldTasks()` - Delete 30+ day old tasks
+- `deleteDoneTasks()` - Delete completed tasks
+- `deleteAllTasks()` - Delete all (with confirmation)
+- `deleteAllLists()` - Delete all lists
+- `deleteAllNotes()` - Delete all notes
+- `deleteTaskByDescription(desc)` - Delete by text match
+- `searchTaskByDescription(desc)` - Find tasks by keyword
+
+**API Key Management:**
+- `getApiKey(keyName, localStorageKey)` - Dual-source key retrieval
+
+**Message Type Detection:**
+- `detectMessageType(text)` - Classify response (info/confirmation/question/general)
+
+**Global State Variables:**
+- `TEMPORARY_LISTENING_DURATION`, `temporaryListeningTimeout`, `isTemporaryListening`
+- `FOCUS_DELAY`, `focusTimeoutId`
+- `currentTTSPlaybackId`
+- `DEFAULT_TTS_SETTINGS`, `DEFAULT_SSML_SETTINGS`
 
 **action-wrapper.js:** executeAction (main entry), processMistralResult, registerAction, getRegisteredActions, ActionResult class, storage wrapper functions (getTask, getAllTasks, saveTask, updateTask, deleteTask, getAllLists, saveList, updateList, deleteList, getAllNotes, saveNote, updateNote, deleteNote); list actions normalize/split items, convert them to `{text, completed}` objects, merge by text (case-insensitive), and allow search_list to handle object items safely
 
@@ -546,6 +625,230 @@ The app uses **multiple prompts** for different intents:
 **Integration:** Triggered by `action-wrapper.js` on successful action execution
 
 **Settings:** localStorage keys `soundSystem_soundEnabled`, `soundSystem_soundVolume`, `soundSystem_hapticEnabled`
+
+---
+
+## 🎓 Tutorial System (NEW - Dec 2025)
+
+**Module:** `tutorial-system.js`
+
+**Purpose:** Interactive onboarding system for first-time users with step-by-step guided tour
+
+**Features:**
+- **Step-by-step guidance** through key features
+- **Visual highlights** with animated overlays
+- **Voice narration** of each tutorial step via TTS
+- **Skip/replay options** for user control
+- **Progress tracking** saved to localStorage
+- **Responsive tooltips** with arrow pointers
+
+**Tutorial Steps:**
+1. Welcome introduction
+2. Voice button explanation (manual/always-on modes)
+3. Quick actions tutorial (add task, note, list)
+4. Settings overview (API keys, preferences)
+5. Emergency contacts setup
+6. Calendar navigation
+7. Activity tracking introduction
+8. Completion congratulations
+
+**Key Functions:**
+- `initTutorialSystem()` - Initialize tutorial on first launch
+- `startTutorial()` - Begin tutorial sequence
+- `nextTutorialStep()` - Advance to next step
+- `previousTutorialStep()` - Go back one step
+- `skipTutorial()` - Exit tutorial early
+- `resetTutorial()` - Clear progress, restart from beginning
+- `highlightElement(selector)` - Visual focus on UI element
+- `showTutorialTooltip(text, position)` - Display instruction tooltip
+
+**Storage Keys:**
+- `tutorialCompleted` - Boolean flag (localStorage)
+- `tutorialCurrentStep` - Step index (sessionStorage)
+- `tutorialSkipped` - User skipped flag (localStorage)
+
+**CSS Classes:**
+- `.tutorial-overlay` - Full-screen dimmed overlay
+- `.tutorial-highlight` - Highlighted element outline
+- `.tutorial-tooltip` - Instruction bubble with arrow
+- `.tutorial-controls` - Navigation buttons (prev/next/skip)
+
+**Voice Integration:**
+- Auto-narrates each step via `synthesizeSpeech()`
+- Respects TTS settings (voice, rate, pitch)
+- Can be muted via tutorial preferences
+
+---
+
+## 💬 Chat Mode & Conversation System
+
+**Purpose:** General conversation capability beyond task management
+
+**Features:**
+- **Natural conversation** with Mistral AI
+- **Context awareness** from conversation history
+- **Multi-language** support (FR/EN/IT)
+- **Customizable prompts** via settings
+- **Persistent history** in IndexedDB
+
+**Activation:**
+- Voice commands detected as non-task requests
+- Mistral classifies intent as `conversation`
+- Responds conversationally without executing actions
+
+**Custom Chat Prompt:**
+- Configurable in settings modal
+- Default: Warm, empathetic assistant for elderly
+- Can be personalized (e.g., "Talk like a friendly neighbor")
+- Saved to localStorage: `customChatPrompt`
+
+**Conversation Examples:**
+- "Comment vas-tu aujourd'hui?" → General greeting
+- "Raconte-moi une blague" → Entertainment
+- "Quel temps fait-il?" → Weather query (triggers weather API)
+- "Qui es-tu?" → Self-description
+
+**Integration with Actions:**
+- Conversation can lead to action execution
+- Context maintained across conversation → action
+- Example: "J'ai mal à la tête" (conversation) → "Rappelle-moi de prendre du paracétamol" (action: add_task)
+
+---
+
+## 🎤 Focus & Attention System
+
+**Purpose:** Automatic UI focus on voice interaction section after inactivity
+
+**Key Constants:**
+- `FOCUS_DELAY` = 240000ms (4 minutes)
+
+**Key Functions:**
+- `focusVoiceInteraction()` - Scroll to voice button, highlight it
+- `resetFocusTimer()` - Reset inactivity timer on user interaction
+- `setVoiceButtonsHighlight(bool)` - Add/remove visual highlight
+
+**Behavior:**
+- After 4 minutes of no interaction, auto-scrolls to voice section
+- Voice button pulsates with highlight effect
+- Timer resets on: scroll, click, voice interaction, task completion
+- Prevents users from losing track of primary interaction method
+
+---
+
+## 🔤 Text Normalization for TTS
+
+**Purpose:** Convert abbreviations, numbers, symbols to speakable text
+
+**Key Functions:**
+- `normalizeTextForTTS(text, lang)` - Main normalization entry
+- `numberToWords(num, lang)` - Convert digits to words (0-9999)
+
+**Replacements by Language:**
+
+**French:**
+- Dr. → Docteur
+- Mme → Madame
+- M. → Monsieur
+- etc. → et cetera
+- 15h30 → 15 heures 30
+- Numbers: 123 → cent vingt-trois
+
+**English:**
+- Dr. → Doctor
+- Mr. → Mister
+- Mrs. → Misses
+- etc. → et cetera
+- 3:30pm → 3:30 PM
+- Numbers: 123 → one hundred twenty-three
+
+**Italian:**
+- Dott. → Dottore
+- Sig. → Signore
+- Sig.ra → Signora
+- ecc. → eccetera
+- Numbers: 123 → cento ventitre
+
+**Symbol Replacements:**
+- % → pour cent / percent / percento
+- € → euros / euros / euro
+- $ → dollars / dollars / dollari
+- @ → arobase / at / chiocciola
+- & → et / and / e
+
+---
+
+## 🎯 Quick Action Functions
+
+**Purpose:** Shortcut functions for common operations
+
+**Available Quick Actions:**
+- `quickAddTask()` - Open task modal with voice prompt
+- `quickAddRecursiveTask()` - Add recurring task
+- `quickAddNote()` - Open note modal
+- `quickAddList()` - Open list modal
+- `quickAddMedication()` - Add medication task with dosage
+- `quickShowTodayTasks()` - Navigate to today's tasks
+- `quickShowWeekTasks()` - Navigate to week view
+- `quickShowMonthTasks()` - Navigate to month view
+- `quickShowYearTasks()` - Navigate to year view
+- `quickShowTime()` - Speak current time
+- `commandWhatWeek()` - Speak current week number
+- `commandWhatMonth()` - Speak current month
+- `commandWhatYear()` - Speak current year
+
+**Integration:**
+- Accessible via quick action buttons in UI
+- Voice commands route through these functions
+- Enhance responses with Mistral AI context
+
+---
+
+## 🗑️ Bulk Deletion Functions
+
+**Purpose:** Mass deletion operations for data management
+
+**Available Functions:**
+- `deleteOldTasks()` - Delete tasks older than 30 days
+- `deleteDoneTasks()` - Delete all completed tasks
+- `deleteAllTasks()` - Delete ALL tasks (requires confirmation)
+- `deleteAllLists()` - Delete ALL lists (requires confirmation)
+- `deleteAllNotes()` - Delete ALL notes (requires confirmation)
+- `deleteTaskByDescription(desc)` - Delete specific task by text match
+
+**Safety Features:**
+- Confirmation prompts before deletion
+- Undo system records deletions
+- Action-wrapper validation
+- Calendar refresh after deletion
+
+---
+
+## 🔍 Confirmation Detection
+
+**Purpose:** Detect yes/no responses in conversation
+
+**Function:** `isConfirmation(text, language)`
+
+**Returns:**
+- `true` - User confirmed (oui, yes, si, d'accord, ok)
+- `false` - User denied (non, no, pas, jamais)
+- `null` - Unclear/neutral response
+
+**Confirmation Patterns:**
+- **FR:** oui, d'accord, ok, ouais, affirmatif, exactement, bien sûr
+- **EN:** yes, yeah, yep, sure, okay, ok, affirmative, absolutely
+- **IT:** sì, si, va bene, ok, d'accordo, certo, assolutamente
+
+**Denial Patterns:**
+- **FR:** non, pas, jamais, négatif, aucun
+- **EN:** no, nope, nah, never, negative, none
+- **IT:** no, mai, negativo, nessuno
+
+**Usage:**
+- Mistral asks questions (e.g., "Voulez-vous supprimer?")
+- Temporary listening activates
+- User response parsed via `isConfirmation()`
+- Action executed or cancelled based on result
 
 ---
 

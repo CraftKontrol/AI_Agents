@@ -22,28 +22,80 @@
 ## 🔑 API Keys
 
 **Required:** 
-- Mistral AI (free tier) - https://console.mistral.ai/
+- **Mistral AI** (free tier: $5 credit) - https://console.mistral.ai/
+  - Powers AI assistant, task extraction, natural conversations
+  - Auto language detection (FR/IT/EN)
+  - SSML speech synthesis
 
 **Optional (enhances experience):**
-- Google Cloud Speech-to-Text API - https://console.cloud.google.com/
-  - Used when browser speech recognition unavailable
+
+**Speech Recognition (STT) - Choose one:**
+- **Browser Speech API** (FREE, built-in) - No setup required
+  - Works in Chrome/Edge, good for quiet environments
+  - Automatic, no API key needed
+- **Deepgram STT** (NEW, 200 hours/month free) - https://console.deepgram.com/
+  - Nova-2 model, superior accuracy
+  - Voice Activity Detection (auto-stop)
+  - Smart formatting and punctuation
+- **Google Cloud Speech-to-Text** - https://console.cloud.google.com/
   - Better accuracy in noisy environments
   - Enable "Speech-to-Text API" in Google Cloud Console
-- Google Cloud Text-to-Speech API (browser TTS available as fallback)
+  - Requires billing account (pay-as-you-go)
+
+**Text-to-Speech (TTS) - Choose one:**
+- **Browser TTS** (FREE, built-in) - No setup required
+  - Native system voices, works offline
+  - Adjustable rate, pitch, volume
+- **Deepgram TTS** (NEW, Aura-2 voices) - https://console.deepgram.com/
+  - 30+ natural, expressive voices (FR/EN/IT)
+  - High quality, low latency
+  - 1M characters/month free
+- **Google Cloud Text-to-Speech** - https://console.cloud.google.com/
+  - Neural2 and WaveNet voices
+  - Custom rate, pitch, volume control
+  - Requires billing account
+
+**Other Services:**
+- **Tavily Search API** (1000 searches/month free) - https://tavily.com/
+  - Web search integration
+- **OpenWeatherMap/WeatherAPI** (free tiers) - For weather queries
+- **Google Maps API** (optional) - For GPS navigation geocoding
 
 ---
 
 ## 🚀 Setup
 
-1. Open `index.html` in browser (Chrome/Edge recommended)
-2. Add Mistral API key in "Gestion des clés API" → Check "Mémoriser" → Save
-3. (Optional) Add Google Cloud STT API key for enhanced speech recognition
-4. Allow microphone and notifications when prompted
-5. (Optional) Add emergency contacts in "Urgence"
-6. Choose Manual or Always-Listening mode
-7. **Temporary Listening**: When Mistral asks a question (e.g., "Voulez-vous supprimer cette tâche?"), the microphone automatically activates for 10 seconds - just speak your answer!
+1. **Open in browser** (Chrome/Edge recommended)
+   - Load `index.html` in modern browser
+   - Allow microphone and notifications when prompted
 
-### Getting Google Cloud STT API Key:
+2. **Configure Mistral AI** (Required)
+   - Open "Gestion des clés API" section
+   - Enter your Mistral API key
+   - Check "Mémoriser" to save
+   - Click "Sauvegarder les clés API"
+
+3. **Choose Speech Providers** (Optional but recommended)
+   - **STT Provider**: Select from Browser (free) / Deepgram / Google
+   - **TTS Provider**: Select from Browser (free) / Deepgram / Google
+   - Enter API keys if using Deepgram or Google
+   - Adjust voice, speed, pitch settings as desired
+
+4. **Configure Emergency Contacts** (Optional)
+   - Add up to 3 emergency contacts in "Urgence" section
+   - Name and phone number for quick-dial access
+
+5. **Select Listening Mode**
+   - **Manual**: Press microphone button to speak
+   - **Always-Listening**: Continuous background listening
+   - **Temporary**: Auto-activates for 10s after AI questions
+
+6. **Enable Activity Tracking** (Optional)
+   - Toggle "Activer le suivi automatique" in settings
+   - Allow GPS permissions for route tracking
+   - Set daily step goal (default: 10,000)
+
+### Getting API Keys:
 1. Go to https://console.cloud.google.com/
 2. Create a new project or select existing
 3. Enable "Cloud Speech-to-Text API"
@@ -55,21 +107,40 @@
 ## 🗣️ Voice Commands
 
 **Tasks:**
-- Add: "Ajoute une tâche: prendre médicaments à 14h" / "Rappelle-moi d'appeler demain"
-- Check: "Qu'ai-je aujourd'hui?" / "Quelles sont mes tâches?"
-- Search: "C'est quand mon rendez-vous chez le dentiste?" / "À quelle heure mon médicament?"
-- Complete: "J'ai pris mes médicaments" / "C'est fait"
+- **Add**: "Ajoute une tâche: prendre médicaments à 14h" / "Rappelle-moi d'appeler demain" / "Rendez-vous dentiste mardi 10h"
+- **View**: "Qu'ai-je aujourd'hui?" / "Quelles sont mes tâches?" / "Montre-moi mes tâches de la semaine"
+- **Search**: "C'est quand mon rendez-vous chez le dentiste?" / "À quelle heure mon médicament?" / "Trouve la tâche appeler"
+- **Complete**: "J'ai pris mes médicaments" / "C'est fait" / "Tâche terminée"
+- **Delete**: "Supprime la tâche" / "Efface le rendez-vous" / "Supprime toutes les tâches anciennes"
+- **Update**: "Change l'heure à 15h" / "Reporte à demain" / "Modifie la description"
+
+**Lists & Notes:**
+- **Add List**: "Crée une liste de courses" / "Nouvelle liste: pain, lait, oeufs"
+- **Update List**: "Ajoute tomates à la liste de courses"
+- **Add Note**: "Note: code porte 1234" / "Crée une note recette gâteau"
+- **Search**: "Cherche dans mes listes" / "Trouve ma note recette"
 
 **Activity Tracking:**
-- Start: "Démarre une marche" / "Commence une course" / "Lance le vélo"
-- Stop: "Arrête l'activité" / "Termine l'entraînement"
-- Stats: "Combien de pas aujourd'hui?" / "Mes stats de la semaine"
-- View: "Montre mes parcours" / "Statistiques complètes"
+- **Start**: "Démarre une marche" / "Commence une course" / "Lance le vélo"
+- **Stop**: "Arrête l'activité" / "Termine l'entraînement" / "Stop suivi"
+- **Stats**: "Combien de pas aujourd'hui?" / "Mes stats de la semaine" / "Quelle distance ai-je parcourue?"
+- **View**: "Montre mes parcours" / "Statistiques complètes" / "Affiche mes activités"
+
+**Navigation & Settings:**
+- **Sections**: "Va au calendrier" / "Ouvre les paramètres" / "Montre les statistiques"
+- **Calendar**: "Quelle semaine sommes-nous?" / "Quel mois?" / "Quelle année?"
+
+**Web Search & GPS:**
+- **Search**: "Recherche restaurants italiens" / "Trouve infos sur Paris" / "Cherche recette pizza"
+- **Navigation**: "Emmmène-moi à Tour Eiffel" / "Itinéraire vers pharmacie" / "Ouvre GPS 48.8566, 2.3522"
+- **Weather**: "Quel temps fait-il?" / "Météo demain" / "Prévisions semaine"
 
 **General:**
-- Time: "Quelle heure est-il?" / "Quel jour sommes-nous?"
-- Call: "Appelle Marie" (if Marie is emergency contact → direct call)
-        "Appelle Jean" (if Jean not in emergency contacts → opens phone contacts)
+- **Time**: "Quelle heure est-il?" / "Quel jour sommes-nous?" / "On est le combien?"
+- **Call**: "Appelle Marie" (if Marie is emergency contact → direct call)
+          "Appelle Jean" (if Jean not in emergency contacts → opens phone contacts)
+- **Conversation**: "Comment vas-tu?" / "Raconte-moi une blague" / "Qui es-tu?"
+- **Undo**: "Annuler" / "Undo" / "Défaire la dernière action"
 
 ---
 
@@ -153,14 +224,46 @@ All data stored locally | No cloud sync | API keys in browser localStorage only
 
 ## 🐛 Issues?
 
-**Mic:** Check permissions, refresh browser
-**Voice not working:** 
-- Browser speech recognition may not be available → Add Google Cloud STT API key
-- Speak clearly and wait for beep sound
-- Click microphone again to stop recording manually
-**Save issues:** Clear cache (auto-fallback to localStorage)
-**Alarms:** Keep tab open, allow notifications
-**API errors:** Verify key (no spaces/extra characters), check Google Cloud billing/quota
+**Microphone:**
+- Check browser permissions (Settings → Privacy → Microphone)
+- Refresh browser and allow permissions
+- Try different browser (Chrome/Edge recommended)
+
+**Voice Recognition Not Working:**
+- **Browser STT**: May not work in all browsers → Switch to Deepgram/Google
+- **Deepgram/Google**: Verify API key is correct (no spaces/extra characters)
+- Speak clearly and wait for visual feedback
+- Check microphone is working in other apps
+- Manual stop: Click microphone button again
+
+**Voice Output Issues:**
+- **Browser TTS**: Check system volume, verify voice is available
+- **Deepgram/Google**: Verify API key, check internet connection
+- Try switching TTS provider in settings
+- Adjust voice settings (rate, pitch, volume)
+
+**Save Issues:**
+- Clear browser cache (auto-fallback to localStorage)
+- Check browser storage permissions
+- Try exporting data as backup (JSON)
+
+**Alarms:**
+- Keep browser tab open for alarms to trigger
+- Allow notifications in browser settings
+- Check system notification settings
+
+**API Errors:**
+- Verify API key is correct (copy-paste without spaces)
+- Check API quota/limits not exceeded
+- For Google Cloud: Verify billing is enabled
+- For Deepgram: Check free tier limits (200h STT, 1M chars TTS)
+- For Mistral: Check $5 credit balance
+
+**Activity Tracking:**
+- Allow GPS/location permissions
+- For step counting: Keep app open or use CKGenericApp (Android)
+- GPS accuracy depends on device/signal strength
+- Export data regularly as backup
 
 ---
 
