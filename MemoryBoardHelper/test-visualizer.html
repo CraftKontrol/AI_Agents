@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Kawaii Visualizer</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+            font-family: sans-serif;
+        }
+        
+        #kawaii-visualizer-container {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 400px;
+            height: 300px;
+            background: rgba(10, 10, 20, 0.95);
+            backdrop-filter: blur(15px);
+            border-radius: 30px;
+            border: 2px solid rgba(74, 158, 255, 0.3);
+            box-shadow: 0 0 40px rgba(74, 158, 255, 0.4);
+            display: none;
+            z-index: 999999;
+            pointer-events: auto;
+            cursor: pointer;
+            transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+        }
+        
+        #kawaii-visualizer-container.active {
+            display: block;
+        }
+        
+        #kawaii-visualizer-canvas {
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        
+        .controls {
+            margin: 20px;
+            text-align: center;
+        }
+        
+        button {
+            padding: 15px 30px;
+            margin: 10px;
+            background: #4a9eff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        button:hover {
+            background: #6ab0ff;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Kawaii Audio Visualizer</h1>
+    
+    <div class="controls">
+        <button onclick="testNormal()">Normal</button>
+        <button onclick="testSuccess()">Success</button>
+        <button onclick="testError()">Error</button>
+        <button onclick="testWarning()">Warning</button>
+        <button onclick="testQuestion()">Question</button>
+        <button onclick="testClose()">Close</button>
+        <button onclick="testTone()">Play Test Tone (FFT)</button>
+        <button onclick="testWav()">Play WAV (FFT)</button>
+    </div>
+    
+    <div id="log" style="margin: 20px; font-family: monospace; font-size: 12px;"></div>
+    
+    <div id="kawaii-visualizer-container">
+        <canvas id="kawaii-visualizer-canvas"></canvas>
+    </div>
+    
+    <script src="audio-visualizer-kawaii.js"></script>
+    <script>
+        let osc = null;
+        let oscGain = null;
+        let wavAudio = null;
+
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            logDiv.innerHTML = `${new Date().toLocaleTimeString()}: ${message}<br>` + logDiv.innerHTML;
+            console.log(message);
+        }
+        
+        function testNormal() {
+            log('Testing normal emotion...');
+            if (kawaiiVisualizer) {
+                kawaiiVisualizer.start('normal');
+            } else {
+                log('ERROR: kawaiiVisualizer not initialized!');
+            }
+        }
+        
+        function testSuccess() {
+            log('Testing success emotion...');
+            if (kawaiiVisualizer) {
+                kawaiiVisualizer.start('success');
+            }
+        }
+        
+        function testError() {
+            log('Testing error emotion...');
+            if (kawaiiVisualizer) {
+                kawaiiVisualizer.start('error');
+            }
+        }
+        
+        function testWarning() {
+            log('Testing warning emotion...');
+            if (kawaiiVisualizer) {
+                kawaiiVisualizer.start('warning');
+            }
+        }
+        
+        function testQuestion() {
+            log('Testing question emotion...');
+            if (kawaiiVisualizer) {
+                kawaiiVisualizer.start('question');
+            }
+        }
+        
+        function testClose() {
+            log('Closing visualizer...');
+            if (kawaiiVisualizer) {
+                kawaiiVisualizer.close();
+            }
+        }
+
+        async function testTone() {
+            log('Playing test tone (440 Hz)...');
+            if (!kawaiiVisualizer) {
+                log('ERROR: kawaiiVisualizer not initialized!');
+                return;
+            }
+
+            const ctx = kawaiiVisualizer.audioContext;
+            if (!ctx) {
+                log('ERROR: audioContext not initialized');
+                return;
+            }
+            await ctx.resume();
+
+            // Stop previous tone if any
+            if (osc) {
+                osc.stop();
+                osc = null;
+            }
+
+            osc = ctx.createOscillator();
+            osc.frequency.value = 440;
+            osc.type = 'sine';
+            oscGain = ctx.createGain();
+            oscGain.gain.value = 0.08; // gentle volume
+
+            osc.connect(oscGain);
+            // Feed visualizer analyser
+            oscGain.connect(kawaiiVisualizer.analyser);
+            // Also send to output so we hear it
+            oscGain.connect(ctx.destination);
+
+            kawaiiVisualizer.start('success');
+
+            osc.start();
+            setTimeout(() => {
+                if (osc) {
+                    osc.stop();
+                    osc = null;
+                }
+                setTimeout(() => {
+                    if (kawaiiVisualizer) kawaiiVisualizer.close();
+                }, 300);
+            }, 2500); // 2.5s tone
+        }
+
+        async function testWav() {
+            log('Playing WAV: sounds/speech.wav');
+            if (!kawaiiVisualizer) {
+                log('ERROR: kawaiiVisualizer not initialized!');
+                return;
+            }
+            const ctx = kawaiiVisualizer.audioContext;
+            if (!ctx) {
+                log('ERROR: audioContext not initialized');
+                return;
+            }
+            await ctx.resume();
+
+            // Stop previous tone
+            if (osc) {
+                osc.stop();
+                osc = null;
+            }
+            // Stop previous wav
+            if (wavAudio) {
+                wavAudio.pause();
+                wavAudio = null;
+            }
+
+            wavAudio = new Audio('sounds/speech.wav');
+            wavAudio.crossOrigin = 'anonymous';
+            wavAudio.volume = 0.5;
+
+            kawaiiVisualizer.connectAudioElement(wavAudio);
+            kawaiiVisualizer.start('success');
+
+            wavAudio.onended = () => {
+                wavAudio = null;
+                setTimeout(() => {
+                    if (kawaiiVisualizer) kawaiiVisualizer.close();
+                }, 300);
+            };
+            wavAudio.onerror = (e) => {
+                log('Audio error: ' + e?.message || e);
+                wavAudio = null;
+                if (kawaiiVisualizer) kawaiiVisualizer.close();
+            };
+
+            try {
+                await wavAudio.play();
+            } catch (err) {
+                log('Play() failed: ' + err.message);
+                if (kawaiiVisualizer) kawaiiVisualizer.close();
+            }
+        }
+        
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                log('Visualizer initialized: ' + (kawaiiVisualizer ? 'YES' : 'NO'));
+                if (kawaiiVisualizer) {
+                    log('Canvas: ' + (kawaiiVisualizer.canvas ? 'Found' : 'NOT FOUND'));
+                    log('Context: ' + (kawaiiVisualizer.ctx ? 'OK' : 'FAILED'));
+                    log('Dimensions: ' + kawaiiVisualizer.width + 'x' + kawaiiVisualizer.height);
+                }
+            }, 500);
+        });
+    </script>
+</body>
+</html>
