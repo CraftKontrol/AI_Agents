@@ -94,20 +94,18 @@ Perfect for users who want a native Android experience while maintaining the fle
 
 Each agent requires specific API keys:
 
-| Agent | Required APIs | Where to get |
-|-------|---------------|------------|
-| AstralCompute | Mistral AI | [console.mistral.ai](https://console.mistral.ai/) |
-| AiSearchAgregator | MistOptional APIs | Where to get |
+| Agent | Required APIs | Optional APIs | Where to get |
 |-------|---------------|---------------|--------------|
 | AiSearchAgregator | Mistral AI | Deepgram STT/TTS, Tavily, ScrapingBee, ScraperAPI, Bright Data, ScrapFly | [console.mistral.ai](https://console.mistral.ai/), [deepgram.com](https://deepgram.com/), [tavily.com](https://tavily.com/) |
 | AstralCompute | Mistral AI | - | [console.mistral.ai](https://console.mistral.ai/) |
 | LocalFoodProducts | None | - | Public APIs (OpenStreetMap, OpenFoodFacts) |
 | MemoryBoardHelper | Mistral AI | Deepgram STT/TTS, Google Cloud STT/TTS | [console.mistral.ai](https://console.mistral.ai/), [deepgram.com](https://deepgram.com/), [console.cloud.google.com](https://console.cloud.google.com/) |
 | MeteoAgregator | One of: OpenWeatherMap, WeatherAPI.com, or Open-Meteo (no key) | - | [openweathermap.org](https://openweathermap.org/api), [weatherapi.com](https://www.weatherapi.com/) |
-| NewsAgregator | None | - | Public RSS feeds
-### 🌟 [AstralCompute](https://craftkontrol.github.io/AI_Agents/AstralCompute/)
-**Astrological ephemeris calculator with AI**
-- Planetary positions and aspects calculation
+| NewsAgregator | None | - | Public RSS feeds |
+
+---
+
+## Available Agents
 
 ### 🔍 [AiSearchAgregator](https://craftkontrol.github.io/AI_Agents/AiSearchAgregator/)
 **Intelligent multi-source search with AI extraction and voice interaction**
@@ -217,6 +215,32 @@ Each agent requires specific API keys:
 - **Permissions**: Full support for camera, microphone, location, notifications
 - **Sensor Bridge**: Accelerometer and gyroscope data for activity tracking
 - **Alarm System**: Schedule exact alarms from web apps (Memory Helper integration)
+- **Cache Management**: Force fresh content on every load, settings screen for manual clearing
+- **Multi-Language**: French, English, Italian with auto-detection
+- **Material 3 UI**: Modern Android interface with Jetpack Compose
+- **Background Service**: Monitor alarms, appointments, activity tracking with notifications
+
+**Stack**: Kotlin 2.0, Jetpack Compose, Material 3, Hilt DI, Room Database, DataStore, WebView with JS Bridge
+
+**Min SDK**: 26 (Android 8.0) | **Target SDK**: 34 (Android 14)
+
+---
+
+## CraftKontrol Standards
+
+### Principles
+- 🎯 **Standalone** - Each agent works autonomously
+- 🔒 **Privacy-first** - API keys stored locally only
+- 📱 **Responsive** - Mobile, tablet and desktop
+- ⚡ **Performance** - Optimized for modern web
+- 🌐 **Open Source** - Accessible and modifiable code
+
+---
+
+## Development
+
+### Adding a New Agent
+
 **Step-by-step process for creating a new AI Agent:**
 
 1. **Plan & Design**
@@ -323,29 +347,9 @@ Each agent requires specific API keys:
 - **script.js**: Modular functions, clear separation of concerns, DOMContentLoaded initialization
 - **style.css**: Mobile-first responsive design, CSS variables at `:root`, logical section organization
 - **README.md**: User guide only (what, why, how, setup, troubleshooting)
-- **AI_CONTEXT.md**: Technical reference only (architecture, patterns, algorithms, data flow)agent works autonomously
-- 🔒 **Privacy-first** - API keys stored locally only
-- 📱 **Responsive** - Mobile, tablet and desktop
-- ⚡ **Performance** - Optimized for modern web
-- 🌐 **Open Source** - Accessible and modifiable code
+- **AI_CONTEXT.md**: Technical reference only (architecture, patterns, algorithms, data flow)
 
-
-## Development
-
-### Adding a New Agent
-
-1. Create a new folder under `AI_Agents/`
-2. Implement `index.html`, `script.js`, `style.css` following CraftKontrol standards
-3. Call to Claude Sonnet 4.5 for app generation
-4. review and adjust the generated code
-5. Document the agent in `README.md`
-
-### Guidelines
-- Vanilla JavaScript code (no framework required)
-- CSS with variables for consistent theme
-- localStorage for persistence
-- Robust error handling
-- Bilingual interface FR/EN
+---
 
 ## License
 
