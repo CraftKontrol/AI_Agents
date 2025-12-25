@@ -167,7 +167,16 @@ Each agent requires specific API keys:
 - **Accessibility**: Extra-large text (20px+), big buttons (60px+), high contrast, voice-first interaction
 - **Smart Listening**: Temporary mode auto-activates for 10s after AI asks questions
 
-**Stack**: Mistral AI, Web Speech API, Deepgram STT/TTS (optional), Google Cloud STT/TTS (optional), OpenStreetMap, Material Symbols
+**Mistral AI Enhanced Capabilities:**
+- **Multi-Service Orchestration**: Single query triggers multiple APIs - "Add dentist appointment tomorrow 10am, check weather, find cafés nearby" → Creates task + fetches forecast + searches locations + speaks unified response
+- **Weather Intelligence**: Simple queries ("Quel temps?") → complex analysis ("Dois-je prendre un parapluie?") with forecast analysis, precipitation probability, and contextual advice
+- **GPS & Navigation**: "Emmène-moi à Tour Eiffel" → Geocodes destination + opens navigation + speaks route overview with distance/duration
+- **Web Search Integration**: "Recherche restaurants italiens près de moi" → Tavily search + location filtering + reads top results with addresses and ratings
+- **Smart Task Extraction**: "Rappelle-moi aspirine 500mg matin et soir avec repas" → Extracts medication, dosage, frequency + creates 2 alarms with meal context
+- **Conversational Memory**: Retains 10-20 exchanges for follow-up questions - "Et demain?" remembers previous location context
+- **Activity Insights**: "Ai-je marché plus cette semaine?" → Compares weekly totals + calculates percentage difference + motivational response
+
+**Stack**: Mistral AI, Web Speech API, Deepgram STT/TTS (optional), Google Cloud STT/TTS (optional), OpenStreetMap, Tavily Search, OpenWeatherMap, Material Symbols
 
 **Color**: #3b9150 🟢
 

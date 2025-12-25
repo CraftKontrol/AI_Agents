@@ -104,6 +104,83 @@
 
 ---
 
+## 🤖 Mistral AI Enhanced Responses
+
+**Intelligent Query Processing** - Mistral AI doesn't just recognize commands; it understands context, orchestrates multiple services, and provides natural conversational responses.
+
+### Automatic Service Integration
+
+When you ask a question, Mistral AI automatically:
+1. **Analyzes your intent** (weather query, navigation request, web search, task management, etc.)
+2. **Calls appropriate APIs** (OpenWeatherMap, GPS services, Tavily Search, Google Maps)
+3. **Aggregates data** from multiple sources if needed
+4. **Formats responses** with SSML for expressive voice output
+5. **Maintains conversation context** for follow-up questions
+
+### Examples of Enhanced Queries
+
+**Weather Intelligence:**
+- **Simple**: "Quel temps fait-il?" → Gets current weather + speaks temperature, conditions, humidity
+- **Future**: "Météo demain matin?" → Fetches forecast + speaks outlook with advice (umbrella needed, etc.)
+- **Contextual**: "Dois-je prendre un parapluie?" → Checks hourly forecast + analyzes precipitation probability + gives yes/no with reasoning
+- **Multi-day**: "Prévisions de la semaine" → Summarizes 7-day forecast + highlights significant changes (rain incoming, temperature drop)
+
+**GPS & Navigation:**
+- **Destination**: "Emmène-moi à la Tour Eiffel" → Geocodes address + opens navigation with spoken route overview
+- **Current Location**: "Où suis-je?" → Gets GPS coordinates + reverse geocodes + speaks street address and city
+- **Nearby Places**: "Où est la pharmacie la plus proche?" → Searches OpenStreetMap + calculates distances + provides walking directions
+- **Complex Routes**: "Itin éraire vers 48.8566, 2.3522" → Handles coordinates + calculates distance/duration + opens map view
+
+**Web Search Integration:**
+- **General Info**: "Recherche restaurants italiens près de moi" → Tavily search + filters by location + reads top 3 results with addresses
+- **Specific Facts**: "Qui a gagné la Coupe du Monde 2022?" → Web search + extracts answer + speaks concise response
+- **How-to Guides**: "Comment faire une omelette?" → Fetches recipe + reads ingredients + summarizes steps
+- **News**: "Actualités sur l'IA" → Searches recent articles + summarizes headlines + offers to read full articles
+
+**Multi-Service Orchestration:**
+- **Context-Aware**: "Ajoute rendez-vous dentiste demain 10h, vérifie la météo et cherche un café près du cabinet"
+  1. Creates task with alarm
+  2. Fetches tomorrow's weather at 10am
+  3. Searches cafés near dental office location
+  4. Speaks unified response: "Rendez-vous ajouté pour demain 10h. Il fera 15°C et ensoleillé. J'ai trouvé 3 cafés à proximité..."
+
+**Conversational Follow-ups:**
+- **You**: "Quel temps fait-il à Paris?"
+- **AI**: "Il fait actuellement 12°C à Paris, partiellement nuageux avec 60% d'humidité."
+- **You**: "Et demain?" *(AI remembers context = Paris weather)*
+- **AI**: "Demain à Paris, maximum 15°C, ensoleillé toute la journée."
+- **You**: "Ajoute rappel parapluie si pluie" *(AI creates conditional reminder)*
+
+**Task Intelligence:**
+- **Smart Extraction**: "Rappelle-moi prendre aspirine 500mg matin et soir avec repas" → Extracts medication name, dosage, frequency, creates 2 separate alarms with meal context
+- **Time Parsing**: "Rendez-vous dans 3 jours à 14h30" → Calculates date (Dec 28, 2025) + sets exact alarm
+- **Recurring Tasks**: "Tous les lundis matins gym à 8h" → Creates recurring weekly task with alarm series
+
+**Activity Tracking Insights:**
+- **Progress Queries**: "Combien de pas aujourd'hui?" → Reads current count + calculates % of goal + motivational message
+- **Comparative Analysis**: "Ai-je marché plus cette semaine que la dernière?" → Compares weekly totals + speaks percentage difference
+- **Route Memory**: "Montre mon parcours d'hier" → Retrieves GPS path + opens map + speaks distance/duration summary
+
+### Response Format Features
+
+**SSML Speech Synthesis:**
+- **Emphasis**: "**ATTENTION** rendez-vous important" → Louder, stressed delivery
+- **Pauses**: Natural breaks between sentences for comprehension
+- **Pitch Variation**: Questions end with rising intonation
+- **Speed Adjustment**: Complex info slower, confirmations faster
+
+**Multi-Language Auto-Detection:**
+- Detects French, Italian, English automatically
+- Responds in user's language
+- Handles code-switching mid-conversation
+
+**Memory & Context:**
+- Retains 10-20 exchanges in conversation history
+- References previous tasks, locations, preferences
+- Personalizes responses based on usage patterns
+
+---
+
 ## 🗣️ Voice Commands
 
 **Tasks:**
