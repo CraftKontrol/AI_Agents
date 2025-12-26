@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Backup rules for CKGenericApp
+  Ensures all data persists across app updates and reinstalls
+-->
+<full-backup-content>
+    <!-- Include all shared preferences (DataStore, etc.) -->
+    <include domain="sharedpref" path="." />
+    
+    <!-- Include all databases (Room DB) -->
+    <include domain="database" path="." />
+    
+    <!-- Include app files (WebView data, caches, etc.) -->
+    <include domain="file" path="." />
+    
+    <!-- Include external files if any -->
+    <include domain="external" path="." />
+    
+    <!-- Exclude temporary cache that should not be backed up -->
+    <exclude domain="file" path="code_cache" />
+    <exclude domain="file" path="no_backup" />
+</full-backup-content>

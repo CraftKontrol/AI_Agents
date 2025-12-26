@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CraftKontrol Desktop</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <h1>🎯 CraftKontrol Desktop</h1>
+            <div class="header-actions">
+                <button id="settingsBtn" class="icon-btn" title="Settings">⚙️</button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="app-main">
+            <!-- Apps Grid -->
+            <section class="apps-section">
+                <h2>AI Agents</h2>
+                <div id="appsGrid" class="apps-grid">
+                    <!-- Apps will be loaded dynamically -->
+                </div>
+            </section>
+
+            <!-- API Keys Section -->
+            <section class="api-keys-section">
+                <h2>API Keys Management</h2>
+                <p class="section-description">
+                    Configure your API keys once here - they will be automatically injected into all web apps.
+                </p>
+                
+                <div class="api-keys-grid">
+                    <div class="api-key-field">
+                        <label for="mistral">Mistral AI</label>
+                        <input type="password" id="mistral" placeholder="Enter Mistral API key">
+                        <button class="toggle-visibility" data-target="mistral">👁️</button>
+                    </div>
+                    
+                    <div class="api-key-field">
+                        <label for="deepgram">Deepgram STT</label>
+                        <input type="password" id="deepgram" placeholder="Enter Deepgram API key">
+                        <button class="toggle-visibility" data-target="deepgram">👁️</button>
+                    </div>
+                    
+                    <div class="api-key-field">
+                        <label for="deepgramtts">Deepgram TTS</label>
+                        <input type="password" id="deepgramtts" placeholder="Enter Deepgram TTS API key">
+                        <button class="toggle-visibility" data-target="deepgramtts">👁️</button>
+                    </div>
+                    
+                    <div class="api-key-field">
+                        <label for="google_tts">Google Cloud TTS</label>
+                        <input type="password" id="google_tts" placeholder="Enter Google TTS API key">
+                        <button class="toggle-visibility" data-target="google_tts">👁️</button>
+                    </div>
+                    
+                    <div class="api-key-field">
+                        <label for="openweathermap">OpenWeatherMap</label>
+                        <input type="password" id="openweathermap" placeholder="Enter OpenWeatherMap API key">
+                        <button class="toggle-visibility" data-target="openweathermap">👁️</button>
+                    </div>
+                    
+                    <div class="api-key-field">
+                        <label for="tavily">Tavily Search</label>
+                        <input type="password" id="tavily" placeholder="Enter Tavily API key">
+                        <button class="toggle-visibility" data-target="tavily">👁️</button>
+                    </div>
+                </div>
+                
+                <button id="saveApiKeysBtn" class="primary-btn">💾 Save API Keys</button>
+            </section>
+
+            <!-- Status Section -->
+            <section class="status-section">
+                <h2>Monitoring Service</h2>
+                <div class="status-card">
+                    <div class="status-indicator">
+                        <span id="statusDot" class="dot"></span>
+                        <span id="statusText">Checking...</span>
+                    </div>
+                    <div class="status-info">
+                        <p id="alarmCount">Scheduled alarms: 0</p>
+                        <p id="nextAlarm">Next alarm: None</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">CKGenericApp</string>
+    
+    <!-- Canali di notifica -->
+    <string name="notification_channel_monitoring_name">Monitoraggio in background</string>
+    <string name="notification_channel_monitoring_description">Monitora allarmi, appuntamenti e attività</string>
+    <string name="notification_channel_alerts_name">Avvisi</string>
+    <string name="notification_channel_alerts_description">Notifiche importanti dalle tue app</string>
+    <string name="notification_channel_alarms_name">Allarmi</string>
+    <string name="notification_channel_alarms_description">Allarmi di attività e appuntamenti con suono</string>
+    <string name="monitoring_service_running">Monitoraggio delle tue app in background</string>
+    <string name="monitoring_service_with_steps">👣 %1$d passi oggi - Servizio attivo</string>
+    
+    <!-- Permessi -->
+    <string name="permission_camera">Il permesso della fotocamera è necessario per le videochiamate</string>
+    <string name="permission_microphone">Il permesso del microfono è necessario per l\'audio</string>
+    <string name="permission_location">Il permesso di localizzazione è necessario per le funzioni basate sulla posizione</string>
+    <string name="permission_notifications">Il permesso di notifica è necessario per gli avvisi</string>
+    
+    <!-- Navigazione -->
+    <string name="settings">Impostazioni</string>
+    <string name="refresh">Aggiorna</string>
+    <string name="back">Indietro</string>
+    <string name="forward">Avanti</string>
+    <string name="home">Home</string>
+    <string name="select_app">Seleziona app</string>
+    
+    <!-- Sezioni delle impostazioni -->
+    <string name="background_monitoring">Monitoraggio in background</string>
+    <string name="display">Visualizzazione</string>
+    <string name="language_settings">Lingua</string>
+    
+    <!-- Opzioni impostazioni -->
+    <string name="enable_monitoring">Abilita monitoraggio</string>
+    <string name="monitoring_description">Monitora allarmi, appuntamenti e notifiche</string>
+    <string name="enable_notifications">Abilita notifiche</string>
+    <string name="notifications_description">Mostra notifiche dalle app monitorate</string>
+    <string name="fullscreen_mode">Modalità a schermo intero</string>
+    <string name="fullscreen_description">Visualizza app a schermo intero</string>
+    <string name="dark_mode">Modalità scura</string>
+    <string name="dark_mode_description">Usa tema scuro</string>
+    
+    <!-- Menu lingua -->
+    <string name="select_language">Seleziona lingua</string>
+    <string name="language_french">Français</string>
+    <string name="language_english">English</string>
+    <string name="language_italian">Italiano</string>
+    <string name="current_language">Lingua attuale</string>
+    
+    <!-- Schermata principale -->
+    <string name="app_title">Craft Kontrol Center</string>
+    <string name="close_app">Chiudi app</string>
+    <string name="welcome_title">Benvenuto in Craft Kontrol Center!</string>
+    <string name="welcome_description">Gestisci le tue app web, crea scorciatoie e configura le tue chiavi API per un\'integrazione perfetta.</string>
+    <string name="how_to_title">Come usare?</string>
+    <string name="how_to_description">• Clicca il pulsante a destra di un\'app per aggiungere una scorciatoia alla schermata home.\n• Configura le tue chiavi API nella sezione dedicata, saranno accessibili in tutte le tue app.\n• Usa il pulsante Device Testing per testare i sensori del tuo dispositivo.</string>
+    <string name="got_it">Ho capito</string>
+    <string name="device_testing">Test dispositivo</string>
+    <string name="device_testing_description">Testa microfono, fotocamera, posizione e sensori</string>
+    <string name="close_dialog_title">Chiudi app</string>
+    <string name="close_dialog_description">L\'app smetterà di funzionare e non sarà più eseguita in background. Puoi riavviarla dalla schermata home.</string>
+    <string name="close">Chiudi</string>
+    <string name="cancel">Annulla</string>
+    <string name="available_apps">App Disponibili</string>
+    <string name="shortcut_hint">Clicca l\'icona + per creare una scorciatoia sulla schermata home</string>
+    <string name="api_keys">Chiavi API</string>
+    <string name="api_keys_description">Configura le tue chiavi API. Saranno automaticamente disponibili in tutte le app via JavaScript.</string>
+    <string name="ai_text_section">🤖 IA &amp; Testo</string>
+    <string name="weather_section">🌤️ Meteo</string>
+    <string name="web_search_section">🔍 Ricerca Web</string>
+    <string name="google_services_section">🎤 Google Services</string>
+    <string name="api_info">Le chiavi API sono memorizzate localmente e accessibili via window.CKGenericApp.getApiKey(\'nome_chiave\')</string>
+    <string name="no_apps">Nessuna app disponibile</string>
+    <string name="apps_load_info">Le app si caricheranno automaticamente all\'avvio</string>
+    
+    <!-- Test dispositivo -->
+    <string name="microphone">Microfono</string>
+    <string name="camera">Fotocamera</string>
+    <string name="location">Posizione</string>
+    <string name="sensors">Sensori</string>
+    <string name="waveform_visualization">Visualizzazione forma d\'onda</string>
+    <string name="live">DAL VIVO</string>
+    <string name="audio_level">Livello audio</string>
+    <string name="camera_preview">Anteprima fotocamera dal vivo</string>
+    <string name="camera_controls">Controlli fotocamera</string>
+    <string name="switch_camera">Cambia</string>
+    <string name="capture">Cattura</string>
+    <string name="getting_location">Ottenimento posizione...</string>
+    <string name="current_location">Posizione attuale</string>
+    <string name="grant_permission">Concedi permesso</string>
+        <!-- Test dispositivo - Schede info -->
+    <string name="microphone_test_title">Test del microfono</string>
+    <string name="microphone_test_description">Testa il microfono del tuo dispositivo e visualizza l\'input audio in tempo reale.</string>
+    <string name="microphone_permission_required">Permesso del microfono richiesto</string>
+    <string name="camera_test_title">Test fotocamera</string>
+    <string name="camera_test_description">Testa la fotocamera del tuo dispositivo. Visualizza l\'anteprima della fotocamera e verifica la disponibilità.</string>
+    <string name="camera_permission_required">Permesso fotocamera richiesto</string>
+    <string name="camera_permission_rationale">È necessario il permesso della fotocamera per testare la fotocamera.</string>
+    <string name="camera_permission_grant">Concedi il permesso della fotocamera per testare la fotocamera.</string>
+    <string name="location_test_title">Test posizione</string>
+    <string name="location_test_description">Testa i servizi di posizione del tuo dispositivo. Visualizza le coordinate attuali e altri dati di posizione.</string>
+    <string name="location_permission_required">Permesso posizione richiesto</string>
+    <string name="location_permission_rationale">Il permesso di posizione è necessario per testare i servizi GPS e di posizione.</string>
+    <string name="location_permission_grant">Concedi il permesso di posizione per testare i servizi di posizione.</string>
+    <string name="sensors_test_title">Test sensori</string>
+    <string name="sensors_test_description">Testa i sensori del tuo dispositivo, inclusi accelerometro, giroscopio, sensore di luce e sensore di prossimità.</string>
+    <string name="camera_status">Stato fotocamera</string>
+    <string name="location_status">Stato posizione</string>
+        <!-- Impostazioni -->
+    <string name="languages_not_loaded">Lingue non caricate</string>
+    <string name="current_language_debug">Lingua attuale: %1$s</string>
+    <string name="available_languages_debug">Disponibili: %1$d</string>
+    <string name="about">Informazioni</string>
+    <string name="app_version">Versione 1.0.0</string>
+    <string name="copyright">© 2025 CraftKontrol - Arnaud Cassone / Artcraft Visuals</string>
+    
+    <!-- Backup dei dati -->
+    <string name="data_backup">Backup dei dati</string>
+    
+    <!-- Gestione della cache -->
+    <string name="cache_management">Gestione della cache</string>
+    <string name="clear_cache">Svuota cache WebView</string>
+    <string name="clear_cache_description">Cancella tutti i dati memorizzati (cookie, storage, cronologia)</string>
+    <string name="cache_cleared">Cache svuotata con successo</string>
+    <string name="cache_clear_failed">Impossibile svuotare la cache</string>
+    <string name="backup_description">Backup e ripristino di tutti i dati dell\'app e dello storage delle applicazioni web</string>
+    <string name="export_data">Esporta dati</string>
+    <string name="import_data">Importa ultimo backup</string>
+    <string name="auto_backup_info">I tuoi dati vengono salvati automaticamente con il tuo account Google. L\'esportazione manuale è consigliata per maggiore sicurezza.</string>
+    
+    <!-- Attività scorciatoia -->
+    <string name="error_no_app">Errore: App non specificata</string>
+    <string name="loading_app">Caricamento app...</string>
+    <string name="app_not_found">App non trovata</string>
+</resources>

@@ -1,0 +1,172 @@
+name: Desktop Release Build
+
+on:
+  push:
+    tags:
+      - 'v*.*.*-desktop'
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            platform: win
+            arch: x64
+          - os: macos-latest
+            platform: mac
+            arch: universal
+          - os: ubuntu-latest
+            platform: linux
+            arch: x64
+    
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: platforms/desktop/package-lock.json
+      
+      - name: Extract version from tag
+        id: version
+        shell: bash
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          VERSION=${VERSION%-desktop}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+      
+      - name: Install dependencies
+        run: |
+          cd platforms/desktop
+          npm ci
+      
+      - name: Build for Windows
+        if: matrix.platform == 'win'
+        run: |
+          cd platforms/desktop
+          npm run build:win
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Build for macOS
+        if: matrix.platform == 'mac'
+        run: |
+          cd platforms/desktop
+          npm run build:mac
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_LINK: ${{ secrets.MAC_CERTIFICATE }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      
+      - name: Build for Linux
+        if: matrix.platform == 'linux'
+        run: |
+          cd platforms/desktop
+          npm run build:linux
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Upload artifacts (Windows)
+        if: matrix.platform == 'win'
+        uses: actions/upload-artifact@v4
+        with:
+          name: CKDesktop-Windows-v${{ steps.version.outputs.version }}
+          path: |
+            platforms/desktop/dist/CKDesktop-*.exe
+            platforms/desktop/dist/CKDesktop-*.exe.blockmap
+          retention-days: 30
+      
+      - name: Upload artifacts (macOS)
+        if: matrix.platform == 'mac'
+        uses: actions/upload-artifact@v4
+        with:
+          name: CKDesktop-macOS-v${{ steps.version.outputs.version }}
+          path: |
+            platforms/desktop/dist/CKDesktop-*.dmg
+            platforms/desktop/dist/CKDesktop-*.dmg.blockmap
+            platforms/desktop/dist/CKDesktop-*.zip
+          retention-days: 30
+      
+      - name: Upload artifacts (Linux)
+        if: matrix.platform == 'linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: CKDesktop-Linux-v${{ steps.version.outputs.version }}
+          path: |
+            platforms/desktop/dist/CKDesktop-*.AppImage
+            platforms/desktop/dist/CKDesktop-*.deb
+          retention-days: 30
+  
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Extract version from tag
+        id: version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          VERSION=${VERSION%-desktop}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+      
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            release-artifacts/**/*
+          body: |
+            ## CraftKontrol Desktop v${{ steps.version.outputs.version }}
+            
+            ### Cross-Platform Desktop App
+            Download the installer for your operating system:
+            
+            **Windows**
+            - `CKDesktop-{version}-x64.exe` - Full installer (NSIS)
+            - `CKDesktop-{version}-x64-portable.exe` - Portable version
+            
+            **macOS**
+            - `CKDesktop-{version}-universal.dmg` - DMG installer (Intel + Apple Silicon)
+            - `CKDesktop-{version}-universal-mac.zip` - ZIP archive
+            
+            **Linux**
+            - `CKDesktop-{version}-x64.AppImage` - AppImage (universal)
+            - `CKDesktop-{version}-amd64.deb` - Debian package
+            
+            ### Features
+            - 🎯 **Centralized API Key Management** - Configure once, use everywhere
+            - 🪟 **Multi-Instance Support** - Run multiple agents simultaneously
+            - 🔔 **System Notifications** - Desktop notifications for alarms and reminders
+            - ⏰ **Background Monitoring** - Daemon service for alarm management
+            - 🌐 **System Tray Integration** - Always accessible from tray icon
+            - ⌨️ **Keyboard Shortcuts** - Quick access with Ctrl+1-6
+            - 📱 **Same Web Agents** - All AI Agents from Android version
+            
+            ### What's New
+            See [CHANGELOG.md](CHANGELOG.md) for details.
+            
+            ### Requirements
+            - **Windows**: Windows 10 or later (x64)
+            - **macOS**: macOS 10.13+ (Intel and Apple Silicon)
+            - **Linux**: Ubuntu 18.04+, Fedora 32+, Debian 10+
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
