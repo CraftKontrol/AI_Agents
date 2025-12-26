@@ -307,8 +307,7 @@ private fun StandaloneWebView(
                 )
                 
                 // Create WebView
-                val webView =
-            WebView(ctx).apply {
+                val webView = WebView(ctx).apply {
                     layoutParams = ViewGroup.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT
@@ -317,45 +316,45 @@ private fun StandaloneWebView(
                     // Configure WebView with JavaScript interface
                     val alarmScheduler = com.craftkontrol.ckgenericapp.util.AlarmScheduler(ctx)
                 
-                val jsInterface = com.craftkontrol.ckgenericapp.webview.WebViewJavaScriptInterface(
-                    context = ctx,
-                    onNotification = { title, message ->
-                        Timber.d("Notification from ${app.name}: $title - $message")
-                        // Send to monitoring service
-                    },
-                    apiKeysPreferences = null, // Not needed as we inject via JavaScript
-                    onScheduleAlarm = { alarmId, title, timestamp, taskType ->
-                        Timber.i("Scheduling alarm from ${app.name}: $alarmId - $title at $timestamp")
-                        alarmScheduler.scheduleAlarm(alarmId, title, timestamp, taskType)
-                    },
-                    onCancelAlarm = { alarmId ->
-                        Timber.i("Cancelling alarm from ${app.name}: $alarmId")
-                        alarmScheduler.cancelAlarm(alarmId)
-                    },
-                    sensorMonitoringService = activity.sensorMonitoringService
-                )
-                
-                com.craftkontrol.ckgenericapp.webview.WebViewConfigurator.configure(
-                    this, 
-                    ctx, 
-                    jsInterface
-                )
-                
-                // Custom WebViewClient that injects API keys after page load
-                webViewClient = ApiKeyInjectingWebViewClient(app, apiKeys)
-                
-                webChromeClient = com.craftkontrol.ckgenericapp.webview.CKWebChromeClient(
-                    activity = ctx as android.app.Activity,
-                    onPermissionRequest = { permissions, request ->
-                        Timber.d("Permission request callback: ${permissions.joinToString()}")
-                        activity.pendingWebViewPermissionRequest = request
-                        permissionLauncher.launch(permissions)
-                    }
-                )
-                
-                // Clear cache before loading to ensure fresh content
-                com.craftkontrol.ckgenericapp.webview.WebViewConfigurator.clearWebViewCache(this)
-                
+                    val jsInterface = com.craftkontrol.ckgenericapp.webview.WebViewJavaScriptInterface(
+                        context = ctx,
+                        onNotification = { title, message ->
+                            Timber.d("Notification from ${app.name}: $title - $message")
+                            // Send to monitoring service
+                        },
+                        apiKeysPreferences = null, // Not needed as we inject via JavaScript
+                        onScheduleAlarm = { alarmId, title, timestamp, taskType ->
+                            Timber.i("Scheduling alarm from ${app.name}: $alarmId - $title at $timestamp")
+                            alarmScheduler.scheduleAlarm(alarmId, title, timestamp, taskType)
+                        },
+                        onCancelAlarm = { alarmId ->
+                            Timber.i("Cancelling alarm from ${app.name}: $alarmId")
+                            alarmScheduler.cancelAlarm(alarmId)
+                        },
+                        sensorMonitoringService = activity.sensorMonitoringService
+                    )
+                    
+                    com.craftkontrol.ckgenericapp.webview.WebViewConfigurator.configure(
+                        this, 
+                        ctx, 
+                        jsInterface
+                    )
+                    
+                    // Custom WebViewClient that injects API keys after page load
+                    webViewClient = ApiKeyInjectingWebViewClient(app, apiKeys)
+                    
+                    webChromeClient = com.craftkontrol.ckgenericapp.webview.CKWebChromeClient(
+                        activity = ctx as android.app.Activity,
+                        onPermissionRequest = { permissions, request ->
+                            Timber.d("Permission request callback: ${permissions.joinToString()}")
+                            activity.pendingWebViewPermissionRequest = request
+                            permissionLauncher.launch(permissions)
+                        }
+                    )
+                    
+                    // Clear cache before loading to ensure fresh content
+                    com.craftkontrol.ckgenericapp.webview.WebViewConfigurator.clearWebViewCache(this)
+                    
                     onWebViewCreated(this)
                     
                     // Load URL with cache bypass headers
@@ -372,6 +371,14 @@ private fun StandaloneWebView(
                 
                 // Add WebView to SwipeRefreshLayout
                 addView(webView)
+                
+                // Only enable pull-to-refresh when WebView is scrolled to the top
+                // This prevents interference with modal scrolling
+                val swipeRefreshLayout = this
+                webView.setOnScrollChangeListener { _, _, scrollY, _, _ ->
+                    // Enable pull-to-refresh only when at the top (scrollY == 0)
+                    swipeRefreshLayout.isEnabled = (scrollY == 0)
+                }
                 
                 // Set up pull-to-refresh listener
                 setOnRefreshListener {
