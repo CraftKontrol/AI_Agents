@@ -20,7 +20,6 @@
 - **Icons:** Material Symbols Outlined
 
 ### Key Constraints
-- Max 5 tasks displayed
 - 30s alarm polling
 - 15min pre-reminders
 - WCAG AA compliance
@@ -38,7 +37,7 @@
 - `activity-tracker.js` - Step counting, GPS tracking, altitude gain/loss tracking, sensor integration (NEW)
 - `activity-stats.js` - Statistics calculation & aggregation (NEW)
 - `activity-ui.js` - Activity dashboard, path viewer, stats modal (NEW)
-- `task-manager.js` - Task operations (max 5 display)
+- `task-manager.js` - Task operations
 - `mistral-agent.js` - AI NLP + intent classification
 - `action-wrapper.js` - Unified action execution system (validation → execution → verification)
 - `calendar-integration.js` - FullCalendar wrapper
@@ -422,7 +421,7 @@ The app uses **multiple prompts** for different intents:
 
 **storage.js:** initializeDatabase, addToStore, updateInStore, getFromStore, getAllFromStore, deleteFromStore (merges localStorage tasks when IndexedDB is empty to keep early-created tasks discoverable)
 
-**task-manager.js:** createTask, getDisplayableTasks (max 5), completeTask, snoozeTask, deleteTask, getTodayTasks
+**task-manager.js:** createTask, getDisplayableTasks, completeTask, snoozeTask, deleteTask, getTodayTasks
 
 **mistral-agent.js:** sendToMistralAgent, detectLanguage, extractTaskFromResponse, getCompressedConversationHistory
 
@@ -854,8 +853,7 @@ The app uses **multiple prompts** for different intents:
 
 ## 🚨 Business Rules
 
-1. **MAX 5 tasks displayed**
-2. **Auto-delete**: Mistral decides after completion
+1. **Auto-delete**: Mistral decides after completion
 3. **Medication**: Extract dosage, track `taken` status
 4. **Alarms**: 30s checks, 15min pre-reminder, 10min snooze
 5. **Memory**: Last 10-20 exchanges, always include in Mistral calls

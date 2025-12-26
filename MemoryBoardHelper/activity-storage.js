@@ -13,8 +13,6 @@ let activityDbUnavailable = false;
 
 // Initialize activity-related stores by reusing shared DB from storage.js
 async function initializeActivityStores() {
-    console.log('[ActivityStorage] Waiting for shared DB from storage.js...');
-
     try {
         // Wait for storage.js to signal DB is ready (with 10s timeout)
         const db = await Promise.race([
@@ -24,7 +22,6 @@ async function initializeActivityStores() {
             )
         ]);
         
-        console.log('[ActivityStorage] Shared DB ready, using it');
         return db;
     } catch (error) {
         console.error('[ActivityStorage] Failed to get shared DB:', error);

@@ -27,7 +27,7 @@ const TUTORIAL_STEPS = [
                 details: `<p>On va configurer en quelques étapes :</p>
                     <ul>
                         <li>🎙️ Micro + commandes vocales</li>
-                        <li>📝 Gestion des tâches (limite 5 affichées)</li>
+                        <li>📝 Gestion des tâches</li>
                         <li>🗓️ Calendrier et rappels</li>
                         <li>🏃 Activités avec carte</li>
                         <li>🆘 Contact d'urgence pour appels vocaux</li>
@@ -40,7 +40,7 @@ const TUTORIAL_STEPS = [
                 details: `<p>Setup in a few steps:</p>
                     <ul>
                         <li>🎙️ Mic + voice commands</li>
-                        <li>📝 Task management (5 visible max)</li>
+                        <li>📝 Task management</li>
                         <li>🗓️ Calendar & reminders</li>
                         <li>🏃 Activity tracking with map</li>
                         <li>🆘 Emergency contact for voice calls</li>
@@ -53,7 +53,7 @@ const TUTORIAL_STEPS = [
                 details: `<p>Configurazione in pochi passi:</p>
                     <ul>
                         <li>🎙️ Microfono + comandi vocali</li>
-                        <li>📝 Gestione attività (max 5 visibili)</li>
+                        <li>📝 Gestione attività</li>
                         <li>🗓️ Calendario e promemoria</li>
                         <li>🏃 Attività con mappa</li>
                         <li>🆘 Contatto di emergenza per chiamate vocali</li>
