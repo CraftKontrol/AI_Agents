@@ -1,202 +1,505 @@
-﻿# CKGenericApp - AI Context
+# CKGenericApp - Multi-Platform AI Context
 
 **Quick Technical Reference for AI Assistants**
 
-**Stack**: Kotlin 2.0  Compose  Material 3  Hilt  Room  DataStore  WebView
-**Architecture**: MVVM + Clean Architecture (Presentation  Domain  Data)
-**SDK**: Min 26 (Android 8.0)  Target 34 (Android 14)
+**Project Type**: Multi-Platform Application (Android + Desktop)
+**Purpose**: Unified launcher/container for 6 AI web applications with API key management
+**Platforms**: Android (Kotlin/Compose) + Desktop (Electron/React)
+**Author**: CraftKontrol - Arnaud Cassone / Artcraft Visuals
 
-## Architecture Layers
+## Project Overview
 
-### Presentation (`presentation/`)
-**Compose + Material 3 + Hilt ViewModels**
+CKGenericApp is a **multi-platform container application** that provides:
+- Unified launcher for 6 AI web applications
+- Centralized API key management (12 services)
+- Background monitoring service for alarms and notifications
+- Multi-language support (FR/EN/IT)
+- WebView integration with JavaScript bridge for native features
 
-**Screens**: MainScreen (app management + API keys)  SettingsScreen (preferences + language + cache management)  DeviceTestScreen (hardware testing tabs)
-**Navigation**: AppNavGraph (Compose Navigation)  Screen sealed class (routes)
-**Theme**: Color.kt, Type.kt, Theme.kt (M3 tokens, dynamic color)
-**Localization**: AppLanguage enum (FR/EN/IT)  LocalizationManager  LocaleHelper  stringResource() for all text
-**State**: `StateFlow<UiState>` from ViewModels  `.collectAsStateWithLifecycle()` in Composables  `.update {}` for mutations
-**Cache Management**: Settings screen includes button to clear all WebView cache (cookies, localStorage, history, IndexedDB)
+**Supported AI Applications (6 total):**
+1. **Memory Board Helper** - Voice-powered personal assistant with memory and reminders
+2. **News Agregator** - Aggregated news from multiple sources worldwide
+3. **AI Search Agregator** - Search across multiple AI providers and web sources
+4. **Meteo Agregator** - Multi-source weather forecasts and alerts
+5. **Local Food Products** - Discover local food products and producers
+6. **Astral Compute** - Advanced AI model aggregator with multi-provider support
 
-### Domain (`domain/`)
-**Pure Kotlin - No Android deps**
+## Multi-Platform Architecture
 
-**Models**: WebApp (id, name, url, icon, description, order, permission flags)
-**Repositories**: WebAppRepository interface (getAllEnabledApps, getAppById, initializeDefaultApps)
-**Purpose**: Business logic abstraction, testability
+```
+CKGenericApp/
+├── platforms/
+│   ├── android/               # Android app (Kotlin + Compose)
+│   │   ├── AI_CONTEXT.md     # Android-specific architecture doc
+│   │   ├── app/              # Android Studio project
+│   │   │   ├── src/main/java/com/craftkontrol/ckgenericapp/
+│   │   │   │   ├── presentation/    # UI (Compose + Material 3)
+│   │   │   │   ├── domain/          # Business logic
+│   │   │   │   ├── data/            # Room + DataStore
+│   │   │   │   ├── webview/         # WebView integration
+│   │   │   │   ├── service/         # Background services
+│   │   │   │   ├── receiver/        # Broadcast receivers
+│   │   │   │   ├── util/            # Shortcuts, alarms, backup
+│   │   │   │   └── di/              # Hilt dependency injection
+│   │   │   └── build.gradle.kts
+│   │   └── gradle/
+│   │
+│   └── desktop/               # Desktop app (Electron + React)
+│       ├── AI_CONTEXT.md     # Desktop-specific architecture doc
+│       ├── src/
+│       │   ├── main/         # Main process (Node.js)
+│       │   │   ├── index.js          # Electron entry, IPC handlers
+│       │   │   └── preload.js        # Context bridge
+│       │   └── renderer/     # Renderer process (Browser)
+│       │       ├── index.html        # Main UI + Mock API
+│       │       ├── app.js            # UI logic
+│       │       ├── translations.js   # i18n system
+│       │       └── styles.css        # Dark theme
+│       ├── resources/        # Icons (ck_icon.png, ic_*.png)
+│       ├── package.json
+│       └── electron-builder.yml
+│
+├── .github/
+│   └── workflows/
+│       ├── android-release.yml    # Android CI/CD
+│       └── desktop-release.yml    # Desktop CI/CD (Windows/Mac/Linux)
+│
+├── README.md                  # User documentation
+├── AI_CONTEXT.md             # This file (multi-platform overview)
+├── CHANGELOG.md              # Version history
+├── VERSION_MANAGEMENT.md     # Versioning strategy
+└── STRUCTURE.txt             # Project structure snapshot
+```
 
-### Data (`data/`)
-**Room**: AppDatabase  WebAppEntity  WebAppDao (`Flow<List>` for reactive, suspend for one-shot)
-**Repository**: WebAppRepositoryImpl (implements domain interface, uses DAO, maps Entity  Domain)
-**Preferences (DataStore)**: PreferencesManager (API keys, current app, language) - `Flow<T>` reads, `edit {}` writes
-**Mappers**: WebAppMapper (toDomain/toEntity extensions)
+## Platform-Specific Documentation
 
-### WebView (`webview/`)
-**CKWebViewClient**: URL loading, page lifecycle, error handling, external browser navigation for `target="_blank"`
-**ApiKeyInjectingWebViewClient**: Custom client in ShortcutActivity that injects API keys + handles `target="_blank"` to open in default browser
-**CKWebChromeClient**: Permissions (camera/mic/location/file), progress, console logs, geolocation
-**WebViewJavaScriptInterface**: Android  JS bridge (exposed as `CKAndroid`): `postMessage()`, `showNotification()`, `getAppVersion()`, `getApiKey()`
-**WebViewConfigurator**: Centralized settings (JS enabled, DOM storage, media playback, mixed content allowed, debug mode) + `clearWebViewCache()` for forced fresh reload
+**For detailed architecture and implementation details:**
+- **Android:** See [platforms/android/AI_CONTEXT.md](platforms/android/AI_CONTEXT.md)
+  - Kotlin 2.0, Jetpack Compose, Material 3, Hilt, Room, DataStore
+  - MVVM + Clean Architecture
+  - Min SDK 26, Target SDK 34
+  - Multi-instance shortcuts with unique taskAffinity
+  
+- **Desktop:** See [platforms/desktop/AI_CONTEXT.md](platforms/desktop/AI_CONTEXT.md)
+  - Electron 28, Node.js 20+, React 18, TypeScript 5
+  - Main/Renderer/Preload architecture
+  - Windows/Mac/Linux support
+  - Mock API for browser development
 
-**Critical Settings**: `javaScriptEnabled = true`  `domStorageEnabled = true`  `mediaPlaybackRequiresUserGesture = false`  `mixedContentMode = ALWAYS_ALLOW`  `cacheMode = LOAD_NO_CACHE` (force fresh content)
-**Cache Management**: Apps clear cache on every load (cache/history/formData) + No-Cache headers + `clearWebViewCache()` before loading URLs
-**External Links**: Links with `target="_blank"` or new window requests automatically open in default mobile browser via Intent
+## Shared Features Across Platforms
 
-### Services (`service/`)
-**MonitoringService**: Foreground service (dataSync), coroutine loop (30s for activity, 5min for alarms/appointments), checks activity tracking status, **displays daily step count in notification when activity tracking is enabled in MemoryBoardHelper** with localized text (fr/en/it), shows notifications for alarms/appointments/news
-**CKFirebaseMessagingService**: FCM push notification handler (`onMessageReceived`, `onNewToken`)
-**Activity Data Integration**: MonitoringService reads activity data from SharedPreferences (tracking_enabled, today_steps, last_update) and updates notification text with step count. Data is considered fresh if last_update is within 2 minutes. When tracking is disabled or data is stale, notification reverts to default text.
+### 1. API Key Management (12 Services)
+**Centralized, encrypted storage of API keys for all web apps:**
 
-### Sensor System (`service/SensorMonitoringService.kt`)
-**Purpose**: Provide accelerometer + gyroscope data for activity tracking
+| Service | Purpose | Used By |
+|---------|---------|---------|
+| `mistral` | Mistral AI | AI Search, Memory Board, Astral Compute |
+| `deepgram` | Deepgram STT | Memory Board (Speech-to-Text) |
+| `deepgramtts` | Deepgram TTS | Memory Board (Text-to-Speech) |
+| `google_tts` | Google Cloud TTS | AI Search, Memory Board |
+| `google_stt` | Google Cloud STT | Memory Board |
+| `openweathermap` | OpenWeatherMap | Meteo Agregator |
+| `weatherapi` | WeatherAPI | Meteo Agregator |
+| `tavily` | Tavily Search | AI Search Agregator |
+| `scrapingbee` | ScrapingBee | AI Search Agregator |
+| `scraperapi` | ScraperAPI | AI Search Agregator |
+| `brightdata` | Bright Data | AI Search Agregator |
+| `scrapfly` | ScrapFly | AI Search Agregator |
 
-**SensorMonitoringService**: `startSensors()` (10Hz), `stopSensors()`, `accelerometerData`, `gyroscopeData`
-**JS Bridge**: `CKAndroid.startSensors()`, `CKAndroid.getAccelerometer()`, `CKAndroid.getGyroscope()`
-**Auto-dispatch**: Events `ckgenericapp_accelerometer`, `ckgenericapp_gyroscope` (100ms interval)
-**Flow**: ShortcutActivity onCreate → start sensors → coroutine dispatcher → WebView events → Memory Helper triple verification
+**Storage:**
+- **Android:** DataStore (encrypted preferences)
+- **Desktop:** electron-store (encrypted file)
 
-### Receivers (`receiver/`)
-**BootReceiver**: Listens `BOOT_COMPLETED`/`QUICKBOOT_POWERON`  Restarts MonitoringService
-**AlarmReceiver**: Receives alarm intents  Shows notifications with full-screen intent  Opens app
+**Injection:**
+- Keys automatically injected into opened web apps
+- Exposed as `window.CKAndroid` (Android) and `window.CKDesktop` (Desktop)
+- Also exposed as `window.CKGenericApp` for cross-platform compatibility
 
-### Shortcut System (`util/ShortcutHelper.kt`, `ShortcutActivity.kt`)
-**ShortcutHelper**: `createShortcut()` (pinned shortcut), `generateAppIcon()` (colored bitmap with initials)
-**Intent**: Action `OPEN_APP.{appId}`  Identifier `{appId}`  Flags `NEW_TASK | MULTIPLE_TASK`  Extra `EXTRA_APP_ID`
-**ShortcutActivity**: Base activity (not exported)  Accessed via activity-alias per app  Maintains `currentWebView` reference for reload operations
-**Activity Aliases**: Each app has dedicated alias with unique `taskAffinity` (com.craftkontrol.ckgenericapp.{appId})  `singleTask` per alias
-**Lifecycle**: `onCreate` (extract appId, clear cache, load WebView with no-cache headers)  `onNewIntent` (force reload with cache clearing)  `onResume` (force reload if flag set)
-**Cache Behavior**: Every load clears cache/history/formData + Uses no-cache HTTP headers + Forces fresh content on every app open/reopen
-**Pull-to-Refresh**: Swipe down from top to force reload (clears cache + reloads with no-cache headers) - Material3 PullToRefreshContainer with nestedScroll
-**Multi-Instance**: Each app alias has unique taskAffinity creating isolated tasks - all apps run in separate parallel tasks independently
+### 2. JavaScript Bridge API
 
-### Alarm System (`util/AlarmScheduler.kt`, `AlarmReceiver.kt`)
-**Purpose**: Schedule alarms from web apps (Memory Helper tasks)
-
-**AlarmScheduler**: `scheduleAlarm()` (exact alarm via AlarmManager), `cancelAlarm()`, `canScheduleExactAlarms()`  Uses `setExactAndAllowWhileIdle()`  Permissions: `SCHEDULE_EXACT_ALARM`, `USE_EXACT_ALARM`
-**AlarmReceiver**: Triggered at alarm time  Shows HIGH priority notification with task emoji  Opens app on tap
-**JS Bridge**: `CKAndroid.scheduleAlarm(id, title, timestamp, type)`, `CKAndroid.cancelAlarm(id)`
-**Flow**: Web app calls bridge  AlarmScheduler registers  AlarmManager fires  AlarmReceiver shows notification  User taps  App opens
-
-### Backup System (`backup/`)
-**CKBackupAgent**: Custom BackupAgent  `onFullBackup()` (DataStore + Room + WebView data to Google Drive), `onRestore()` (restore after reinstall)
-**BackupHelper**: `requestBackup()` (immediate), `requestBackupIfNeeded()` (24h check), `isFirstLaunchAfterInstall()`, triggers on preference changes
-**Auto-triggers**: Preference changes, app pause, periodic checks  Registered in Manifest  Integrates with PreferencesManager
-
-### Dependency Injection (`di/`)
-**Hilt (Dagger)**: AppModule (context)  DatabaseModule (AppDatabase, WebAppDao)  RepositoryModule (binds interface  impl)
-**Scope**: SingletonComponent  `@HiltViewModel` for ViewModels  `@HiltAndroidApp` on Application class
-
-## Key Data Flows
-
-**App Launch**: MainActivity  Request permissions  Start MonitoringService  Init Compose  MainViewModel loads apps/preferences  MainScreen renders
-**App Selection**: User taps  Dialog  `setCurrentApp()`  Save to preferences  Update UI state  MainScreen recomposes  WebView loads new URL
-**Permissions**: WebView requests  CKWebChromeClient checks  Launch activity permission if needed  Grant to WebView
-**Background**: MonitoringService foreground loop (5min)  Check alarms/appointments/news  Show notification if needed
-
-## Code Patterns
-
-**Reactive Data**: Repository `Flow<List<WebApp>>`  ViewModel `combine()` + `.collect()`  `_uiState.update {}`  UI `.collectAsStateWithLifecycle()`
-**State Updates**: `_uiState.update { it.copy(field = value) }`  `combine(flow1, flow2) { a, b -> UiState(...) }`
-**Error Handling**: `try { Result.success(data) } catch (e) { Timber.e(e); Result.failure(e) }`
-**Alarm Pattern**: JS `CKAndroid.scheduleAlarm()`  `@JavascriptInterface`  AlarmScheduler  AlarmManager  AlarmReceiver  Notification
-
-## Data Persistence
-
-**Auto Backup**: CKBackupAgent + BackupHelper  Backs up DataStore + Room + WebView data to Google Drive
-**Triggers**: Preference changes, app pause, periodic (24h), first launch check
-**Config**: `backup_rules.xml` (legacy), `data_extraction_rules.xml` (API 31+)
-**Scope**: Includes `sharedpref/`, `database/`, `file/`, WebView dirs  Excludes `code_cache/`, `no_backup/`
-**WebView Storage**: `domStorageEnabled` (localStorage/sessionStorage), `databaseEnabled` (IndexedDB), persistent cache paths
-**Manual**: `util/BackupManager.kt` for user-initiated export/import
-
-## JavaScript Bridge API
+**Common API available in all web apps:**
 
 ```javascript
-// Exposed as window.CKAndroid in WebViews
-CKAndroid.getApiKey('service_name')              // Get API key by name
-CKAndroid.showNotification(title, message)       // Show Android notification
-CKAndroid.postMessage(message)                   // Post message to Android
-CKAndroid.getAppVersion()                        // Get app version string
-CKAndroid.scheduleAlarm(id, title, ts, type)     // Schedule alarm
-CKAndroid.cancelAlarm(id)                        // Cancel alarm
-CKAndroid.saveActivityData(enabled, steps)       // Save activity tracking status and step count (updates MonitoringService notification)
-CKAndroid.getActivityData()                      // Get activity data as JSON {"trackingEnabled":bool,"todaySteps":int,"lastUpdate":long}
+// Get API key by service name
+getApiKey(serviceName: string): string
 
-// Also exposed as window.CKGenericApp with getApiKey + apiKeys object
-window.CKGenericApp.getApiKey('openai')          // Get specific key
-window.CKGenericApp.apiKeys                      // All keys as object
+// Show notification
+showNotification(title: string, message: string): void
+
+// Get app version
+getAppVersion(): string
+
+// Schedule alarm (Memory Board Helper)
+scheduleAlarm(id: string, title: string, timestamp: number, type: string): void
+
+// Cancel alarm
+cancelAlarm(id: string): void
+
+// Save/get activity data (Memory Board Helper)
+saveActivityData(enabled: boolean, steps: number): void
+getActivityData(): object
+
+// Access all keys (read-only)
+apiKeys: { [key: string]: string }
 ```
 
-## File Structure
+**Platform-specific implementations:**
+- **Android:** `@JavascriptInterface` methods via `addJavascriptInterface()`
+- **Desktop:** IPC bridge via preload script `contextBridge.exposeInMainWorld()`
 
+### 3. Multi-Language Support (3 Languages)
+
+**Supported Languages:**
+- **FR** (French) - Default
+- **EN** (English)
+- **IT** (Italian)
+
+**Translation Coverage:**
+- App names (constant across languages)
+- App descriptions (translated)
+- Settings UI (fully translated)
+- Notifications (localized)
+- Error messages (localized)
+
+**Implementation:**
+- **Android:** `strings.xml` in `values/`, `values-fr/`, `values-it/` + `LocalizationManager`
+- **Desktop:** `translations.js` with nested object structure + `t(key)` function
+
+### 4. App Configuration (6 Apps)
+
+**Common app definitions across platforms:**
+
+```javascript
+[
+  {
+    id: 'memoryboardhelper',
+    name: 'Memory',
+    order: 1,
+    color: '#3b9150',
+    icon: 'ic_memory.png',
+    description: 'Voice-powered personal assistant with memory and reminders'
+  },
+  {
+    id: 'newsagregator',
+    name: 'News',
+    order: 2,
+    color: '#91233e',
+    icon: 'ic_news.png',
+    description: 'Aggregated news from multiple sources worldwide'
+  },
+  {
+    id: 'aisearchagregator',
+    name: 'Search',
+    order: 3,
+    color: '#1f45b3',
+    icon: 'ic_search.png',
+    description: 'Search across multiple AI providers and web sources'
+  },
+  {
+    id: 'meteoagregator',
+    name: 'Meteo',
+    order: 4,
+    color: '#25a5da',
+    icon: 'ic_meteo.png',
+    description: 'Multi-source weather forecasts and alerts'
+  },
+  {
+    id: 'localfoodproducts',
+    name: 'Food',
+    order: 5,
+    color: '#ffa000',
+    icon: 'ic_food.png',
+    description: 'Discover local food products and producers in your area'
+  },
+  {
+    id: 'astralcompute',
+    name: 'Astral',
+    order: 6,
+    color: '#c125da',
+    icon: 'ic_astral.png',
+    description: 'Advanced AI model aggregator with multi-provider support'
+  }
+]
 ```
-app/src/main/java/com/craftkontrol/ckgenericapp/
- data/
-    local/ (Room DAO, Database, DataStore preferences)
-    repository/ (Repository implementations)
- domain/
-    model/ (WebApp model)
-    repository/ (Repository interfaces)
- di/ (Hilt modules: App, Database, Repository)
- presentation/
-    main/ (MainScreen, MainViewModel, MainUiState)
-    shortcut/ (ShortcutActivity, ShortcutViewModel)
-    settings/ (SettingsScreen, SettingsViewModel)
-    devicetest/ (DeviceTestScreen with hardware tabs)
-    localization/ (Multi-language system)
-    navigation/ (AppNavGraph, Screen sealed class)
-    theme/ (Color, Type, Theme)
- webview/ (WebView config, clients, JS interface)
- service/ (MonitoringService, FCM service)
- receiver/ (BootReceiver, AlarmReceiver)
- backup/ (CKBackupAgent, BackupHelper)
- util/ (ShortcutHelper, AlarmScheduler, BackupManager)
-```
 
-## Build Commands
+### 5. Background Monitoring Service
 
+**Purpose:** Background daemon for alarms, notifications, and activity tracking
+
+**Features:**
+- Scheduled alarms (from Memory Board Helper)
+- Notification management
+- Activity tracking integration (step counter)
+- Periodic checks (5 min intervals)
+- Survives app restarts (Android BootReceiver, Desktop persistent process)
+
+**Implementation:**
+- **Android:** Foreground Service + AlarmManager + BroadcastReceiver
+- **Desktop:** Node.js background process + Electron Notification API
+
+### 6. WebView Integration
+
+**Common settings across platforms:**
+- JavaScript enabled
+- DOM storage enabled (localStorage, sessionStorage, IndexedDB)
+- Mixed content allowed (HTTP + HTTPS)
+- Cache management (force fresh reload)
+- External link handling (open in default browser)
+
+**Platform-specific:**
+- **Android:** Custom WebView clients (CKWebViewClient, ApiKeyInjectingWebViewClient)
+- **Desktop:** BrowserWindow with preload script injection
+
+## Build & Release System
+
+### Android Build
 ```bash
-.\gradlew assembleDebug        # Build debug APK
-.\gradlew installDebug         # Build + install on device
-.\gradlew clean build          # Clean + full build
-adb logcat | findstr CKGenericApp  # View logs
+cd platforms/android
+./gradlew assembleDebug        # Debug APK
+./gradlew assembleRelease      # Release APK (signed)
+./gradlew installDebug         # Install on device
 ```
 
-## Critical Implementation Notes
+**Output:** `platforms/android/app/build/outputs/apk/debug/app-debug.apk`
 
-1. **WebView JS Bridge**: Must call `addJavascriptInterface(interface, 'CKAndroid')` and inject API keys via JS execution
-2. **Alarm Permissions**: Android 12+ requires `SCHEDULE_EXACT_ALARM` permission, check with `canScheduleExactAlarms()`
-3. **Multi-Instance**: Activity-alias per app with unique taskAffinity ensures each app runs in completely isolated task (add new alias when adding new app to system)
-4. **Backup Timing**: BackupHelper triggers on preference changes + app pause for automatic persistence
-5. **State Management**: Always use `StateFlow` with `.update {}` for thread-safe mutations
-6. **Localization**: All text must use `stringResource(R.string.key)` for dynamic language updates
-7. **Permissions**: WebView permission requests forwarded to Activity for runtime permission checks
+**CI/CD:** GitHub Actions (`.github/workflows/android-release.yml`)
+- Runs on: Ubuntu latest
+- Triggers: Push to main, manual workflow_dispatch
+- Outputs: Debug APK artifact
 
-## Supported API Keys
+### Desktop Build
+```bash
+cd platforms/desktop
+npm run build:win              # Windows (auto-increment version)
+npm run build:mac              # macOS (requires Mac runner)
+npm run build:linux            # Linux (requires Linux runner)
+npm run build:direct           # Skip cleanup (if files locked)
+```
 
-**Stored in DataStore (`ApiKeysPreferences`):**
-- `mistral` - Mistral AI (AI Search, Memory Board, Astral Compute)
-- `deepgram` - Deepgram STT (Memory Board Speech-to-Text, Nova-2 model)
-- `deepgramtts` - Deepgram TTS (Memory Board Text-to-Speech, Aura-2 voices)
-- `google_tts` - Google Cloud TTS (AI Search, Memory Board)
-- `google_stt` - Google Cloud STT (Memory Board)
-- `openweathermap` - OpenWeatherMap (Meteo Agregator)
-- `weatherapi` - WeatherAPI (Meteo Agregator)
-- `tavily` - Tavily Search (AI Search Agregator)
-- `scrapingbee`, `scraperapi`, `brightdata`, `scrapfly` - Web scraping services (AI Search Agregator)
+**Output:** `platforms/desktop/dist/CKDesktop-{version}.exe`
 
-**Injection**: All keys automatically injected into WebViews via `ApiKeyInjectingWebViewClient` as `window.CKGenericApp.apiKeys` object
-**Access**: `CKAndroid.getApiKey('keyName')` or `window.CKGenericApp.getApiKey('keyName')` from JavaScript
+**CI/CD:** GitHub Actions (`.github/workflows/desktop-release.yml`)
+- Runs on: Windows/Mac/Linux matrix
+- Triggers: Push to main, manual workflow_dispatch
+- Outputs: .exe (Windows), .dmg (Mac), .AppImage/.deb (Linux)
+- Auto-version: `npm version patch` on every build
 
-## Common Tasks
+**Current Versions:**
+- Android: Based on git commit count
+- Desktop: 1.0.15 (semantic versioning)
 
-**Add New App**: Insert into Room database via WebAppRepository  Auto-loads in MainScreen
-**Add API Key Service**: Add to MainScreen state vars + ApiKeyField + save via `viewModel.saveApiKey()`  Auto-injected into WebViews
-**Add Translation**: Add string to `values/strings.xml` + `values-fr/strings.xml` + `values-it/strings.xml`
-**Add Alarm Type**: Update AlarmReceiver emoji mapping + notification channel logic
-**Debug WebView**: Enable `WebView.setWebContentsDebuggingEnabled(true)` in debug builds (already done)
-**Clear Cache**: Settings screen provides button to clear all WebView data (cache, cookies, localStorage, sessionStorage, IndexedDB, history, form data)
+## Version Management
+
+**Strategy:** See [VERSION_MANAGEMENT.md](VERSION_MANAGEMENT.md)
+
+**Android:**
+- versionCode: Auto-generated from git commit count
+- versionName: Semantic versioning (manual updates)
+
+**Desktop:**
+- Auto-increment: `npm version patch` on every build
+- Format: major.minor.patch (1.0.15)
+
+**Changelog:** All changes tracked in [CHANGELOG.md](CHANGELOG.md)
+
+## Development Workflow
+
+### Setting Up Development Environment
+
+**Android:**
+1. Install Android Studio (latest stable)
+2. Open `platforms/android` as Android Studio project
+3. Sync Gradle dependencies
+4. Run on emulator or physical device
+
+**Desktop:**
+1. Install Node.js 20+ and npm
+2. `cd platforms/desktop && npm install`
+3. `npm run dev` for development mode
+4. Or open `renderer/index.html` with Live Server (Mock API activates)
+
+### Adding a New App
+
+**Both platforms require:**
+1. Add app definition to storage (Room for Android, electron-store for Desktop)
+2. Create icon at 256x256 PNG (`ic_{appid}.png`)
+3. Add translations for app description (FR/EN/IT)
+4. Update app order and color scheme
+
+**Android-specific:**
+- Add activity-alias in AndroidManifest.xml with unique taskAffinity
+- Add shortcut creation in ShortcutHelper
+
+**Desktop-specific:**
+- Update `initializeDefaultSettings()` in `src/main/index.js`
+- Add icon to `resources/` folder
+
+### Adding a New API Key Service
+
+**Both platforms require:**
+1. Add field to API keys section UI
+2. Add to storage schema
+3. Add to injection logic (WebView/BrowserWindow)
+4. Add translations for service name
+
+**Android-specific:**
+- Update PreferencesManager DataStore schema
+- Update ApiKeyInjectingWebViewClient injection
+
+**Desktop-specific:**
+- Update electron-store settings
+- Update `injectAPIKeys()` in `src/main/index.js`
+
+## Common Patterns Across Platforms
+
+### State Management
+- **Android:** StateFlow + ViewModel + Compose recomposition
+- **Desktop:** IPC communication + DOM manipulation
+
+### Storage
+- **Android:** Room (SQLite) + DataStore (preferences)
+- **Desktop:** electron-store (JSON file, encrypted)
+
+### Notifications
+- **Android:** NotificationManager + Channels
+- **Desktop:** Electron Notification API
+
+### Permissions
+- **Android:** Runtime permissions via Activity
+- **Desktop:** System dialogs (file, notification)
+
+### Error Handling
+- **Android:** Try-catch with Timber logging
+- **Desktop:** Try-catch with electron-log
+
+## Security Considerations
+
+### API Key Protection
+- **Android:** DataStore encrypted at rest
+- **Desktop:** electron-store encrypted with OS keychain
+- Keys never sent to external servers by container app
+- Keys injected per-window/per-activity only
+
+### WebView Security
+- **Android:** Context isolation via JavaScriptInterface whitelist
+- **Desktop:** Context isolation + sandbox + preload bridge
+- External links open in default browser (not in-app)
+- Mixed content allowed only for trusted local apps
+
+### Data Backup
+- **Android:** Auto-backup to Google Drive (BackupAgent)
+- **Desktop:** Manual export/import via Settings (JSON file)
+
+## Testing
+
+### Android
+```bash
+cd platforms/android
+./gradlew test                 # Unit tests
+./gradlew connectedAndroidTest # Instrumentation tests
+```
+
+### Desktop
+```bash
+cd platforms/desktop
+# Open renderer/index.html with Live Server
+# Mock API automatically activates in browser
+# Test all UI functionality without Electron
+```
+
+## Troubleshooting
+
+### Common Issues Across Platforms
+
+**Issue:** API keys not injecting into web apps
+- **Android:** Check WebView debug mode, verify `addJavascriptInterface()` call
+- **Desktop:** Check preload script path, verify IPC handlers registered
+
+**Issue:** WebView not loading/blank screen
+- **Android:** Check WebView cache clearing, verify URL accessibility
+- **Desktop:** Check DevTools console, verify BrowserWindow configuration
+
+**Issue:** Translations not working
+- **Android:** Verify string resources exist for all languages
+- **Desktop:** Check `translations.js` structure, verify `t()` function logic
+
+**Issue:** Background service not running
+- **Android:** Check battery optimization settings, verify foreground service
+- **Desktop:** Check MonitoringService initialization, verify process persistence
+
+### Platform-Specific Issues
+
+**Android:**
+- Permission denied: Check AndroidManifest.xml and runtime permissions
+- Multi-instance not working: Verify activity-alias taskAffinity unique
+- Alarms not firing: Check SCHEDULE_EXACT_ALARM permission (Android 12+)
+
+**Desktop:**
+- Build fails: Close editors, use `npm run build:direct` to skip cleanup
+- electronAPI undefined: Verify preload script path and sandbox settings
+- Translations showing keys: Check `t()` function logic (direct lookup first)
+
+## Key Differences Between Platforms
+
+| Feature | Android | Desktop |
+|---------|---------|---------|
+| **Language** | Kotlin | JavaScript/TypeScript |
+| **UI Framework** | Jetpack Compose | HTML/CSS/React |
+| **Storage** | Room + DataStore | electron-store |
+| **Architecture** | MVVM + Clean | Main/Renderer/Preload |
+| **Multi-instance** | Activity-alias + taskAffinity | Multiple BrowserWindows |
+| **Shortcuts** | Pinned shortcuts + home screen | Desktop shortcuts |
+| **Sensors** | Accelerometer + Gyroscope | Limited (via Node.js) |
+| **Notifications** | Rich + channels | Simple |
+| **Backup** | Auto to Google Drive | Manual export/import |
+| **Updates** | Google Play / APK | electron-updater (future) |
+
+## Project Statistics
+
+**Android:**
+- Lines of Code: ~15,000 (Kotlin)
+- Dependencies: 30+ (Hilt, Compose, Room, etc.)
+- Build Time: ~2-3 minutes
+- APK Size: ~20-25 MB
+
+**Desktop:**
+- Lines of Code: ~2,000 (JavaScript)
+- Dependencies: 15+ (Electron, electron-builder, etc.)
+- Build Time: ~1-2 minutes
+- Installer Size: ~75-150 MB (includes Electron runtime)
+
+## Contribution Guidelines
+
+**When modifying code:**
+1. Update appropriate AI_CONTEXT.md (Android/Desktop/Root)
+2. Update CHANGELOG.md with changes
+3. Test on target platform before committing
+4. Ensure translations are updated (FR/EN/IT)
+5. Verify API key injection still works
+6. Test multi-instance behavior (Android) or multiple windows (Desktop)
+
+**When adding features:**
+1. Consider cross-platform compatibility
+2. Update both platforms if feature is common
+3. Document platform-specific limitations
+4. Add tests where applicable
+
+**When fixing bugs:**
+1. Identify if bug is platform-specific or shared
+2. Check if same issue exists on other platform
+3. Update troubleshooting section in relevant AI_CONTEXT.md
+
+## External Resources
+
+**Documentation:**
+- Android: [platforms/android/AI_CONTEXT.md](platforms/android/AI_CONTEXT.md)
+- Desktop: [platforms/desktop/AI_CONTEXT.md](platforms/desktop/AI_CONTEXT.md)
+- User Guide: [README.md](README.md)
+
+**Project Links:**
+- Website: https://craftkontrol.com
+- Copyright: © 2025 CraftKontrol - Arnaud Cassone / Artcraft Visuals
 
 ---
 
-**For detailed user documentation, see README.md**
+**For platform-specific implementation details, always refer to the AI_CONTEXT.md in the respective platform directory.**
