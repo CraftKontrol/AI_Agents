@@ -236,34 +236,8 @@ translations = {
 12. `scrapfly` - ScrapFly
 
 **Storage:** electron-store (encrypted, persistent)
-**Injection:** Automatically injected into opened web apps via `executeJavaScript` after page load
+**Injection:** Automatically injected into opened web apps via `window.CKDesktop` and `window.CKAndroid` objects
 **Access from WebView:** `window.CKDesktop.getApiKey('mistral')` or `window.CKAndroid.apiKeys.mistral`
-**Bridge Functions:** `window.CKDesktopBridge.scheduleAlarm()` and `window.CKAndroidBridge.showNotification()`
-
-### Preload Script for Web Apps (`src/main/preload-webview.js`)
-
-**Purpose:** Provides IPC bridge for web apps opened in separate windows
-
-**Exposed APIs:**
-```javascript
-// Bridge for alarms
-window.CKDesktopBridge = {
-  scheduleAlarm: (id, title, timestamp, type) => Promise,
-  cancelAlarm: (id) => Promise,
-  showNotification: (title, message) => Promise
-}
-
-// Compatibility bridge
-window.CKAndroidBridge = { ...same as CKDesktopBridge }
-```
-
-**Note:** API keys are NOT exposed via this preload script. They are injected separately via `executeJavaScript` after the page loads, which provides better security and timing control.
-
-**Injection Timing:**
-1. Preload script runs first (exposes IPC bridges)
-2. Page loads completely (`did-finish-load` event)
-3. API keys injected via `executeJavaScript`
-4. On navigation (`did-navigate` event), API keys re-injected
 
 ## Apps Configuration
 
@@ -282,10 +256,8 @@ window.CKAndroidBridge = { ...same as CKDesktopBridge }
 
 **Opening Apps:**
 - Each app opens in new BrowserWindow (1200x800)
-- API keys automatically injected via executeJavaScript after `did-finish-load` and `did-navigate` events
-- Sandbox disabled (`sandbox: false`) to allow executeJavaScript
-- API keys available via `window.CKDesktop.apiKeys` and `window.CKAndroid.apiKeys`
-- Bridge functions (alarms, notifications) via `window.CKDesktopBridge` and `window.CKAndroidBridge`
+- API keys automatically injected via preload script
+- WebView with Node integration disabled
 - External links open in default browser
 
 ## Build System
@@ -407,30 +379,25 @@ npm run build:linux         # Linux build (requires Linux runner)
 - **Validation:** All IPC inputs should be validated in main process
 
 ### Sandbox Mode
-- **Disabled for web apps:** `sandbox: false` required for executeJavaScript API injection
-- **Enabled for main window:** Main launcher window uses sandbox for security
-- **Trade-off:** Slightly less secure but necessary for API key injection functionality
+- **Disabled:** `sandbox: false` required for some Electron APIs
+- **Trade-off:** Slightly less secure but necessary for functionality
 - **Mitigation:** Context isolation still provides protection
 
 ### API Key Storage
 - **electron-store:** Encrypted at rest
-- **Injection:** Keys injected per-window via executeJavaScript after page load
-- **Timing:** Injected on `did-finish-load` and `did-navigate` events
+- **Injection:** Keys injected per-window, not globally accessible
 - **No exposure:** Keys never sent to external servers by desktop app
 
 ## Critical Implementation Notes
 
 1. **Preload Path:** Must be in same directory as main process (`path.join(__dirname, 'preload.js')`)
-2. **API Key Injection:** Uses `executeJavaScript` NOT preload script for better timing control
-3. **Sandbox for Web Apps:** MUST be `false` to allow `executeJavaScript` to work
-4. **Script Load Order:** translations.js MUST load before app.js in index.html
-5. **Translation Function:** `t()` tries direct key lookup first, then nested navigation
-6. **Settings Persistence:** electron-store saves synchronously, no await needed
-7. **Window Management:** Each app opens in separate BrowserWindow with own API injection
-8. **Version Display:** Shown in About section of Settings modal
-9. **Build Cleanup:** Use `build:direct` if ASAR files are locked by VSCode/editors
-10. **Mock API Detection:** Checks `typeof window.electronAPI === 'undefined'` to activate
-11. **Re-injection on Navigate:** API keys re-injected when page navigates to ensure availability
+2. **Script Load Order:** translations.js MUST load before app.js in index.html
+3. **Translation Function:** `t()` tries direct key lookup first, then nested navigation
+4. **Settings Persistence:** electron-store saves synchronously, no await needed
+5. **Window Management:** Each app opens in separate BrowserWindow with own API injection
+6. **Version Display:** Shown in About section of Settings modal
+7. **Build Cleanup:** Use `build:direct` if ASAR files are locked by VSCode/editors
+8. **Mock API Detection:** Checks `typeof window.electronAPI === 'undefined'` to activate
 
 ## File Locations
 
@@ -459,18 +426,8 @@ npm run build:linux         # Linux build (requires Linux runner)
 - **Fix:** Check store initialization in main process, verify key names
 
 **Issue:** App windows not injecting API keys
-- **Cause:** Sandbox enabled blocking executeJavaScript OR injection called before page loaded
-- **Fix:** Set `sandbox: false` in webPreferences for web app windows
-- **Fix:** Ensure injection happens on `did-finish-load` AND `did-navigate` events
-- **Fix:** Use `executeJavaScript` with error handling, not preload script
-- **Debug:** Check console logs for "[CKDesktop] API keys injected" message
-- **Debug:** In web app console, run `console.log(window.CKDesktop.apiKeys)`
-
-**Issue:** CKDesktop or CKAndroid is undefined in web app
-- **Cause:** Page loaded before injection or navigation cleared injected objects
-- **Fix:** Check timing - injection must happen AFTER page load
-- **Fix:** Re-inject on `did-navigate` event to handle SPA navigation
-- **Workaround:** Add delay in web app before accessing API keys (use DOMContentLoaded)
+- **Cause:** `injectAPIKeys()` not called or wrong timing
+- **Fix:** Call after `webContents.did-finish-load` event
 
 ---
 

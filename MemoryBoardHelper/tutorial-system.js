@@ -23,53 +23,47 @@ const TUTORIAL_STEPS = [
         content: {
             fr: {
                 title: 'Bienvenue dans Memory Board Helper ! 👋',
-                message: 'Votre assistant mémoire intelligent alimenté par IA',
-                details: `
-                    <p>Pour fonctionner, cette application nécessite :</p>
+                message: 'Votre assistant mémoire intelligent',
+                details: `<p>On va configurer en quelques étapes :</p>
                     <ul>
-                        <li>✨ <strong>Synthèse vocale (TTS)</strong> - Pour vous parler</li>
-                        <li>🧠 <strong>Mistral AI</strong> - Cerveau de l'assistant</li>
-                        <li>📍 <strong>Adresse</strong> - Pour GPS et météo</li>
-                        <li>🆘 <strong>Contact d'urgence</strong> - Pour appels vocaux</li>
-                    </ul>
-                    <p>Je vais vous guider à travers la configuration en quelques minutes.</p>
-                `,
-                actionButton: 'Commencer la configuration'
+                        <li>🎙️ Micro + commandes vocales</li>
+                        <li>📝 Gestion des tâches (limite 5 affichées)</li>
+                        <li>🗓️ Calendrier et rappels</li>
+                        <li>🏃 Activités avec carte</li>
+                        <li>🆘 Contact d'urgence pour appels vocaux</li>
+                    </ul>`,
+                actionButton: 'Commencer'
             },
             en: {
-                title: 'Welcome to Memory Board Helper ! 👋',
-                message: 'Your intelligent AI-powered memory assistant',
-                details: `
-                    <p>To work, this app requires:</p>
+                title: 'Welcome to Memory Board Helper! 👋',
+                message: 'Your smart memory assistant',
+                details: `<p>Setup in a few steps:</p>
                     <ul>
-                        <li>✨ <strong>Text-to-Speech (TTS)</strong> - To speak to you</li>
-                        <li>🧠 <strong>Mistral AI</strong> - Assistant brain</li>
-                        <li>📍 <strong>Address</strong> - For GPS and weather</li>
-                        <li>🆘 <strong>Emergency contact</strong> - For voice calls</li>
-                    </ul>
-                    <p>I'll guide you through setup in a few minutes.</p>
-                `,
-                actionButton: 'Start Setup'
+                        <li>🎙️ Mic + voice commands</li>
+                        <li>📝 Task management (5 visible max)</li>
+                        <li>🗓️ Calendar & reminders</li>
+                        <li>🏃 Activity tracking with map</li>
+                        <li>🆘 Emergency contact for voice calls</li>
+                    </ul>`,
+                actionButton: 'Start setup'
             },
             it: {
-                title: 'Benvenuto in Memory Board Helper ! 👋',
-                message: 'Il tuo assistente di memoria intelligente alimentato da AI',
-                details: `
-                    <p>Per funzionare, questa app richiede:</p>
+                title: 'Benvenuto in Memory Board Helper! 👋',
+                message: 'Il tuo assistente di memoria intelligente',
+                details: `<p>Configurazione in pochi passi:</p>
                     <ul>
-                        <li>✨ <strong>Sintesi vocale (TTS)</strong> - Per parlarti</li>
-                        <li>🧠 <strong>Mistral AI</strong> - Cervello dell'assistente</li>
-                        <li>📍 <strong>Indirizzo</strong> - Per GPS e meteo</li>
-                        <li>🆘 <strong>Contatto di emergenza</strong> - Per chiamate vocali</li>
-                    </ul>
-                    <p>Ti guiderò attraverso la configurazione in pochi minuti.</p>
-                `,
-                actionButton: 'Inizia Configurazione'
+                        <li>🎙️ Microfono + comandi vocali</li>
+                        <li>📝 Gestione attività (max 5 visibili)</li>
+                        <li>🗓️ Calendario e promemoria</li>
+                        <li>🏃 Attività con mappa</li>
+                        <li>🆘 Contatto di emergenza per chiamate vocali</li>
+                    </ul>`,
+                actionButton: 'Avvia configurazione'
             }
         }
     },
-    
-    // Step 1: TTS Provider Selection
+
+    // Step 1: TTS provider selection
     {
         id: 1,
         name: 'tts_provider',
@@ -467,45 +461,173 @@ const TUTORIAL_STEPS = [
         }
     },
     
-    // Additional steps (9-19) follow same pattern - shortened for file length
+    // Step 9: App Overview
     {
         id: 9,
-        name: 'demo_tasks',
+        name: 'demo_app_overview',
         type: 'demo',
         requireValidation: false,
         ttsEnabled: true,
-        navigationTarget: '#tasksSection',
-        highlightSelector: '.tasks-section',
+        navigationTarget: null,
+        highlightSelector: null,
         content: {
-            fr: {
-                title: 'Gestion des Tâches 📝',
-                message: 'Créez et gérez vos tâches vocalement',
-                details: `<ul><li>"Ajoute une tâche : acheter du pain demain à 10h"</li><li>"Marque la tâche acheter du pain comme terminée"</li><li>"Supprime la tâche acheter du pain"</li></ul>`,
-                ttsText: 'Créez des tâches en parlant naturellement. Maximum 5 tâches affichées.',
-                actionButton: 'Suivant'
+            fr: { 
+                title: 'Fonctionnement Général 🎯', 
+                message: 'Découvrez comment Memory Board Helper fonctionne', 
+                details: `<p>Memory Board Helper est votre assistant vocal personnel qui combine plusieurs fonctionnalités :</p>
+                    <ul>
+                        <li>💬 <strong>Conversation IA</strong> : Mistral AI pour des échanges naturels</li>
+                        <li>📝 <strong>Gestion de Tâches</strong> : Créez, modifiez et suivez vos tâches par la voix</li>
+                        <li>📅 <strong>Calendrier Intelligent</strong> : Visualisez vos activités avec des codes couleur</li>
+                        <li>📄 <strong>Notes & Listes</strong> : Capturez rapidement vos idées et courses</li>
+                        <li>🎤 <strong>Commandes Vocales</strong> : Plus de 50 commandes pour tout contrôler</li>
+                        <li>🏃 <strong>Suivi d'Activité</strong> : Compteur de pas et parcours GPS automatiques</li>
+                        <li>🌤️ <strong>Services Connectés</strong> : Météo, recherche web, navigation GPS</li>
+                        <li>🆘 <strong>Contacts d'Urgence</strong> : Appels rapides par commande vocale</li>
+                    </ul>
+                    <p><strong>Tout fonctionne par la voix</strong> : cliquez sur le micro et parlez naturellement. L'application comprend vos intentions et exécute les actions.</p>`,
+                ttsText: 'Memory Board Helper est un assistant vocal complet qui centralise toutes vos activités quotidiennes. Grâce à Mistral AI, vous pouvez avoir des conversations naturelles et créer des tâches simplement en parlant. Le calendrier visualise votre planning avec des codes couleur : bleu pour aujourd\'hui, orange pour urgent, rouge pour en retard. Les notes et listes vous permettent de capturer rapidement vos idées. Plus de cinquante commandes vocales sont disponibles pour contrôler l\'application, demander l\'heure, la météo, chercher sur le web, ou appeler vos contacts d\'urgence. Le suivi d\'activité compte automatiquement vos pas et enregistre vos parcours. Tout est conçu pour fonctionner mains libres, par simple commande vocale. Les prochaines étapes vont vous montrer chaque fonctionnalité en détail.', 
+                actionButton: 'Suivant' 
             },
-            en: { title: 'Task Management 📝', message: 'Create and manage tasks vocally', details: '<ul><li>"Add task: buy bread tomorrow at 10am"</li></ul>', ttsText: 'Create tasks by speaking naturally.', actionButton: 'Next' },
-            it: { title: 'Gestione Attività 📝', message: 'Crea e gestisci attività vocalmente', details: '<ul><li>"Aggiungi attività: comprare pane domani alle 10"</li></ul>', ttsText: 'Crea attività parlando naturalmente.', actionButton: 'Avanti' }
+            en: { 
+                title: 'General Operation 🎯', 
+                message: 'Discover how Memory Board Helper works', 
+                details: '<p>Memory Board Helper is your personal voice assistant combining multiple features for daily life management.</p>', 
+                ttsText: 'Memory Board Helper is a complete voice assistant that centralizes all your daily activities.', 
+                actionButton: 'Next' 
+            },
+            it: { 
+                title: 'Funzionamento Generale 🎯', 
+                message: 'Scopri come funziona Memory Board Helper', 
+                details: '<p>Memory Board Helper è il tuo assistente vocale personale che combina molteplici funzionalità per la gestione quotidiana.</p>', 
+                ttsText: 'Memory Board Helper è un assistente vocale completo che centralizza tutte le tue attività quotidiane.', 
+                actionButton: 'Avanti' 
+            }
         }
     },
     
     {
         id: 10,
-        name: 'demo_calendar',
+        name: 'demo_calendar_tasks',
         type: 'demo',
         requireValidation: false,
         ttsEnabled: true,
-        navigationTarget: '#calendarSection',
-        highlightSelector: '.calendar-section',
+        navigationTarget: '#tasksSection',
+        highlightSelector: '#calendarContainer',
         content: {
-            fr: { title: 'Calendrier 📅', message: 'Visualisez vos tâches', details: '<p>Le calendrier affiche toutes vos tâches. Les tâches en retard sont en rouge.</p>', ttsText: 'Le calendrier est votre vue d\'ensemble. Toutes vos tâches sont affichées avec des codes couleur. Les tâches d\'aujourd\'hui sont en bleu, les tâches urgentes en orange, et les tâches en retard en rouge. Vous pouvez cliquer sur une date pour voir les détails ou créer une nouvelle tâche pour ce jour.', actionButton: 'Suivant' },
-            en: { title: 'Calendar 📅', message: 'Visualize your tasks', details: '<p>Calendar shows all tasks. Overdue tasks are in red.</p>', ttsText: 'Calendar displays all your tasks with visual indicators.', actionButton: 'Next' },
-            it: { title: 'Calendario 📅', message: 'Visualizza le tue attività', details: '<p>Il calendario mostra tutte le attività. Attività scadute in rosso.</p>', ttsText: 'Il calendario mostra tutte le attività con indicatori visivi.', actionButton: 'Avanti' }
+            fr: { 
+                title: 'Calendrier : Les Tâches 📝', 
+                message: 'Créer, prioriser, rappeler', 
+                details: `<p>La vue liste du calendrier affiche clairement vos prochaines tâches et événements.</p>
+                    <ul>
+                        <li>✨ Création vocale : "Ajoute une tâche demain 14h"</li>
+                        <li>✅ Statuts : À faire / En cours / Terminée</li>
+                        <li>🎯 Priorités : Basse → Urgente</li>
+                        <li>🔔 Rappels automatiques (notification avant l'échéance)</li>
+                        <li>📊 Affichage max : 5 tâches visibles pour rester lisible</li>
+                        <li>📋 Vue Liste : bouton icône liste pour un planning vertical clair</li>
+                    </ul>
+                    <p>Utilisez cette vue pour balayer rapidement vos tâches du jour et de la semaine.</p>`,
+                ttsText: 'La vue liste du calendrier affiche vos tâches de manière linéaire. Créez à la voix, gérez statuts et priorités, recevez un rappel, et gardez un maximum de cinq tâches visibles pour rester clair. Utilisez le bouton liste pour basculer dans cette vue.', 
+                actionButton: 'Suivant' 
+            },
+            en: { 
+                title: 'Calendar: Tasks 📝', 
+                message: 'Complete task management', 
+                details: '<p>Create, modify and track tasks by voice with AI understanding of time expressions.</p>', 
+                ttsText: 'Tasks are intelligently managed with voice creation and natural language understanding.', 
+                actionButton: 'Next' 
+            },
+            it: { 
+                title: 'Calendario: Attività 📝', 
+                message: 'Gestione completa attività', 
+                details: '<p>Crea, modifica e traccia attività con la voce con comprensione AI delle espressioni temporali.</p>', 
+                ttsText: 'Le attività sono gestite in modo intelligente con creazione vocale e comprensione del linguaggio naturale.', 
+                actionButton: 'Avanti' 
+            }
         }
     },
     
     {
         id: 11,
+        name: 'demo_calendar_ui',
+        type: 'demo',
+        requireValidation: false,
+        ttsEnabled: true,
+        navigationTarget: '#calendarSection',
+        highlightSelector: '#calendarContainer',
+        content: {
+            fr: { 
+                title: 'Calendrier : UI et Vues 🎨', 
+                message: 'Vue Mois : vision globale rapide', 
+                details: `<ul>
+                        <li>📆 Vue Mensuelle par défaut</li>
+                        <li>⬅️➡️ Flèches pour changer de mois</li>
+                        <li>📍 Bouton Aujourd'hui pour revenir vite</li>
+                        <li>🎨 Pastilles couleur : bleu aujourd'hui, orange urgent, rouge en retard, gris terminé</li>
+                        <li>📊 Badges : nombre de tâches par jour</li>
+                    </ul>`,
+                ttsText: 'La vue mois donne une vision globale. Utilisez le bouton mois pour revenir à cette vue, naviguez avec les flèches, et repérez les pastilles couleur pour l urgence ou le retard.', 
+                actionButton: 'Suivant' 
+            },
+            en: { 
+                title: 'Calendar: UI and Views 🎨', 
+                message: 'Calendar interface and navigation', 
+                details: '<p>Multiple views: monthly, list, and day views with color-coded indicators.</p>', 
+                ttsText: 'The calendar interface offers multiple view modes with smart visual indicators.', 
+                actionButton: 'Next' 
+            },
+            it: { 
+                title: 'Calendario: UI e Viste 🎨', 
+                message: 'Interfaccia e navigazione calendario', 
+                details: '<p>Viste multiple: mensile, lista e giornaliera con indicatori codificati a colori.</p>', 
+                ttsText: 'L\'interfaccia del calendario offre modalità di visualizzazione multiple con indicatori visivi intelligenti.', 
+                actionButton: 'Avanti' 
+            }
+        }
+    },
+    
+    {
+        id: 12,
+        name: 'demo_calendar_actions',
+        type: 'demo',
+        requireValidation: false,
+        ttsEnabled: true,
+        navigationTarget: '#calendarSection',
+        highlightSelector: '#calendarContainer',
+        content: {
+            fr: { 
+                title: 'Calendrier : Actions Clic et Vocal 🎯', 
+                message: 'Vue Semaine : actions rapides', 
+                details: `<ul>
+                        <li>📅 Basculez sur Semaine pour voir vos créneaux</li>
+                        <li>🖱️ Clic sur une date ou un bloc : créer/ouvrir une tâche</li>
+                        <li>✅ Marquer terminée ou modifier directement</li>
+                        <li>🎤 Vocaux : "Ajoute une tâche [date/heure]", "Marque comme terminée", "Quelles sont mes tâches de la semaine ?"</li>
+                        <li>↔️ Changez de vue en un clic avec la barre des vues</li>
+                    </ul>`,
+                ttsText: 'En vue semaine, voyez vos créneaux horaires. Cliquez pour créer ou modifier, marquez terminé, ou dites par exemple ajoute une tâche demain 10h ou quelles sont mes tâches de la semaine. Changez de vue depuis la barre de boutons.', 
+                actionButton: 'Suivant' 
+            },
+            en: { 
+                title: 'Calendar: Click and Voice Actions 🎯', 
+                message: 'All possible interactions', 
+                details: '<p>Interact with click actions and comprehensive voice commands for full control.</p>', 
+                ttsText: 'The calendar offers both click and voice interactions for maximum flexibility.', 
+                actionButton: 'Next' 
+            },
+            it: { 
+                title: 'Calendario: Azioni Clic e Vocali 🎯', 
+                message: 'Tutte le interazioni possibili', 
+                details: '<p>Interagisci con azioni clic e comandi vocali completi per controllo totale.</p>', 
+                ttsText: 'Il calendario offre interazioni sia clic che vocali per massima flessibilità.', 
+                actionButton: 'Avanti' 
+            }
+        }
+    },
+    
+    {
+        id: 13,
         name: 'demo_notes',
         type: 'demo',
         requireValidation: false,
@@ -520,7 +642,7 @@ const TUTORIAL_STEPS = [
     },
     
     {
-        id: 12,
+        id: 14,
         name: 'demo_lists',
         type: 'demo',
         requireValidation: false,
@@ -535,37 +657,241 @@ const TUTORIAL_STEPS = [
     },
     
     {
-        id: 13,
-        name: 'demo_vocal_commands',
+        id: 15,
+        name: 'demo_vocal_commands_mistral',
         type: 'demo',
         requireValidation: false,
         ttsEnabled: true,
         navigationTarget: '#quickCommandsSection',
         highlightSelector: '.quick-commands-section',
         content: {
-            fr: { title: 'Commandes Vocales 🎤', message: 'Découvrez toutes les commandes disponibles', details: '<p>Consultez la liste complète des commandes dans cette section.</p>', ttsText: 'L\'application comprend plus de cinquante commandes vocales différentes. Vous pouvez demander l\'heure, la date, la météo, créer des rappels, naviguer dans l\'interface, appeler des contacts d\'urgence, rechercher sur internet, et bien plus encore. Consultez la section commandes rapides pour découvrir toutes les possibilités. Les commandes sont conçues pour être naturelles et intuitives.', actionButton: 'Suivant' },
-            en: { title: 'Voice Commands 🎤', message: 'Discover all available commands', details: '<p>See full command list in this section.</p>', ttsText: 'You have access to over 50 different voice commands.', actionButton: 'Next' },
-            it: { title: 'Comandi Vocali 🎤', message: 'Scopri tutti i comandi disponibili', details: '<p>Vedi lista completa comandi in questa sezione.</p>', ttsText: 'Hai accesso a oltre 50 comandi vocali diversi.', actionButton: 'Avanti' }
+            fr: { 
+                title: 'Commandes Vocales & Mistral 🎤', 
+                message: 'Contrôle vocal et paramètres de conversation', 
+                details: `<p>Plus de 50 commandes vocales et paramètres de conversation Mistral AI :</p>
+                    <h4>Commandes Vocales 🎤 :</h4>
+                    <ul>
+                        <li>⏰ <strong>Temps</strong> : "Quelle heure est-il ?", "Quelle est la date ?"</li>
+                        <li>🌤️ <strong>Météo</strong> : "Quel temps fait-il ?", "Prévisions demain"</li>
+                        <li>📝 <strong>Tâches</strong> : "Ajoute/Supprime/Modifie une tâche"</li>
+                        <li>📄 <strong>Notes</strong> : "Note : [contenu]"</li>
+                        <li>📋 <strong>Listes</strong> : "Liste de courses : [items]"</li>
+                        <li>🔍 <strong>Web</strong> : "Recherche sur internet [requête]"</li>
+                        <li>🗺️ <strong>GPS</strong> : "Emmène-moi à [lieu]"</li>
+                        <li>📞 <strong>Urgence</strong> : "Appelle [contact]"</li>
+                        <li>🔄 <strong>Navigation</strong> : "Affiche le calendrier/les notes/les listes"</li>
+                    </ul>
+                    <h4>Paramètres Mistral AI 🤖 :</h4>
+                    <ul>
+                        <li>🎯 <strong>Température</strong> : Créativité des réponses (0.1-1.0)</li>
+                        <li>📏 <strong>Max Tokens</strong> : Longueur maximale des réponses</li>
+                        <li>🔄 <strong>Top P</strong> : Diversité du vocabulaire</li>
+                        <li>🎭 <strong>Personnalité</strong> : Configurez le ton et le style</li>
+                        <li>🧠 <strong>Contexte</strong> : Mémoire de conversation</li>
+                    </ul>
+                    <p>Accédez aux paramètres dans la section Commandes Rapides.</p>`,
+                ttsText: 'L\'application offre plus de cinquante commandes vocales pour contrôler toutes les fonctionnalités. Demandez l\'heure, la date, ou la météo. Créez, modifiez ou supprimez des tâches, notes et listes. Recherchez sur internet ou naviguez vers un lieu. Appelez vos contacts d\'urgence. Naviguez dans l\'interface vocalement. Concernant Mistral AI, plusieurs paramètres permettent de personnaliser la conversation : la température contrôle la créativité des réponses, le maximum de tokens définit la longueur, le Top P ajuste la diversité du vocabulaire. Vous pouvez aussi configurer la personnalité de l\'assistant et le contexte de conversation. Tous ces paramètres sont accessibles dans la section commandes rapides pour optimiser votre expérience selon vos préférences.', 
+                actionButton: 'Suivant' 
+            },
+            en: { 
+                title: 'Voice Commands & Mistral 🎤', 
+                message: 'Voice control and conversation settings', 
+                details: '<p>Over 50 voice commands and Mistral AI conversation parameters.</p>', 
+                ttsText: 'Access over 50 voice commands and customize Mistral AI conversation parameters.', 
+                actionButton: 'Next' 
+            },
+            it: { 
+                title: 'Comandi Vocali & Mistral 🎤', 
+                message: 'Controllo vocale e impostazioni conversazione', 
+                details: '<p>Oltre 50 comandi vocali e parametri conversazione Mistral AI.</p>', 
+                ttsText: 'Accedi a oltre 50 comandi vocali e personalizza i parametri conversazione Mistral AI.', 
+                actionButton: 'Avanti' 
+            }
         }
     },
     
     {
-        id: 14,
-        name: 'demo_activity',
+        id: 16,
+        name: 'demo_activity_general',
         type: 'demo',
         requireValidation: false,
         ttsEnabled: true,
         navigationTarget: '#activitySection',
         highlightSelector: '.activity-section',
         content: {
-            fr: { title: 'Suivi d\'Activité 🏃', message: 'Suivez vos pas et parcours', details: '<p>Système automatique de comptage de pas avec GPS, gyroscope et accéléromètre.</p>', ttsText: 'Le suivi d\'activité fonctionne en arrière-plan. En utilisant le GPS, le gyroscope et l\'accéléromètre de votre appareil, l\'application compte automatiquement vos pas tout au long de la journée. Vos parcours sont enregistrés et vous pouvez les visualiser sur une carte. C\'est un excellent moyen de rester actif et de suivre votre santé quotidienne.', actionButton: 'Suivant' },
-            en: { title: 'Activity Tracking 🏃', message: 'Track your steps and paths', details: '<p>Automatic step counting with GPS, gyroscope, and accelerometer.</p>', ttsText: 'Automatic tracking counts your steps and records your paths.', actionButton: 'Next' },
-            it: { title: 'Tracciamento Attività 🏃', message: 'Traccia i tuoi passi e percorsi', details: '<p>Conteggio automatico passi con GPS, giroscopio e accelerometro.</p>', ttsText: 'Il tracciamento automatico conta i tuoi passi e registra i percorsi.', actionButton: 'Avanti' }
+            fr: { 
+                title: 'Activité Générale 🏃 (Replié)', 
+                message: 'Vue d\'ensemble du suivi d\'activité', 
+                details: `<p>Le système de suivi d'activité fonctionne automatiquement en arrière-plan :</p>
+                    <ul>
+                        <li>👟 <strong>Comptage de pas</strong> : Détection automatique via capteurs</li>
+                        <li>🗺️ <strong>Parcours GPS</strong> : Enregistrement de vos déplacements</li>
+                        <li>📊 <strong>Statistiques</strong> : Pas quotidiens, distance, temps actif</li>
+                        <li>🎯 <strong>Objectifs</strong> : Définissez vos cibles quotidiennes</li>
+                        <li>📈 <strong>Historique</strong> : Consultez votre progression</li>
+                    </ul>
+                    <p>Les prochaines sous-sections détailleront :</p>
+                    <ul>
+                        <li>Statistiques principales (déplié)</li>
+                        <li>Parcours et suivi automatique</li>
+                        <li>Statistiques détaillées</li>
+                    </ul>
+                    <p><em>Note : Cette section est repliée par défaut dans l'interface.</em></p>`,
+                ttsText: 'Le suivi d\'activité est un système complet qui fonctionne automatiquement. Grâce aux capteurs de votre appareil comme le GPS, le gyroscope et l\'accéléromètre, l\'application compte vos pas, enregistre vos parcours, et calcule la distance parcourue. Vous pouvez définir des objectifs quotidiens et suivre votre progression dans l\'historique. Les prochaines étapes vont détailler les statistiques principales qui sont déployées par défaut, puis le système de parcours et suivi automatique, et enfin les statistiques détaillées. Cette section est repliée par défaut dans l\'interface pour ne pas encombrer l\'écran, mais vous pouvez la déplier à tout moment pour accéder à toutes les informations.', 
+                actionButton: 'Suivant' 
+            },
+            en: { 
+                title: 'General Activity 🏃 (Collapsed)', 
+                message: 'Activity tracking overview', 
+                details: '<p>Automatic activity tracking with step counting, GPS paths, and detailed statistics.</p>', 
+                ttsText: 'Activity tracking works automatically in the background with comprehensive statistics.', 
+                actionButton: 'Next' 
+            },
+            it: { 
+                title: 'Attività Generale 🏃 (Ripiegato)', 
+                message: 'Panoramica tracciamento attività', 
+                details: '<p>Tracciamento attività automatico con conteggio passi, percorsi GPS e statistiche dettagliate.</p>', 
+                ttsText: 'Il tracciamento attività funziona automaticamente in background con statistiche complete.', 
+                actionButton: 'Avanti' 
+            }
         }
     },
     
     {
-        id: 15,
+        id: 17,
+        name: 'demo_activity_main_stats',
+        type: 'demo',
+        requireValidation: false,
+        ttsEnabled: true,
+        navigationTarget: '#activitySection',
+        highlightSelector: '.activity-dashboard',
+        content: {
+            fr: { 
+                title: 'Activité : Main Statistics 📊 (Déplié)', 
+                message: 'Statistiques principales toujours visibles', 
+                details: `<p>Les statistiques principales sont affichées en permanence :</p>
+                    <ul>
+                        <li>👟 <strong>Pas du Jour</strong> : Compteur en temps réel
+                            <ul>
+                                <li>Affichage grand format</li>
+                                <li>Barre de progression vers l'objectif</li>
+                                <li>Pourcentage accompli</li>
+                            </ul>
+                        </li>
+                        <li>📏 <strong>Distance</strong> : Kilomètres parcourus aujourd'hui</li>
+                        <li>⏱️ <strong>Temps Actif</strong> : Durée d'activité détectée</li>
+                        <li>🔥 <strong>Calories</strong> : Estimation basée sur vos paramètres</li>
+                        <li>🎯 <strong>Objectif Quotidien</strong> : Par défaut 10,000 pas
+                            <ul>
+                                <li>Modifiable dans les paramètres</li>
+                                <li>Notification à l'atteinte</li>
+                            </ul>
+                        </li>
+                        <li>📈 <strong>Tendance</strong> : Comparaison avec hier et la moyenne de la semaine</li>
+                    </ul>
+                    <p><strong>Mise à jour</strong> : Les statistiques se rafraîchissent automatiquement toutes les 30 secondes.</p>
+                    <p><em>Note : Cette sous-section est déployée par défaut pour un accès rapide.</em></p>`,
+                ttsText: 'Les statistiques principales sont votre tableau de bord d\'activité. Elles restent visibles en permanence quand vous dépliez la section activité. Le compteur de pas du jour s\'affiche en grand format avec une barre de progression vers votre objectif quotidien, par défaut dix mille pas. Vous voyez aussi la distance parcourue en kilomètres, le temps actif détecté, et une estimation des calories brûlées basée sur vos paramètres. Une tendance compare votre activité du jour avec hier et la moyenne de la semaine. Les statistiques se rafraîchissent automatiquement toutes les trente secondes. Vous recevez une notification quand vous atteignez votre objectif. Cette sous-section est déployée par défaut pour un accès immédiat à vos performances quotidiennes.', 
+                actionButton: 'Suivant' 
+            },
+            en: { 
+                title: 'Activity: Main Statistics 📊 (Expanded)', 
+                message: 'Always visible main statistics', 
+                details: '<p>Real-time daily steps, distance, active time, calories, and goal progress.</p>', 
+                ttsText: 'Main statistics display your daily activity with real-time updates.', 
+                actionButton: 'Next' 
+            },
+            it: { 
+                title: 'Attività: Statistiche Principali 📊 (Espanso)', 
+                message: 'Statistiche principali sempre visibili', 
+                details: '<p>Passi giornalieri in tempo reale, distanza, tempo attivo, calorie e progressi obiettivo.</p>', 
+                ttsText: 'Le statistiche principali mostrano la tua attività quotidiana con aggiornamenti in tempo reale.', 
+                actionButton: 'Avanti' 
+            }
+        }
+    },
+    
+    {
+        id: 18,
+        name: 'demo_activity_paths',
+        type: 'demo',
+        requireValidation: false,
+        ttsEnabled: true,
+        navigationTarget: '#activitySection',
+        highlightSelector: '#pathViewerModal',
+        content: {
+            fr: { 
+                title: 'Activité : Parcours 🗺️', 
+                message: 'GPS, carte et stats rapides', 
+                details: `<p>Le suivi de parcours se fait automatiquement :</p>
+                    <ul>
+                        <li>📍 GPS continu + détection auto</li>
+                        <li>🗺️ Carte OSM + profil d'altitude</li>
+                        <li>📊 Stats clés : distance, durée, vitesse, dénivelé</li>
+                        <li>🔋 Mode économie et hors-ligne</li>
+                        <li>🗂️ Historique des 10 derniers parcours</li>
+                    </ul>`,
+                ttsText: 'Le suivi de parcours est automatique. GPS continu, carte OpenStreetMap, profil d\'altitude et stats clés : distance, durée, vitesse et dénivelé. Mode économie de batterie et historique des dix derniers parcours.', 
+                actionButton: 'Suivant' 
+            },
+            en: { 
+                title: 'Activity: Paths and Auto Tracking 🗺️', 
+                message: 'Automatic GPS tracking', 
+                details: '<p>Continuous GPS with OSM map, elevation and key stats.</p>', 
+                ttsText: 'Path tracking is automatic with GPS, map and key stats like distance and speed.', 
+                actionButton: 'Next' 
+            },
+            it: { 
+                title: 'Attività: Percorsi e Tracciamento Auto 🗺️', 
+                message: 'Tracciamento GPS automatico', 
+                details: '<p>GPS continuo con mappa OSM, profilo altimetrico e statistiche chiave.</p>', 
+                ttsText: 'Il tracciamento percorsi è automatico con GPS, mappa e statistiche principali.', 
+                actionButton: 'Avanti' 
+            }
+        }
+    },
+    
+    {
+        id: 19,
+        name: 'demo_activity_detailed_stats',
+        type: 'demo',
+        requireValidation: false,
+        ttsEnabled: true,
+        navigationTarget: '#activitySection',
+        highlightSelector: '#statsModal',
+        content: {
+            fr: { 
+                title: 'Activité : Stats Détaillées 📈', 
+                message: 'Historique et graphiques clés', 
+                details: `<p>Vue complète de vos performances :</p>
+                    <ul>
+                        <li>📅 Historique : jour, semaine, mois, année</li>
+                        <li>📊 Graphiques : courbe d'activité, répartition horaire, objectifs</li>
+                        <li>🔬 Avancé : vitesse, cadence, calories, intensité, records</li>
+                        <li>📤 Export : CSV / PDF</li>
+                    </ul>`,
+                ttsText: 'Les stats détaillées montrent votre historique jour, semaine, mois et année, avec des graphiques d\'activité et les objectifs. Vous voyez vitesse, cadence, calories, intensité et records, et pouvez exporter en CSV ou PDF.', 
+                actionButton: 'Suivant' 
+            },
+            en: { 
+                title: 'Activity: Detailed Stats 📈', 
+                message: 'History and key charts', 
+                details: '<p>History (day/week/month/year), charts, advanced metrics, and CSV/PDF export.</p>', 
+                ttsText: 'Detailed stats show history, charts, speed, cadence, calories, intensity, and export options.', 
+                actionButton: 'Next' 
+            },
+            it: { 
+                title: 'Attività: Statistiche Dettagliate 📈', 
+                message: 'Storico e grafici chiave', 
+                details: '<p>Storico giorno/settimana/mese/anno, grafici, metriche avanzate ed export CSV/PDF.</p>', 
+                ttsText: 'Le statistiche dettagliate mostrano storico, grafici, velocità, cadenza, calorie, intensità ed export.', 
+                actionButton: 'Avanti' 
+            }
+        }
+    },
+    
+    {
+        id: 20,
         name: 'demo_weather',
         type: 'demo',
         requireValidation: false,
@@ -580,22 +906,48 @@ const TUTORIAL_STEPS = [
     },
     
     {
-        id: 16,
+        id: 21,
         name: 'demo_settings',
         type: 'demo',
         requireValidation: false,
         ttsEnabled: true,
         navigationTarget: '#settingsSection',
-        highlightSelector: '.settings-modal',
+        highlightSelector: '.mistral-settings-section',
         content: {
-            fr: { title: 'Paramètres ⚙️', message: 'Personnalisez l\'application', details: '<p>Modifiez les voix, clés API, contacts d\'urgence, et plus encore.</p>', ttsText: 'Les paramètres vous donnent un contrôle total. Vous pouvez changer de voix de synthèse vocale, modifier vos clés API, ajouter ou supprimer des contacts d\'urgence, changer votre adresse par défaut, et personnaliser l\'apparence de l\'application. Tous vos changements sont sauvegardés localement et appliqués immédiatement.', actionButton: 'Suivant' },
-            en: { title: 'Settings ⚙️', message: 'Customize the application', details: '<p>Change voices, API keys, emergency contacts, and more.</p>', ttsText: 'Access settings to customize the app anytime.', actionButton: 'Next' },
-            it: { title: 'Impostazioni ⚙️', message: 'Personalizza l\'applicazione', details: '<p>Modifica voci, chiavi API, contatti di emergenza e altro.</p>', ttsText: 'Accedi alle impostazioni per personalizzare l\'app in qualsiasi momento.', actionButton: 'Avanti' }
+            fr: { 
+                title: 'Paramètres de Conversation Mistral 🤖', 
+                message: 'Personnalisez le comportement de l\'IA', 
+                details: `<p>Contrôlez le comportement de l'assistant :</p>
+                    <ul>
+                        <li>📝 <strong>Prompt Système</strong> : Personnalité de l'IA</li>
+                        <li>🎯 <strong>Modèle</strong> : Small (rapide), Medium (équilibré), Large (qualité)</li>
+                        <li>🌡️ <strong>Température</strong> : 0 = précis, 1 = créatif (recommandé: 0.3)</li>
+                        <li>📏 <strong>Tokens Max</strong> : Longueur des réponses (recommandé: 500)</li>
+                        <li>🎲 <strong>Top P</strong> : Diversité vocabulaire (recommandé: 0.9)</li>
+                    </ul>
+                    <p><strong>💡</strong> Les valeurs par défaut sont optimisées pour l'usage quotidien.</p>`, 
+                ttsText: 'Les paramètres Mistral contrôlent l\'intelligence artificielle. Le prompt système définit sa personnalité. Choisissez le modèle selon vos besoins : Small pour la rapidité, Large pour la qualité. La température contrôle la créativité, zéro point trois est recommandé. Les tokens maximum définissent la longueur, cinq cents est idéal. Le Top P à zéro point neuf gère la diversité. Les valeurs par défaut sont déjà optimisées.', 
+                actionButton: 'Suivant' 
+            },
+            en: { 
+                title: 'Mistral Conversation Settings 🤖', 
+                message: 'Customize AI behavior', 
+                details: '<p>Control system prompt, model, temperature, response length, and vocabulary diversity.</p>', 
+                ttsText: 'Mistral settings let you customize AI behavior with system prompt, model selection, and advanced parameters.', 
+                actionButton: 'Next' 
+            },
+            it: { 
+                title: 'Impostazioni Conversazione Mistral 🤖', 
+                message: 'Personalizza comportamento IA', 
+                details: '<p>Controlla prompt sistema, modello, temperatura, lunghezza risposta e diversità vocabolario.</p>', 
+                ttsText: 'Le impostazioni Mistral ti permettono di personalizzare il comportamento IA con prompt di sistema e parametri avanzati.', 
+                actionButton: 'Avanti' 
+            }
         }
     },
     
     {
-        id: 17,
+        id: 22,
         name: 'demo_always_listening',
         type: 'demo',
         requireValidation: false,
@@ -610,13 +962,13 @@ const TUTORIAL_STEPS = [
     },
     
     {
-        id: 18,
+        id: 23,
         name: 'demo_wake_word',
         type: 'demo',
         requireValidation: false,
         ttsEnabled: true,
         navigationTarget: '#settingsSection',
-        highlightSelector: '#wakeWordToggle',
+        highlightSelector: '.wake-word-section',
         content: {
             fr: { title: 'Mot de Réveil 🔊', message: 'Activation vocale', details: '<p>Configurez un mot de réveil comme "Hey Memory" pour activer l\'assistant.</p>', ttsText: 'Le mot de réveil ajoute une couche de contrôle au mode toujours à l\'écoute. Configurez un mot comme Hey Memory ou Assistant, et l\'application ne réagira que quand vous prononcez ce mot d\'abord. Cela évite les activations accidentelles. Par exemple, dites : Hey Memory, quelle heure est-il. Le mot de réveil peut être personnalisé selon vos préférences.', actionButton: 'Suivant' },
             en: { title: 'Wake Word 🔊', message: 'Voice activation', details: '<p>Configure a wake word like "Hey Memory" to activate the assistant.</p>', ttsText: 'Wake word enables voice-activated assistant without touching the screen.', actionButton: 'Next' },
@@ -625,7 +977,7 @@ const TUTORIAL_STEPS = [
     },
     
     {
-        id: 19,
+        id: 24,
         name: 'demo_complete_test',
         type: 'demo',
         requireValidation: false,
@@ -633,15 +985,43 @@ const TUTORIAL_STEPS = [
         navigationTarget: '#voiceInteractionSection',
         highlightSelector: '.voice-button',
         content: {
-            fr: { title: 'Test Final 🎉', message: 'Essayez une commande complète', details: '<p>Cliquez sur le microphone et dites : "Ajoute une tâche : tester l\'application demain à 14h"</p>', ttsText: 'C\'est le moment de votre premier test complet. Cliquez sur le bouton microphone, et dites clairement : ajoute une tâche tester l\'application demain à quatorze heures. L\'assistant va comprendre votre demande, créer la tâche avec la date et l\'heure, et vous confirmer vocalement. C\'est aussi simple que ça. Allez-y, essayez maintenant.', actionButton: 'Terminer le tutoriel' },
-            en: { title: 'Final Test 🎉', message: 'Try a complete command', details: '<p>Click the microphone and say: "Add task: test the app tomorrow at 2pm"</p>', ttsText: 'Now try creating your first task with a voice command.', actionButton: 'Complete Tutorial' },
-            it: { title: 'Test Finale 🎉', message: 'Prova un comando completo', details: '<p>Clicca sul microfono e dì: "Aggiungi attività: testare l\'app domani alle 14"</p>', ttsText: 'Ora prova a creare la tua prima attività con un comando vocale.', actionButton: 'Completa Tutorial' }
+            fr: { 
+                title: 'Tutoriel Terminé 🎉', 
+                message: 'Vous êtes prêt à utiliser l\'application', 
+                details: `<p>Félicitations ! Vous avez découvert toutes les fonctionnalités de Memory Board Helper.</p>
+                    <p><strong>Vous pouvez maintenant :</strong></p>
+                    <ul>
+                        <li>🎤 Créer des tâches et notes vocalement</li>
+                        <li>📅 Gérer votre calendrier</li>
+                        <li>👟 Suivre votre activité physique</li>
+                        <li>💬 Discuter avec l'assistant IA</li>
+                        <li>🌤️ Consulter la météo et chercher en ligne</li>
+                    </ul>
+                    <p><strong>Pour finir à la voix :</strong> dites clairement « teminer le tutorial ». Nous fermerons automatiquement le tutoriel si cette phrase est détectée.</p>
+                    <p><strong>💡 Astuce :</strong> Vous pouvez relancer ce tutoriel à tout moment depuis les paramètres.</p>`, 
+                ttsText: 'Félicitations ! Vous avez terminé le tutoriel. Pour fermer à la voix, dites clairement teminer le tutorial. Sinon, appuyez sur le bouton Terminer pour commencer à utiliser l\'application.', 
+                actionButton: 'Terminer le tutoriel' 
+            },
+            en: { 
+                title: 'Tutorial Complete 🎉', 
+                message: 'You are ready to use the app', 
+                details: '<p>Congratulations! You have discovered all Memory Board Helper features.</p><p>Start using the app now!</p>', 
+                ttsText: 'Congratulations! You have completed the tutorial and are ready to use Memory Board Helper.', 
+                actionButton: 'Complete Tutorial' 
+            },
+            it: { 
+                title: 'Tutorial Completato 🎉', 
+                message: 'Sei pronto per usare l\'app', 
+                details: '<p>Congratulazioni! Hai scoperto tutte le funzionalità di Memory Board Helper.</p><p>Inizia ad usare l\'app ora!</p>', 
+                ttsText: 'Congratulazioni! Hai completato il tutorial e sei pronto per usare Memory Board Helper.', 
+                actionButton: 'Completa Tutorial' 
+            }
         }
     },
     
-    // Step 20: Completion
+    // Step 25: Completion
     {
-        id: 20,
+        id: 25,
         name: 'completion',
         type: 'modal',
         requireValidation: false,
@@ -736,6 +1116,8 @@ class TutorialSystem {
         this.modalElement = null;
         this.arrowElement = null;
         this.highlightedElement = null;
+        this.finishRecognizer = null;
+        this.finishRecognizerActive = false;
     }
     
     /**
@@ -798,11 +1180,141 @@ class TutorialSystem {
             return false;
         }
         
+        // Stop any finish phrase recognition when leaving step 24
+        if (this.currentStep !== stepIndex && this.finishRecognizerActive) {
+            this.stopFinishVoicePrompt();
+        }
+
         this.currentStep = stepIndex;
         const step = this.steps[stepIndex];
         const content = step.content[this.language];
         
         console.log('[Tutorial] Showing step:', stepIndex, step.name);
+        
+        // Special handling: Activity section visibility
+        const activityContent = document.getElementById('activityContent');
+        const activityToggleBtn = document.getElementById('activityToggleBtn');
+        const activitySubtitle = document.getElementById('activitySubtitle');
+        
+        // Special handling: Calendar section and views
+        const calendarContent = document.getElementById('calendarContent');
+        const calendarToggleBtn = document.getElementById('calendarToggleBtn');
+        if ([10, 11, 12].includes(step.id)) {
+            // Ensure calendar section is expanded
+            if (calendarContent) {
+                calendarContent.style.display = 'block';
+                if (calendarToggleBtn) {
+                    const icon = calendarToggleBtn.querySelector('.material-symbols-outlined');
+                    if (icon) icon.textContent = 'expand_less';
+                }
+            }
+            // Force the appropriate calendar view
+            if (typeof changeCalendarView === 'function') {
+                const view = step.id === 10 ? 'listWeek' : step.id === 11 ? 'dayGridMonth' : 'timeGridWeek';
+                try {
+                    changeCalendarView(view);
+                    // Re-apply after a short delay to ensure render
+                    setTimeout(() => {
+                        try {
+                            changeCalendarView(view);
+                        } catch (e) {
+                            console.warn('[Tutorial] Retry changeCalendarView failed:', e);
+                        }
+                    }, 150);
+                    console.log('[Tutorial] Calendar view set to', view, 'for step', step.id);
+                } catch (e) {
+                    console.warn('[Tutorial] Failed to change calendar view:', e);
+                }
+            }
+        }
+
+        if (step.id === 16) {
+            // Step 16 (Activité général): Keep collapsed
+            if (activityContent) {
+                activityContent.style.display = 'none';
+                
+                // Update toggle button icon
+                if (activityToggleBtn) {
+                    const icon = activityToggleBtn.querySelector('.material-symbols-outlined');
+                    if (icon) icon.textContent = 'expand_more';
+                }
+                
+                // Show subtitle when collapsed
+                if (activitySubtitle) {
+                    activitySubtitle.style.display = 'block';
+                }
+                
+                console.log('[Tutorial] Activity section collapsed for step', step.id);
+            }
+        } else if ([17, 18, 19].includes(step.id)) {
+            // Steps 17, 18, 19 (Main Stats, Parcours, Detailed Stats): Expand
+            if (activityContent) {
+                activityContent.style.display = 'block';
+                
+                // Update toggle button icon
+                if (activityToggleBtn) {
+                    const icon = activityToggleBtn.querySelector('.material-symbols-outlined');
+                    if (icon) icon.textContent = 'expand_less';
+                }
+                
+                // Hide subtitle when expanded
+                if (activitySubtitle) {
+                    activitySubtitle.style.display = 'none';
+                }
+                
+                console.log('[Tutorial] Activity section expanded for step', step.id);
+            }
+        }
+        
+        // Special handling: open activity modals when needed
+        try {
+            if (step.id === 18 && window.activityUI && typeof activityUI.showPathViewer === 'function') {
+                activityUI.showPathViewer();
+                console.log('[Tutorial] Path viewer opened for step', step.id);
+            }
+            if (step.id === 19 && window.activityUI && typeof activityUI.showStatsModal === 'function') {
+                activityUI.showStatsModal();
+                console.log('[Tutorial] Stats modal opened for step', step.id);
+            }
+        } catch (e) {
+            console.warn('[Tutorial] Failed to open activity modal:', e);
+        }
+
+        // Special handling: Mistral settings section
+        if (step.id === 21) {
+            const mistralContent = document.getElementById('mistralSettingsContent');
+            const mistralToggleBtn = document.getElementById('mistralToggleBtn');
+            
+            if (mistralContent) {
+                mistralContent.style.display = 'block';
+                
+                // Update toggle button icon
+                if (mistralToggleBtn) {
+                    const icon = mistralToggleBtn.querySelector('.material-symbols-outlined');
+                    if (icon) icon.textContent = 'expand_less';
+                }
+                
+                console.log('[Tutorial] Mistral settings section expanded for step', step.id);
+            }
+        }
+        
+        // Special handling: Wake word section
+        if (step.id === 23) {
+            const wakeWordContent = document.getElementById('wakeWordContent');
+            const wakeWordToggleBtn = document.getElementById('wakeWordToggleBtn');
+            
+            if (wakeWordContent) {
+                wakeWordContent.style.display = 'block';
+                
+                // Update toggle button icon
+                if (wakeWordToggleBtn) {
+                    const icon = wakeWordToggleBtn.querySelector('.material-symbols-outlined');
+                    if (icon) icon.textContent = 'expand_less';
+                }
+                
+                console.log('[Tutorial] Wake word section expanded for step', step.id);
+            }
+        }
         
         // Show overlay
         this.overlayElement.style.display = 'block';
@@ -811,12 +1323,21 @@ class TutorialSystem {
         // Highlight element if needed (will be cloned into modal)
         if (step.highlightSelector) {
             this.highlightElement(step.highlightSelector);
+            // Retry highlighting after modals are mounted (paths/stats)
+            if (step.id === 18 || step.id === 19) {
+                setTimeout(() => this.highlightElement(step.highlightSelector), 400);
+            }
         } else {
             this.removeHighlight();
         }
         
         // Update modal content
         this.updateModal(step, content);
+
+        // Enable finish voice phrase on step 24
+        if (step.id === 24) {
+            this.startFinishVoicePrompt();
+        }
         
         // Show modal
         this.modalElement.style.display = 'block';
@@ -952,9 +1473,12 @@ class TutorialSystem {
      */
     updateModal(step, content) {
         const stepCounter = `${step.id + 1}/${this.steps.length}`;
-        const showVoiceInteraction = step.id >= 9; // Show voice interaction from step 9 onwards
+        let showVoiceInteraction = step.id >= 9; // Show voice interaction from step 9 onwards
+        const disableVoiceInteraction = [9, 10, 11, 12, 13, 14, 16, 17, 18, 19, 21, 23].includes(step.id);
+        if (disableVoiceInteraction) showVoiceInteraction = false;
         const hasHighlight = step.highlightSelector;
-        const hideHighlightContainer = step.id === 9 || (step.id >= 10 && !hasHighlight);
+        // Hide highlight container for steps without highlight or specific steps 6, 7, 9, 15, 18, 19, 20, 22, 24
+        const hideHighlightContainer = step.id === 6 || step.id === 7 || step.id === 9 || step.id === 15 || step.id === 18 || step.id === 19 || step.id === 20 || step.id === 22 || step.id === 24 || !hasHighlight;
         const isLastStep = step.id === this.steps.length - 1;
         const skipButtonText = step.id === 0 ? 'Passer pour cette fois' : 'Passer';
         
@@ -1194,6 +1718,84 @@ class TutorialSystem {
         }
         this.arrowElement.style.display = 'none';
     }
+
+    /**
+     * Listen for the finish voice command on step 24
+     */
+    startFinishVoicePrompt() {
+        if (this.finishRecognizerActive) return;
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            console.warn('[Tutorial] SpeechRecognition not available for finish prompt');
+            return;
+        }
+        try {
+            this.finishRecognizer = new SpeechRecognition();
+            this.finishRecognizer.lang = 'fr-FR';
+            this.finishRecognizer.continuous = false;
+            this.finishRecognizer.interimResults = false;
+            this.finishRecognizer.onresult = (event) => {
+                const transcript = Array.from(event.results)
+                    .map(res => res[0].transcript)
+                    .join(' ')
+                    .toLowerCase();
+                console.log('[Tutorial] Finish phrase heard:', transcript);
+                const variants = [
+                    'terminer le tutoriel',
+                    'termine le tutoriel',
+                    'teminer le tutorial', // user-provided spelling
+                    'terminer le tutorial'
+                ];
+                if (variants.some(v => transcript.includes(v))) {
+                    this.finishRecognizerActive = false;
+                    if (typeof tutorialComplete === 'function') {
+                        tutorialComplete();
+                    }
+                } else {
+                    // Restart listening to allow another attempt
+                    this.restartFinishVoicePrompt();
+                }
+            };
+            this.finishRecognizer.onend = () => {
+                if (this.finishRecognizerActive) {
+                    this.restartFinishVoicePrompt();
+                }
+            };
+            this.finishRecognizer.onerror = (e) => {
+                console.warn('[Tutorial] Finish recognizer error:', e);
+                this.finishRecognizerActive = false;
+            };
+            this.finishRecognizer.start();
+            this.finishRecognizerActive = true;
+            console.log('[Tutorial] Finish phrase listener started');
+        } catch (e) {
+            console.warn('[Tutorial] Unable to start finish recognizer:', e);
+        }
+    }
+
+    restartFinishVoicePrompt() {
+        if (!this.finishRecognizer || !this.finishRecognizerActive) return;
+        try {
+            this.finishRecognizer.start();
+            console.log('[Tutorial] Finish phrase listener restarted');
+        } catch (e) {
+            console.warn('[Tutorial] Finish recognizer restart failed:', e);
+        }
+    }
+
+    stopFinishVoicePrompt() {
+        if (this.finishRecognizer) {
+            try {
+                this.finishRecognizer.onresult = null;
+                this.finishRecognizer.onend = null;
+                this.finishRecognizer.onerror = null;
+                this.finishRecognizer.stop();
+            } catch (e) {
+                console.warn('[Tutorial] Finish recognizer stop failed:', e);
+            }
+        }
+        this.finishRecognizerActive = false;
+    }
     
     /**
      * Hide tutorial
@@ -1286,6 +1888,9 @@ async function tutorialSkip() {
 
 async function tutorialComplete() {
     console.log('[Tutorial] tutorialComplete() called - marking tutorial as completed');
+    if (window.tutorialSystem) {
+        window.tutorialSystem.stopFinishVoicePrompt();
+    }
     
     // Mark tutorial as completed
     localStorage.setItem('tutorialCompleted', 'true');
