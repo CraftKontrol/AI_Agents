@@ -4,15 +4,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CraftKontrol Desktop</title>
+    
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="app-container">
         <!-- Header -->
         <header class="app-header">
-            <h1><img src="../resources/ck_icon.png" class="header-icon" alt="CK"> CraftKontrol Desktop</h1>
+            <div class="header-title">
+            <div style="display: flex; gap: 10px;">
+               <img src="../resources/ck_icon.png" class="header-icon" alt="CK">
+                <div style="display: flex;    flex-direction: column; justify-content: center; ">
+                <h1 class="title" data-i18n="app.title">CraftKontrol Desktop</h1>
+                <h4 class="subtitle">Manages AI Agents and API Keys</h4>
+                </div>
+            </div>
+                
+                
+            </div>
             <div class="header-actions">
-                <button id="settingsBtn" class="icon-btn" title="Settings">⚙️</button>
+            
+                <button id="settingsBtn" class="icon-btn" title="Settings"><span class="material-symbols-outlined">settings</span></button>
             </div>
         </header>
 
@@ -20,7 +33,7 @@
         <main class="app-main">
             <!-- Apps Grid -->
             <section class="apps-section">
-                <h2>AI Agents</h2>
+                <h2 data-i18n="section.apps">AI Agents</h2>
                 <div id="appsGrid" class="apps-grid">
                     <!-- Apps will be loaded dynamically -->
                 </div>
@@ -29,13 +42,13 @@
             <!-- API Keys Section -->
             <section class="api-keys-section">
                 <h2>
-                    API Keys Management
+                    <span data-i18n="section.apiKeys">API Keys Management</span>
                     <button class="section-toggle" onclick="toggleSection('apiKeysContent')" id="apiKeysToggleBtn">
-                        <span>▼</span>
+                        <span class="material-symbols-outlined">expand_more</span>
                     </button>
                 </h2>
                 <div id="apiKeysContent" class="section-content">
-                <p class="section-description">
+                <p class="section-description" data-i18n="section.apiKeys.description">
                     Configure your API keys once here - they will be automatically injected into all web apps.
                 </p>
                 
@@ -43,97 +56,351 @@
                     <div class="api-key-field">
                         <label for="mistral">Mistral AI</label>
                         <input type="password" id="mistral" placeholder="Enter Mistral API key">
-                        <button class="toggle-visibility" data-target="mistral">👁️</button>
+                        <button class="toggle-visibility" data-target="mistral"><span class="material-symbols-outlined">visibility</span></button>
                     </div>
                     
                     <div class="api-key-field">
                         <label for="deepgram">Deepgram STT</label>
                         <input type="password" id="deepgram" placeholder="Enter Deepgram API key">
-                        <button class="toggle-visibility" data-target="deepgram">👁️</button>
+                        <button class="toggle-visibility" data-target="deepgram"><span class="material-symbols-outlined">visibility</span></button>
                     </div>
                     
                     <div class="api-key-field">
                         <label for="deepgramtts">Deepgram TTS</label>
                         <input type="password" id="deepgramtts" placeholder="Enter Deepgram TTS API key">
-                        <button class="toggle-visibility" data-target="deepgramtts">👁️</button>
+                        <button class="toggle-visibility" data-target="deepgramtts"><span class="material-symbols-outlined">visibility</span></button>
                     </div>
                     
                     <div class="api-key-field">
                         <label for="google_tts">Google Cloud TTS</label>
                         <input type="password" id="google_tts" placeholder="Enter Google TTS API key">
-                        <button class="toggle-visibility" data-target="google_tts">👁️</button>
+                        <button class="toggle-visibility" data-target="google_tts"><span class="material-symbols-outlined">visibility</span></button>
                     </div>
                     
                     <div class="api-key-field">
                         <label for="google_stt">Google Cloud STT</label>
                         <input type="password" id="google_stt" placeholder="Enter Google STT API key">
-                        <button class="toggle-visibility" data-target="google_stt">👁️</button>
+                        <button class="toggle-visibility" data-target="google_stt"><span class="material-symbols-outlined">visibility</span></button>
                     </div>
                     
                     <div class="api-key-field">
                         <label for="openweathermap">OpenWeatherMap</label>
                         <input type="password" id="openweathermap" placeholder="Enter OpenWeatherMap API key">
-                        <button class="toggle-visibility" data-target="openweathermap">👁️</button>
+                        <button class="toggle-visibility" data-target="openweathermap"><span class="material-symbols-outlined">visibility</span></button>
                     </div>
                     
                     <div class="api-key-field">
                         <label for="weatherapi">WeatherAPI</label>
                         <input type="password" id="weatherapi" placeholder="Enter WeatherAPI key">
-                        <button class="toggle-visibility" data-target="weatherapi">👁️</button>
+                        <button class="toggle-visibility" data-target="weatherapi"><span class="material-symbols-outlined">visibility</span></button>
                     </div>
                     
                     <div class="api-key-field">
                         <label for="tavily">Tavily Search</label>
                         <input type="password" id="tavily" placeholder="Enter Tavily API key">
-                        <button class="toggle-visibility" data-target="tavily">👁️</button>
+                        <button class="toggle-visibility" data-target="tavily"><span class="material-symbols-outlined">visibility</span></button>
                     </div>
                     
                     <div class="api-key-field">
                         <label for="scrapingbee">ScrapingBee</label>
                         <input type="password" id="scrapingbee" placeholder="Enter ScrapingBee API key">
-                        <button class="toggle-visibility" data-target="scrapingbee">👁️</button>
+                        <button class="toggle-visibility" data-target="scrapingbee"><span class="material-symbols-outlined">visibility</span></button>
                     </div>
                     
                     <div class="api-key-field">
                         <label for="scraperapi">ScraperAPI</label>
                         <input type="password" id="scraperapi" placeholder="Enter ScraperAPI key">
-                        <button class="toggle-visibility" data-target="scraperapi">👁️</button>
+                        <button class="toggle-visibility" data-target="scraperapi"><span class="material-symbols-outlined">visibility</span></button>
                     </div>
                     
                     <div class="api-key-field">
                         <label for="brightdata">Bright Data</label>
                         <input type="password" id="brightdata" placeholder="Enter Bright Data API key">
-                        <button class="toggle-visibility" data-target="brightdata">👁️</button>
+                        <button class="toggle-visibility" data-target="brightdata"><span class="material-symbols-outlined">visibility</span></button>
                     </div>
                     
                     <div class="api-key-field">
                         <label for="scrapfly">ScrapFly</label>
                         <input type="password" id="scrapfly" placeholder="Enter ScrapFly API key">
-                        <button class="toggle-visibility" data-target="scrapfly">👁️</button>
+                        <button class="toggle-visibility" data-target="scrapfly"><span class="material-symbols-outlined">visibility</span></button>
                     </div>
                 </div>
                 
-                <button id="saveApiKeysBtn" class="primary-btn">💾 Save API Keys</button>
+                <button id="saveApiKeysBtn" class="primary-btn">
+                    <span class="material-symbols-outlined">save</span> <span data-i18n="apiKey.save">Save API Keys</span>
+                </button>
                 </div>
             </section>
 
             <!-- Status Section -->
             <section class="status-section">
-                <h2>Monitoring Service</h2>
+                <h2 data-i18n="section.monitoring">Monitoring Service</h2>
                 <div class="status-card">
                     <div class="status-indicator">
                         <span id="statusDot" class="dot"></span>
-                        <span id="statusText">Checking...</span>
+                        <span id="statusText" data-i18n="status.checking">Checking...</span>
                     </div>
                     <div class="status-info">
-                        <p id="alarmCount">Scheduled alarms: 0</p>
-                        <p id="nextAlarm">Next alarm: None</p>
+                        <p><span data-i18n="status.alarms">Scheduled alarms</span>: <span id="alarmCount">0</span></p>
+                        <p><span data-i18n="status.nextAlarm">Next alarm</span>: <span id="nextAlarm" data-i18n="status.none">None</span></p>
                     </div>
                 </div>
             </section>
         </main>
+        
+        <!-- Settings Modal -->
+        <div id="settingsModal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 data-i18n="settings.title">Settings</h2>
+                    <button class="close-btn" onclick="closeSettingsModal()">×</button>
+                </div>
+                
+                <div class="modal-body">
+                    <!-- Background Monitoring -->
+                    <div class="setting-group">
+                        <h3 data-i18n="settings.monitoring.title">Background Monitoring</h3>
+                        <div class="setting-item">
+                            <label class="switch-label">
+                                <span data-i18n="settings.monitoring.enabled">Enable background monitoring service</span>
+                                <label class="switch">
+                                    <input type="checkbox" id="monitoringEnabled" checked>
+                                    <span class="slider"></span>
+                                </label>
+                            </label>
+                            <p class="setting-description" data-i18n="settings.monitoring.description">Keep the monitoring service running in the background for alarms and notifications</p>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <label class="switch-label">
+                                <span data-i18n="settings.notifications.enabled">Enable notifications</span>
+                                <label class="switch">
+                                    <input type="checkbox" id="notificationsEnabled" checked>
+                                    <span class="slider"></span>
+                                </label>
+                            </label>
+                            <p class="setting-description" data-i18n="settings.notifications.description">Show desktop notifications for alarms and reminders</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Language -->
+                    <div class="setting-group">
+                        <h3 data-i18n="settings.language.title">Language</h3>
+                        <div class="setting-item">
+                            <label for="languageSelect" data-i18n="settings.language.select">Interface Language</label>
+                            <select id="languageSelect" class="setting-select">
+                                <option value="fr">Français</option>
+                                <option value="en">English</option>
+                                <option value="it">Italiano</option>
+                            </select>
+                            <p class="setting-description" data-i18n="settings.language.description">Choose the language for the application interface</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Data Backup -->
+                    <div class="setting-group">
+                        <h3 data-i18n="settings.backup.title">Data Backup</h3>
+                        <div class="setting-item">
+                            <button class="secondary-btn" onclick="exportSettings()" data-i18n="settings.backup.export">Export Settings</button>
+                            <button class="secondary-btn" onclick="importSettings()" data-i18n="settings.backup.import">Import Settings</button>
+                            <p class="setting-description" data-i18n="settings.backup.description">Export or import your application settings and API keys</p>
+                        </div>
+                    </div>
+                    
+                    <!-- About -->
+                    <div class="setting-group">
+                        <h3 data-i18n="settings.about.title">About</h3>
+                        <div class="about-info">
+                            <p><strong>CraftKontrol Desktop</strong></p>
+                            <p><span data-i18n="settings.about.version">Version</span>: <span id="appVersion">1.0.9</span></p>
+                            <p data-i18n="settings.about.description">Electron-based desktop application wrapper for CraftKontrol AI Agents</p>
+                            <p class="copyright">Arnaud Cassone © 2025 Artcraft Visuals - <a href="https://artcraft-zone.com" target="_blank" rel="noopener noreferrer" style="color: white;">www.artcraft-zone.com</a></p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button class="primary-btn" onclick="closeSettingsModal()" data-i18n="settings.close">Close</button>
+                </div>
+            </div>
+        </div>
     </div>
 
+    <!-- Mock Electron API for browser development -->
+    <script>
+        // Check if we're NOT in Electron (for live server development)
+        if (typeof window.electronAPI === 'undefined') {
+            console.log('🔧 Mock Electron API loaded for browser development');
+            
+            // Mock apps data
+            const mockApps = [
+                { id: 'memoryboardhelper', name: 'Memory', order: 1, enabled: true, color: '#3b9150', icon: 'ic_memory.png', url: 'http://localhost:3001' },
+                { id: 'newsagregator', name: 'News', order: 2, enabled: true, color: '#91233e', icon: 'ic_news.png', url: 'http://localhost:3002' },
+                { id: 'aisearchagregator', name: 'Search', order: 3, enabled: true, color: '#1f45b3', icon: 'ic_search.png', url: 'http://localhost:3003' },
+                { id: 'meteoagregator', name: 'Meteo', order: 4, enabled: true, color: '#25a5da', icon: 'ic_meteo.png', url: 'http://localhost:3004' },
+                { id: 'localfoodproducts', name: 'Food', order: 5, enabled: true, color: '#ffa000', icon: 'ic_food.png', url: 'http://localhost:3005' },
+                { id: 'astralcompute', name: 'Astral', order: 6, enabled: true, color: '#c125da', icon: 'ic_astral.png', url: 'http://localhost:3006' }
+            ];
+            
+            // Mock API keys (stored in localStorage for persistence)
+            let mockApiKeys = JSON.parse(localStorage.getItem('mockApiKeys') || '{}');
+            if (Object.keys(mockApiKeys).length === 0) {
+                mockApiKeys = {
+                    mistral: '',
+                    deepgram: '',
+                    deepgramtts: '',
+                    google_tts: '',
+                    google_stt: '',
+                    openweathermap: '',
+                    weatherapi: '',
+                    tavily: '',
+                    scrapingbee: '',
+                    scraperapi: '',
+                    brightdata: '',
+                    scrapfly: ''
+                };
+            }
+            
+            // Mock settings (stored in localStorage for persistence)
+            let mockSettings = JSON.parse(localStorage.getItem('mockSettings') || '{}');
+            if (Object.keys(mockSettings).length === 0) {
+                mockSettings = {
+                    language: 'fr',
+                    monitoring: {
+                        enabled: true,
+                        checkInterval: 30000,
+                        showNotifications: true
+                    },
+                    notifications: {
+                        enabled: true,
+                        sound: true
+                    }
+                };
+            }
+            
+            // Create mock Electron API
+            window.electronAPI = {
+                // Apps
+                getApps: async () => {
+                    return mockApps;
+                },
+                openApp: async (appId) => {
+                    console.log(`🚀 Mock: Opening app ${appId}`);
+                    const app = mockApps.find(a => a.id === appId);
+                    if (app) {
+                        window.open(app.url, '_blank');
+                    }
+                },
+                
+                // API Keys
+                getApiKeys: async () => {
+                    return mockApiKeys;
+                },
+                saveApiKey: async (keyName, keyValue) => {
+                    console.log(`💾 Mock: Saving API key ${keyName}`);
+                    mockApiKeys[keyName] = keyValue;
+                    localStorage.setItem('mockApiKeys', JSON.stringify(mockApiKeys));
+                    return { success: true };
+                },
+                
+                // Settings
+                getSettings: async () => {
+                    return mockSettings;
+                },
+                saveSetting: async (key, value) => {
+                    console.log(`⚙️ Mock: Saving setting ${key} = ${value}`);
+                    const keys = key.split('.');
+                    let obj = mockSettings;
+                    for (let i = 0; i < keys.length - 1; i++) {
+                        if (!obj[keys[i]]) obj[keys[i]] = {};
+                        obj = obj[keys[i]];
+                    }
+                    obj[keys[keys.length - 1]] = value;
+                    localStorage.setItem('mockSettings', JSON.stringify(mockSettings));
+                    return { success: true };
+                },
+                exportSettings: async () => {
+                    console.log('📤 Mock: Exporting settings');
+                    const data = {
+                        apps: mockApps,
+                        apiKeys: mockApiKeys,
+                        settings: mockSettings
+                    };
+                    // Download as JSON file
+                    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `craftkontrol-settings-${Date.now()}.json`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    return { success: true };
+                },
+                importSettings: async () => {
+                    console.log('📥 Mock: Importing settings');
+                    return new Promise((resolve) => {
+                        const input = document.createElement('input');
+                        input.type = 'file';
+                        input.accept = '.json';
+                        input.onchange = async (e) => {
+                            const file = e.target.files[0];
+                            if (file) {
+                                const text = await file.text();
+                                try {
+                                    const data = JSON.parse(text);
+                                    if (data.apiKeys) {
+                                        mockApiKeys = data.apiKeys;
+                                        localStorage.setItem('mockApiKeys', JSON.stringify(mockApiKeys));
+                                    }
+                                    if (data.settings) {
+                                        mockSettings = data.settings;
+                                        localStorage.setItem('mockSettings', JSON.stringify(mockSettings));
+                                    }
+                                    resolve({ success: true });
+                                } catch (error) {
+                                    console.error('Failed to parse settings file:', error);
+                                    resolve({ success: false, error: error.message });
+                                }
+                            } else {
+                                resolve({ success: false });
+                            }
+                        };
+                        input.click();
+                    });
+                },
+                getVersion: async () => {
+                    return '1.0.14-browser';
+                },
+                
+                // Notifications
+                showNotification: async (title, body) => {
+                    console.log(`🔔 Mock: Notification - ${title}: ${body}`);
+                    if ('Notification' in window && Notification.permission === 'granted') {
+                        new Notification(title, { body });
+                    } else {
+                        alert(`${title}\n${body}`);
+                    }
+                },
+                
+                // Alarms (monitoring)
+                scheduleAlarm: async (alarmData) => {
+                    console.log('⏰ Mock: Scheduling alarm', alarmData);
+                    return { success: true };
+                },
+                cancelAlarm: async (alarmId) => {
+                    console.log('❌ Mock: Canceling alarm', alarmId);
+                    return { success: true };
+                }
+            };
+            
+            // Request notification permission if in browser
+            if ('Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission();
+            }
+        }
+    </script>
+    
+    <script src="translations.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

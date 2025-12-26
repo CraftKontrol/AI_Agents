@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CKDesktop API Injection Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a1a;
+            color: #e3e3e3;
+            padding: 20px;
+            margin: 0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #4a9eff;
+            border-bottom: 2px solid #4a9eff;
+            padding-bottom: 10px;
+        }
+        .section {
+            background: #2a2a2a;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success {
+            background: #2ecc71;
+            color: white;
+        }
+        .error {
+            background: #e74c3c;
+            color: white;
+        }
+        .warning {
+            background: #f39c12;
+            color: white;
+        }
+        .info {
+            background: #3498db;
+            color: white;
+        }
+        pre {
+            background: #1a1a1a;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            border: 1px solid #3a3a3a;
+        }
+        button {
+            background: #4a9eff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #3d8ae5;
+        }
+        .key-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .key-item {
+            background: #1a1a1a;
+            padding: 10px;
+            border-radius: 4px;
+            border-left: 3px solid #4a9eff;
+        }
+        .key-name {
+            font-weight: bold;
+            color: #4a9eff;
+        }
+        .key-value {
+            font-family: monospace;
+            font-size: 12px;
+            color: #a0a0a0;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔑 CKDesktop API Injection Test</h1>
+        
+        <div class="section">
+            <h2>Injection Status</h2>
+            <div id="status"></div>
+        </div>
+
+        <div class="section">
+            <h2>Available API Keys</h2>
+            <div id="api-keys"></div>
+        </div>
+
+        <div class="section">
+            <h2>Bridge Functions</h2>
+            <div id="bridges"></div>
+        </div>
+
+        <div class="section">
+            <h2>Test Actions</h2>
+            <button onclick="testNotification()">📢 Test Notification</button>
+            <button onclick="testGetApiKey()">🔐 Test getApiKey()</button>
+            <button onclick="refreshTest()">🔄 Refresh Test</button>
+            <div id="test-results"></div>
+        </div>
+
+        <div class="section">
+            <h2>Raw Objects (Console Output)</h2>
+            <button onclick="logAllObjects()">📋 Log to Console</button>
+            <pre id="console-output"></pre>
+        </div>
+    </div>
+
+    <script>
+        function checkInjection() {
+            const status = document.getElementById('status');
+            let html = '';
+
+            // Check CKDesktop
+            if (typeof window.CKDesktop !== 'undefined') {
+                html += '<div class="status success">✅ window.CKDesktop is defined</div>';
+                
+                if (window.CKDesktop.apiKeys) {
+                    html += '<div class="status success">✅ window.CKDesktop.apiKeys exists</div>';
+                } else {
+                    html += '<div class="status error">❌ window.CKDesktop.apiKeys is missing</div>';
+                }
+                
+                if (typeof window.CKDesktop.getApiKey === 'function') {
+                    html += '<div class="status success">✅ window.CKDesktop.getApiKey() is a function</div>';
+                } else {
+                    html += '<div class="status error">❌ window.CKDesktop.getApiKey() is not a function</div>';
+                }
+            } else {
+                html += '<div class="status error">❌ window.CKDesktop is NOT defined</div>';
+            }
+
+            // Check CKAndroid
+            if (typeof window.CKAndroid !== 'undefined') {
+                html += '<div class="status success">✅ window.CKAndroid is defined</div>';
+            } else {
+                html += '<div class="status warning">⚠️ window.CKAndroid is NOT defined</div>';
+            }
+
+            // Check Bridges
+            if (typeof window.CKDesktopBridge !== 'undefined') {
+                html += '<div class="status success">✅ window.CKDesktopBridge is defined</div>';
+            } else {
+                html += '<div class="status warning">⚠️ window.CKDesktopBridge is NOT defined</div>';
+            }
+
+            if (typeof window.CKAndroidBridge !== 'undefined') {
+                html += '<div class="status success">✅ window.CKAndroidBridge is defined</div>';
+            } else {
+                html += '<div class="status warning">⚠️ window.CKAndroidBridge is NOT defined</div>';
+            }
+
+            status.innerHTML = html;
+        }
+
+        function displayApiKeys() {
+            const container = document.getElementById('api-keys');
+            
+            if (!window.CKDesktop || !window.CKDesktop.apiKeys) {
+                container.innerHTML = '<div class="status error">❌ No API keys available</div>';
+                return;
+            }
+
+            const keys = window.CKDesktop.apiKeys;
+            let html = '<div class="key-list">';
+            
+            for (const [keyName, keyValue] of Object.entries(keys)) {
+                const hasValue = keyValue && keyValue.trim() !== '';
+                const displayValue = hasValue 
+                    ? `${keyValue.substring(0, 10)}...` 
+                    : '<em>Not set</em>';
+                const statusClass = hasValue ? 'success' : 'warning';
+                
+                html += `
+                    <div class="key-item">
+                        <div class="key-name">${keyName}</div>
+                        <div class="key-value status ${statusClass}">${displayValue}</div>
+                    </div>
+                `;
+            }
+            
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        function displayBridges() {
+            const container = document.getElementById('bridges');
+            let html = '<ul>';
+
+            if (window.CKDesktopBridge) {
+                html += '<li><strong>CKDesktopBridge:</strong> ';
+                html += Object.keys(window.CKDesktopBridge).join(', ');
+                html += '</li>';
+            }
+
+            if (window.CKAndroidBridge) {
+                html += '<li><strong>CKAndroidBridge:</strong> ';
+                html += Object.keys(window.CKAndroidBridge).join(', ');
+                html += '</li>';
+            }
+
+            if (!window.CKDesktopBridge && !window.CKAndroidBridge) {
+                html += '<li class="status warning">No bridge functions available</li>';
+            }
+
+            html += '</ul>';
+            container.innerHTML = html;
+        }
+
+        async function testNotification() {
+            const results = document.getElementById('test-results');
+            
+            try {
+                if (window.CKDesktopBridge && window.CKDesktopBridge.showNotification) {
+                    await window.CKDesktopBridge.showNotification('Test Notification', 'API injection is working!');
+                    results.innerHTML = '<div class="status success">✅ Notification sent successfully</div>';
+                } else if (window.CKAndroidBridge && window.CKAndroidBridge.showNotification) {
+                    await window.CKAndroidBridge.showNotification('Test Notification', 'API injection is working!');
+                    results.innerHTML = '<div class="status success">✅ Notification sent successfully</div>';
+                } else {
+                    results.innerHTML = '<div class="status error">❌ No notification bridge available</div>';
+                }
+            } catch (error) {
+                results.innerHTML = `<div class="status error">❌ Error: ${error.message}</div>`;
+            }
+        }
+
+        function testGetApiKey() {
+            const results = document.getElementById('test-results');
+            
+            if (!window.CKDesktop || typeof window.CKDesktop.getApiKey !== 'function') {
+                results.innerHTML = '<div class="status error">❌ getApiKey() function not available</div>';
+                return;
+            }
+
+            const testKey = 'mistral';
+            const value = window.CKDesktop.getApiKey(testKey);
+            
+            if (value) {
+                results.innerHTML = `<div class="status success">✅ getApiKey('${testKey}') returned: ${value.substring(0, 20)}...</div>`;
+            } else {
+                results.innerHTML = `<div class="status warning">⚠️ getApiKey('${testKey}') returned empty string (key not set)</div>`;
+            }
+        }
+
+        function refreshTest() {
+            checkInjection();
+            displayApiKeys();
+            displayBridges();
+            document.getElementById('test-results').innerHTML = '<div class="status info">🔄 Test refreshed</div>';
+        }
+
+        function logAllObjects() {
+            console.log('=== CKDesktop API Test ===');
+            console.log('CKDesktop:', window.CKDesktop);
+            console.log('CKDesktop.apiKeys:', window.CKDesktop?.apiKeys);
+            console.log('CKAndroid:', window.CKAndroid);
+            console.log('CKDesktopBridge:', window.CKDesktopBridge);
+            console.log('CKAndroidBridge:', window.CKAndroidBridge);
+            
+            const output = document.getElementById('console-output');
+            output.textContent = 'Objects logged to browser console (F12)\n\n' +
+                'Check the console tab to see:\n' +
+                '- window.CKDesktop\n' +
+                '- window.CKDesktop.apiKeys\n' +
+                '- window.CKAndroid\n' +
+                '- window.CKDesktopBridge\n' +
+                '- window.CKAndroidBridge';
+        }
+
+        // Run tests on load
+        window.addEventListener('DOMContentLoaded', () => {
+            console.log('[Test Page] DOMContentLoaded - checking injection...');
+            checkInjection();
+            displayApiKeys();
+            displayBridges();
+        });
+
+        // Also check after a short delay to catch late injections
+        setTimeout(() => {
+            console.log('[Test Page] Delayed check (500ms)...');
+            checkInjection();
+            displayApiKeys();
+            displayBridges();
+        }, 500);
+    </script>
+</body>
+</html>

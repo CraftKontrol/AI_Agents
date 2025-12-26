@@ -84,48 +84,48 @@ function initializeDefaultSettings() {
   store.set('apps', [
     {
       id: 'aisearchagregator',
-      name: 'AI Search',
+      name: 'Search',
       url: 'https://craftkontrol.github.io/AI_Agents/AiSearchAgregator/',
       icon: 'ic_ai_search.png',
         color: '#1f45b3',
         enabled: true,
-        order: 1
+        order: 3
       },
       {
         id: 'astralcompute',
-        name: 'Astral Compute',
+        name: 'Astral',
         url: 'https://craftkontrol.github.io/AI_Agents/AstralCompute/',
         icon: 'ic_astral_compute.png',
         color: '#c125da',
         enabled: true,
-        order: 2
+        order: 6
       },
       {
         id: 'localfoodproducts',
-        name: 'Local Food',
+        name: 'Food',
         url: 'https://craftkontrol.github.io/AI_Agents/LocalFoodProducts/',
         icon: 'ic_local_food.png',
         color: '#ffa000',
         enabled: true,
-        order: 3
+        order: 5
       },
       {
         id: 'memoryboardhelper',
-        name: 'Memory Board',
+        name: 'Memory',
         url: 'https://craftkontrol.github.io/AI_Agents/MemoryBoardHelper/',
         icon: 'ic_memory_board.png',
         color: '#3b9150',
         enabled: true,
-        order: 4
+        order: 1
       },
       {
         id: 'meteoagregator',
-        name: 'Weather',
+        name: 'Meteo',
         url: 'https://craftkontrol.github.io/AI_Agents/MeteoAgregator/',
         icon: 'ic_meteo.png',
         color: '#25a5da',
         enabled: true,
-        order: 5
+        order: 4
       },
       {
         id: 'newsagregator',
@@ -134,7 +134,7 @@ function initializeDefaultSettings() {
         icon: 'ic_news.png',
         color: '#91233e',
         enabled: true,
-        order: 6
+        order: 2
       }
     ]);
   
@@ -156,7 +156,7 @@ function createMainWindow() {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: true
+      sandbox: false
     },
     show: false
   });
@@ -387,38 +387,7 @@ function openWebApp(appId) {
     return;
   }
   
-  // Create new window
-  const win = new BrowserWindow({
-    width: 1200,
-    height: 800,
-    title: app.name,
-    icon: path.join(__dirname, '../../resources/icon.png'),
-    backgroundColor: '#1a1a1a',
-    webPreferences: {
-      preload: path.join(__dirname, 'preload-webview.js'),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true
-    }
-  });
-  
-  // Inject API keys into page
-  win.webContents.on('did-finish-load', () => {
-    injectAPIKeys(win.webContents);
-  });
-  
-  win.loadURL(app.url);
-  
-  win.on('closed', () => {
-    webViewWindows.delete(appId);
-  });
-  
-  webViewWindows.set(appId, win);
-  
-  log.info(`Opened web app: ${app.name}`);
-}
-
-function injectAPIKeys(webContents) {
+  // Get API keys to inject via preload
   const apiKeys = {
     mistral: store.get('apiKeys.mistral', ''),
     deepgram: store.get('apiKeys.deepgram', ''),
@@ -434,19 +403,127 @@ function injectAPIKeys(webContents) {
     scrapfly: store.get('apiKeys.scrapfly', '')
   };
   
+  // Create new window
+  const win = new BrowserWindow({
+    width: 1200,
+    height: 800,
+    title: app.name,
+    icon: path.join(__dirname, '../../resources/icon.png'),
+    backgroundColor: '#1a1a1a',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload-webview.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false, // Must be false for executeJavaScript to work
+      additionalArguments: [
+        '--api-keys=' + JSON.stringify(apiKeys)
+      ]
+    }
+  });
+  
+  // Inject API keys into page after load
+  win.webContents.on('did-finish-load', () => {
+    log.info('did-finish-load event triggered, injecting API keys...');
+    injectAPIKeys(win.webContents);
+  });
+  
+  // Also inject on navigation
+  win.webContents.on('did-navigate', () => {
+    log.info('did-navigate event triggered, re-injecting API keys...');
+    injectAPIKeys(win.webContents);
+  });
+  
+  win.loadURL(app.url);
+  
+  win.on('closed', () => {
+    webViewWindows.delete(appId);
+  });
+  
+  webViewWindows.set(appId, win);
+  
+  log.info(`Opened web app: ${app.name}`);
+}
+
+function injectAPIKeys(webContents) {
+  log.info('injectAPIKeys() called for webContents ID:', webContents.id);
+  
+  const apiKeys = {
+    mistral: store.get('apiKeys.mistral', ''),
+    deepgram: store.get('apiKeys.deepgram', ''),
+    deepgramtts: store.get('apiKeys.deepgramtts', ''),
+    google_tts: store.get('apiKeys.google_tts', ''),
+    google_stt: store.get('apiKeys.google_stt', ''),
+    openweathermap: store.get('apiKeys.openweathermap', ''),
+    weatherapi: store.get('apiKeys.weatherapi', ''),
+    tavily: store.get('apiKeys.tavily', ''),
+    scrapingbee: store.get('apiKeys.scrapingbee', ''),
+    scraperapi: store.get('apiKeys.scraperapi', ''),
+    brightdata: store.get('apiKeys.brightdata', ''),
+    scrapfly: store.get('apiKeys.scrapfly', '')
+  };
+  
+  // Fallback: if google_stt is empty but google_tts has a value, use google_tts for both
+  if (!apiKeys.google_stt && apiKeys.google_tts) {
+    apiKeys.google_stt = apiKeys.google_tts;
+    log.info('Using google_tts key for google_stt (same API key)');
+  }
+  // Reverse: if google_tts is empty but google_stt has a value, use google_stt for both
+  if (!apiKeys.google_tts && apiKeys.google_stt) {
+    apiKeys.google_tts = apiKeys.google_stt;
+    log.info('Using google_stt key for google_tts (same API key)');
+  }
+  
+  // Fallback: if weatherapi is empty but openweathermap has a value, use it
+  if (!apiKeys.weatherapi && apiKeys.openweathermap) {
+    apiKeys.weatherapi = apiKeys.openweathermap;
+    log.info('Using openweathermap key for weatherapi (fallback)');
+  }
+  // Reverse: if openweathermap is empty but weatherapi has a value, use it
+  if (!apiKeys.openweathermap && apiKeys.weatherapi) {
+    apiKeys.openweathermap = apiKeys.weatherapi;
+    log.info('Using weatherapi key for openweathermap (fallback)');
+  }
+  
+  log.info('API keys to inject:', Object.keys(apiKeys).filter(k => apiKeys[k]).join(', ') || 'none');
+  
   const jsCode = `
-    window.CKDesktop = {
-      getApiKey: function(keyName) {
-        return ${JSON.stringify(apiKeys)}[keyName] || '';
-      },
-      apiKeys: ${JSON.stringify(apiKeys)}
+    // Inject API keys into window
+    if (!window.CKDesktop) {
+      window.CKDesktop = {};
+    }
+    window.CKDesktop.apiKeys = ${JSON.stringify(apiKeys)};
+    window.CKDesktop.getApiKey = function(keyName) {
+      return window.CKDesktop.apiKeys[keyName] || '';
     };
     
     // Also inject as CKAndroid for compatibility
-    window.CKAndroid = window.CKDesktop;
+    if (!window.CKAndroid) {
+      window.CKAndroid = {};
+    }
+    window.CKAndroid.apiKeys = ${JSON.stringify(apiKeys)};
+    window.CKAndroid.getApiKey = function(keyName) {
+      return window.CKAndroid.apiKeys[keyName] || '';
+    };
+    
+    console.log('[CKDesktop] API keys injected:', Object.keys(window.CKDesktop.apiKeys));
+    
+    // Dispatch event to notify apps that keys are ready
+    window.dispatchEvent(new CustomEvent('ckgenericapp_keys_ready', {
+      detail: { 
+        source: 'CKDesktop',
+        keys: window.CKDesktop.apiKeys 
+      }
+    }));
+    console.log('[CKDesktop] Event ckgenericapp_keys_ready dispatched with keys:', Object.keys(window.CKDesktop.apiKeys));
   `;
   
-  webContents.executeJavaScript(jsCode);
+  webContents.executeJavaScript(jsCode)
+    .then(() => {
+      log.info('✅ API keys injected successfully');
+    })
+    .catch(err => {
+      log.error('❌ Failed to inject API keys:', err);
+    });
 }
 
 function registerIPCHandlers() {
@@ -489,19 +566,122 @@ function registerIPCHandlers() {
   // Get settings
   ipcMain.handle('get-settings', () => {
     return {
-      language: store.get('language', 'en'),
-      startOnBoot: store.get('startOnBoot', false),
-      minimizeToTray: store.get('minimizeToTray', true)
+      monitoringEnabled: store.get('monitoringEnabled', true),
+      notificationsEnabled: store.get('notificationsEnabled', true),
+      language: store.get('language', 'fr')
     };
   });
   
-  // Save settings
-  ipcMain.handle('save-settings', (event, settings) => {
-    Object.keys(settings).forEach(key => {
-      store.set(key, settings[key]);
-    });
-    log.info('Settings saved');
+  // Save individual setting
+  ipcMain.handle('save-setting', (event, key, value) => {
+    store.set(key, value);
+    log.info(`Setting saved: ${key} = ${value}`);
+    
+    // Apply monitoring changes
+    if (key === 'monitoringEnabled' && monitoringService) {
+      if (value) {
+        monitoringService.start();
+      } else {
+        monitoringService.stop();
+      }
+    }
+    
     return true;
+  });
+  
+  // Export settings
+  ipcMain.handle('export-settings', async () => {
+    const { dialog } = require('electron');
+    const fs = require('fs').promises;
+    
+    const result = await dialog.showSaveDialog(mainWindow, {
+      title: 'Export Settings',
+      defaultPath: 'craftkontrol-settings.json',
+      filters: [
+        { name: 'JSON Files', extensions: ['json'] },
+        { name: 'All Files', extensions: ['*'] }
+      ]
+    });
+    
+    if (!result.canceled && result.filePath) {
+      const settings = {
+        apps: store.get('apps', []),
+        apiKeys: {
+          mistral: store.get('apiKeys.mistral', ''),
+          deepgram: store.get('apiKeys.deepgram', ''),
+          deepgramtts: store.get('apiKeys.deepgramtts', ''),
+          google_tts: store.get('apiKeys.google_tts', ''),
+          google_stt: store.get('apiKeys.google_stt', ''),
+          openweathermap: store.get('apiKeys.openweathermap', ''),
+          weatherapi: store.get('apiKeys.weatherapi', ''),
+          tavily: store.get('apiKeys.tavily', ''),
+          scrapingbee: store.get('apiKeys.scrapingbee', ''),
+          scraperapi: store.get('apiKeys.scraperapi', ''),
+          brightdata: store.get('apiKeys.brightdata', ''),
+          scrapfly: store.get('apiKeys.scrapfly', '')
+        },
+        settings: {
+          monitoringEnabled: store.get('monitoringEnabled', true),
+          notificationsEnabled: store.get('notificationsEnabled', true),
+          language: store.get('language', 'fr')
+        }
+      };
+      
+      await fs.writeFile(result.filePath, JSON.stringify(settings, null, 2), 'utf-8');
+      log.info(`Settings exported to: ${result.filePath}`);
+      return { success: true, path: result.filePath };
+    }
+    
+    return { success: false };
+  });
+  
+  // Import settings
+  ipcMain.handle('import-settings', async () => {
+    const { dialog } = require('electron');
+    const fs = require('fs').promises;
+    
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: 'Import Settings',
+      filters: [
+        { name: 'JSON Files', extensions: ['json'] },
+        { name: 'All Files', extensions: ['*'] }
+      ],
+      properties: ['openFile']
+    });
+    
+    if (!result.canceled && result.filePaths.length > 0) {
+      try {
+        const content = await fs.readFile(result.filePaths[0], 'utf-8');
+        const settings = JSON.parse(content);
+        
+        // Import API keys
+        if (settings.apiKeys) {
+          Object.keys(settings.apiKeys).forEach(key => {
+            store.set(`apiKeys.${key}`, settings.apiKeys[key]);
+          });
+        }
+        
+        // Import settings
+        if (settings.settings) {
+          Object.keys(settings.settings).forEach(key => {
+            store.set(key, settings.settings[key]);
+          });
+        }
+        
+        log.info(`Settings imported from: ${result.filePaths[0]}`);
+        return { success: true, path: result.filePaths[0] };
+      } catch (error) {
+        log.error('Error importing settings:', error);
+        return { success: false, error: error.message };
+      }
+    }
+    
+    return { success: false };
+  });
+  
+  // Get app version
+  ipcMain.handle('get-version', () => {
+    return app.getVersion();
   });
   
   // Schedule alarm

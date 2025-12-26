@@ -5,6 +5,25 @@ let apiKeys = {};
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', async () => {
+    // Check if electronAPI is available
+    if (!window.electronAPI) {
+        console.error('electronAPI not available. Preload script may not be loaded.');
+        return;
+    }
+    
+    // Load language first
+    try {
+        const settings = await window.electronAPI.getSettings();
+        if (typeof setLanguage === 'function') {
+            setLanguage(settings.language || 'fr');
+        }
+    } catch (error) {
+        console.error('Failed to load settings:', error);
+        if (typeof setLanguage === 'function') {
+            setLanguage('fr'); // Default to French
+        }
+    }
+    
     await loadApps();
     await loadApiKeys();
     await updateStatus();
@@ -39,9 +58,15 @@ function renderApps() {
             card.style.borderLeftColor = app.color;
             card.style.borderLeftWidth = '4px';
             
+            // Get translated description
+            const description = t(`apps.${app.id}`);
+            
             card.innerHTML = `
                 <img src="../resources/${app.icon}" class="icon" alt="${app.name}">
-                <div class="name">${app.name}</div>
+                <div class="app-info">
+                    <div class="name">${app.name}</div>
+                    <div class="description">${description}</div>
+                </div>
                 <div class="shortcut">Ctrl+${index + 1}</div>
             `;
             
@@ -98,21 +123,21 @@ function setupEventListeners() {
         btn.addEventListener('click', () => {
             const targetId = btn.dataset.target;
             const input = document.getElementById(targetId);
+            const icon = btn.querySelector('.material-symbols-outlined');
             
             if (input.type === 'password') {
                 input.type = 'text';
-                btn.textContent = '🙈';
+                if (icon) icon.textContent = 'visibility_off';
             } else {
                 input.type = 'password';
-                btn.textContent = '👁️';
+                if (icon) icon.textContent = 'visibility';
             }
         });
     });
     
-    // Settings button
+    // Settings button - open settings modal
     document.getElementById('settingsBtn').addEventListener('click', () => {
-        // Could open a settings modal or window
-        console.log('Settings clicked');
+        openSettingsModal();
     });
 }
 
@@ -146,10 +171,105 @@ function toggleSection(sectionId) {
     // Update button icon
     const btn = document.getElementById(sectionId.replace('Content', 'ToggleBtn'));
     if (btn) {
-        const icon = btn.querySelector('span');
+        const icon = btn.querySelector('.material-symbols-outlined');
         if (icon) {
-            icon.textContent = isVisible ? '▶' : '▼';
+            icon.textContent = isVisible ? 'chevron_right' : 'expand_more';
         }
+    }
+}
+
+// Open settings modal
+function openSettingsModal() {
+    const modal = document.getElementById('settingsModal');
+    modal.style.display = 'flex';
+    loadSettings();
+}
+
+// Close settings modal
+function closeSettingsModal() {
+    const modal = document.getElementById('settingsModal');
+    modal.style.display = 'none';
+}
+
+// Load settings from storage
+async function loadSettings() {
+    try {
+        const settings = await window.electronAPI.getSettings();
+        
+        // Load monitoring settings
+        document.getElementById('monitoringEnabled').checked = settings.monitoringEnabled !== false;
+        document.getElementById('notificationsEnabled').checked = settings.notificationsEnabled !== false;
+        
+        // Load language
+        document.getElementById('languageSelect').value = settings.language || 'fr';
+        
+        // Load version
+        const version = await window.electronAPI.getVersion();
+        document.getElementById('appVersion').textContent = version;
+        
+        // Add change listeners
+        setupSettingsListeners();
+    } catch (error) {
+        console.error('Failed to load settings:', error);
+    }
+}
+
+// Setup settings change listeners
+function setupSettingsListeners() {
+    // Monitoring enabled
+    document.getElementById('monitoringEnabled').addEventListener('change', async (e) => {
+        await window.electronAPI.saveSetting('monitoringEnabled', e.target.checked);
+        showNotification(t(e.target.checked ? 'settings.monitoringEnabled' : 'settings.monitoringDisabled'));
+    });
+    
+    // Notifications enabled
+    document.getElementById('notificationsEnabled').addEventListener('change', async (e) => {
+        await window.electronAPI.saveSetting('notificationsEnabled', e.target.checked);
+        showNotification(t(e.target.checked ? 'settings.notificationsEnabled' : 'settings.notificationsDisabled'));
+    });
+    
+    // Language change
+    document.getElementById('languageSelect').addEventListener('change', async (e) => {
+        await window.electronAPI.saveSetting('language', e.target.value);
+        setLanguage(e.target.value);
+        showNotification(t('settings.languageChanged'));
+    });
+}
+
+// Export settings
+async function exportSettings() {
+    try {
+        const result = await window.electronAPI.exportSettings();
+        if (result.success) {
+            showNotification(`${t('settings.exportSuccess')}: ${result.path}`);
+        } else {
+            showNotification(t('settings.exportCancelled'));
+        }
+    } catch (error) {
+        console.error('Failed to export settings:', error);
+        showNotification(t('settings.exportFailed'));
+    }
+}
+
+// Import settings
+async function importSettings() {
+    try {
+        const result = await window.electronAPI.importSettings();
+        if (result.success) {
+            showNotification(t('settings.importSuccess'));
+            // Reload settings and API keys
+            setTimeout(() => {
+                loadSettings();
+                loadApiKeys();
+            }, 1000);
+        } else if (result.error) {
+            showNotification(`${t('settings.importFailed')}: ${result.error}`);
+        } else {
+            showNotification(t('settings.importCancelled'));
+        }
+    } catch (error) {
+        console.error('Failed to import settings:', error);
+        showNotification(t('settings.importFailed'));
     }
 }
 

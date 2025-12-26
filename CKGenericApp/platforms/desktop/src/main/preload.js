@@ -12,7 +12,10 @@ const api = {
   
   // Settings
   getSettings: () => ipcRenderer.invoke('get-settings'),
-  saveSettings: (settings) => ipcRenderer.invoke('save-settings', settings),
+  saveSetting: (key, value) => ipcRenderer.invoke('save-setting', key, value),
+  exportSettings: () => ipcRenderer.invoke('export-settings'),
+  importSettings: () => ipcRenderer.invoke('import-settings'),
+  getVersion: () => ipcRenderer.invoke('get-version'),
   
   // Notifications
   showNotification: (title, body) => ipcRenderer.invoke('show-notification', title, body),
