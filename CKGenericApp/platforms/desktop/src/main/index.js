@@ -80,13 +80,13 @@ async function initializeApp() {
 }
 
 function initializeDefaultSettings() {
-  if (!store.has('apps')) {
-    store.set('apps', [
-      {
-        id: 'aisearchagregator',
-        name: 'AI Search',
-        url: 'https://craftkontrol.github.io/AI_Agents/AiSearchAgregator/',
-        icon: '🔍',
+  // Always set apps to ensure PNG icons (overwrite old emoji values)
+  store.set('apps', [
+    {
+      id: 'aisearchagregator',
+      name: 'AI Search',
+      url: 'https://craftkontrol.github.io/AI_Agents/AiSearchAgregator/',
+      icon: 'ic_ai_search.png',
         color: '#1f45b3',
         enabled: true,
         order: 1
@@ -95,7 +95,7 @@ function initializeDefaultSettings() {
         id: 'astralcompute',
         name: 'Astral Compute',
         url: 'https://craftkontrol.github.io/AI_Agents/AstralCompute/',
-        icon: '🌟',
+        icon: 'ic_astral_compute.png',
         color: '#c125da',
         enabled: true,
         order: 2
@@ -104,7 +104,7 @@ function initializeDefaultSettings() {
         id: 'localfoodproducts',
         name: 'Local Food',
         url: 'https://craftkontrol.github.io/AI_Agents/LocalFoodProducts/',
-        icon: '🥬',
+        icon: 'ic_local_food.png',
         color: '#ffa000',
         enabled: true,
         order: 3
@@ -113,7 +113,7 @@ function initializeDefaultSettings() {
         id: 'memoryboardhelper',
         name: 'Memory Board',
         url: 'https://craftkontrol.github.io/AI_Agents/MemoryBoardHelper/',
-        icon: '🧠',
+        icon: 'ic_memory_board.png',
         color: '#3b9150',
         enabled: true,
         order: 4
@@ -122,7 +122,7 @@ function initializeDefaultSettings() {
         id: 'meteoagregator',
         name: 'Weather',
         url: 'https://craftkontrol.github.io/AI_Agents/MeteoAgregator/',
-        icon: '🌤️',
+        icon: 'ic_meteo.png',
         color: '#25a5da',
         enabled: true,
         order: 5
@@ -131,13 +131,12 @@ function initializeDefaultSettings() {
         id: 'newsagregator',
         name: 'News',
         url: 'https://craftkontrol.github.io/AI_Agents/NewsAgregator/',
-        icon: '📰',
+        icon: 'ic_news.png',
         color: '#91233e',
         enabled: true,
         order: 6
       }
     ]);
-  }
   
   if (!store.has('language')) {
     store.set('language', 'en');

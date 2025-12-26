@@ -10,7 +10,7 @@
     <div class="app-container">
         <!-- Header -->
         <header class="app-header">
-            <h1>🎯 CraftKontrol Desktop</h1>
+            <h1><img src="../resources/ck_icon.png" class="header-icon" alt="CK"> CraftKontrol Desktop</h1>
             <div class="header-actions">
                 <button id="settingsBtn" class="icon-btn" title="Settings">⚙️</button>
             </div>
@@ -28,7 +28,13 @@
 
             <!-- API Keys Section -->
             <section class="api-keys-section">
-                <h2>API Keys Management</h2>
+                <h2>
+                    API Keys Management
+                    <button class="section-toggle" onclick="toggleSection('apiKeysContent')" id="apiKeysToggleBtn">
+                        <span>▼</span>
+                    </button>
+                </h2>
+                <div id="apiKeysContent" class="section-content">
                 <p class="section-description">
                     Configure your API keys once here - they will be automatically injected into all web apps.
                 </p>
@@ -59,9 +65,21 @@
                     </div>
                     
                     <div class="api-key-field">
+                        <label for="google_stt">Google Cloud STT</label>
+                        <input type="password" id="google_stt" placeholder="Enter Google STT API key">
+                        <button class="toggle-visibility" data-target="google_stt">👁️</button>
+                    </div>
+                    
+                    <div class="api-key-field">
                         <label for="openweathermap">OpenWeatherMap</label>
                         <input type="password" id="openweathermap" placeholder="Enter OpenWeatherMap API key">
                         <button class="toggle-visibility" data-target="openweathermap">👁️</button>
+                    </div>
+                    
+                    <div class="api-key-field">
+                        <label for="weatherapi">WeatherAPI</label>
+                        <input type="password" id="weatherapi" placeholder="Enter WeatherAPI key">
+                        <button class="toggle-visibility" data-target="weatherapi">👁️</button>
                     </div>
                     
                     <div class="api-key-field">
@@ -69,9 +87,34 @@
                         <input type="password" id="tavily" placeholder="Enter Tavily API key">
                         <button class="toggle-visibility" data-target="tavily">👁️</button>
                     </div>
+                    
+                    <div class="api-key-field">
+                        <label for="scrapingbee">ScrapingBee</label>
+                        <input type="password" id="scrapingbee" placeholder="Enter ScrapingBee API key">
+                        <button class="toggle-visibility" data-target="scrapingbee">👁️</button>
+                    </div>
+                    
+                    <div class="api-key-field">
+                        <label for="scraperapi">ScraperAPI</label>
+                        <input type="password" id="scraperapi" placeholder="Enter ScraperAPI key">
+                        <button class="toggle-visibility" data-target="scraperapi">👁️</button>
+                    </div>
+                    
+                    <div class="api-key-field">
+                        <label for="brightdata">Bright Data</label>
+                        <input type="password" id="brightdata" placeholder="Enter Bright Data API key">
+                        <button class="toggle-visibility" data-target="brightdata">👁️</button>
+                    </div>
+                    
+                    <div class="api-key-field">
+                        <label for="scrapfly">ScrapFly</label>
+                        <input type="password" id="scrapfly" placeholder="Enter ScrapFly API key">
+                        <button class="toggle-visibility" data-target="scrapfly">👁️</button>
+                    </div>
                 </div>
                 
                 <button id="saveApiKeysBtn" class="primary-btn">💾 Save API Keys</button>
+                </div>
             </section>
 
             <!-- Status Section -->

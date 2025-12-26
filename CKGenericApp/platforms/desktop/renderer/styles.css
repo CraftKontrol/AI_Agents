@@ -47,6 +47,15 @@ body {
 .app-header h1 {
     font-size: 24px;
     font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.header-icon {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
 }
 
 .header-actions {
@@ -97,8 +106,8 @@ section h2 {
 /* Apps Grid */
 .apps-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 20px;
+    /*grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));*/
+    gap: 10px;
 }
 
 .app-card {
@@ -108,7 +117,6 @@ section h2 {
     cursor: pointer;
     transition: all 0.2s;
     display: flex;
-    flex-direction: column;
     align-items: center;
     text-align: center;
     gap: 10px;
@@ -121,7 +129,9 @@ section h2 {
 }
 
 .app-card .icon {
-    font-size: 48px;
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
 }
 
 .app-card .name {
@@ -135,6 +145,41 @@ section h2 {
 }
 
 /* API Keys Section */
+.api-keys-section {
+    background: var(--surface);
+    padding: 30px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.api-keys-section h2 {
+    margin-bottom: 20px;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.section-toggle {
+    padding: 8px 12px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 16px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.section-toggle:hover {
+    background-color: var(--surface-hover);
+    border-color: var(--primary-color);
+}
+
+.section-content {
+    display: block;
+}
+
 .api-keys-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));

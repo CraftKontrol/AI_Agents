@@ -40,7 +40,7 @@ function renderApps() {
             card.style.borderLeftWidth = '4px';
             
             card.innerHTML = `
-                <div class="icon">${app.icon}</div>
+                <img src="../resources/${app.icon}" class="icon" alt="${app.name}">
                 <div class="name">${app.name}</div>
                 <div class="shortcut">Ctrl+${index + 1}</div>
             `;
@@ -88,6 +88,9 @@ function setupEventListeners() {
         }
         
         showNotification('API keys saved successfully!');
+        
+        // Collapse the API keys section after saving
+        toggleSection('apiKeysContent');
     });
     
     // Toggle password visibility
@@ -130,6 +133,24 @@ async function updateStatus() {
 // Show notification
 function showNotification(message) {
     window.electronAPI.showNotification('CraftKontrol Desktop', message);
+}
+
+// Toggle section visibility
+function toggleSection(sectionId) {
+    const section = document.getElementById(sectionId);
+    if (!section) return;
+    
+    const isVisible = section.style.display !== 'none';
+    section.style.display = isVisible ? 'none' : 'block';
+    
+    // Update button icon
+    const btn = document.getElementById(sectionId.replace('Content', 'ToggleBtn'));
+    if (btn) {
+        const icon = btn.querySelector('span');
+        if (icon) {
+            icon.textContent = isVisible ? '▶' : '▼';
+        }
+    }
 }
 
 // Keyboard shortcuts

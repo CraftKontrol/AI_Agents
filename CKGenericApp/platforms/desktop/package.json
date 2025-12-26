@@ -1,6 +1,6 @@
 {
   "name": "craftkontrol-desktop",
-  "version": "1.0.0",
+  "version": "1.0.8",
   "description": "CraftKontrol Desktop - Cross-platform wrapper for AI Agents",
   "author": "CraftKontrol - Arnaud Cassone / Artcraft Visuals",
   "license": "MIT",
@@ -8,11 +8,13 @@
   "scripts": {
     "dev": "electron .",
     "start": "electron .",
+    "clean": "node -e \"const fs=require('fs'),path=require('path');const d='dist';fs.existsSync(d)&&fs.rmSync(d,{recursive:true,force:true});console.log('✓ Cleaned dist folder')\"",
+    "prebuild": "npm run clean && npm version patch --no-git-tag-version",
     "build": "electron-builder",
-    "build:win": "electron-builder --win",
-    "build:mac": "electron-builder --mac",
-    "build:linux": "electron-builder --linux",
-    "build:all": "electron-builder -mwl",
+    "build:win": "npm run prebuild && electron-builder --win",
+    "build:mac": "npm run prebuild && electron-builder --mac",
+    "build:linux": "npm run prebuild && electron-builder --linux",
+    "build:all": "npm run prebuild && electron-builder -mwl",
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
@@ -22,7 +24,8 @@
   },
   "devDependencies": {
     "electron": "^28.0.0",
-    "electron-builder": "^24.9.1"
+    "electron-builder": "^24.9.1",
+    "sharp": "^0.34.5"
   },
   "build": {
     "appId": "com.craftkontrol.desktop",
@@ -41,25 +44,36 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         },
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
-      "icon": "resources/icon.ico",
+      "icon": "resources/icon-256.png",
       "artifactName": "CKDesktop-${version}-${arch}.${ext}"
     },
     "mac": {
       "target": [
         {
           "target": "dmg",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         },
         {
           "target": "zip",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         }
       ],
       "icon": "resources/icon.icns",
