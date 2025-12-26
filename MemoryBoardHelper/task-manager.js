@@ -16,7 +16,9 @@ async function createTask(taskData) {
         createdAt: new Date().toISOString(),
         completedAt: null,
         snoozedUntil: null,
-        recurrence: taskData.recurrence || null,  // Support for recurring tasks
+        recurrence: taskData.recurrence || null,  // Enhanced recurrence support
+        parentTaskId: taskData.parentTaskId || null,  // Link to parent recurring task
+        isRecurringInstance: taskData.isRecurringInstance || false,  // Mark as auto-generated instance
         isMedication: taskData.type === 'medication',
         medicationInfo: taskData.type === 'medication' ? {
             dosage: extractDosageFromDescription(taskData.description),
@@ -139,6 +141,94 @@ async function getOverdueTasks() {
     }
 }
 
+// Get old recurring tasks (> 30 days) for review
+async function getOldRecurringTasks() {
+    try {
+        const allTasks = await getAllTasks();
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        
+        // Find parent recurring tasks (not instances) older than 30 days
+        const oldRecurringTasks = allTasks.filter(task => {
+            // Must have recurrence and be a parent (not an instance)
+            if (!task.recurrence || task.isRecurringInstance) {
+                return false;
+            }
+            
+            // Check creation date
+            const createdDate = new Date(task.createdAt);
+            if (createdDate > thirtyDaysAgo) {
+                return false;
+            }
+            
+            // Check if already reviewed recently (skip if reviewed < 7 days ago)
+            if (task.lastReviewDate) {
+                const lastReview = new Date(task.lastReviewDate);
+                const sevenDaysAgo = new Date();
+                sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+                if (lastReview > sevenDaysAgo) {
+                    return false;
+                }
+            }
+            
+            return true;
+        });
+        
+        console.log(`[TaskManager] Found ${oldRecurringTasks.length} old recurring tasks for review`);
+        return oldRecurringTasks;
+    } catch (error) {
+        console.error('[TaskManager] Error getting old recurring tasks:', error);
+        return [];
+    }
+}
+
+// Mark recurring task as reviewed
+async function markRecurringTaskReviewed(taskId) {
+    try {
+        const task = await getTask(taskId);
+        if (!task) {
+            return { success: false, error: 'Task not found' };
+        }
+        
+        task.lastReviewDate = new Date().toISOString();
+        await saveTask(task);
+        
+        console.log('[TaskManager] Task marked as reviewed:', taskId);
+        return { success: true };
+    } catch (error) {
+        console.error('[TaskManager] Error marking task reviewed:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// Delete recurring task and all its instances
+async function deleteRecurringTaskAndInstances(parentTaskId) {
+    try {
+        const allTasks = await getAllTasks();
+        
+        // Find all instances (tasks with this parentTaskId)
+        const instances = allTasks.filter(task => 
+            task.parentTaskId === parentTaskId || task.id === parentTaskId
+        );
+        
+        console.log(`[TaskManager] Deleting recurring task ${parentTaskId} with ${instances.length} instances`);
+        
+        // Delete all instances
+        for (const task of instances) {
+            await deleteTask(task.id);
+        }
+        
+        return { 
+            success: true, 
+            deletedCount: instances.length,
+            message: `Deleted ${instances.length} task(s)` 
+        };
+    } catch (error) {
+        console.error('[TaskManager] Error deleting recurring task and instances:', error);
+        return { success: false, error: error.message };
+    }
+}
+
 // Get today's tasks (max 5)
 async function getDisplayableTasks() {
     try {
@@ -180,6 +270,16 @@ async function completeTask(taskId) {
             cancelAndroidAlarm(taskId);
         }
         
+        // Auto-regenerate if recurring task
+        let nextTask = null;
+        if (task.recurrence) {
+            console.log('[TaskManager] Generating next occurrence for recurring task:', taskId);
+            nextTask = await generateNextRecurrence(task);
+            if (nextTask) {
+                console.log('[TaskManager] Next occurrence created:', nextTask.id);
+            }
+        }
+        
         // Record action for undo
         await recordAction(ACTION_TYPES.COMPLETE_TASK, { taskId, previousState });
         
@@ -190,7 +290,7 @@ async function completeTask(taskId) {
             console.log('[TaskManager] Task auto-deleted after completion:', taskId);
         }
         
-        return { success: true, task, autoDeleted: shouldDelete };
+        return { success: true, task, autoDeleted: shouldDelete, nextTask };
     } catch (error) {
         console.error('[TaskManager] Error completing task:', error);
         return { success: false, error: error.message };
@@ -489,6 +589,216 @@ async function checkMedicationCompliance() {
     }
 }
 
+// Generate next recurrence for recurring task
+async function generateNextRecurrence(completedTask) {
+    if (!completedTask.recurrence) {
+        return null;
+    }
+
+    try {
+        const nextDate = calculateNextRecurrenceDate(
+            completedTask.date,
+            completedTask.recurrence
+        );
+
+        if (!nextDate) {
+            console.log('[TaskManager] No next occurrence (may have reached end date)');
+            return null;
+        }
+
+        // Create new task instance
+        const nextTaskData = {
+            description: completedTask.description,
+            date: nextDate,
+            time: completedTask.time,
+            type: completedTask.type,
+            priority: completedTask.priority,
+            recurrence: completedTask.recurrence,
+            parentTaskId: completedTask.parentTaskId || completedTask.id,
+            isRecurringInstance: true,
+            isMedication: completedTask.isMedication,
+            medicationInfo: completedTask.medicationInfo ? {
+                dosage: completedTask.medicationInfo.dosage,
+                taken: false
+            } : null
+        };
+
+        const result = await createTask(nextTaskData);
+        if (result.success) {
+            return result.task;
+        }
+        return null;
+    } catch (error) {
+        console.error('[TaskManager] Error generating next recurrence:', error);
+        return null;
+    }
+}
+
+// Calculate next recurrence date
+function calculateNextRecurrenceDate(currentDate, recurrence) {
+    if (!recurrence || typeof recurrence === 'string') {
+        // Simple string recurrence (legacy)
+        return calculateSimpleRecurrence(currentDate, recurrence);
+    }
+
+    // Enhanced recurrence object
+    const current = new Date(currentDate);
+    const recType = recurrence.type || recurrence;
+    const interval = recurrence.interval || 1;
+    const daysOfWeek = recurrence.daysOfWeek;
+    const endDate = recurrence.endDate ? new Date(recurrence.endDate) : null;
+    const excludedDates = recurrence.excludedDates || [];
+
+    let nextDate = new Date(current);
+    let attempts = 0;
+    const maxAttempts = 365; // Prevent infinite loop
+
+    while (attempts < maxAttempts) {
+        // Calculate next occurrence based on type
+        switch (recType) {
+            case 'daily':
+                nextDate.setDate(nextDate.getDate() + interval);
+                break;
+            case 'weekly':
+                nextDate.setDate(nextDate.getDate() + (7 * interval));
+                break;
+            case 'monthly':
+                nextDate.setMonth(nextDate.getMonth() + interval);
+                break;
+            case 'custom':
+                if (daysOfWeek && daysOfWeek.length > 0) {
+                    // Find next valid day of week
+                    nextDate = getNextValidDayOfWeek(nextDate, daysOfWeek);
+                } else {
+                    nextDate.setDate(nextDate.getDate() + interval);
+                }
+                break;
+            default:
+                return calculateSimpleRecurrence(currentDate, recType);
+        }
+
+        const nextDateStr = nextDate.toISOString().split('T')[0];
+
+        // Check if date is excluded
+        if (excludedDates.includes(nextDateStr)) {
+            attempts++;
+            continue;
+        }
+
+        // Check if we have specific days of week and current day matches
+        if (daysOfWeek && daysOfWeek.length > 0 && recType !== 'custom') {
+            const dayOfWeek = nextDate.getDay();
+            if (!daysOfWeek.includes(dayOfWeek)) {
+                attempts++;
+                continue;
+            }
+        }
+
+        // Check end date
+        if (endDate && nextDate > endDate) {
+            console.log('[TaskManager] Recurrence end date reached');
+            return null;
+        }
+
+        return nextDateStr;
+    }
+
+    console.warn('[TaskManager] Could not find valid next recurrence date after', maxAttempts, 'attempts');
+    return null;
+}
+
+// Calculate simple recurrence (legacy support)
+function calculateSimpleRecurrence(currentDate, recurrence) {
+    const current = new Date(currentDate);
+    const next = new Date(current);
+
+    switch (recurrence) {
+        case 'daily':
+            next.setDate(next.getDate() + 1);
+            break;
+        case 'weekly':
+            next.setDate(next.getDate() + 7);
+            break;
+        case 'monthly':
+            next.setMonth(next.getMonth() + 1);
+            break;
+        default:
+            return null;
+    }
+
+    return next.toISOString().split('T')[0];
+}
+
+// Get next valid day of week
+function getNextValidDayOfWeek(fromDate, daysOfWeek) {
+    const date = new Date(fromDate);
+    date.setDate(date.getDate() + 1); // Start from tomorrow
+
+    for (let i = 0; i < 7; i++) {
+        if (daysOfWeek.includes(date.getDay())) {
+            return date;
+        }
+        date.setDate(date.getDate() + 1);
+    }
+
+    return date; // Fallback
+}
+
+// Check for expired recurring tasks and regenerate them
+async function checkExpiredRecurringTasks() {
+    try {
+        const allTasks = await getAllTasks();
+        const now = new Date();
+        const today = now.toISOString().split('T')[0];
+        const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+
+        let regeneratedCount = 0;
+
+        for (const task of allTasks) {
+            // Skip if not recurring or already completed
+            if (!task.recurrence || task.status === 'completed') {
+                continue;
+            }
+
+            // Check if task is expired (past date/time)
+            const taskDate = task.date;
+            const taskTime = task.time;
+
+            let isExpired = false;
+            if (taskDate < today) {
+                isExpired = true;
+            } else if (taskDate === today && taskTime && taskTime < currentTime) {
+                isExpired = true;
+            }
+
+            if (isExpired) {
+                console.log('[TaskManager] Found expired recurring task:', task.id);
+                
+                // Generate next occurrence
+                const nextTask = await generateNextRecurrence(task);
+                if (nextTask) {
+                    regeneratedCount++;
+                    console.log('[TaskManager] Regenerated expired task:', task.id, '→', nextTask.id);
+                }
+
+                // Mark original as completed
+                task.status = 'completed';
+                task.completedAt = new Date().toISOString();
+                await saveTask(task);
+            }
+        }
+
+        if (regeneratedCount > 0) {
+            console.log(`[TaskManager] Regenerated ${regeneratedCount} expired recurring tasks`);
+        }
+
+        return { success: true, regeneratedCount };
+    } catch (error) {
+        console.error('[TaskManager] Error checking expired recurring tasks:', error);
+        return { success: false, error: error.message };
+    }
+}
+
 // Initialize task manager
 async function initializeTaskManager() {
     console.log('[TaskManager] Initializing...');
@@ -496,10 +806,18 @@ async function initializeTaskManager() {
     // Run auto-delete on startup
     await requestMistralAutoDelete();
     
+    // Check for expired recurring tasks on startup
+    await checkExpiredRecurringTasks();
+    
     // Set up periodic auto-delete (once per day)
     setInterval(async () => {
         await requestMistralAutoDelete();
     }, 24 * 60 * 60 * 1000); // Once per day
+    
+    // Set up periodic check for expired recurring tasks (every 30 minutes)
+    setInterval(async () => {
+        await checkExpiredRecurringTasks();
+    }, 30 * 60 * 1000); // Every 30 minutes
     
     console.log('[TaskManager] Initialized');
 }
@@ -522,6 +840,11 @@ if (typeof window !== 'undefined') {
     window.getTodayMedications = getTodayMedications;
     window.checkMedicationCompliance = checkMedicationCompliance;
     window.initializeTaskManager = initializeTaskManager;
+    window.generateNextRecurrence = generateNextRecurrence;
+    window.checkExpiredRecurringTasks = checkExpiredRecurringTasks;
+    window.getOldRecurringTasks = getOldRecurringTasks;
+    window.markRecurringTaskReviewed = markRecurringTaskReviewed;
+    window.deleteRecurringTaskAndInstances = deleteRecurringTaskAndInstances;
     
     console.log('[TaskManager] Functions exposed to window');
 }

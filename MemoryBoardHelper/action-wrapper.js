@@ -743,6 +743,140 @@ registerAction(
     }
 );
 
+// --- KEEP_RECURRING_TASK ---
+registerAction(
+    'keep_recurring_task',
+    // Validate
+    async (params, language) => {
+        const taskNumber = params.taskNumber;
+        
+        if (!taskNumber || isNaN(parseInt(taskNumber))) {
+            return {
+                valid: false,
+                message: 'Task number required'
+            };
+        }
+        
+        // Check if pendingRecurringTasksReview exists
+        if (!window.pendingRecurringTasksReview || !Array.isArray(window.pendingRecurringTasksReview)) {
+            return {
+                valid: false,
+                message: 'No pending recurring tasks review'
+            };
+        }
+        
+        // Get the task from the review list (1-indexed)
+        const taskIndex = parseInt(taskNumber) - 1;
+        if (taskIndex < 0 || taskIndex >= window.pendingRecurringTasksReview.length) {
+            return {
+                valid: false,
+                message: `Task number ${taskNumber} not found in review list`
+            };
+        }
+        
+        const task = window.pendingRecurringTasksReview[taskIndex];
+        params._resolvedTaskId = task.id;
+        params._resolvedTask = task;
+        return { valid: true };
+    },
+    // Execute
+    async (params, language) => {
+        const taskId = params._resolvedTaskId;
+        const task = params._resolvedTask;
+        
+        try {
+            await window.markRecurringTaskReviewed(taskId);
+            const message = params.response || `Tâche "${task.description}" conservée`;
+            
+            return new ActionResult(true, message, { taskId, task });
+        } catch (error) {
+            return new ActionResult(
+                false, 
+                'Failed to mark task as reviewed', 
+                null, 
+                error.message
+            );
+        }
+    },
+    // Verify
+    async (data, params, language) => {
+        const task = await getTaskFromStorage(data.taskId);
+        if (!task || !task.lastReviewDate) {
+            return { valid: false, message: 'Task was not marked as reviewed' };
+        }
+        return { valid: true };
+    }
+);
+
+// --- DELETE_RECURRING_TASK ---
+registerAction(
+    'delete_recurring_task',
+    // Validate
+    async (params, language) => {
+        const taskNumber = params.taskNumber;
+        
+        if (!taskNumber || isNaN(parseInt(taskNumber))) {
+            return {
+                valid: false,
+                message: 'Task number required'
+            };
+        }
+        
+        // Check if pendingRecurringTasksReview exists
+        if (!window.pendingRecurringTasksReview || !Array.isArray(window.pendingRecurringTasksReview)) {
+            return {
+                valid: false,
+                message: 'No pending recurring tasks review'
+            };
+        }
+        
+        // Get the task from the review list (1-indexed)
+        const taskIndex = parseInt(taskNumber) - 1;
+        if (taskIndex < 0 || taskIndex >= window.pendingRecurringTasksReview.length) {
+            return {
+                valid: false,
+                message: `Task number ${taskNumber} not found in review list`
+            };
+        }
+        
+        const task = window.pendingRecurringTasksReview[taskIndex];
+        params._resolvedTaskId = task.id;
+        params._resolvedTask = task;
+        return { valid: true };
+    },
+    // Execute
+    async (params, language) => {
+        const taskId = params._resolvedTaskId;
+        const task = params._resolvedTask;
+        
+        try {
+            const result = await window.deleteRecurringTaskAndInstances(taskId);
+            const message = params.response || `Tâche "${task.description}" et ses ${result.deletedCount - 1} occurrences supprimées`;
+            
+            if (typeof refreshCalendar === 'function') {
+                await refreshCalendar();
+            }
+            
+            return new ActionResult(true, message, { taskId, task, deletedCount: result.deletedCount });
+        } catch (error) {
+            return new ActionResult(
+                false, 
+                'Failed to delete recurring task and instances', 
+                null, 
+                error.message
+            );
+        }
+    },
+    // Verify
+    async (data, params, language) => {
+        const task = await getTaskFromStorage(data.taskId);
+        if (task) {
+            return { valid: false, message: 'Task still exists after deletion' };
+        }
+        return { valid: true };
+    }
+);
+
 // --- UPDATE_TASK ---
 registerAction(
     'update_task',

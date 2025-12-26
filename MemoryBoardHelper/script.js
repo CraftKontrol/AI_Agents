@@ -1850,11 +1850,19 @@ async function launchGreeting() {
         }
         
         // Get all data
-        const overdueTasks = await window.getOverdueTasks();
+        const allOverdueTasks = await window.getOverdueTasks();
+        // Filter out recurring tasks (they auto-regenerate, so shouldn't be marked as overdue)
+        const overdueTasks = allOverdueTasks.filter(task => !task.recurrence);
+        console.log(`[Greeting] Found ${allOverdueTasks.length} overdue tasks, ${overdueTasks.length} non-recurring`);
+        
         const todayTasks = await getTodayTasks();
         const allTasks = await getAllTasks();
         const allLists = await getAllLists();
         const allNotes = await getAllNotes();
+        
+        // Get old recurring tasks for review (> 30 days)
+        const oldRecurringTasks = await window.getOldRecurringTasks();
+        console.log(`[Greeting] Found ${oldRecurringTasks.length} old recurring tasks for review`);
         
         // Get user language early (needed for weather API)
         const userLanguage = localStorage.getItem('appLanguage') || 'fr';
@@ -1964,6 +1972,19 @@ async function launchGreeting() {
             });
         }
         
+        // Add old recurring tasks for review
+        if (oldRecurringTasks.length > 0) {
+            contextMessage += `\nOLD RECURRING TASKS FOR REVIEW (${oldRecurringTasks.length}):\n`;
+            contextMessage += `These tasks have been running for over 30 days. Ask user if they want to keep or delete each one:\n`;
+            oldRecurringTasks.forEach((task, i) => {
+                const createdDate = new Date(task.createdAt);
+                const daysOld = Math.floor((new Date() - createdDate) / (1000 * 60 * 60 * 24));
+                const recurrenceType = task.recurrence?.type || task.recurrence || 'unknown';
+                contextMessage += `${i + 1}. "${task.description}" (${recurrenceType}, created ${daysOld} days ago) - ID: ${task.id}\n`;
+            });
+            contextMessage += '\n';
+        }
+        
         // Get Mistral API key
         const mistralApiKey = localStorage.getItem('mistralApiKey');
         console.log('[App] Mistral API key check:', mistralApiKey ? 'Found' : 'Not found');
@@ -2046,6 +2067,14 @@ async function launchGreeting() {
         
         if (todayTasks.length > 0) {
             fullGreeting += '\n\n' + (greetingData.todaySummary || '');
+        }
+        
+        // Add old recurring tasks review section
+        if (oldRecurringTasks.length > 0) {
+            fullGreeting += '\n\n' + (greetingData.recurringTasksReview || '');
+            
+            // Store old recurring tasks globally for later reference
+            window.pendingRecurringTasksReview = oldRecurringTasks;
         }
         
         // Check if TTS is enabled

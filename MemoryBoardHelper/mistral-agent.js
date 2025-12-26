@@ -22,6 +22,7 @@ Context provided:
 - Weather information (ALWAYS INCLUDE IF PROVIDED - look for "Weather:" line)
 - List of overdue tasks (if any)
 - List of today's upcoming tasks
+- OLD RECURRING TASKS FOR REVIEW: Tasks running for > 30 days that need user decision
 
 Instructions:
 1. Greet the user warmly (bonjour/hello based on language)
@@ -43,13 +44,23 @@ IMPORTANT:
 - Put ONLY the greeting, time, weather, and global counts in "greeting"
 - Put overdue task details in "overdueSummary" (will be added separately)
 - Put today's task details in "todaySummary" (will be added separately)
+- Put old recurring tasks review in "recurringTasksReview" (will be added separately)
 - Do NOT repeat task information between these fields
+
+For OLD RECURRING TASKS:
+- Ask user politely if they want to keep or delete each task
+- Explain it's been running for over a month
+- Examples:
+  * FR: "J'ai remarqué que certaines tâches récurrentes tournent depuis plus d'un mois. Souhaitez-vous les conserver ou les supprimer ? Dites 'garder' ou 'supprimer' suivi du numéro."
+  * EN: "I noticed some recurring tasks have been running for over a month. Would you like to keep or delete them? Say 'keep' or 'delete' followed by the number."
+  * IT: "Ho notato che alcuni compiti ricorrenti sono attivi da oltre un mese. Vuoi mantenerli o eliminarli? Dì 'mantieni' o 'elimina' seguito dal numero."
 
 Respond in this JSON format:
 {
   "greeting": "Warm greeting + time + weather + global counts ONLY",
   "overdueSummary": "Details of overdue tasks if any (optional)",
   "todaySummary": "Details of today's tasks if any (optional)",
+  "recurringTasksReview": "List old recurring tasks and ask user to keep/delete (optional)",
   "language": "fr|en|it"
 }`;
 
@@ -77,14 +88,20 @@ const TASK_PROMPT = `You are a helpful memory assistant for elderly or memory-de
 
 When extracting tasks, respond in JSON format with:
 {
-    "action": "add_task|add_list|add_note|complete_task|delete_task|delete_list|delete_note|update_task|update_list|update_note|search_task|undo|conversation|add_recursive_task|delete_old_task|delete_done_task|delete_all_tasks|delete_all_lists|delete_all_notes|search_web|open_gps|send_address|get_weather|start_activity|stop_activity|get_activity_stats|show_activity_paths|show_activity_stats_modal",
+    "action": "add_task|add_list|add_note|complete_task|delete_task|delete_list|delete_note|update_task|update_list|update_note|search_task|undo|conversation|add_recursive_task|delete_old_task|delete_done_task|delete_all_tasks|delete_all_lists|delete_all_notes|search_web|open_gps|send_address|get_weather|start_activity|stop_activity|get_activity_stats|show_activity_paths|show_activity_stats_modal|keep_recurring_task|delete_recurring_task",
     "task": {
         "description": "clear task description",
         "date": "YYYY-MM-DD if mentioned, else null",
         "time": "HH:MM format if mentioned, else null",
         "type": "general|medication|appointment|call|shopping",
         "priority": "normal|urgent|low",
-        "recurrence": "null|daily|weekly|monthly (if user mentions recurring/tous les jours/chaque semaine/chaque mois)"
+        "recurrence": {
+            "type": "daily|weekly|monthly|custom",
+            "interval": 1,
+            "daysOfWeek": [0,1,2,3,4,5,6], // 0=Sunday, 1=Monday... (optional, for specific days)
+            "excludedDates": ["YYYY-MM-DD"], // Dates to skip (optional)
+            "endDate": "YYYY-MM-DD" // When recurrence stops (optional)
+        }
     },
     "list": {
         "title": "list title (or search term for delete/update)",
@@ -169,12 +186,51 @@ NEVER respond with "conversation" for these - they are ALWAYS tasks!
 
 🔴 RECURRING TASKS:
 - Use "add_recursive_task" (NOT add_task) when user mentions:
-  * "tous les jours" / "quotidien" / "chaque jour" / "every day" / "daily" → recurrence: "daily"
-  * "chaque semaine" / "tous les lundis" / "hebdomadaire" / "every week" / "weekly" → recurrence: "weekly"
-  * "chaque mois" / "tous les mois" / "mensuel" / "every month" / "monthly" → recurrence: "monthly"
+  * "tous les jours" / "quotidien" / "chaque jour" / "every day" / "daily" → recurrence: {type: "daily", interval: 1}
+  * "chaque semaine" / "hebdomadaire" / "every week" / "weekly" → recurrence: {type: "weekly", interval: 1}
+  * "chaque mois" / "tous les mois" / "mensuel" / "every month" / "monthly" → recurrence: {type: "monthly", interval: 1}
   * "tâche récurrente" / "recurring task" → use add_recursive_task
-  * "trois fois par jour" / "twice a day" → recurrence: "daily" (mention frequency in description)
-- Set recurrence field in task object with appropriate value
+  * "trois fois par jour" / "twice a day" → recurrence: {type: "daily", interval: 1} (mention frequency in description)
+
+🔴 COMPLEX RECURRENCE PATTERNS (IMPORTANT - NEW):
+- "tous les jours SAUF dimanche" / "every day EXCEPT Sunday":
+  → recurrence: {type: "custom", daysOfWeek: [1,2,3,4,5,6]} (exclude Sunday=0)
+- "du lundi au vendredi" / "Monday to Friday" / "weekdays":
+  → recurrence: {type: "custom", daysOfWeek: [1,2,3,4,5]}
+- "les mardis et jeudis" / "Tuesdays and Thursdays":
+  → recurrence: {type: "custom", daysOfWeek: [2,4]}
+- "tous les lundis" / "every Monday":
+  → recurrence: {type: "custom", daysOfWeek: [1]}
+- "chaque week-end" / "every weekend":
+  → recurrence: {type: "custom", daysOfWeek: [0,6]}
+- "tous les jours sauf samedi et dimanche":
+  → recurrence: {type: "custom", daysOfWeek: [1,2,3,4,5]}
+- "jusqu'au 31 décembre" / "until December 31st":
+  → recurrence: {type: "daily", interval: 1, endDate: "2025-12-31"}
+- "tous les 2 jours" / "every 2 days":
+  → recurrence: {type: "daily", interval: 2}
+
+DAYS OF WEEK MAPPING (CRITICAL):
+- 0 = Sunday / Dimanche / Domenica
+- 1 = Monday / Lundi / Lunedì
+- 2 = Tuesday / Mardi / Martedì
+- 3 = Wednesday / Mercredi / Mercoledì
+- 4 = Thursday / Jeudi / Giovedì
+- 5 = Friday / Vendredi / Venerdì
+- 6 = Saturday / Samedi / Sabato
+
+RECURRENCE EXAMPLES:
+User: "Réveille-moi à 7h tous les jours sauf le dimanche"
+Response: {"action": "add_recursive_task", "task": {"description": "réveil", "time": "07:00", "type": "general", "priority": "normal", "recurrence": {"type": "custom", "daysOfWeek": [1,2,3,4,5,6]}}, "response": "Réveil programmé du lundi au samedi à 7h.", "language": "fr"}
+
+User: "Médicament à 9h du lundi au vendredi"
+Response: {"action": "add_recursive_task", "task": {"description": "médicament", "time": "09:00", "type": "medication", "priority": "normal", "recurrence": {"type": "custom", "daysOfWeek": [1,2,3,4,5]}}, "response": "Rappel médicament créé pour les jours de semaine à 9h.", "language": "fr"}
+
+User: "Rendez-vous sport les mardis et jeudis à 18h"
+Response: {"action": "add_recursive_task", "task": {"description": "sport", "time": "18:00", "type": "general", "priority": "normal", "recurrence": {"type": "custom", "daysOfWeek": [2,4]}}, "response": "Rendez-vous sport ajouté pour chaque mardi et jeudi.", "language": "fr"}
+
+User: "Wake me up at 7am weekdays only"
+Response: {"action": "add_recursive_task", "task": {"description": "wake up", "time": "07:00", "type": "general", "priority": "normal", "recurrence": {"type": "custom", "daysOfWeek": [1,2,3,4,5]}}, "response": "Alarm set for weekdays at 7am.", "language": "en"}
 
 For search_task action, use when the user asks about an existing task (e.g., "c'est quand mon rendez-vous?", "when is my appointment?", "quand ai-je mon médicament?", "montre-moi la tâche", "show me the task"). 
 ALSO use search_task when the user wants to list/view multiple tasks (e.g., "liste tous mes rendez-vous", "list all my appointments", "quels sont mes rendez-vous", "what are my appointments").
@@ -217,6 +273,21 @@ For undo action, ALWAYS use when user says ANY of these:
 - "annule la dernière action" → undo (NOT conversation!)
 - "défais ce que je viens de faire" → undo (NOT conversation!)
 IMPORTANT: These phrases are NEVER conversations, always undo action!
+
+For keep_recurring_task action, use when user wants to KEEP/PRESERVE an old recurring task during review:
+- "garder" / "garde" + number → keep_recurring_task (taskId from window.pendingRecurringTasksReview)
+- "keep" / "mantieni" + number → keep_recurring_task
+- "conserver" + number → keep_recurring_task
+- Extract taskId from the review list based on the number
+- Example: "garde le 1" → keep_recurring_task with taskId of first task in review
+
+For delete_recurring_task action, use when user wants to DELETE/REMOVE an old recurring task during review:
+- "supprimer" / "supprime" + number → delete_recurring_task (taskId from window.pendingRecurringTasksReview)
+- "delete" / "elimina" + number → delete_recurring_task
+- "effacer" + number → delete_recurring_task
+- Extract taskId from the review list based on the number
+- Example: "supprime le 2" → delete_recurring_task with taskId of second task in review
+- This will delete the parent task AND all its instances
 
 🔴 CRITICAL: Always respect the ACTION VERB in the user's request:
 - "Ajoute X à ma liste" → update_list (NOT add_list)

@@ -191,14 +191,20 @@ function taskToEvent(task) {
         event.classNames = ['event-snoozed'];
     } else {
         // Check if task is overdue
+        // IMPORTANT: Don't mark recurring tasks as overdue (they auto-regenerate)
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const taskDate = new Date(task.date);
         taskDate.setHours(0, 0, 0, 0);
         
-        if (taskDate < today && task.status === 'pending') {
+        if (taskDate < today && task.status === 'pending' && !task.recurrence) {
+            // Only mark non-recurring tasks as overdue
             event.classNames = ['event-overdue'];
             event.extendedProps.isOverdue = true;
+        } else if (task.recurrence) {
+            // Add special class for recurring tasks
+            event.classNames = ['event-recurring'];
+            event.extendedProps.isRecurring = true;
         }
     }
     
@@ -227,6 +233,9 @@ function renderEventContent(event) {
     
     if (extendedProps.status === 'completed') {
         html += '<span class="material-symbols-outlined fc-event-status">check_circle</span>';
+    } else if (extendedProps.recurrence) {
+        // Show repeat icon for recurring tasks
+        html += '<span class="material-symbols-outlined fc-event-recurring-icon" title="Tâche récurrente">repeat</span>';
     }
     
     return html;

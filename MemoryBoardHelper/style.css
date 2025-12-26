@@ -2249,6 +2249,20 @@ body {
     margin-right: 5px;
 }
 
+/* Recurring task styling */
+.fc-event.event-recurring {
+    border-left: 3px solid #44ff88 !important;
+}
+
+.fc-event-recurring-icon {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    font-size: 14px !important;
+    color: #44ff88;
+    opacity: 0.9;
+}
+
 /* FullCalendar Override Styles - CraftKontrol Theme */
 #calendarContainer {
     background-color: var(--background-color);
