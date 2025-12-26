@@ -45,7 +45,23 @@ function detectMessageType(text) {
 
 // Helper function to get API key from CKGenericApp or localStorage
 function getApiKey(keyName, localStorageKey = null) {
-    // Try CKGenericApp first (Android WebView)
+    // Try CKDesktop first (Electron Desktop)
+    if (typeof window.CKDesktop !== 'undefined' && typeof window.CKDesktop.getApiKey === 'function') {
+        const key = window.CKDesktop.getApiKey(keyName);
+        if (key) {
+            console.log(`[API] Using ${keyName} key from CKDesktop`);
+            return key;
+        }
+    }
+    // Try CKAndroid (Android WebView)
+    if (typeof window.CKAndroid !== 'undefined' && typeof window.CKAndroid.getApiKey === 'function') {
+        const key = window.CKAndroid.getApiKey(keyName);
+        if (key) {
+            console.log(`[API] Using ${keyName} key from CKAndroid`);
+            return key;
+        }
+    }
+    // Try CKGenericApp (Legacy Android)
     if (typeof window.CKGenericApp !== 'undefined' && typeof window.CKGenericApp.getApiKey === 'function') {
         const key = window.CKGenericApp.getApiKey(keyName);
         if (key) {

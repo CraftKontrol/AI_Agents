@@ -147,7 +147,16 @@ function getLocalizedResponse(key, language = 'fr') {
 
 // Enhance calendar response with Mistral AI for more natural language
 async function enhanceCalendarResponse(basicMessage, context = {}) {
-    const apiKey = localStorage.getItem('mistralApiKey');
+    // Try to get API key from CKDesktop/CKAndroid first, then localStorage
+    let apiKey = null;
+    if (typeof window.CKDesktop !== 'undefined' && typeof window.CKDesktop.getApiKey === 'function') {
+        apiKey = window.CKDesktop.getApiKey('mistral');
+    } else if (typeof window.CKAndroid !== 'undefined' && typeof window.CKAndroid.getApiKey === 'function') {
+        apiKey = window.CKAndroid.getApiKey('mistral');
+    } else {
+        apiKey = localStorage.getItem('mistralApiKey');
+    }
+    
     if (!apiKey) {
         console.log('[ActionWrapper] No Mistral API key, using basic message');
         return basicMessage;
@@ -1895,7 +1904,15 @@ registerAction(
         }
         
         // Check if Tavily API key is configured
-        const apiKey = localStorage.getItem('apiKey_tavily');
+        let apiKey = null;
+        if (typeof window.CKDesktop !== 'undefined' && typeof window.CKDesktop.getApiKey === 'function') {
+            apiKey = window.CKDesktop.getApiKey('tavily');
+        } else if (typeof window.CKAndroid !== 'undefined' && typeof window.CKAndroid.getApiKey === 'function') {
+            apiKey = window.CKAndroid.getApiKey('tavily');
+        } else {
+            apiKey = localStorage.getItem('apiKey_tavily');
+        }
+        
         if (!apiKey) {
             return { 
                 valid: false, 
