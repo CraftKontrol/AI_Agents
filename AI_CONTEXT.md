@@ -181,6 +181,7 @@ currentPosition {lat, lng}, currentRadius, currentFoodType, currentSource
 - **Voice Flow**: Microphone → STT (Browser/Deepgram/Google) → Mistral AI (parse + respond) → TTS (Browser/Deepgram/Google) → Temporary Listening
 - **Task Management**: Max 5 displayed, priority sorting, color badges (🔴🟡🟢), localStorage persistence
 - **Activity Tracking**: Accelerometer + Gyroscope → Step counting → GPS tracking → OpenStreetMap visualization
+- **Cloud Sync**: 10s auto-sync + manual sync, providers: Google Drive, OneDrive, Dropbox, iCloud (CloudKit JS, app token), WebDAV
 
 **Listening Modes**:
 1. **Manual**: Press-to-talk button
