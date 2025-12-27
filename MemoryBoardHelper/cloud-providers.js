@@ -79,22 +79,16 @@ class GoogleDriveProvider extends CloudProvider {
         }
 
         try {
-            // OAuth2 authorization URL
-            const redirectUri = window.location.origin + window.location.pathname;
+            // Use Android OAuth client + custom scheme so Google accepts sensitive scopes
+            const redirectUri = 'com.googleusercontent.apps.102458138422-vebatrmm68u03dl9i4vr3t9oqhvg79vr:/oauth2redirect';
             const scope = 'https://www.googleapis.com/auth/drive.file';
             const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
                 `client_id=${encodeURIComponent(this.clientId)}` +
                 `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-                `&response_type=token` +
+                `&response_type=code` +
                 `&scope=${encodeURIComponent(scope)}`;
 
-            // Check if we're returning from OAuth
-            const hash = window.location.hash;
-            if (hash && hash.includes('access_token')) {
-                return this.handleOAuthCallback(hash);
-            }
-
-            // Redirect to OAuth
+            // Redirect to OAuth (Custom Tab will rewrite with PKCE in-app)
             console.log('[GoogleDrive] Redirecting to OAuth...');
             window.location.href = authUrl;
             return false;
