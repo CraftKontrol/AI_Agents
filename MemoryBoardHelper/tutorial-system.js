@@ -1262,6 +1262,42 @@ class TutorialSystem {
             setTimeout(() => this.loadVoicesIntoSelect(), 100);
         }
         
+        // Load saved TTS API key if this is TTS API key step
+        if (step.name === 'tts_api_key') {
+            setTimeout(() => {
+                const provider = localStorage.getItem('ttsProvider') || 'browser';
+                let savedApiKey = null;
+                
+                if (provider === 'deepgram') {
+                    savedApiKey = localStorage.getItem('apiKey_deepgramtts');
+                } else if (provider === 'google') {
+                    savedApiKey = localStorage.getItem('googleTTSApiKey');
+                }
+                
+                if (savedApiKey) {
+                    const apiKeyInput = document.getElementById('tutorialTtsApiKey');
+                    if (apiKeyInput) {
+                        apiKeyInput.value = savedApiKey;
+                        console.log('[Tutorial] Pre-filled TTS API key from localStorage');
+                    }
+                }
+            }, 100);
+        }
+        
+        // Load saved Mistral API key if this is Mistral API key step
+        if (step.name === 'mistral_api_key') {
+            setTimeout(() => {
+                const savedApiKey = localStorage.getItem('apiKey_mistral');
+                if (savedApiKey) {
+                    const apiKeyInput = document.getElementById('tutorialMistralApiKey');
+                    if (apiKeyInput) {
+                        apiKeyInput.value = savedApiKey;
+                        console.log('[Tutorial] Pre-filled Mistral API key from localStorage');
+                    }
+                }
+            }, 100);
+        }
+        
         // Load saved emergency contact if this is emergency contact step
         if (step.name === 'emergency_contact') {
             setTimeout(() => {
