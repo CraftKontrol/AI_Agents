@@ -99,7 +99,20 @@ async function loadApiKeys() {
 function setupEventListeners() {
     // Save API keys button
     document.getElementById('saveApiKeysBtn').addEventListener('click', async () => {
-        const keyFields = ['mistral', 'deepgram', 'deepgramtts', 'google_tts', 'openweathermap', 'tavily'];
+        const keyFields = [
+            'mistral',
+            'deepgram',
+            'deepgramtts',
+            'google_tts',
+            'google_stt',
+            'openweathermap',
+            'weatherapi',
+            'tavily',
+            'scrapingbee',
+            'scraperapi',
+            'brightdata',
+            'scrapfly'
+        ];
         
         for (const keyName of keyFields) {
             const input = document.getElementById(keyName);
