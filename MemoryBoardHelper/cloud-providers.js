@@ -23,6 +23,15 @@ class GoogleDriveProvider extends CloudProvider {
         // Ensure PKCE redirect handler always has a live instance after reloads
         if (typeof window !== 'undefined') {
             window._ckGDProviderInstance = this;
+            // If a redirect arrived before the provider was ready, handle it now
+            if (window._ckGD_pendingRedirect) {
+                console.log('[GoogleDrive] Handling pending PKCE redirect after init');
+                const pending = window._ckGD_pendingRedirect;
+                window._ckGD_pendingRedirect = null;
+                this.handlePkceRedirect(pending).catch(err => {
+                    console.error('[GoogleDrive] Pending PKCE redirect failed:', err);
+                });
+            }
         }
     }
 
@@ -389,10 +398,13 @@ if (!window._ckGD_pkce_listener) {
     window.addEventListener('ckoauth_redirect', async (event) => {
         try {
             const detail = event.detail || {};
-            if (window._ckGDProviderInstance && typeof window._ckGDProviderInstance.handlePkceRedirect === 'function') {
-                await window._ckGDProviderInstance.handlePkceRedirect(detail);
+            const inst = window._ckGDProviderInstance;
+            if (inst && typeof inst.handlePkceRedirect === 'function') {
+                await inst.handlePkceRedirect(detail);
             } else {
-                console.warn('[GoogleDrive] No provider instance available for PKCE redirect');
+                // If provider not ready yet (page reload), stash detail to replay after init
+                window._ckGD_pendingRedirect = detail;
+                console.warn('[GoogleDrive] Provider not ready; queued PKCE redirect');
             }
         } catch (err) {
             console.error('[GoogleDrive] Failed to handle PKCE redirect event:', err);
