@@ -601,72 +601,8 @@ fun ApiKeysSection(
             color = MaterialTheme.colorScheme.primary
         )
         Spacer(modifier = Modifier.height(8.dp))
-        
-        var googleDriveClientId by remember(savedKeys) { mutableStateOf(savedKeys["googledrive_client_id"] ?: "") }
-        var showGoogleDriveClientId by remember { mutableStateOf(false) }
-        var oneDriveClientId by remember(savedKeys) { mutableStateOf(savedKeys["onedrive_client_id"] ?: "") }
-        var showOneDriveClientId by remember { mutableStateOf(false) }
-        var dropboxClientId by remember(savedKeys) { mutableStateOf(savedKeys["dropbox_client_id"] ?: "") }
-        var showDropboxClientId by remember { mutableStateOf(false) }
-        var iCloudContainerId by remember(savedKeys) { mutableStateOf(savedKeys["icloud_container_id"] ?: "") }
-        var showICloudContainerId by remember { mutableStateOf(false) }
-        var iCloudApiToken by remember(savedKeys) { mutableStateOf(savedKeys["icloud_api_token"] ?: "") }
-        var showICloudApiToken by remember { mutableStateOf(false) }
-        
-        ApiKeyField(
-            label = "Google Drive Client ID (OAuth2)",
-            value = googleDriveClientId,
-            onValueChange = { googleDriveClientId = it },
-            isVisible = showGoogleDriveClientId,
-            onVisibilityToggle = { showGoogleDriveClientId = !showGoogleDriveClientId },
-            onSave = { viewModel.saveApiKey("googledrive_client_id", googleDriveClientId) }
-        )
-        
-        Spacer(modifier = Modifier.height(12.dp))
-
-        ApiKeyField(
-            label = "OneDrive Client ID (OAuth2)",
-            value = oneDriveClientId,
-            onValueChange = { oneDriveClientId = it },
-            isVisible = showOneDriveClientId,
-            onVisibilityToggle = { showOneDriveClientId = !showOneDriveClientId },
-            onSave = { viewModel.saveApiKey("onedrive_client_id", oneDriveClientId) }
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        ApiKeyField(
-            label = "Dropbox Client ID (App Key)",
-            value = dropboxClientId,
-            onValueChange = { dropboxClientId = it },
-            isVisible = showDropboxClientId,
-            onVisibilityToggle = { showDropboxClientId = !showDropboxClientId },
-            onSave = { viewModel.saveApiKey("dropbox_client_id", dropboxClientId) }
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        ApiKeyField(
-            label = "iCloud Container ID",
-            value = iCloudContainerId,
-            onValueChange = { iCloudContainerId = it },
-            isVisible = showICloudContainerId,
-            onVisibilityToggle = { showICloudContainerId = !showICloudContainerId },
-            onSave = { viewModel.saveApiKey("icloud_container_id", iCloudContainerId) }
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        ApiKeyField(
-            label = "iCloud API Token",
-            value = iCloudApiToken,
-            onValueChange = { iCloudApiToken = it },
-            isVisible = showICloudApiToken,
-            onVisibilityToggle = { showICloudApiToken = !showICloudApiToken },
-            onSave = { viewModel.saveApiKey("icloud_api_token", iCloudApiToken) }
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))        
+        // Cloud sync UI removed on Android; web clients manage OAuth
+        Spacer(modifier = Modifier.height(16.dp))
         ApiKeyField(
             label = "Google Cloud STT (Memory Board)",
             value = googleSttKey,
