@@ -2,6 +2,8 @@ package com.craftkontrol.ckgenericapp.backup
 
 import android.app.backup.BackupManager
 import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -11,13 +13,16 @@ import kotlinx.coroutines.flow.map
 import timber.log.Timber
 import java.util.Date
 
+// Singleton DataStore at the top level (file scope)
+private val Context.backupDataStore: DataStore<Preferences> by preferencesDataStore("backup_metadata")
+
 /**
  * Helper for managing automatic backups
  * Ensures data persistence across app reinstalls
  */
 class BackupHelper(private val context: Context) {
 
-    private val Context.backupDataStore by preferencesDataStore("backup_metadata")
+    private val dataStore: DataStore<Preferences> = context.applicationContext.backupDataStore
     
     companion object {
         private val LAST_BACKUP_TIME = stringPreferencesKey("last_backup_time")
@@ -67,7 +72,7 @@ class BackupHelper(private val context: Context) {
      */
     suspend fun isFirstLaunchAfterInstall(): Boolean {
         return try {
-            context.backupDataStore.data.map { prefs ->
+            dataStore.data.map { prefs ->
                 prefs[FIRST_LAUNCH_AFTER_INSTALL] ?: true
             }.first()
         } catch (e: Exception) {
@@ -81,7 +86,7 @@ class BackupHelper(private val context: Context) {
      */
     suspend fun markFirstLaunchComplete() {
         try {
-            context.backupDataStore.edit { prefs ->
+            dataStore.edit { prefs ->
                 prefs[FIRST_LAUNCH_AFTER_INSTALL] = false
             }
             Timber.d("First launch marked as complete")
@@ -95,7 +100,7 @@ class BackupHelper(private val context: Context) {
      */
     suspend fun enableBackup() {
         try {
-            context.backupDataStore.edit { prefs ->
+            dataStore.edit { prefs ->
                 prefs[BACKUP_ENABLED] = true
             }
             requestBackup()
@@ -110,7 +115,7 @@ class BackupHelper(private val context: Context) {
      */
     suspend fun disableBackup() {
         try {
-            context.backupDataStore.edit { prefs ->
+            dataStore.edit { prefs ->
                 prefs[BACKUP_ENABLED] = false
             }
             Timber.i("Automatic backup disabled")
@@ -124,7 +129,7 @@ class BackupHelper(private val context: Context) {
      */
     suspend fun isBackupEnabled(): Boolean {
         return try {
-            context.backupDataStore.data.map { prefs ->
+            dataStore.data.map { prefs ->
                 prefs[BACKUP_ENABLED] ?: true // Enabled by default
             }.first()
         } catch (e: Exception) {
@@ -138,7 +143,7 @@ class BackupHelper(private val context: Context) {
      */
     private suspend fun getLastBackupTime(): Long? {
         return try {
-            context.backupDataStore.data.map { prefs ->
+            dataStore.data.map { prefs ->
                 prefs[LAST_BACKUP_TIME]?.toLongOrNull()
             }.first()
         } catch (e: Exception) {
@@ -152,7 +157,7 @@ class BackupHelper(private val context: Context) {
      */
     private suspend fun saveLastBackupTime(timestamp: Long) {
         try {
-            context.backupDataStore.edit { prefs ->
+            dataStore.edit { prefs ->
                 prefs[LAST_BACKUP_TIME] = timestamp.toString()
             }
         } catch (e: Exception) {
@@ -178,7 +183,7 @@ class BackupHelper(private val context: Context) {
      */
     suspend fun resetBackupMetadata() {
         try {
-            context.backupDataStore.edit { it.clear() }
+            dataStore.edit { it.clear() }
             Timber.d("Backup metadata reset")
         } catch (e: Exception) {
             Timber.e(e, "Error resetting backup metadata")

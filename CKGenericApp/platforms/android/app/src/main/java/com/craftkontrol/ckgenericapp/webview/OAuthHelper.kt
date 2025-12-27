@@ -23,10 +23,33 @@ object OAuthHelper {
     }
 
     fun rewriteOAuthUrl(originalUrl: String, context: Context): String {
-        // For WEB client compatibility: keep original URL unchanged
-        // OAuth flow completes entirely in Custom Tab with HTTPS redirect
-        // The web app's callback page handles the OAuth code
-        return originalUrl
+        val state = generateState()
+        val verifier = generateCodeVerifier()
+        val challenge = codeChallenge(verifier)
+        storeState(context, state, verifier)
+
+        val uri = Uri.parse(originalUrl)
+        val builder = uri.buildUpon()
+            .clearQuery()
+
+        // Preserve existing query params except the ones we override
+        val params = uri.queryParameterNames
+        params.forEach { key ->
+            if (key !in setOf("redirect_uri", "response_type", "code_challenge", "code_challenge_method", "state", "scope")) {
+                builder.appendQueryParameter(key, uri.getQueryParameter(key))
+            }
+        }
+
+        builder.appendQueryParameter("response_type", "code")
+        builder.appendQueryParameter("redirect_uri", REDIRECT_URI)
+        builder.appendQueryParameter("code_challenge_method", "S256")
+        builder.appendQueryParameter("code_challenge", challenge)
+        builder.appendQueryParameter("state", state)
+
+        // Optional: keep scope from original URL
+        uri.getQueryParameter("scope")?.let { builder.appendQueryParameter("scope", it) }
+
+        return builder.build().toString()
     }
 
     fun getStoredState(context: Context): Pair<String?, String?> {
