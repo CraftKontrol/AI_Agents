@@ -408,7 +408,7 @@ function openWebApp(appId) {
     width: 1200,
     height: 800,
     title: app.name,
-    icon: path.join(__dirname, '../../resources/icon.png'),
+    icon: path.join(__dirname, '../../resources', app.icon),
     backgroundColor: '#1a1a1a',
     webPreferences: {
       preload: path.join(__dirname, 'preload-webview.js'),
