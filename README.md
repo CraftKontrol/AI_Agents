@@ -30,36 +30,52 @@ Each Agent/
 
 [AiSearchAgregator](https://craftkontrol.github.io/AI_Agents/AiSearchAgregator/) | [AstralCompute](https://craftkontrol.github.io/AI_Agents/AstralCompute/) | [LocalFoodProducts](https://craftkontrol.github.io/AI_Agents/LocalFoodProducts/) | [MemoryBoardHelper](https://craftkontrol.github.io/AI_Agents/MemoryBoardHelper/) | [MeteoAgregator](https://craftkontrol.github.io/AI_Agents/MeteoAgregator/) | [NewsAgregator](https://craftkontrol.github.io/AI_Agents/NewsAgregator/)
 
-### 📱 Android Integration: CKGenericApp
+### 📱💻 Multi-Platform Integration: CKGenericApp
 
-**[CKGenericApp](CKGenericApp/)** is a professional Android wrapper application that transforms all web agents into native mobile experiences. Built with modern Android development practices (Kotlin 2.0, Jetpack Compose, Material 3), it provides a unified platform for managing and accessing all AI Agents on Android devices.
+**[CKGenericApp](CKGenericApp/)** is a cross-platform application that transforms all web agents into native experiences on **Android**, **Windows**, **macOS**, and **Linux**. Built with modern development practices (Kotlin 2.0 + Jetpack Compose for Android, Electron for Desktop), it provides a unified platform for managing and accessing all AI Agents across all devices.
 
 **Key Features:**
+- **Cross-Platform** - Native apps for Android (8.0+) and Desktop (Windows 10+, macOS 10.13+, Linux Ubuntu 18.04+)
 - **Centralized API Key Management** - Configure all service API keys (Mistral AI, Deepgram, Google Cloud, OpenWeatherMap, etc.) in one secure location. Keys are automatically injected into web apps via JavaScript bridge, eliminating the need to enter them separately in each agent.
-- **Home Screen Shortcuts** - Create independent shortcuts for each web agent. Each shortcut launches the app in its own dedicated WebView instance with isolated task management.
-- **Multi-Instance Support** - Run multiple agents simultaneously in separate Android activities. Open Weather, News, and Search agents at the same time without interference.
-- **Native Hardware Access** - Full integration with Android sensors (accelerometer, gyroscope for step tracking), permissions (camera, microphone, location), and system features (notifications, alarms, GPS).
-- **Intelligent Caching** - Force-fresh content on every app load with automatic cache clearing and no-cache HTTP headers. Settings screen provides manual cache management.
-- **Background Services** - Monitoring service for alarms, appointments, and activity tracking with persistent notifications. Display daily step counts when MemoryBoardHelper tracking is enabled.
+- **Independent Windows** - Create shortcuts (Android) or open dedicated windows (Desktop) for each web agent with isolated contexts and task management.
+- **Multi-Instance Support** - Run multiple agents simultaneously in separate windows/activities. Open Weather, News, and Search agents at the same time without interference.
+- **Native Hardware Access** - Full integration with sensors (accelerometer, gyroscope for step tracking), permissions (camera, microphone, location), and system features (notifications, alarms, GPS).
+- **Background Services** - Monitoring daemon for alarms, appointments, and activity tracking with persistent notifications. Display daily step counts when MemoryBoardHelper tracking is enabled.
+- **System Integration** - System tray (Desktop) and home screen shortcuts (Android) for quick access.
 - **Multi-Language** - Full support for French, English, and Italian with automatic system language detection and manual switching.
-- **Material 3 Design** - Modern, beautiful Android interface following Google's latest Material Design 3 guidelines with Jetpack Compose.
+- **Modern UI** - Material 3 Design (Android) with Jetpack Compose, Dark theme (Desktop) with native controls.
 
 **Technical Highlights:**
+
+*Android:*
 - **Architecture**: MVVM + Clean Architecture (Presentation → Domain → Data layers)
 - **Database**: Room for local data persistence
 - **Preferences**: DataStore for settings and API keys
 - **Dependency Injection**: Hilt for clean, testable code
 - **Min SDK**: Android 8.0 (API 26) | **Target SDK**: Android 14 (API 34)
 
+*Desktop:*
+- **Framework**: Electron 28 with Node.js
+- **Storage**: electron-store (encrypted) for settings and API keys
+- **Logging**: electron-log for debugging and monitoring
+- **Platforms**: Windows (NSIS + Portable), macOS (DMG + ZIP, Universal), Linux (AppImage + DEB)
+
 **JavaScript Bridge API** for seamless web-native integration:
 ```javascript
+// Android
 CKAndroid.getApiKey('mistral')        // Access API keys
 CKAndroid.scheduleAlarm(...)          // Schedule exact alarms
 CKAndroid.startSensors()              // Access accelerometer/gyroscope
 CKAndroid.showNotification(...)       // Display notifications
+
+// Desktop (with Android compatibility aliases)
+CKDesktop.getApiKey('mistral')        // Access API keys
+CKDesktop.apiKeys                     // All keys object
+CKAndroid.getApiKey('mistral')        // Works on desktop too (compatibility)
+CKAndroid.scheduleAlarm(...)          // Desktop alarm support
 ```
 
-Perfect for users who want a native Android experience while maintaining the flexibility and portability of web-based agents.
+Perfect for users who want native Android or desktop experiences while maintaining the flexibility and portability of web-based agents.
 
 
 
@@ -78,9 +94,10 @@ Perfect for users who want a native Android experience while maintaining the fle
 
 **Advantages**: Cross-platform, no installation, always up-to-date, easy sharing via URL
 
-### Method 2: Android App (Mobile & Tablet)
-**Native Android experience** - Full hardware integration with centralized management.
+### Method 2: Native Apps (Android & Desktop)
+**Native experience** - Full hardware integration with centralized management.
 
+#### Android (Mobile & Tablet)
 1. **Install CKGenericApp**: Download and install the APK from [CKGenericApp](CKGenericApp/) folder
 2. **Configure API keys once**: Open app → Scroll to "API Keys Management" → Enter all keys → Save
 3. **Create shortcuts**: Tap the **+** icon next to any agent → Shortcut appears on home screen
@@ -88,6 +105,20 @@ Perfect for users who want a native Android experience while maintaining the fle
 5. **Multi-instance**: Open multiple agents simultaneously for parallel workflows
 
 **Advantages**: Native performance, offline capabilities, hardware sensors (accelerometer/gyroscope), system notifications, exact alarms, background monitoring, no need to re-enter API keys per agent
+
+#### Desktop (Windows, macOS, Linux)
+1. **Download Installer**: 
+   - **Windows**: `CKDesktop-{version}-x64.exe` (NSIS installer) or portable version
+   - **macOS**: `CKDesktop-{version}-universal.dmg` (Intel + Apple Silicon)
+   - **Linux**: `CKDesktop-{version}-x64.AppImage` or `.deb` package
+2. **Install**: Run installer → Follow prompts
+3. **Launch**: Open CraftKontrol Desktop from applications menu or desktop shortcut
+4. **Configure API keys once**: Enter keys in API Keys Management section → Save
+5. **Open agents**: Click app cards or use keyboard shortcuts (Ctrl+1-6)
+6. **System tray**: App minimizes to tray → Right-click for quick access to all agents
+7. **Multi-instance**: Open multiple agent windows simultaneously for parallel workflows
+
+**Advantages**: Native desktop integration, system tray access, keyboard shortcuts, multi-window management, no browser required, centralized API key storage
 
 
 ## API Keys Configuration
@@ -216,22 +247,26 @@ Each agent requires specific API keys:
 
 ---
 
-### 📱 [CKGenericApp](CKGenericApp/)
-**Android WebView wrapper for all AI Agents with centralized API management**
+### 📱💻 [CKGenericApp](CKGenericApp/)
+**Cross-platform hub for all AI Agents with centralized API management**
+- **Cross-Platform**: Native apps for Android (8.0+) and Desktop (Windows 10+, macOS 10.13+, Linux Ubuntu 18.04+)
 - **Centralized API Keys**: Manage all service keys in one place, auto-injected via JavaScript bridge
-- **Independent Shortcuts**: Each web app opens in dedicated WebView with isolated task
-- **Multi-Instance**: Run multiple apps simultaneously in separate activities
-- **Permissions**: Full support for camera, microphone, location, notifications
+- **Independent Windows**: Each web app opens in dedicated window/WebView with isolated context
+- **Multi-Instance**: Run multiple apps simultaneously in separate windows/activities
+- **System Integration**: Shortcuts (Android), System tray (Desktop), Notifications (both)
+- **Hardware Access**: Full support for camera, microphone, location, notifications, sensors
 - **Sensor Bridge**: Accelerometer and gyroscope data for activity tracking
 - **Alarm System**: Schedule exact alarms from web apps (Memory Helper integration)
-- **Cache Management**: Force fresh content on every load, settings screen for manual clearing
+- **Background Service**: Monitor alarms, appointments, activity tracking with persistent notifications
 - **Multi-Language**: French, English, Italian with auto-detection
-- **Material 3 UI**: Modern Android interface with Jetpack Compose
-- **Background Service**: Monitor alarms, appointments, activity tracking with notifications
 
-**Stack**: Kotlin 2.0, Jetpack Compose, Material 3, Hilt DI, Room Database, DataStore, WebView with JS Bridge
+**Android Stack**: Kotlin 2.0, Jetpack Compose, Material 3, Hilt DI, Room Database, DataStore, WebView with JS Bridge
+
+**Desktop Stack**: Electron 28, Node.js, electron-store (encrypted), electron-log, electron-builder
 
 **Min SDK**: 26 (Android 8.0) | **Target SDK**: 34 (Android 14)
+
+**Desktop Support**: Windows 10+, macOS 10.13+ (Universal), Linux Ubuntu 18.04+
 
 ---
 
