@@ -79,6 +79,9 @@ class GoogleDriveProvider extends CloudProvider {
         }
 
         try {
+            // Keep reference for PKCE redirect handler
+            window._ckGDProviderInstance = this;
+
             // Use Android OAuth client + custom scheme so Google accepts sensitive scopes
             const redirectUri = 'com.googleusercontent.apps.102458138422-vebatrmm68u03dl9i4vr3t9oqhvg79vr:/oauth2redirect';
             const scope = 'https://www.googleapis.com/auth/drive.file';
@@ -95,6 +98,69 @@ class GoogleDriveProvider extends CloudProvider {
 
         } catch (error) {
             console.error('[GoogleDrive] Authentication failed:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Handle PKCE redirect dispatched by Android (ckoauth_redirect event)
+     */
+    async handlePkceRedirect(detail = {}) {
+        try {
+            if (detail.error) {
+                throw new Error(`OAuth error: ${detail.error}`);
+            }
+
+            const code = detail.code;
+            const codeVerifier = detail.codeVerifier;
+            if (!code || !codeVerifier) {
+                console.warn('[GoogleDrive] Missing code or code_verifier in redirect');
+                return false;
+            }
+
+            if (!this.clientId && typeof window.CKGenericApp !== 'undefined') {
+                this.clientId = window.CKGenericApp.getApiKey('googledrive_client_id');
+            }
+            if (!this.clientId) {
+                throw new Error('Google Drive Client ID not configured');
+            }
+
+            const redirectUri = 'com.googleusercontent.apps.102458138422-vebatrmm68u03dl9i4vr3t9oqhvg79vr:/oauth2redirect';
+            const tokenEndpoint = 'https://oauth2.googleapis.com/token';
+            const body = new URLSearchParams({
+                client_id: this.clientId,
+                code,
+                code_verifier: codeVerifier,
+                redirect_uri: redirectUri,
+                grant_type: 'authorization_code'
+            });
+
+            console.log('[GoogleDrive] Exchanging code for tokens...');
+            const response = await fetch(tokenEndpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: body.toString()
+            });
+
+            const json = await response.json();
+            if (!response.ok || json.error) {
+                throw new Error(json.error_description || json.error || `Token exchange failed (${response.status})`);
+            }
+
+            this.accessToken = json.access_token;
+            this.refreshToken = json.refresh_token || null;
+            const expiresIn = parseInt(json.expires_in || '3600', 10);
+            this.tokenExpiry = new Date(Date.now() + expiresIn * 1000);
+            this.authenticated = true;
+            this.saveCredentials();
+
+            console.log('[GoogleDrive] PKCE token exchange successful');
+            return true;
+
+        } catch (error) {
+            console.error('[GoogleDrive] PKCE exchange failed:', error);
             throw error;
         }
     }
@@ -298,6 +364,23 @@ class GoogleDriveProvider extends CloudProvider {
         
         console.log('[GoogleDrive] Logged out');
     }
+}
+
+// Global listener to catch PKCE redirects dispatched by Android
+if (!window._ckGD_pkce_listener) {
+    window.addEventListener('ckoauth_redirect', async (event) => {
+        try {
+            const detail = event.detail || {};
+            if (window._ckGDProviderInstance && typeof window._ckGDProviderInstance.handlePkceRedirect === 'function') {
+                await window._ckGDProviderInstance.handlePkceRedirect(detail);
+            } else {
+                console.warn('[GoogleDrive] No provider instance available for PKCE redirect');
+            }
+        } catch (err) {
+            console.error('[GoogleDrive] Failed to handle PKCE redirect event:', err);
+        }
+    });
+    window._ckGD_pkce_listener = true;
 }
 
 /**
