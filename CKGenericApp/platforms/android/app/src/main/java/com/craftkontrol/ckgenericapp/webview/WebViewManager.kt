@@ -9,6 +9,7 @@ import android.net.Uri
 import android.os.Build
 import android.webkit.*
 import androidx.browser.customtabs.CustomTabsIntent
+import com.craftkontrol.ckgenericapp.webview.OAuthHelper.isGoogleOAuthUrl
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.craftkontrol.ckgenericapp.service.SensorMonitoringService
@@ -18,6 +19,11 @@ class CKWebViewClient(private val context: Context) : WebViewClient() {
     
     override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
         val url = request?.url?.toString() ?: return false
+        
+        Timber.d("=== shouldOverrideUrlLoading ===")
+        Timber.d("URL: $url")
+        Timber.d("isMainFrame: ${request.isForMainFrame}")
+        Timber.d("hasGesture: ${request.hasGesture()}")
         
         // Handle special URL schemes (tel:, mailto:, sms:, etc.)
         if (url.startsWith("tel:") || url.startsWith("mailto:") || url.startsWith("sms:")) {
@@ -33,10 +39,10 @@ class CKWebViewClient(private val context: Context) : WebViewClient() {
             }
         }
 
-        // Enforce Google OAuth in a secure browser (Custom Tab) to satisfy policy
+        // Enforce Google OAuth in a secure browser (Custom Tab) - keep original HTTPS redirect for WEB client
         if (isGoogleOAuthUrl(url)) {
-            Timber.d("Opening Google OAuth in Custom Tab: $url")
-            launchInCustomTab(url)
+            Timber.d("Opening Google OAuth in Custom Tab (original URL, HTTPS redirect): $url")
+            launchInCustomTab(context, url)
             return true
         }
         
@@ -77,13 +83,7 @@ class CKWebViewClient(private val context: Context) : WebViewClient() {
     }
 }
 
-private fun isGoogleOAuthUrl(url: String): Boolean {
-    return url.contains("accounts.google.com/o/oauth2", ignoreCase = true) ||
-        url.contains("accounts.google.com/signin/oauth", ignoreCase = true) ||
-        url.contains("oauth2.googleapis.com", ignoreCase = true)
-}
-
-private fun CKWebViewClient.launchInCustomTab(url: String) {
+private fun launchInCustomTab(context: Context, url: String) {
     try {
         val customTabsIntent = CustomTabsIntent.Builder().build()
         customTabsIntent.launchUrl(context, Uri.parse(url))

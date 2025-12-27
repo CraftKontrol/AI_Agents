@@ -100,18 +100,9 @@
             android:theme="@style/Theme.CKGenericApp"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:windowSoftInputMode="adjustResize"
-            android:launchMode="standard"
+            android:launchMode="singleTask"
             android:excludeFromRecents="false"
             android:persistableMode="persistNever" >
-            <!-- OAuth redirect handler for Google Drive: custom scheme deep link -->
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data
-                    android:scheme="ckgenericapp"
-                    android:host="oauth2redirect" />
-            </intent-filter>
         </activity>
         
         <!-- Activity Alias for AI Search - separate task -->
@@ -159,6 +150,25 @@
             <intent-filter>
                 <action android:name="com.craftkontrol.ckgenericapp.OPEN_APP.memory_board" />
                 <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <!-- OAuth callback interceptor for Google Drive (custom scheme) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="ckgenericapp"
+                    android:host="oauth-callback" />
+            </intent-filter>
+            <!-- OAuth callback interceptor for Google Drive (HTTPS fallback) -->
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="craftkontrol.github.io"
+                    android:path="/AI_Agents/MemoryBoardHelper/oauth-callback.html" />
             </intent-filter>
         </activity-alias>
         

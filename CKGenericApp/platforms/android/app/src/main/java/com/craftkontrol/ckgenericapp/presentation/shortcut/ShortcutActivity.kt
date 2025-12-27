@@ -1,6 +1,7 @@
 package com.craftkontrol.ckgenericapp.presentation.shortcut
 
 import com.craftkontrol.ckgenericapp.R
+import android.app.PendingIntent
 import android.content.Intent
 import android.os.Bundle
 import android.view.ViewGroup
@@ -22,6 +23,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.browser.customtabs.CustomTabsIntent
+import com.craftkontrol.ckgenericapp.webview.OAuthHelper.isGoogleOAuthUrl
 import com.craftkontrol.ckgenericapp.domain.model.WebApp
 import com.craftkontrol.ckgenericapp.presentation.main.MainViewModel
 import com.craftkontrol.ckgenericapp.presentation.theme.CKGenericAppTheme
@@ -45,7 +47,7 @@ class ShortcutActivity : ComponentActivity() {
     var pendingWebViewPermissionRequest: android.webkit.PermissionRequest? = null
     var currentWebView: WebView? = null
     private var forceReload = false
-    private var pendingOAuthRedirect: android.net.Uri? = null
+    var oauthCallbackData: String? = null
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,8 +68,8 @@ class ShortcutActivity : ComponentActivity() {
         
         renderContent()
 
-        // Handle potential OAuth redirect if activity was opened via deep link
-        handleOAuthRedirect(intent)
+        // Handle OAuth callback if activity opened via deep link from Custom Tab
+        handleOAuthCallback(intent)
 
         sensorMonitoringService.startSensors()
         startSensorEventDispatcher()
@@ -80,11 +82,11 @@ class ShortcutActivity : ComponentActivity() {
         // Check if same app or different
         val newAppId = intent.getStringExtra(EXTRA_APP_ID)
         Timber.d("ShortcutActivity onNewIntent with appId: $newAppId (current: $currentAppId)")
-
-        // Handle OAuth redirect intents (custom scheme)
-        handleOAuthRedirect(intent)
         
-        // With standard launch mode, each app gets its own instance
+        // Handle OAuth callback if intent contains callback data
+        handleOAuthCallback(intent)
+        
+        // With singleTask launch mode, return to existing instance
         // This should only be called if explicitly routing to an existing instance
         if (newAppId != null && newAppId != currentAppId) {
             currentAppId = newAppId
@@ -128,30 +130,90 @@ class ShortcutActivity : ComponentActivity() {
         sensorMonitoringService.stopSensors()
     }
 
-    private fun handleOAuthRedirect(intent: Intent?) {
-        val data = intent?.data ?: return
-        if (data.scheme == "ckgenericapp" && data.host == "oauth2redirect") {
-            Timber.d("Received OAuth redirect: $data")
-            pendingOAuthRedirect = data
-            dispatchPendingOAuthToWebView()
+    private fun handleOAuthCallback(intent: Intent?) {
+        val action = intent?.action
+        val data = intent?.data
+        
+        Timber.d("=== OAuth Callback Debug ===")
+        Timber.d("Intent action: $action")
+        Timber.d("Intent data: $data")
+        Timber.d("Intent data scheme: ${data?.scheme}")
+        Timber.d("Intent data host: ${data?.host}")
+        Timber.d("Intent data path: ${data?.path}")
+        
+        if (data == null) {
+            Timber.d("No data in intent, skipping OAuth callback")
+            return
+        }
+        
+        // Check if this is Memory Board Helper OAuth callback URL
+        if (data.scheme == "https" && data.host == "craftkontrol.github.io" && 
+            data.path?.startsWith("/AI_Agents/MemoryBoardHelper") == true) {
+            Timber.d("✓ Received OAuth callback from Custom Tab: $data")
+            
+            // Extract OAuth parameters from URL (query or fragment)
+            val params = mutableMapOf<String, String>()
+            
+            // Check query parameters first (for code flow)
+            data.queryParameterNames.forEach { key ->
+                data.getQueryParameter(key)?.let { value ->
+                    params[key] = value
+                }
+            }
+            
+            // Check fragment (for token flow)
+            data.fragment?.let { fragment ->
+                fragment.split("&").forEach { pair ->
+                    val parts = pair.split("=", limit = 2)
+                    if (parts.size == 2) {
+                        params[parts[0]] = parts[1]
+                    }
+                }
+            }
+            
+            // Store OAuth data as JSON
+            val paramsJson = params.entries.joinToString(",") { (key, value) ->
+                "\"$key\":\"${value.replace("\"", "\\\\\"")}\""
+            }
+            oauthCallbackData = "{$paramsJson}"
+            
+            Timber.d("Extracted OAuth params: $oauthCallbackData")
+            dispatchOAuthCallbackToWebView()
         }
     }
 
-    private fun dispatchPendingOAuthToWebView() {
-        val data = pendingOAuthRedirect ?: return
-        val code = (data.getQueryParameter("code") ?: "").replace("\"", "\\\"")
-        val state = (data.getQueryParameter("state") ?: "").replace("\"", "\\\"")
-        val error = (data.getQueryParameter("error") ?: "").replace("\"", "\\\"")
-
+    fun dispatchOAuthCallbackToWebView() {
+        val callbackJson = oauthCallbackData
+        val webView = currentWebView
+        
+        Timber.d("=== Dispatch OAuth to WebView ===")
+        Timber.d("Callback data: $callbackJson")
+        Timber.d("WebView exists: ${webView != null}")
+        Timber.d("WebView URL: ${webView?.url}")
+        
+        if (callbackJson == null) {
+            Timber.d("No callback data to dispatch")
+            return
+        }
+        if (webView == null) {
+            Timber.d("No WebView available")
+            return
+        }
+        
         val js = """
             (function() {
-                const detail = { code: "$code", state: "$state", error: "$error" };
-                window.dispatchEvent(new CustomEvent('ckoauth_redirect', { detail }));
+                // Notify WebView that OAuth callback was received with parsed params
+                const params = $callbackJson;
+                const event = new CustomEvent('ckoauth_callback', { 
+                    detail: params
+                });
+                window.dispatchEvent(event);
+                console.log('CKGenericApp: OAuth callback dispatched from Custom Tab', params);
             })();
         """.trimIndent()
-
-        currentWebView?.evaluateJavascript(js, null)
-        pendingOAuthRedirect = null
+        
+        webView.evaluateJavascript(js, null)
+        oauthCallbackData = null
     }
 
     private fun startSensorEventDispatcher() {
@@ -291,8 +353,10 @@ private fun ShortcutScreen(
                     permissionLauncher = permissionLauncher,
                     onWebViewCreated = { webView -> 
                         activity.currentWebView = webView
-                        // If an OAuth redirect arrived before WebView was ready, dispatch it now
-                        activity.dispatchPendingOAuthToWebView()
+                        // If OAuth callback arrived before WebView ready, dispatch it now
+                        if (activity.oauthCallbackData != null) {
+                            activity.dispatchOAuthCallbackToWebView()
+                        }
                     }
                 )
             }
@@ -462,6 +526,11 @@ private class ApiKeyInjectingWebViewClient(
         val url = request?.url?.toString() ?: return false
         val context = view?.context ?: return false
         
+        Timber.d("=== ApiKeyInjectingWebViewClient shouldOverrideUrlLoading ===")
+        Timber.d("URL: $url")
+        Timber.d("isMainFrame: ${request.isForMainFrame}")
+        Timber.d("hasGesture: ${request.hasGesture()}")
+        
         // Handle special URL schemes (tel:, mailto:, sms:, etc.)
         if (url.startsWith("tel:") || url.startsWith("mailto:") || url.startsWith("sms:")) {
             try {
@@ -476,9 +545,9 @@ private class ApiKeyInjectingWebViewClient(
             }
         }
 
-        // Enforce Google OAuth in a secure browser (Custom Tab)
+        // Enforce Google OAuth in a secure browser (Custom Tab) - keep original HTTPS redirect for WEB client
         if (isGoogleOAuthUrl(url)) {
-            Timber.d("Opening Google OAuth in Custom Tab: $url")
+            Timber.d("Opening Google OAuth in Custom Tab (original URL, HTTPS redirect): $url")
             launchInCustomTab(context, url)
             return true
         }
@@ -563,8 +632,27 @@ private fun isGoogleOAuthUrl(url: String): Boolean {
 
 private fun launchInCustomTab(context: android.content.Context, url: String) {
     try {
-        val customTabsIntent = CustomTabsIntent.Builder().build()
+        // Create intent to return to this activity after OAuth
+        val returnIntent = Intent(context, context.javaClass).apply {
+            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            context, 
+            0, 
+            returnIntent, 
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        
+        val customTabsIntent = CustomTabsIntent.Builder()
+            .setStartAnimations(context, android.R.anim.fade_in, android.R.anim.fade_out)
+            .setExitAnimations(context, android.R.anim.fade_in, android.R.anim.fade_out)
+            .build()
+        
+        customTabsIntent.intent.putExtra(Intent.EXTRA_REFERRER, 
+            android.net.Uri.parse("android-app://${context.packageName}"))
+        
         customTabsIntent.launchUrl(context, android.net.Uri.parse(url))
+        Timber.d("Custom Tab launched for OAuth with return intent")
     } catch (e: Exception) {
         Timber.e(e, "Failed to open Custom Tab for OAuth, falling back to browser")
         try {
