@@ -401,11 +401,7 @@ function openWebApp(appId) {
     scraperapi: store.get('apiKeys.scraperapi', ''),
     brightdata: store.get('apiKeys.brightdata', ''),
     scrapfly: store.get('apiKeys.scrapfly', ''),
-    googledrive_client_id: store.get('apiKeys.googledrive_client_id', ''),
-    onedrive_client_id: store.get('apiKeys.onedrive_client_id', ''),
-    dropbox_client_id: store.get('apiKeys.dropbox_client_id', ''),
-    icloud_container_id: store.get('apiKeys.icloud_container_id', ''),
-    icloud_api_token: store.get('apiKeys.icloud_api_token', '')
+    // Cloud sync keys removed from desktop client
   };
   
   // Create new window
@@ -465,9 +461,7 @@ function injectAPIKeys(webContents) {
     scraperapi: store.get('apiKeys.scraperapi', ''),
     brightdata: store.get('apiKeys.brightdata', ''),
     scrapfly: store.get('apiKeys.scrapfly', ''),
-    googledrive_client_id: store.get('apiKeys.googledrive_client_id', ''),
-    icloud_container_id: store.get('apiKeys.icloud_container_id', ''),
-    icloud_api_token: store.get('apiKeys.icloud_api_token', '')
+    // Cloud sync keys removed from desktop client
   };
   
   // Fallback: if google_stt is empty but google_tts has a value, use google_tts for both
@@ -554,12 +548,7 @@ function registerIPCHandlers() {
       scrapingbee: store.get('apiKeys.scrapingbee', ''),
       scraperapi: store.get('apiKeys.scraperapi', ''),
       brightdata: store.get('apiKeys.brightdata', ''),
-      scrapfly: store.get('apiKeys.scrapfly', ''),
-      googledrive_client_id: store.get('apiKeys.googledrive_client_id', ''),
-      onedrive_client_id: store.get('apiKeys.onedrive_client_id', ''),
-      dropbox_client_id: store.get('apiKeys.dropbox_client_id', ''),
-      icloud_container_id: store.get('apiKeys.icloud_container_id', ''),
-      icloud_api_token: store.get('apiKeys.icloud_api_token', '')
+      scrapfly: store.get('apiKeys.scrapfly', '')
     };
   });
   
@@ -631,12 +620,7 @@ function registerIPCHandlers() {
           scrapingbee: store.get('apiKeys.scrapingbee', ''),
           scraperapi: store.get('apiKeys.scraperapi', ''),
           brightdata: store.get('apiKeys.brightdata', ''),
-          scrapfly: store.get('apiKeys.scrapfly', ''),
-          googledrive_client_id: store.get('apiKeys.googledrive_client_id', ''),
-          onedrive_client_id: store.get('apiKeys.onedrive_client_id', ''),
-          dropbox_client_id: store.get('apiKeys.dropbox_client_id', ''),
-          icloud_container_id: store.get('apiKeys.icloud_container_id', ''),
-          icloud_api_token: store.get('apiKeys.icloud_api_token', '')
+          scrapfly: store.get('apiKeys.scrapfly', '')
         },
         settings: {
           monitoringEnabled: store.get('monitoringEnabled', true),
