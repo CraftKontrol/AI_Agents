@@ -1268,17 +1268,29 @@ class TutorialSystem {
                 const provider = localStorage.getItem('ttsProvider') || 'browser';
                 let savedApiKey = null;
                 
-                if (provider === 'deepgram') {
-                    savedApiKey = localStorage.getItem('apiKey_deepgramtts');
-                } else if (provider === 'google') {
-                    savedApiKey = localStorage.getItem('googleTTSApiKey');
+                // Try CKDesktop first (Electron app)
+                if (window.CKDesktop && window.CKDesktop.apiKeys) {
+                    if (provider === 'deepgram') {
+                        savedApiKey = window.CKDesktop.apiKeys.deepgramtts;
+                    } else if (provider === 'google') {
+                        savedApiKey = window.CKDesktop.apiKeys.google_tts;
+                    }
+                }
+                
+                // Fallback to localStorage (web app)
+                if (!savedApiKey) {
+                    if (provider === 'deepgram') {
+                        savedApiKey = localStorage.getItem('apiKey_deepgramtts');
+                    } else if (provider === 'google') {
+                        savedApiKey = localStorage.getItem('googleTTSApiKey');
+                    }
                 }
                 
                 if (savedApiKey) {
                     const apiKeyInput = document.getElementById('tutorialTtsApiKey');
                     if (apiKeyInput) {
                         apiKeyInput.value = savedApiKey;
-                        console.log('[Tutorial] Pre-filled TTS API key from localStorage');
+                        console.log('[Tutorial] Pre-filled TTS API key');
                     }
                 }
             }, 100);
@@ -1287,12 +1299,19 @@ class TutorialSystem {
         // Load saved Mistral API key if this is Mistral API key step
         if (step.name === 'mistral_api_key') {
             setTimeout(() => {
-                const savedApiKey = localStorage.getItem('apiKey_mistral');
+                // Try CKDesktop first (Electron app)
+                let savedApiKey = window.CKDesktop?.apiKeys?.mistral;
+                
+                // Fallback to localStorage (web app)
+                if (!savedApiKey) {
+                    savedApiKey = localStorage.getItem('apiKey_mistral');
+                }
+                
                 if (savedApiKey) {
                     const apiKeyInput = document.getElementById('tutorialMistralApiKey');
                     if (apiKeyInput) {
                         apiKeyInput.value = savedApiKey;
-                        console.log('[Tutorial] Pre-filled Mistral API key from localStorage');
+                        console.log('[Tutorial] Pre-filled Mistral API key');
                     }
                 }
             }, 100);

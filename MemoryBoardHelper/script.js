@@ -6196,16 +6196,29 @@ function getLocalizedText(key) {
 
 // API Keys Management
 async function loadSavedApiKeys() {
+    // Load API keys with proper mapping for CKDesktop/CKAndroid
     const mistralKey = getApiKey('mistral', 'mistralApiKey');
     const googleSTTKey = getApiKey('google_stt', 'googleSTTApiKey');
     const googleTTSKey = getApiKey('google_tts', 'googleTTSApiKey');
     const deepgramKey = getApiKey('deepgram', 'apiKey_deepgram');
     const deepgramTtsKey = getApiKey('deepgramtts', 'apiKey_deepgramtts');
     const tavilyKey = getApiKey('tavily', 'apiKey_tavily');
+    const openweathermapKey = getApiKey('openweathermap', 'apiKey_openweathermap');
+    const weatherapiKey = getApiKey('weatherapi', 'apiKey_weatherapi');
     
-    if (mistralKey) document.getElementById('mistralApiKey').value = mistralKey;
-    if (googleSTTKey) document.getElementById('googleSTTApiKey').value = googleSTTKey;
-    if (googleTTSKey) document.getElementById('googleTTSApiKey').value = googleTTSKey;
+    // Update UI with loaded keys
+    if (mistralKey) {
+        const input = document.getElementById('mistralApiKey');
+        if (input) input.value = mistralKey;
+    }
+    if (googleSTTKey) {
+        const input = document.getElementById('googleSTTApiKey');
+        if (input) input.value = googleSTTKey;
+    }
+    if (googleTTSKey) {
+        const input = document.getElementById('googleTTSApiKey');
+        if (input) input.value = googleTTSKey;
+    }
     
     const deepgramInput = document.getElementById('apiKey_deepgram');
     if (deepgramInput && deepgramKey) deepgramInput.value = deepgramKey;
@@ -6216,16 +6229,26 @@ async function loadSavedApiKeys() {
     const tavilyInput = document.getElementById('apiKey_tavily');
     if (tavilyInput && tavilyKey) tavilyInput.value = tavilyKey;
     
-    const openweathermapKey = getApiKey('openweathermap', 'apiKey_openweathermap');
     const openweathermapInput = document.getElementById('apiKey_openweathermap');
     if (openweathermapInput && openweathermapKey) openweathermapInput.value = openweathermapKey;
     
-    const weatherapiKey = getApiKey('weatherapi', 'apiKey_weatherapi');
     const weatherapiInput = document.getElementById('apiKey_weatherapi');
     if (weatherapiInput && weatherapiKey) weatherapiInput.value = weatherapiKey;
     
     const rememberKeys = localStorage.getItem('rememberApiKeys') === 'true';
-    document.getElementById('rememberKeys').checked = rememberKeys;
+    const rememberKeysCheckbox = document.getElementById('rememberKeys');
+    if (rememberKeysCheckbox) rememberKeysCheckbox.checked = rememberKeys;
+    
+    console.log('[API] Keys loaded:', {
+        mistral: !!mistralKey,
+        googleSTT: !!googleSTTKey,
+        googleTTS: !!googleTTSKey,
+        deepgram: !!deepgramKey,
+        deepgramTts: !!deepgramTtsKey,
+        tavily: !!tavilyKey,
+        openweathermap: !!openweathermapKey,
+        weatherapi: !!weatherapiKey
+    });
 }
 
 async function saveApiKeys() {
