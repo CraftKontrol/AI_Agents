@@ -592,17 +592,8 @@ fun ApiKeysSection(
             onVisibilityToggle = { showGoogleTts = !showGoogleTts },
             onSave = { viewModel.saveApiKey("google_tts", googleTtsKey) }
         )
-        
-        Spacer(modifier = Modifier.height(12.dp))        
-        // CLOUD SYNC
-        Text(
-            text = "Cloud Sync",
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.primary
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        // Cloud sync UI removed on Android; web clients manage OAuth
-        Spacer(modifier = Modifier.height(16.dp))
+
+        Spacer(modifier = Modifier.height(12.dp))
         ApiKeyField(
             label = "Google Cloud STT (Memory Board)",
             value = googleSttKey,

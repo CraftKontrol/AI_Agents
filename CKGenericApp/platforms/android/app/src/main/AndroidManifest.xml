@@ -96,13 +96,23 @@
         <!-- Shortcut Activity - Base activity (not exported directly) -->
         <activity
             android:name=".presentation.shortcut.ShortcutActivity"
-            android:exported="false"
+            android:exported="true"
             android:theme="@style/Theme.CKGenericApp"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:windowSoftInputMode="adjustResize"
             android:launchMode="standard"
             android:excludeFromRecents="false"
-            android:persistableMode="persistNever" />
+            android:persistableMode="persistNever" >
+            <!-- OAuth redirect handler for Google Drive: custom scheme deep link -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="ckgenericapp"
+                    android:host="oauth2redirect" />
+            </intent-filter>
+        </activity>
         
         <!-- Activity Alias for AI Search - separate task -->
         <activity-alias

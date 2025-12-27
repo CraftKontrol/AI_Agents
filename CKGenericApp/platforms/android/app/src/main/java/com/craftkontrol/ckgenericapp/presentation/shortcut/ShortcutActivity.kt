@@ -21,6 +21,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.browser.customtabs.CustomTabsIntent
 import com.craftkontrol.ckgenericapp.domain.model.WebApp
 import com.craftkontrol.ckgenericapp.presentation.main.MainViewModel
 import com.craftkontrol.ckgenericapp.presentation.theme.CKGenericAppTheme
@@ -44,6 +45,7 @@ class ShortcutActivity : ComponentActivity() {
     var pendingWebViewPermissionRequest: android.webkit.PermissionRequest? = null
     var currentWebView: WebView? = null
     private var forceReload = false
+    private var pendingOAuthRedirect: android.net.Uri? = null
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -64,6 +66,9 @@ class ShortcutActivity : ComponentActivity() {
         
         renderContent()
 
+        // Handle potential OAuth redirect if activity was opened via deep link
+        handleOAuthRedirect(intent)
+
         sensorMonitoringService.startSensors()
         startSensorEventDispatcher()
     }
@@ -75,6 +80,9 @@ class ShortcutActivity : ComponentActivity() {
         // Check if same app or different
         val newAppId = intent.getStringExtra(EXTRA_APP_ID)
         Timber.d("ShortcutActivity onNewIntent with appId: $newAppId (current: $currentAppId)")
+
+        // Handle OAuth redirect intents (custom scheme)
+        handleOAuthRedirect(intent)
         
         // With standard launch mode, each app gets its own instance
         // This should only be called if explicitly routing to an existing instance
@@ -118,6 +126,32 @@ class ShortcutActivity : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         sensorMonitoringService.stopSensors()
+    }
+
+    private fun handleOAuthRedirect(intent: Intent?) {
+        val data = intent?.data ?: return
+        if (data.scheme == "ckgenericapp" && data.host == "oauth2redirect") {
+            Timber.d("Received OAuth redirect: $data")
+            pendingOAuthRedirect = data
+            dispatchPendingOAuthToWebView()
+        }
+    }
+
+    private fun dispatchPendingOAuthToWebView() {
+        val data = pendingOAuthRedirect ?: return
+        val code = (data.getQueryParameter("code") ?: "").replace("\"", "\\\"")
+        val state = (data.getQueryParameter("state") ?: "").replace("\"", "\\\"")
+        val error = (data.getQueryParameter("error") ?: "").replace("\"", "\\\"")
+
+        val js = """
+            (function() {
+                const detail = { code: "$code", state: "$state", error: "$error" };
+                window.dispatchEvent(new CustomEvent('ckoauth_redirect', { detail }));
+            })();
+        """.trimIndent()
+
+        currentWebView?.evaluateJavascript(js, null)
+        pendingOAuthRedirect = null
     }
 
     private fun startSensorEventDispatcher() {
@@ -257,6 +291,8 @@ private fun ShortcutScreen(
                     permissionLauncher = permissionLauncher,
                     onWebViewCreated = { webView -> 
                         activity.currentWebView = webView
+                        // If an OAuth redirect arrived before WebView was ready, dispatch it now
+                        activity.dispatchPendingOAuthToWebView()
                     }
                 )
             }
@@ -439,24 +475,22 @@ private class ApiKeyInjectingWebViewClient(
                 return false
             }
         }
+
+        // Enforce Google OAuth in a secure browser (Custom Tab)
+        if (isGoogleOAuthUrl(url)) {
+            Timber.d("Opening Google OAuth in Custom Tab: $url")
+            launchInCustomTab(context, url)
+            return true
+        }
         
-        // Check if this is a request that should open in external browser
-        // This handles target="_blank" links and new window requests
+        // Keep OAuth/new-window flows (target="_blank" or window.open) inside the same
+        // WebView so session state + injected API keys stay available during Google Drive auth.
         val isMainFrame = request.isForMainFrame
         val hasGesture = request.hasGesture()
-        
-        // If it's not the main frame (e.g., target="_blank"), open in external browser
-        if (!isMainFrame || hasGesture) {
-            try {
-                val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                context.startActivity(intent)
-                Timber.d("Opening URL in external browser: $url")
-                return true
-            } catch (e: Exception) {
-                Timber.e(e, "Failed to open URL in external browser: $url")
-                return false
-            }
+        if ((!isMainFrame || hasGesture) && view != null) {
+            Timber.d("Handling new-window request inside WebView: $url")
+            view.loadUrl(url)
+            return true
         }
         
         // Allow same-page navigation within WebView
@@ -517,6 +551,28 @@ private class ApiKeyInjectingWebViewClient(
         super.onReceivedError(view, request, error)
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
             Timber.e("WebView error: ${error?.description}")
+        }
+    }
+}
+
+private fun isGoogleOAuthUrl(url: String): Boolean {
+    return url.contains("accounts.google.com/o/oauth2", ignoreCase = true) ||
+        url.contains("accounts.google.com/signin/oauth", ignoreCase = true) ||
+        url.contains("oauth2.googleapis.com", ignoreCase = true)
+}
+
+private fun launchInCustomTab(context: android.content.Context, url: String) {
+    try {
+        val customTabsIntent = CustomTabsIntent.Builder().build()
+        customTabsIntent.launchUrl(context, android.net.Uri.parse(url))
+    } catch (e: Exception) {
+        Timber.e(e, "Failed to open Custom Tab for OAuth, falling back to browser")
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(intent)
+        } catch (ex: Exception) {
+            Timber.e(ex, "Failed to open browser for OAuth")
         }
     }
 }

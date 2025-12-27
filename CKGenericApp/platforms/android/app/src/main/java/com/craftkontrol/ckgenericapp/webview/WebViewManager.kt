@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.webkit.*
+import androidx.browser.customtabs.CustomTabsIntent
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.craftkontrol.ckgenericapp.service.SensorMonitoringService
@@ -31,24 +32,23 @@ class CKWebViewClient(private val context: Context) : WebViewClient() {
                 return false
             }
         }
+
+        // Enforce Google OAuth in a secure browser (Custom Tab) to satisfy policy
+        if (isGoogleOAuthUrl(url)) {
+            Timber.d("Opening Google OAuth in Custom Tab: $url")
+            launchInCustomTab(url)
+            return true
+        }
         
-        // Check if this is a request that should open in external browser
-        // This handles target="_blank" links and external URLs
+        // For OAuth/new-window flows (target="_blank" or window.open) keep navigation inside
+        // the current WebView so session/API keys remain available. Only special schemes above
+        // are allowed to leave the WebView.
         val isMainFrame = request.isForMainFrame
         val hasGesture = request.hasGesture()
-        
-        // If it's not the main frame (e.g., target="_blank"), open in browser
-        if (!isMainFrame || hasGesture) {
-            try {
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                context.startActivity(intent)
-                Timber.d("Opening URL in external browser: $url")
-                return true
-            } catch (e: Exception) {
-                Timber.e(e, "Failed to open URL in external browser: $url")
-                return false
-            }
+        if ((!isMainFrame || hasGesture) && view != null) {
+            Timber.d("Handling new-window request inside WebView: $url")
+            view.loadUrl(url)
+            return true
         }
         
         // Allow same-page navigation within WebView
@@ -73,6 +73,28 @@ class CKWebViewClient(private val context: Context) : WebViewClient() {
         super.onReceivedError(view, request, error)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             Timber.e("WebView error: ${error?.description}")
+        }
+    }
+}
+
+private fun isGoogleOAuthUrl(url: String): Boolean {
+    return url.contains("accounts.google.com/o/oauth2", ignoreCase = true) ||
+        url.contains("accounts.google.com/signin/oauth", ignoreCase = true) ||
+        url.contains("oauth2.googleapis.com", ignoreCase = true)
+}
+
+private fun CKWebViewClient.launchInCustomTab(url: String) {
+    try {
+        val customTabsIntent = CustomTabsIntent.Builder().build()
+        customTabsIntent.launchUrl(context, Uri.parse(url))
+    } catch (e: Exception) {
+        Timber.e(e, "Failed to open Custom Tab for OAuth, falling back to browser")
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(intent)
+        } catch (ex: Exception) {
+            Timber.e(ex, "Failed to open browser for OAuth")
         }
     }
 }
