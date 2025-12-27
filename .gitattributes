@@ -1,0 +1,5 @@
+# GitHub Linguist language hints for AI_Agents
+*.html linguist-language=HTML
+*.css linguist-language=CSS
+*.js linguist-language=JavaScript
+*.md linguist-language=Markdown
