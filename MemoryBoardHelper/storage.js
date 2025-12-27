@@ -205,6 +205,12 @@ async function addToStore(storeName, data) {
 
         request.onsuccess = () => {
             console.log(`[Storage] Added to ${storeName}:`, request.result);
+            
+            // Trigger cloud sync on data change
+            if (window.storageSyncEngine) {
+                window.storageSyncEngine.scheduleSync();
+            }
+            
             resolve(request.result);
         };
 
@@ -229,6 +235,12 @@ async function updateInStore(storeName, data) {
 
         request.onsuccess = () => {
             console.log(`[Storage] Updated in ${storeName}:`, data.id);
+            
+            // Trigger cloud sync on data change
+            if (window.storageSyncEngine) {
+                window.storageSyncEngine.scheduleSync();
+            }
+            
             resolve(request.result);
         };
 
@@ -299,6 +311,12 @@ async function deleteFromStore(storeName, id) {
 
         request.onsuccess = () => {
             console.log(`[Storage] Deleted from ${storeName}:`, id);
+            
+            // Trigger cloud sync on data change
+            if (window.storageSyncEngine) {
+                window.storageSyncEngine.scheduleSync();
+            }
+            
             resolve();
         };
 

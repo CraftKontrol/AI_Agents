@@ -1060,6 +1060,237 @@
             </div>
         </section>
 
+        <!-- Cloud Sync Settings -->
+        <section class="cloud-sync-section">
+            <div style="display: flex; gap: 10px; justify-content: space-between; width: 100%; align-items: center;">
+                <h3>
+                    <span class="material-symbols-outlined">cloud_sync</span>
+                    <span id="cloudSyncTitle">Synchronisation Cloud</span>
+                </h3>
+                <button class="section-toggle" onclick="toggleSection('cloudSyncContent')" id="cloudSyncToggleBtn">
+                    <span class="material-symbols-outlined">expand_more</span>
+                </button>
+            </div>
+            
+            <div id="cloudSyncContent" class="section-content" style="display: none;">
+                <div class="setting-card">
+                    <h4>
+                        <span class="material-symbols-outlined">cloud</span>
+                        <span id="providerLabel">Fournisseur Cloud</span>
+                    </h4>
+                    
+                    <div class="input-group">
+                        <label for="cloudProvider">
+                            <span class="material-symbols-outlined">storage</span>
+                            <span id="chooseProviderLabel">Choisir un fournisseur</span>
+                        </label>
+                        <select id="cloudProvider" onchange="onCloudProviderChange()">
+                            <option value="none" id="providerNone">Aucun (désactivé)</option>
+                            <option value="googledrive" id="providerGoogleDrive">Google Drive</option>
+                            <option value="onedrive" id="providerOneDrive">OneDrive</option>
+                            <option value="dropbox" id="providerDropbox">Dropbox</option>
+                            <option value="icloud" id="provideriCloud">iCloud</option>
+                            <option value="webdav" id="providerWebDAV">WebDAV (Nextcloud/ownCloud)</option>
+                        </select>
+                    </div>
+
+                    <!-- Sync Status -->
+                    <div class="sync-status-card" id="syncStatusCard">
+                        <div class="sync-status-header">
+                            <span class="material-symbols-outlined" id="syncStatusIcon">cloud_off</span>
+                            <span id="syncStatusText">Non synchronisé</span>
+                        </div>
+                        <div class="sync-status-details" id="syncStatusDetails">
+                            <p id="lastSyncText">Dernière sync: Jamais</p>
+                            <p id="deviceIdText">Device ID: -</p>
+                        </div>
+                    </div>
+
+                    <!-- Provider-specific settings -->
+                    <div id="providerSettings" style="display: none;">
+                        <!-- Google Drive Settings -->
+                        <div id="googleDriveSettings" style="display: none;">
+                            <div class="setting-card">
+                                <p class="setting-description">
+                                    <span class="material-symbols-outlined">info</span>
+                                    Google Drive nécessite un Client ID OAuth2. 
+                                    Configurez-le dans CKGenericApp (Android) ou dans les paramètres API.
+                                </p>
+                                <div class="input-group">
+                                    <label for="googleDriveClientId">
+                                        <span class="material-symbols-outlined">key</span>
+                                        Client ID Google Drive (OAuth2)
+                                    </label>
+                                    <input type="text" id="googleDriveClientId" placeholder="xxxxxxxxxxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com">
+                                </div>
+                                <div class="auth-status" id="googleDriveAuthStatus">
+                                    <span class="material-symbols-outlined">lock</span>
+                                    <span id="googleDriveAuthText">Non authentifié</span>
+                                </div>
+                                <button class="btn-primary" onclick="authenticateGoogleDrive()" id="googleDriveAuthBtn">
+                                    <span class="material-symbols-outlined">login</span>
+                                    Se connecter à Google Drive
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- OneDrive Settings -->
+                        <div id="oneDriveSettings" style="display: none;">
+                            <div class="setting-card">
+                                <p class="setting-description">
+                                    <span class="material-symbols-outlined">info</span>
+                                    OneDrive nécessite un Client ID OAuth2 Microsoft.
+                                </p>
+                                <div class="input-group">
+                                    <label for="oneDriveClientId">
+                                        <span class="material-symbols-outlined">key</span>
+                                        Client ID OneDrive (App Registration)
+                                    </label>
+                                    <input type="text" id="oneDriveClientId" placeholder="00000000-0000-0000-0000-000000000000">
+                                </div>
+                                <div class="auth-status" id="oneDriveAuthStatus">
+                                    <span class="material-symbols-outlined">lock</span>
+                                    <span id="oneDriveAuthText">Non authentifié</span>
+                                </div>
+                                <button class="btn-primary" onclick="authenticateOneDrive()" id="oneDriveAuthBtn">
+                                    <span class="material-symbols-outlined">login</span>
+                                    Se connecter à OneDrive
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Dropbox Settings -->
+                        <div id="dropboxSettings" style="display: none;">
+                            <div class="setting-card">
+                                <p class="setting-description">
+                                    <span class="material-symbols-outlined">info</span>
+                                    Dropbox nécessite un App Key OAuth2.
+                                </p>
+                                <div class="input-group">
+                                    <label for="dropboxClientId">
+                                        <span class="material-symbols-outlined">key</span>
+                                        App Key Dropbox
+                                    </label>
+                                    <input type="text" id="dropboxClientId" placeholder="abcd1234xyz...">
+                                </div>
+                                <div class="auth-status" id="dropboxAuthStatus">
+                                    <span class="material-symbols-outlined">lock</span>
+                                    <span id="dropboxAuthText">Non authentifié</span>
+                                </div>
+                                <button class="btn-primary" onclick="authenticateDropbox()" id="dropboxAuthBtn">
+                                    <span class="material-symbols-outlined">login</span>
+                                    Se connecter à Dropbox
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- iCloud Settings -->
+                        <div id="icloudSettings" style="display: none;">
+                            <div class="setting-card">
+                                <p class="setting-description">
+                                    <span class="material-symbols-outlined">info</span>
+                                    iCloud utilise CloudKit JS (base publique). Fournissez un Container ID et un API Token (environment production ou development).
+                                </p>
+                                <div class="input-group">
+                                    <label for="icloudContainerId">
+                                        <span class="material-symbols-outlined">link</span>
+                                        Container ID (ex: iCloud.com.example.app)
+                                    </label>
+                                    <input type="text" id="icloudContainerId" placeholder="iCloud.com.example.app">
+                                </div>
+                                <div class="input-group">
+                                    <label for="icloudApiToken">
+                                        <span class="material-symbols-outlined">key</span>
+                                        API Token (CloudKit JS)
+                                    </label>
+                                    <input type="password" id="icloudApiToken" placeholder="ck...">
+                                </div>
+                                <div class="input-group">
+                                    <label for="icloudEnvironment">
+                                        <span class="material-symbols-outlined">cloud</span>
+                                        Environnement
+                                    </label>
+                                    <select id="icloudEnvironment">
+                                        <option value="production">Production</option>
+                                        <option value="development">Development</option>
+                                    </select>
+                                </div>
+                                <div class="auth-status" id="icloudAuthStatus">
+                                    <span class="material-symbols-outlined">lock</span>
+                                    <span id="icloudAuthText">Non configuré</span>
+                                </div>
+                                <button class="btn-primary" onclick="authenticateICloud()" id="icloudAuthBtn">
+                                    <span class="material-symbols-outlined">login</span>
+                                    Connecter iCloud
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- WebDAV Settings -->
+                        <div id="webdavSettings" style="display: none;">
+                            <div class="setting-card">
+                                <p class="setting-description">
+                                    <span class="material-symbols-outlined">info</span>
+                                    WebDAV fonctionne avec Nextcloud, ownCloud, et autres serveurs compatibles.
+                                </p>
+                                <div class="input-group">
+                                    <label for="webdavUrl">
+                                        <span class="material-symbols-outlined">link</span>
+                                        URL du serveur WebDAV
+                                    </label>
+                                    <input type="url" id="webdavUrl" placeholder="https://cloud.example.com/remote.php/dav/files/username/">
+                                </div>
+                                <div class="input-group">
+                                    <label for="webdavUsername">
+                                        <span class="material-symbols-outlined">person</span>
+                                        Nom d'utilisateur
+                                    </label>
+                                    <input type="text" id="webdavUsername" placeholder="username">
+                                </div>
+                                <div class="input-group">
+                                    <label for="webdavPassword">
+                                        <span class="material-symbols-outlined">key</span>
+                                        Mot de passe / App Password
+                                    </label>
+                                    <input type="password" id="webdavPassword" placeholder="••••••••">
+                                </div>
+                                <div class="auth-status" id="webdavAuthStatus">
+                                    <span class="material-symbols-outlined">lock</span>
+                                    <span id="webdavAuthText">Non configuré</span>
+                                </div>
+                                <button class="btn-primary" onclick="authenticateWebDAV()" id="webdavAuthBtn">
+                                    <span class="material-symbols-outlined">login</span>
+                                    Tester & Connecter
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sync Controls -->
+                    <div id="syncControls" style="display: none;">
+                        <div class="setting-card">
+                            <label class="setting-checkbox-label">
+                                <input type="checkbox" id="autoSyncEnabled" onchange="toggleAutoSync()" checked />
+                                <span id="autoSyncLabel">Synchronisation automatique (10s)</span>
+                            </label>
+                            <p class="setting-hint" id="autoSyncHint">Synchronise automatiquement toutes les 10 secondes</p>
+                        </div>
+
+                        <div class="button-group">
+                            <button class="btn-secondary" onclick="performManualSync()" id="manualSyncBtn">
+                                <span class="material-symbols-outlined">sync</span>
+                                Synchroniser maintenant
+                            </button>
+                            <button class="btn-danger" onclick="disconnectCloudProvider()" id="disconnectBtn">
+                                <span class="material-symbols-outlined">cloud_off</span>
+                                Déconnecter
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- Wake Word Configuration Section -->
         <section class="wake-word-section">
             <div style="display: flex; gap: 10px; justify-content: space-between; width: 100%; align-items: center;">
@@ -1688,6 +1919,8 @@
     <script src="gps-navigation.js"></script>
     <script src="location-manager.js"></script>
     <script src="weather.js"></script>
+    <script src="storage-sync.js"></script>
+    <script src="cloud-providers.js"></script>
     <script src="action-wrapper.js?v=20251224-1600"></script>
     <script src="tutorial-system.js"></script>
     <script src="audio-visualizer-kawaii.js"></script>

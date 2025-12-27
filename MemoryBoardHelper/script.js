@@ -2449,6 +2449,9 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Load wake word settings
     loadWakeWordSettings();
     
+    // Initialize Cloud Sync
+    loadCloudSyncSettings();
+    
     // Load sound system settings
     loadSoundSystemSettings();
     initSoundSystemUIListeners();
@@ -6799,6 +6802,9 @@ function openSettingsModal() {
         document.getElementById('settingsHapticEnabled').checked = soundSettings.hapticEnabled;
     }
 
+    // Load Cloud Sync settings
+    loadCloudSyncSettings();
+
     document.getElementById('settingsModal').style.display = 'flex';
 }
 
@@ -6860,6 +6866,616 @@ async function restartTutorial() {
         // Reload page to start tutorial
         location.reload();
     }
+}
+
+// === Cloud Sync Functions ===
+
+/**
+ * Load cloud sync settings
+ */
+function loadCloudSyncSettings() {
+    const provider = localStorage.getItem('cloudProvider') || 'none';
+    const providerSelect = document.getElementById('cloudProvider');
+    if (providerSelect) {
+        providerSelect.value = provider;
+    }
+
+    // Update UI based on provider
+    onCloudProviderChange();
+
+    // Update sync status
+    updateSyncStatus();
+
+    // Set auto-sync checkbox
+    if (window.storageSyncEngine) {
+        const status = window.storageSyncEngine.getStatus();
+        const autoSyncCheckbox = document.getElementById('autoSyncEnabled');
+        if (autoSyncCheckbox) {
+            autoSyncCheckbox.checked = status.autoSync;
+        }
+    }
+}
+
+/**
+ * Called when cloud provider dropdown changes
+ */
+function onCloudProviderChange() {
+    const provider = document.getElementById('cloudProvider').value;
+    localStorage.setItem('cloudProvider', provider);
+
+    // Hide all provider-specific settings
+    document.getElementById('providerSettings').style.display = 'none';
+    document.getElementById('googleDriveSettings').style.display = 'none';
+    document.getElementById('oneDriveSettings').style.display = 'none';
+    document.getElementById('dropboxSettings').style.display = 'none';
+    document.getElementById('icloudSettings').style.display = 'none';
+    document.getElementById('webdavSettings').style.display = 'none';
+
+    // Hide sync controls by default
+    document.getElementById('syncControls').style.display = 'none';
+
+    if (provider === 'none') {
+        // Disable sync
+        if (window.storageSyncEngine) {
+            window.storageSyncEngine.disableSync();
+        }
+        updateSyncStatus();
+        return;
+    }
+
+    // Show provider-specific settings
+    document.getElementById('providerSettings').style.display = 'block';
+
+    if (provider === 'googledrive') {
+        document.getElementById('googleDriveSettings').style.display = 'block';
+        
+        // Check if authenticated
+        const googleDriveProvider = new GoogleDriveProvider();
+
+        // Prefill Client ID if stored
+        const gdInput = document.getElementById('googleDriveClientId');
+        if (gdInput) {
+            gdInput.value = googleDriveProvider.clientId || '';
+        }
+
+        if (googleDriveProvider.isAuthenticated()) {
+            document.getElementById('googleDriveAuthStatus').innerHTML = `
+                <span class="material-symbols-outlined">check_circle</span>
+                <span id="googleDriveAuthText">Authentifié</span>
+            `;
+            document.getElementById('googleDriveAuthBtn').innerHTML = `
+                <span class="material-symbols-outlined">logout</span>
+                Déconnecter
+            `;
+            document.getElementById('googleDriveAuthBtn').onclick = async () => {
+                await googleDriveProvider.logout();
+                loadCloudSyncSettings();
+            };
+
+            // Show sync controls
+            document.getElementById('syncControls').style.display = 'block';
+
+            // Set provider in sync engine
+            if (window.storageSyncEngine) {
+                window.storageSyncEngine.setProvider(googleDriveProvider);
+            }
+        }
+    } else if (provider === 'onedrive') {
+        document.getElementById('oneDriveSettings').style.display = 'block';
+        
+        const oneDriveProvider = new OneDriveProvider();
+
+        const odInput = document.getElementById('oneDriveClientId');
+        if (odInput) {
+            odInput.value = oneDriveProvider.clientId || '';
+        }
+
+        if (oneDriveProvider.isAuthenticated()) {
+            document.getElementById('oneDriveAuthStatus').innerHTML = `
+                <span class="material-symbols-outlined">check_circle</span>
+                <span id="oneDriveAuthText">Authentifié</span>
+            `;
+            document.getElementById('oneDriveAuthBtn').innerHTML = `
+                <span class="material-symbols-outlined">logout</span>
+                Déconnecter
+            `;
+            document.getElementById('oneDriveAuthBtn').onclick = async () => {
+                await oneDriveProvider.logout();
+                loadCloudSyncSettings();
+            };
+
+            document.getElementById('syncControls').style.display = 'block';
+
+            if (window.storageSyncEngine) {
+                window.storageSyncEngine.setProvider(oneDriveProvider);
+            }
+        }
+    } else if (provider === 'dropbox') {
+        document.getElementById('dropboxSettings').style.display = 'block';
+        
+        const dropboxProvider = new DropboxProvider();
+
+        const dbInput = document.getElementById('dropboxClientId');
+        if (dbInput) {
+            dbInput.value = dropboxProvider.clientId || '';
+        }
+
+        if (dropboxProvider.isAuthenticated()) {
+            document.getElementById('dropboxAuthStatus').innerHTML = `
+                <span class="material-symbols-outlined">check_circle</span>
+                <span id="dropboxAuthText">Authentifié</span>
+            `;
+            document.getElementById('dropboxAuthBtn').innerHTML = `
+                <span class="material-symbols-outlined">logout</span>
+                Déconnecter
+            `;
+            document.getElementById('dropboxAuthBtn').onclick = async () => {
+                await dropboxProvider.logout();
+                loadCloudSyncSettings();
+            };
+
+            document.getElementById('syncControls').style.display = 'block';
+
+            if (window.storageSyncEngine) {
+                window.storageSyncEngine.setProvider(dropboxProvider);
+            }
+        }
+    } else if (provider === 'icloud') {
+        document.getElementById('icloudSettings').style.display = 'block';
+
+        const icloudProvider = new iCloudProvider();
+
+        // Prefill stored values
+        const containerInput = document.getElementById('icloudContainerId');
+        const tokenInput = document.getElementById('icloudApiToken');
+        const envSelect = document.getElementById('icloudEnvironment');
+        if (containerInput) containerInput.value = icloudProvider.containerId || '';
+        if (tokenInput) tokenInput.value = icloudProvider.apiToken || '';
+        if (envSelect) envSelect.value = icloudProvider.environment || 'production';
+
+        if (icloudProvider.isAuthenticated()) {
+            document.getElementById('icloudAuthStatus').innerHTML = `
+                <span class="material-symbols-outlined">check_circle</span>
+                <span id="icloudAuthText">Connecté</span>
+            `;
+            document.getElementById('icloudAuthBtn').innerHTML = `
+                <span class="material-symbols-outlined">logout</span>
+                Déconnecter
+            `;
+            document.getElementById('icloudAuthBtn').onclick = async () => {
+                await icloudProvider.logout();
+                loadCloudSyncSettings();
+            };
+
+            document.getElementById('syncControls').style.display = 'block';
+
+            if (window.storageSyncEngine) {
+                window.storageSyncEngine.setProvider(icloudProvider);
+            }
+        }
+    } else if (provider === 'webdav') {
+        document.getElementById('webdavSettings').style.display = 'block';
+        
+        const webdavProvider = new WebDAVProvider();
+        if (webdavProvider.isAuthenticated()) {
+            document.getElementById('webdavAuthStatus').innerHTML = `
+                <span class="material-symbols-outlined">check_circle</span>
+                <span id="webdavAuthText">Connecté</span>
+            `;
+            document.getElementById('webdavAuthBtn').innerHTML = `
+                <span class="material-symbols-outlined">logout</span>
+                Déconnecter
+            `;
+            document.getElementById('webdavAuthBtn').onclick = async () => {
+                await webdavProvider.logout();
+                document.getElementById('webdavUrl').value = '';
+                document.getElementById('webdavUsername').value = '';
+                document.getElementById('webdavPassword').value = '';
+                loadCloudSyncSettings();
+            };
+
+            document.getElementById('syncControls').style.display = 'block';
+
+            if (window.storageSyncEngine) {
+                window.storageSyncEngine.setProvider(webdavProvider);
+            }
+        }
+    }
+
+    updateSyncStatus();
+}
+
+/**
+ * Authenticate with Google Drive
+ */
+async function authenticateGoogleDrive() {
+    try {
+        const provider = new GoogleDriveProvider();
+        const manualClientId = document.getElementById('googleDriveClientId')?.value.trim();
+        
+        if (manualClientId) {
+            provider.setClientId(manualClientId);
+        } else if (typeof window.CKGenericApp !== 'undefined') {
+            const clientId = window.CKGenericApp.getApiKey('googledrive_client_id');
+            if (clientId) {
+                provider.setClientId(clientId);
+            }
+        }
+
+        if (!provider.clientId) {
+            alert('Veuillez renseigner le Client ID Google Drive (ou configurer l\'API dans CKGenericApp/CKDesktop)');
+            return;
+        }
+
+        await provider.authenticate();
+        
+        // Reload settings to update UI
+        setTimeout(() => {
+            loadCloudSyncSettings();
+        }, 1000);
+
+    } catch (error) {
+        console.error('[CloudSync] Authentication failed:', error);
+        alert('Échec de l\'authentification: ' + error.message);
+    }
+}
+
+/**
+ * Authenticate with OneDrive
+ */
+async function authenticateOneDrive() {
+    try {
+        const provider = new OneDriveProvider();
+        const manualClientId = document.getElementById('oneDriveClientId')?.value.trim();
+        
+        if (manualClientId) {
+            provider.setClientId(manualClientId);
+        } else if (typeof window.CKGenericApp !== 'undefined') {
+            const clientId = window.CKGenericApp.getApiKey('onedrive_client_id');
+            if (clientId) {
+                provider.setClientId(clientId);
+            }
+        }
+
+        if (!provider.clientId) {
+            alert('Veuillez renseigner le Client ID OneDrive (ou configurer l\'API dans CKGenericApp/CKDesktop)');
+            return;
+        }
+
+        await provider.authenticate();
+        
+        setTimeout(() => {
+            loadCloudSyncSettings();
+        }, 1000);
+
+    } catch (error) {
+        console.error('[CloudSync] OneDrive authentication failed:', error);
+        alert('Échec de l\'authentification OneDrive: ' + error.message);
+    }
+}
+
+/**
+ * Authenticate with Dropbox
+ */
+async function authenticateDropbox() {
+    try {
+        const provider = new DropboxProvider();
+        const manualClientId = document.getElementById('dropboxClientId')?.value.trim();
+        
+        if (manualClientId) {
+            provider.setClientId(manualClientId);
+        } else if (typeof window.CKGenericApp !== 'undefined') {
+            const clientId = window.CKGenericApp.getApiKey('dropbox_client_id');
+            if (clientId) {
+                provider.setClientId(clientId);
+            }
+        }
+
+        if (!provider.clientId) {
+            alert('Veuillez renseigner l\'App Key Dropbox (ou configurer l\'API dans CKGenericApp/CKDesktop)');
+            return;
+        }
+
+        await provider.authenticate();
+        
+        setTimeout(() => {
+            loadCloudSyncSettings();
+        }, 1000);
+
+    } catch (error) {
+        console.error('[CloudSync] Dropbox authentication failed:', error);
+        alert('Échec de l\'authentification Dropbox: ' + error.message);
+    }
+}
+
+/**
+ * Authenticate with iCloud (CloudKit JS)
+ */
+async function authenticateICloud() {
+    try {
+        const containerId = document.getElementById('icloudContainerId').value.trim();
+        const apiToken = document.getElementById('icloudApiToken').value.trim();
+        const environment = document.getElementById('icloudEnvironment').value || 'production';
+
+        if (!containerId || !apiToken) {
+            alert('Veuillez renseigner le Container ID et l\'API Token iCloud');
+            return;
+        }
+
+        const provider = new iCloudProvider();
+        provider.setCredentials(containerId, apiToken, environment);
+
+        await provider.authenticate();
+
+        document.getElementById('icloudAuthStatus').innerHTML = `
+            <span class="material-symbols-outlined">check_circle</span>
+            <span id="icloudAuthText">Connecté</span>
+        `;
+        document.getElementById('icloudAuthBtn').innerHTML = `
+            <span class="material-symbols-outlined">logout</span>
+            Déconnecter
+        `;
+        document.getElementById('icloudAuthBtn').onclick = async () => {
+            await provider.logout();
+            loadCloudSyncSettings();
+        };
+
+        // Show sync controls
+        document.getElementById('syncControls').style.display = 'block';
+
+        if (window.storageSyncEngine) {
+            window.storageSyncEngine.setProvider(provider);
+        }
+
+        setTimeout(() => {
+            loadCloudSyncSettings();
+        }, 500);
+
+    } catch (error) {
+        console.error('[CloudSync] iCloud authentication failed:', error);
+        alert('Échec de l\'authentification iCloud: ' + error.message);
+    }
+}
+
+/**
+ * Authenticate with WebDAV
+ */
+async function authenticateWebDAV() {
+    try {
+        const serverUrl = document.getElementById('webdavUrl').value.trim();
+        const username = document.getElementById('webdavUsername').value.trim();
+        const password = document.getElementById('webdavPassword').value;
+
+        if (!serverUrl || !username || !password) {
+            alert('Veuillez remplir tous les champs WebDAV');
+            return;
+        }
+
+        const provider = new WebDAVProvider();
+        provider.setCredentials(serverUrl, username, password);
+
+        // Test connection
+        await provider.authenticate();
+
+        // Update UI
+        document.getElementById('webdavAuthStatus').innerHTML = `
+            <span class="material-symbols-outlined">check_circle</span>
+            <span id="webdavAuthText">Connecté</span>
+        `;
+        document.getElementById('webdavAuthBtn').innerHTML = `
+            <span class="material-symbols-outlined">logout</span>
+            Déconnecter
+        `;
+        document.getElementById('webdavAuthBtn').onclick = async () => {
+            await provider.logout();
+            document.getElementById('webdavUrl').value = '';
+            document.getElementById('webdavUsername').value = '';
+            document.getElementById('webdavPassword').value = '';
+            loadCloudSyncSettings();
+        };
+
+        // Show sync controls
+        document.getElementById('syncControls').style.display = 'block';
+
+        // Set provider in sync engine
+        if (window.storageSyncEngine) {
+            window.storageSyncEngine.setProvider(provider);
+        }
+
+        alert('Connexion WebDAV réussie !');
+        updateSyncStatus();
+
+    } catch (error) {
+        console.error('[CloudSync] WebDAV authentication failed:', error);
+        alert('Échec de la connexion WebDAV: ' + error.message);
+    }
+}
+
+
+/**
+ * Toggle auto-sync
+ */
+function toggleAutoSync() {
+    const enabled = document.getElementById('autoSyncEnabled').checked;
+    
+    if (!window.storageSyncEngine || !window.storageSyncEngine.provider) {
+        document.getElementById('autoSyncEnabled').checked = false;
+        alert('Veuillez d\'abord configurer un fournisseur cloud');
+        return;
+    }
+
+    if (enabled) {
+        window.storageSyncEngine.startAutoSync();
+    } else {
+        window.storageSyncEngine.stopAutoSync();
+    }
+
+    updateSyncStatus();
+}
+
+/**
+ * Perform manual sync
+ */
+async function performManualSync() {
+    if (!window.storageSyncEngine || !window.storageSyncEngine.provider) {
+        alert('Veuillez d\'abord configurer un fournisseur cloud');
+        return;
+    }
+
+    const btn = document.getElementById('manualSyncBtn');
+    const originalText = btn.innerHTML;
+    
+    btn.disabled = true;
+    btn.innerHTML = '<span class="material-symbols-outlined rotating">sync</span> Synchronisation...';
+
+    try {
+        const result = await window.storageSyncEngine.manualSync();
+        
+        if (result.success) {
+            showSuccess('Synchronisation réussie !');
+        } else {
+            showError('Échec de la synchronisation: ' + result.error);
+        }
+    } catch (error) {
+        console.error('[CloudSync] Manual sync failed:', error);
+        showError('Erreur de synchronisation: ' + error.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        updateSyncStatus();
+    }
+}
+
+/**
+ * Disconnect cloud provider
+ */
+async function disconnectCloudProvider() {
+    if (!confirm('Voulez-vous vraiment déconnecter le fournisseur cloud ?')) {
+        return;
+    }
+
+    const provider = localStorage.getItem('cloudProvider');
+    
+    if (provider === 'googledrive') {
+        const googleDriveProvider = new GoogleDriveProvider();
+        await googleDriveProvider.logout();
+    } else if (provider === 'onedrive') {
+        const oneDriveProvider = new OneDriveProvider();
+        await oneDriveProvider.logout();
+    } else if (provider === 'dropbox') {
+        const dropboxProvider = new DropboxProvider();
+        await dropboxProvider.logout();
+    } else if (provider === 'icloud') {
+        const icloudProvider = new iCloudProvider();
+        await icloudProvider.logout();
+        document.getElementById('icloudContainerId').value = '';
+        document.getElementById('icloudApiToken').value = '';
+    } else if (provider === 'webdav') {
+        const webdavProvider = new WebDAVProvider();
+        await webdavProvider.logout();
+        document.getElementById('webdavUrl').value = '';
+        document.getElementById('webdavUsername').value = '';
+        document.getElementById('webdavPassword').value = '';
+    }
+
+    // Stop sync
+    if (window.storageSyncEngine) {
+        window.storageSyncEngine.disableSync();
+    }
+
+    // Reset provider selection
+    localStorage.setItem('cloudProvider', 'none');
+    document.getElementById('cloudProvider').value = 'none';
+
+    // Reload settings
+    loadCloudSyncSettings();
+
+    showSuccess('Fournisseur cloud déconnecté');
+}
+
+/**
+ * Update sync status display
+ */
+function updateSyncStatus() {
+    if (!window.storageSyncEngine) {
+        return;
+    }
+
+    const status = window.storageSyncEngine.getStatus();
+    const statusCard = document.getElementById('syncStatusCard');
+    const statusIcon = document.getElementById('syncStatusIcon');
+    const statusText = document.getElementById('syncStatusText');
+    const lastSyncText = document.getElementById('lastSyncText');
+    const deviceIdText = document.getElementById('deviceIdText');
+
+    if (!status.enabled || !status.provider) {
+        statusIcon.textContent = 'cloud_off';
+        statusText.textContent = 'Non synchronisé';
+        lastSyncText.textContent = 'Dernière sync: Jamais';
+        deviceIdText.textContent = 'Device ID: ' + status.deviceId;
+        statusCard.classList.remove('syncing', 'synced');
+        return;
+    }
+
+    if (status.syncing) {
+        statusIcon.textContent = 'cloud_sync';
+        statusText.textContent = 'Synchronisation...';
+        statusCard.classList.add('syncing');
+        statusCard.classList.remove('synced');
+    } else {
+        statusIcon.textContent = 'cloud_done';
+        statusText.textContent = 'Synchronisé avec ' + status.provider;
+        statusCard.classList.remove('syncing');
+        statusCard.classList.add('synced');
+    }
+
+    if (status.lastSync) {
+        const lastSync = new Date(status.lastSync);
+        const now = new Date();
+        const diff = Math.floor((now - lastSync) / 1000); // seconds
+
+        let timeAgo;
+        if (diff < 60) {
+            timeAgo = 'il y a quelques secondes';
+        } else if (diff < 3600) {
+            timeAgo = `il y a ${Math.floor(diff / 60)} min`;
+        } else if (diff < 86400) {
+            timeAgo = `il y a ${Math.floor(diff / 3600)} h`;
+        } else {
+            timeAgo = `il y a ${Math.floor(diff / 86400)} jours`;
+        }
+
+        lastSyncText.textContent = 'Dernière sync: ' + timeAgo;
+    } else {
+        lastSyncText.textContent = 'Dernière sync: Jamais';
+    }
+
+    deviceIdText.textContent = 'Device ID: ' + status.deviceId;
+}
+
+// Update sync status every 5 seconds
+setInterval(() => {
+    if (document.getElementById('settingsModal').style.display === 'flex') {
+        updateSyncStatus();
+    }
+}, 5000);
+
+// Listen to sync events
+if (window.storageSyncEngine) {
+    window.storageSyncEngine.addEventListener((event) => {
+        updateSyncStatus();
+        
+        if (event.type === 'sync-complete' && event.changes) {
+            console.log('[CloudSync] Data synchronized, refreshing UI');
+            // Trigger UI refresh
+            if (typeof refreshCalendarEvents === 'function') {
+                refreshCalendarEvents();
+            }
+            if (typeof displayTodayTasks === 'function') {
+                displayTodayTasks();
+            }
+        }
+    });
 }
 
 function resetAllSettings() {
@@ -7876,3 +8492,10 @@ window.resetTutorial = async function() {
 };
 window.restartTutorial = restartTutorial;
 
+// Cloud sync functions
+window.onCloudProviderChange = onCloudProviderChange;
+window.authenticateGoogleDrive = authenticateGoogleDrive;
+window.authenticateOneDrive = authenticateOneDrive;
+window.authenticateDropbox = authenticateDropbox;
+window.authenticateWebDAV = authenticateWebDAV;
+window.updateSyncStatus = updateSyncStatus;

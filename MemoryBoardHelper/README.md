@@ -12,7 +12,8 @@
 - 🤖 **Mistral AI**: Auto language detection (fr/it/en), task extraction, SSML speech
 - ✅ **Tasks**: Max 5 displayed, priority sorting, color badges, smart search
 - ⏰ **Alarms**: Audio + voice, 15min pre-reminders, 10min snooze
-- 🏃 **Activity Tracking**: Step counting, GPS paths, statistics, OpenStreetMap visualization (NEW)
+- 🏃 **Activity Tracking**: Step counting, GPS paths, statistics, OpenStreetMap visualization
+- ☁️ **Cloud Sync**: Multi-device data sync (Google Drive, OneDrive, Dropbox, WebDAV) (NEW)
 - 🚨 **Emergency**: Quick-dial contacts (up to 3)
 - ♿ **Accessible**: Extra-large text (20px+), big buttons (60px+), high contrast
 - 🎙️ **Temporary Listening**: Auto-activates for 10s after Mistral asks a question
@@ -33,7 +34,7 @@
 - **Browser Speech API** (FREE, built-in) - No setup required
   - Works in Chrome/Edge, good for quiet environments
   - Automatic, no API key needed
-- **Deepgram STT** (NEW, 200 hours/month free) - https://console.deepgram.com/
+- **Deepgram STT** (200 hours/month free) - https://console.deepgram.com/
   - Nova-2 model, superior accuracy
   - Voice Activity Detection (auto-stop)
   - Smart formatting and punctuation
@@ -46,7 +47,7 @@
 - **Browser TTS** (FREE, built-in) - No setup required
   - Native system voices, works offline
   - Adjustable rate, pitch, volume
-- **Deepgram TTS** (NEW, Aura-2 voices) - https://console.deepgram.com/
+- **Deepgram TTS** (Aura-2 voices) - https://console.deepgram.com/
   - 30+ natural, expressive voices (FR/EN/IT)
   - High quality, low latency
   - 1M characters/month free
@@ -55,9 +56,21 @@
   - Custom rate, pitch, volume control
   - Requires billing account
 
+**Cloud Sync (Optional):**
+- **Google Drive OAuth2** - https://console.cloud.google.com/
+  - Enable "Google Drive API"
+  - Create OAuth 2.0 Client ID (Web application)
+  - Add your app's URL to authorized redirect URIs
+- **Microsoft OneDrive** - OAuth2 (automatic, no setup required)
+- **Dropbox** - OAuth2 (automatic, no setup required)
+- **WebDAV** - Any Nextcloud/ownCloud server (manual credentials)
+- **iCloud (CloudKit JS)**
+   - Create a CloudKit container (ex: iCloud.com.example.app)
+   - Generate a CloudKit JS API Token for the public database
+   - Environment: production (or development for tests)
+
 **Other Services:**
 - **Tavily Search API** (1000 searches/month free) - https://tavily.com/
-  - Web search integration
 - **OpenWeatherMap/WeatherAPI** (free tiers) - For weather queries
 - **Google Maps API** (optional) - For GPS navigation geocoding
 
@@ -81,21 +94,30 @@
    - Enter API keys if using Deepgram or Google
    - Adjust voice, speed, pitch settings as desired
 
-4. **Configure Emergency Contacts** (Optional)
+4. **Configure Cloud Sync** (Optional - NEW)
+   - Open "Synchronisation Cloud" in settings
+   - Select provider: Google Drive, OneDrive, Dropbox, or WebDAV
+   - Follow authentication flow (OAuth redirect for Google/OneDrive/Dropbox)
+   - For WebDAV: Enter server URL, username, password
+      - For iCloud: Enter CloudKit Container ID + API Token, choose environment
+   - Toggle "Activer la synchronisation automatique" for 10s auto-sync
+   - Data syncs across all devices automatically
+
+5. **Configure Emergency Contacts** (Optional)
    - Add up to 3 emergency contacts in "Urgence" section
    - Name and phone number for quick-dial access
 
-5. **Select Listening Mode**
+6. **Select Listening Mode**
    - **Manual**: Press microphone button to speak
    - **Always-Listening**: Continuous background listening
    - **Temporary**: Auto-activates for 10s after AI questions
 
-6. **Enable Activity Tracking** (Optional)
+7. **Enable Activity Tracking** (Optional)
    - Toggle "Activer le suivi automatique" in settings
    - Allow GPS permissions for route tracking
    - Set daily step goal (default: 10,000)
 
-### Getting API Keys:
+### Getting Google Drive OAuth2 Client ID:
 1. Go to https://console.cloud.google.com/
 2. Create a new project or select existing
 3. Enable "Cloud Speech-to-Text API"

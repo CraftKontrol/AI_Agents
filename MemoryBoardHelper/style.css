@@ -5252,3 +5252,200 @@ input:checked + .slider:before {
         font-size: 14px;
     }
 }
+/* === Cloud Sync Styles === */
+
+.cloud-sync-section {
+    background: var(--surface-color);
+    padding: 20px;
+    border: 1px solid var(--border-color);
+    border-radius: 0;
+    margin-bottom: 20px;
+}
+
+.cloud-sync-section h3 {
+    color: #ffffff;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.cloud-sync-section .setting-card {
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 0;
+    padding: 15px;
+}
+
+.cloud-sync-section .input-group select,
+.cloud-sync-section .input-group input {
+    background: var(--background-color);
+    border: 1px solid var(--border-color);
+    border-radius: 0;
+    color: var(--text-color);
+}
+
+.cloud-sync-section .setting-description {
+    color: var(--text-muted);
+    font-size: 13px;
+    margin-bottom: 10px;
+}
+
+/* Sync Status Card */
+.sync-status-card {
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 0;
+    padding: 15px;
+    margin: 15px 0;
+    transition: all 0.3s ease;
+}
+
+.sync-status-card.syncing {
+    border-color: var(--primary-color);
+    background: rgba(74, 158, 255, 0.05);
+}
+
+.sync-status-card.synced {
+    border-color: var(--success-color);
+    background: rgba(68, 255, 136, 0.05);
+}
+
+.sync-status-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.sync-status-header .material-symbols-outlined {
+    font-size: 24px;
+}
+
+.sync-status-card.syncing .material-symbols-outlined {
+    color: var(--primary-color);
+    animation: rotate 2s linear infinite;
+}
+
+.sync-status-card.synced .material-symbols-outlined {
+    color: var(--success-color);
+}
+
+@keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.sync-status-details {
+    font-size: 13px;
+    color: var(--text-secondary);
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.sync-status-details p {
+    margin: 0;
+}
+
+/* Auth Status */
+.auth-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    background: var(--surface-color);
+    border-radius: 0;
+    margin: 10px 0;
+    font-size: 14px;
+}
+
+.auth-status .material-symbols-outlined {
+    font-size: 20px;
+    color: var(--text-secondary);
+}
+
+.auth-status.authenticated {
+    background: rgba(68, 255, 136, 0.1);
+    border: 1px solid var(--success-color);
+}
+
+.auth-status.authenticated .material-symbols-outlined {
+    color: var(--success-color);
+}
+
+/* Button Group */
+.button-group {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+    flex-wrap: wrap;
+}
+
+.button-group button {
+    flex: 1;
+    min-width: 140px;
+}
+
+/* Rotating icon for syncing */
+.rotating {
+    animation: rotate 1s linear infinite;
+}
+
+/* WebDAV Form */
+#webdavSettings .input-group {
+    margin-bottom: 15px;
+}
+
+#webdavSettings input {
+    width: 100%;
+    padding: 10px;
+    background: var(--background-color);
+    border: 1px solid var(--border-color);
+    border-radius: 0;
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+#webdavSettings input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+/* Provider Settings Transitions */
+#providerSettings > div {
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Mobile Responsive for Cloud Sync */
+@media (max-width: 768px) {
+    .button-group {
+        flex-direction: column;
+    }
+    
+    .button-group button {
+        width: 100%;
+        min-width: auto;
+    }
+    
+    .sync-status-header {
+        font-size: 14px;
+    }
+    
+    .sync-status-details {
+        font-size: 12px;
+    }
+}
