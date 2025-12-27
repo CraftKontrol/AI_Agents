@@ -2616,7 +2616,7 @@ registerAction(
             localStorage.setItem('tutorialStartedDate', new Date().toISOString());
             
             // Show first step
-            window.tutorialSystem.showStep(0);
+            await window.tutorialSystem.showStep(0);
             
             return new ActionResult(
                 true,
@@ -2671,11 +2671,11 @@ registerAction(
             
             if (nextStep.skipCondition && nextStep.skipCondition()) {
                 // Skip this step, go to next
-                window.tutorialSystem.showStep(nextStepIndex + 1);
+                await window.tutorialSystem.showStep(nextStepIndex + 1);
                 localStorage.setItem('tutorialCurrentStep', String(nextStepIndex + 1));
             } else {
                 // Show next step
-                window.tutorialSystem.showStep(nextStepIndex);
+                await window.tutorialSystem.showStep(nextStepIndex);
                 localStorage.setItem('tutorialCurrentStep', String(nextStepIndex));
             }
             
@@ -2711,7 +2711,7 @@ registerAction(
     async (params, language) => {
         try {
             const prevStepIndex = window.tutorialSystem.currentStep - 1;
-            window.tutorialSystem.showStep(prevStepIndex);
+            await window.tutorialSystem.showStep(prevStepIndex);
             localStorage.setItem('tutorialCurrentStep', String(prevStepIndex));
             
             return new ActionResult(
@@ -2746,7 +2746,7 @@ registerAction(
     async (params, language) => {
         try {
             const stepIndex = params.stepIndex;
-            window.tutorialSystem.showStep(stepIndex);
+            await window.tutorialSystem.showStep(stepIndex);
             localStorage.setItem('tutorialCurrentStep', String(stepIndex));
             
             return new ActionResult(
@@ -2859,17 +2859,39 @@ registerAction(
                     break;
                     
                 case 'emergency_contact':
-                    const name = document.getElementById('tutorialContactName')?.value || localStorage.getItem('emergencyContact1');
-                    const phone = document.getElementById('tutorialContactPhone')?.value || localStorage.getItem('emergencyContact1_phone');
+                    const name = document.getElementById('tutorialContactName')?.value || '';
+                    const phone = document.getElementById('tutorialContactPhone')?.value || '';
                     
-                    if (!name || !phone || phone.length < 10) {
+                    // Check if we already have a saved contact
+                    const existingContact = localStorage.getItem('emergencyContact1');
+                    let hasExistingContact = false;
+                    if (existingContact) {
+                        try {
+                            const parsed = JSON.parse(existingContact);
+                            if (parsed.name && parsed.phone && parsed.phone.length >= 10) {
+                                hasExistingContact = true;
+                            }
+                        } catch (e) {}
+                    }
+                    
+                    // If no existing contact and fields are empty, validation fails
+                    if (!hasExistingContact && (!name || !phone || phone.length < 10)) {
                         return new ActionResult(false, 'Entrez le nom et le numéro du contact');
                     }
                     
-                    // Save contact
-                    if (document.getElementById('tutorialContactName')?.value) {
-                        localStorage.setItem('emergencyContact1', name);
-                        localStorage.setItem('emergencyContact1_phone', phone);
+                    // Save contact in proper JSON format if fields are filled
+                    if (name && phone) {
+                        const contactData = {
+                            name: name.trim(),
+                            phone: phone.trim(),
+                            relation: 'Contact d\'urgence'
+                        };
+                        localStorage.setItem('emergencyContact1', JSON.stringify(contactData));
+                        
+                        // Also update the emergency contacts display
+                        if (typeof loadEmergencyContacts === 'function') {
+                            setTimeout(() => loadEmergencyContacts(), 100);
+                        }
                     }
                     break;
                     

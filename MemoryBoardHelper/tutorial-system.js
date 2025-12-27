@@ -473,20 +473,22 @@ const TUTORIAL_STEPS = [
         content: {
             fr: { 
                 title: 'Fonctionnement Général 🎯', 
-                message: 'Découvrez comment Memory Board Helper fonctionne', 
-                details: `<p>Memory Board Helper est votre assistant vocal personnel qui combine plusieurs fonctionnalités :</p>
-                    <ul>
-                        <li>💬 <strong>Conversation IA</strong> : Mistral AI pour des échanges naturels</li>
-                        <li>📝 <strong>Gestion de Tâches</strong> : Créez, modifiez et suivez vos tâches par la voix</li>
-                        <li>📅 <strong>Calendrier Intelligent</strong> : Visualisez vos activités avec des codes couleur</li>
-                        <li>📄 <strong>Notes & Listes</strong> : Capturez rapidement vos idées et courses</li>
-                        <li>🎤 <strong>Commandes Vocales</strong> : Plus de 50 commandes pour tout contrôler</li>
-                        <li>🏃 <strong>Suivi d'Activité</strong> : Compteur de pas et parcours GPS automatiques</li>
-                        <li>🌤️ <strong>Services Connectés</strong> : Météo, recherche web, navigation GPS</li>
-                        <li>🆘 <strong>Contacts d'Urgence</strong> : Appels rapides par commande vocale</li>
-                    </ul>
-                    <p><strong>Tout fonctionne par la voix</strong> : cliquez sur le micro et parlez naturellement. L'application comprend vos intentions et exécute les actions.</p>`,
-                ttsText: 'Memory Board Helper est un assistant vocal complet qui centralise toutes vos activités quotidiennes. Grâce à Mistral AI, vous pouvez avoir des conversations naturelles et créer des tâches simplement en parlant. Le calendrier visualise votre planning avec des codes couleur : bleu pour aujourd\'hui, orange pour urgent, rouge pour en retard. Les notes et listes vous permettent de capturer rapidement vos idées. Plus de cinquante commandes vocales sont disponibles pour contrôler l\'application, demander l\'heure, la météo, chercher sur le web, ou appeler vos contacts d\'urgence. Le suivi d\'activité compte automatiquement vos pas et enregistre vos parcours. Tout est conçu pour fonctionner mains libres, par simple commande vocale. Les prochaines étapes vont vous montrer chaque fonctionnalité en détail.', 
+                message: 'Assistant vocal complet', 
+                details: `<p>Memory Board Helper est votre assistant vocal intelligent qui centralise toutes vos activités quotidiennes.</p>
+                    
+                    <p>Imaginez pouvoir gérer votre journée simplement en parlant : créer une tâche, vérifier la météo, trouver un restaurant à proximité, ou appeler un proche en cas d'urgence.</p>
+                    
+                    <p><strong>L'application combine :</strong></p>
+                    <p>💬 Une <strong>conversation naturelle avec l'IA</strong> qui comprend vos demandes<br>
+                    📝 La <strong>gestion vocale de vos tâches</strong> et rendez-vous<br>
+                    📅 Un <strong>calendrier visuel</strong> avec codes couleur par priorité<br>
+                    🎤 Plus de <strong>50 commandes vocales</strong> pour tout contrôler<br>
+                    🏃 Le <strong>suivi de votre activité physique</strong> avec GPS<br>
+                    🌤️ L'accès à la <strong>météo, recherche web et navigation</strong><br>
+                    🆘 Des <strong>boutons d'urgence</strong> pour joindre vos proches rapidement</p>
+                    
+                    <p><em>Le secret ? Tout fonctionne à la voix. Cliquez sur le micro et parlez naturellement !</em></p>`,
+                ttsText: 'Memory Board Helper est votre assistant vocal intelligent. Imaginez gérer votre journée simplement en parlant : créer des tâches, vérifier la météo, trouver des restaurants, ou appeler vos proches. L\'application combine conversation IA, gestion vocale, calendrier couleur, suivi d\'activité, météo, recherche web et boutons d\'urgence. Le secret ? Tout fonctionne à la voix !', 
                 actionButton: 'Suivant' 
             },
             en: { 
@@ -668,29 +670,16 @@ const TUTORIAL_STEPS = [
             fr: { 
                 title: 'Commandes Vocales & Mistral 🎤', 
                 message: 'Contrôle vocal et paramètres de conversation', 
-                details: `<p>Plus de 50 commandes vocales et paramètres de conversation Mistral AI :</p>
-                    <h4>Commandes Vocales 🎤 :</h4>
-                    <ul>
-                        <li>⏰ <strong>Temps</strong> : "Quelle heure est-il ?", "Quelle est la date ?"</li>
-                        <li>🌤️ <strong>Météo</strong> : "Quel temps fait-il ?", "Prévisions demain"</li>
-                        <li>📝 <strong>Tâches</strong> : "Ajoute/Supprime/Modifie une tâche"</li>
-                        <li>📄 <strong>Notes</strong> : "Note : [contenu]"</li>
-                        <li>📋 <strong>Listes</strong> : "Liste de courses : [items]"</li>
-                        <li>🔍 <strong>Web</strong> : "Recherche sur internet [requête]"</li>
-                        <li>🗺️ <strong>GPS</strong> : "Emmène-moi à [lieu]"</li>
-                        <li>📞 <strong>Urgence</strong> : "Appelle [contact]"</li>
-                        <li>🔄 <strong>Navigation</strong> : "Affiche le calendrier/les notes/les listes"</li>
-                    </ul>
-                    <h4>Paramètres Mistral AI 🤖 :</h4>
-                    <ul>
-                        <li>🎯 <strong>Température</strong> : Créativité des réponses (0.1-1.0)</li>
-                        <li>📏 <strong>Max Tokens</strong> : Longueur maximale des réponses</li>
-                        <li>🔄 <strong>Top P</strong> : Diversité du vocabulaire</li>
-                        <li>🎭 <strong>Personnalité</strong> : Configurez le ton et le style</li>
-                        <li>🧠 <strong>Contexte</strong> : Mémoire de conversation</li>
-                    </ul>
-                    <p>Accédez aux paramètres dans la section Commandes Rapides.</p>`,
-                ttsText: 'L\'application offre plus de cinquante commandes vocales pour contrôler toutes les fonctionnalités. Demandez l\'heure, la date, ou la météo. Créez, modifiez ou supprimez des tâches, notes et listes. Recherchez sur internet ou naviguez vers un lieu. Appelez vos contacts d\'urgence. Naviguez dans l\'interface vocalement. Concernant Mistral AI, plusieurs paramètres permettent de personnaliser la conversation : la température contrôle la créativité des réponses, le maximum de tokens définit la longueur, le Top P ajuste la diversité du vocabulaire. Vous pouvez aussi configurer la personnalité de l\'assistant et le contexte de conversation. Tous ces paramètres sont accessibles dans la section commandes rapides pour optimiser votre expérience selon vos préférences.', 
+                details: `<p>Memory Board Helper offre un contrôle vocal complet avec plus de 50 commandes pour gérer toutes les fonctionnalités.</p>
+                    
+                    <p><strong>Quelques exemples de commandes :</strong></p>
+                    <p>⏰ "Quelle heure est-il ?" • 🌤️ "Quel temps fait-il ?"<br>
+                    📝 "Ajoute une tâche demain 10h" • 🔍 "Recherche restaurants italiens"<br>
+                    🗺️ "Emmène-moi à la gare" • 📞 "Appelle maman"</p>
+                    
+                    <p><strong>Personnalisez Mistral AI :</strong></p>
+                    <p>Ajustez le comportement de l'assistant dans les paramètres : température (créativité), longueur des réponses, personnalité et contexte de conversation. Ces réglages sont accessibles dans la section Commandes Rapides.</p>`,
+                ttsText: 'L\'application offre plus de cinquante commandes vocales. Demandez l\'heure, la météo, créez des tâches, recherchez sur internet, naviguez vers un lieu ou appelez vos contacts. Vous pouvez aussi personnaliser Mistral AI avec plusieurs paramètres : température pour la créativité, longueur des réponses, personnalité et contexte. Tous ces réglages sont dans la section commandes rapides.', 
                 actionButton: 'Suivant' 
             },
             en: { 
@@ -1017,88 +1006,6 @@ const TUTORIAL_STEPS = [
                 actionButton: 'Completa Tutorial' 
             }
         }
-    },
-    
-    // Step 25: Completion
-    {
-        id: 25,
-        name: 'completion',
-        type: 'modal',
-        requireValidation: false,
-        ttsEnabled: true,
-        navigationTarget: null,
-        highlightSelector: null,
-        content: {
-            fr: {
-                title: 'Félicitations ! 🎊',
-                message: 'Configuration terminée avec succès',
-                details: `
-                    <p>Vous êtes maintenant prêt à utiliser Memory Board Helper !</p>
-                    <h3>Récapitulatif :</h3>
-                    <ul>
-                        <li>✅ Synthèse vocale configurée</li>
-                        <li>✅ Mistral AI activé</li>
-                        <li>✅ Adresse enregistrée</li>
-                        <li>✅ Contact d'urgence ajouté</li>
-                    </ul>
-                    <p><strong>Prochaines étapes :</strong></p>
-                    <ul>
-                        <li>🎤 Essayez des commandes vocales</li>
-                        <li>📝 Créez votre première tâche</li>
-                        <li>💬 Discutez avec l'assistant</li>
-                        <li>⚙️ Personnalisez les paramètres</li>
-                    </ul>
-                `,
-                ttsText: 'Félicitations ! Vous avez terminé la configuration. L\'application est maintenant prête à être utilisée.',
-                actionButton: 'Commencer à utiliser l\'application'
-            },
-            en: {
-                title: 'Congratulations! 🎊',
-                message: 'Setup completed successfully',
-                details: `
-                    <p>You are now ready to use Memory Board Helper!</p>
-                    <h3>Summary:</h3>
-                    <ul>
-                        <li>✅ Text-to-speech configured</li>
-                        <li>✅ Mistral AI activated</li>
-                        <li>✅ Address saved</li>
-                        <li>✅ Emergency contact added</li>
-                    </ul>
-                    <p><strong>Next steps:</strong></p>
-                    <ul>
-                        <li>🎤 Try voice commands</li>
-                        <li>📝 Create your first task</li>
-                        <li>💬 Chat with the assistant</li>
-                        <li>⚙️ Customize settings</li>
-                    </ul>
-                `,
-                ttsText: 'Congratulations! You have completed the setup. The app is now ready to use.',
-                actionButton: 'Start using the app'
-            },
-            it: {
-                title: 'Congratulazioni! 🎊',
-                message: 'Configurazione completata con successo',
-                details: `
-                    <p>Sei ora pronto ad usare Memory Board Helper!</p>
-                    <h3>Riepilogo:</h3>
-                    <ul>
-                        <li>✅ Sintesi vocale configurata</li>
-                        <li>✅ Mistral AI attivato</li>
-                        <li>✅ Indirizzo salvato</li>
-                        <li>✅ Contatto di emergenza aggiunto</li>
-                    </ul>
-                    <p><strong>Prossimi passi:</strong></p>
-                    <ul>
-                        <li>🎤 Prova i comandi vocali</li>
-                        <li>📝 Crea la tua prima attività</li>
-                        <li>💬 Chatta con l\'assistente</li>
-                        <li>⚙️ Personalizza le impostazioni</li>
-                    </ul>
-                `,
-                ttsText: 'Congratulazioni! Hai completato la configurazione. L\'app è ora pronta per essere utilizzata.',
-                actionButton: 'Inizia ad usare l\'app'
-            }
-        }
     }
 ];
 
@@ -1174,7 +1081,7 @@ class TutorialSystem {
     /**
      * Show step (UI only - called by action-wrapper)
      */
-    showStep(stepIndex) {
+    async showStep(stepIndex) {
         if (stepIndex < 0 || stepIndex >= this.steps.length) {
             console.error('[Tutorial] Invalid step index:', stepIndex);
             return false;
@@ -1189,7 +1096,14 @@ class TutorialSystem {
         const step = this.steps[stepIndex];
         const content = step.content[this.language];
         
-        console.log('[Tutorial] Showing step:', stepIndex, step.name);
+        console.log('[Tutorial] Showing step:', stepIndex, step.name, 'step.id:', step.id);
+        
+        // Special handling: Step 5 - Clear all data and create sample tasks
+        if (step.id === 5) {
+            console.log('[Tutorial] Step 5 detected! Setting up sample data...');
+            await this.setupTutorialSampleData();
+            console.log('[Tutorial] Sample data setup complete');
+        }
         
         // Special handling: Activity section visibility
         const activityContent = document.getElementById('activityContent');
@@ -1346,6 +1260,28 @@ class TutorialSystem {
         // Load voices if this is voice selection step
         if (step.name === 'voice_selection') {
             setTimeout(() => this.loadVoicesIntoSelect(), 100);
+        }
+        
+        // Load saved emergency contact if this is emergency contact step
+        if (step.name === 'emergency_contact') {
+            setTimeout(() => {
+                const savedContactData = localStorage.getItem('emergencyContact1');
+                if (savedContactData) {
+                    try {
+                        const contact = JSON.parse(savedContactData);
+                        if (contact.name) {
+                            const nameInput = document.getElementById('tutorialContactName');
+                            if (nameInput) nameInput.value = contact.name;
+                        }
+                        if (contact.phone) {
+                            const phoneInput = document.getElementById('tutorialContactPhone');
+                            if (phoneInput) phoneInput.value = contact.phone;
+                        }
+                    } catch (e) {
+                        console.warn('[Tutorial] Could not parse saved contact:', e);
+                    }
+                }
+            }, 100);
         }
         
         // Speak if TTS enabled
@@ -1798,6 +1734,197 @@ class TutorialSystem {
     }
     
     /**
+     * Setup tutorial sample data - clear existing data and create sample tasks
+     */
+    async setupTutorialSampleData() {
+        console.log('[Tutorial] Setting up sample data...');
+        
+        try {
+            // Clear all existing data
+            if (typeof deleteAllTasks === 'function') await deleteAllTasks(true); // Silent delete
+            if (typeof deleteAllLists === 'function') await deleteAllLists(true);
+            if (typeof deleteAllNotes === 'function') await deleteAllNotes(true);
+            
+            // Create sample tasks for demonstration
+            const sampleTasks = [
+                {
+                    description: 'Rendez-vous dentiste',
+                    date: new Date(Date.now() + 86400000).toISOString().split('T')[0], // Tomorrow
+                    time: '14:00',
+                    status: 'pending',
+                    priority: 'normal',
+                    type: 'appointment'
+                },
+                {
+                    description: 'Acheter du pain',
+                    date: new Date().toISOString().split('T')[0], // Today
+                    time: '18:00',
+                    status: 'pending',
+                    priority: 'normal',
+                    type: 'shopping'
+                },
+                {
+                    description: 'Appeler maman',
+                    date: new Date().toISOString().split('T')[0],
+                    time: '10:00',
+                    status: 'pending',
+                    priority: 'high',
+                    type: 'call'
+                }
+            ];
+            
+            // Create sample note
+            const sampleNote = {
+                title: 'Bienvenue dans Memory Board Helper',
+                content: 'Cette note est un exemple. Vous pouvez créer vos propres notes vocalement en disant "Note : votre contenu ici".',
+                category: 'general',
+                color: '#2a2a2a',
+                pinned: true
+            };
+            
+            // Create sample list
+            const sampleList = {
+                title: 'Liste de courses',
+                items: [
+                    { text: 'Pain', completed: false },
+                    { text: 'Lait', completed: false },
+                    { text: 'Œufs', completed: false }
+                ],
+                category: 'shopping'
+            };
+            
+            // Add sample tasks using createTask from task-manager
+            console.log('[Tutorial] Checking createTask availability:', typeof createTask);
+            console.log('[Tutorial] window.createTask:', typeof window.createTask);
+            
+            if (typeof createTask === 'function') {
+                console.log('[Tutorial] Creating', sampleTasks.length, 'sample tasks...');
+                for (const task of sampleTasks) {
+                    console.log('[Tutorial] Creating task:', task.description);
+                    const result = await createTask(task);
+                    console.log('[Tutorial] Task creation result:', result);
+                    if (result.success) {
+                        console.log('[Tutorial] Sample task created:', result.task.id);
+                    } else {
+                        console.error('[Tutorial] Failed to create task:', result.error);
+                    }
+                }
+                console.log('[Tutorial] All sample tasks created');
+                
+                // Create sample note
+                console.log('[Tutorial] Creating sample note...');
+                if (typeof createNote === 'function') {
+                    const noteResult = await createNote(sampleNote);
+                    console.log('[Tutorial] Sample note created:', noteResult.id);
+                } else if (typeof window.createNote === 'function') {
+                    const noteResult = await window.createNote(sampleNote);
+                    console.log('[Tutorial] Sample note created (via window):', noteResult.id);
+                } else {
+                    console.warn('[Tutorial] createNote not found');
+                }
+                
+                // Create sample list
+                console.log('[Tutorial] Creating sample list...');
+                if (typeof createList === 'function') {
+                    const listResult = await createList(sampleList);
+                    console.log('[Tutorial] Sample list created:', listResult.id);
+                } else if (typeof window.createList === 'function') {
+                    const listResult = await window.createList(sampleList);
+                    console.log('[Tutorial] Sample list created (via window):', listResult.id);
+                } else {
+                    console.warn('[Tutorial] createList not found');
+                }
+                
+                // Wait a bit for IndexedDB to finish writing
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                // Refresh UI
+                console.log('[Tutorial] Refreshing UI...');
+                if (typeof refreshTasksDisplay === 'function') {
+                    refreshTasksDisplay();
+                    console.log('[Tutorial] Tasks display refreshed');
+                } else {
+                    console.warn('[Tutorial] refreshTasksDisplay not found');
+                }
+                
+                if (typeof refreshCalendar === 'function') {
+                    await refreshCalendar();
+                    console.log('[Tutorial] Calendar refreshed');
+                } else if (typeof window.refreshCalendar === 'function') {
+                    await window.refreshCalendar();
+                    console.log('[Tutorial] Calendar refreshed (via window)');
+                } else {
+                    console.warn('[Tutorial] refreshCalendar not found');
+                }
+                
+                if (typeof loadNotes === 'function') {
+                    await loadNotes();
+                    console.log('[Tutorial] Notes refreshed');
+                } else if (typeof window.loadNotes === 'function') {
+                    await window.loadNotes();
+                    console.log('[Tutorial] Notes refreshed (via window)');
+                } else {
+                    console.warn('[Tutorial] loadNotes not found');
+                }
+                
+                if (typeof loadLists === 'function') {
+                    await loadLists();
+                    console.log('[Tutorial] Lists refreshed');
+                } else if (typeof window.loadLists === 'function') {
+                    await window.loadLists();
+                    console.log('[Tutorial] Lists refreshed (via window)');
+                } else {
+                    console.warn('[Tutorial] loadLists not found');
+                }
+            } else {
+                console.error('[Tutorial] createTask function not available!');
+                console.log('[Tutorial] Available functions:', Object.keys(window).filter(k => k.includes('Task')));
+            }
+        } catch (error) {
+            console.error('[Tutorial] Failed to setup sample data:', error);
+        }
+    }
+
+    /**
+     * Cleanup tutorial sample data - remove all tasks, notes, and lists
+     */
+    async cleanupTutorialSampleData() {
+        console.log('[Tutorial] Cleaning up sample data...');
+        
+        try {
+            // Clear all data
+            if (typeof deleteAllTasks === 'function') await deleteAllTasks(true); // Silent delete
+            if (typeof deleteAllLists === 'function') await deleteAllLists(true);
+            if (typeof deleteAllNotes === 'function') await deleteAllNotes(true);
+            
+            console.log('[Tutorial] Sample data cleaned up');
+            
+            // Wait a bit for IndexedDB to finish writing
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            // Refresh UI
+            if (typeof refreshTasksDisplay === 'function') refreshTasksDisplay();
+            if (typeof refreshCalendar === 'function') {
+                await refreshCalendar();
+            } else if (typeof window.refreshCalendar === 'function') {
+                await window.refreshCalendar();
+            }
+            if (typeof loadNotes === 'function') {
+                await loadNotes();
+            } else if (typeof window.loadNotes === 'function') {
+                await window.loadNotes();
+            }
+            if (typeof loadLists === 'function') {
+                await loadLists();
+            } else if (typeof window.loadLists === 'function') {
+                await window.loadLists();
+            }
+        } catch (error) {
+            console.error('[Tutorial] Failed to cleanup sample data:', error);
+        }
+    }
+    
+    /**
      * Hide tutorial
      */
     hide() {
@@ -1892,6 +2019,11 @@ async function tutorialComplete() {
         window.tutorialSystem.stopFinishVoicePrompt();
     }
     
+    // Clean up tutorial sample data
+    if (window.tutorialSystem) {
+        await window.tutorialSystem.cleanupTutorialSampleData();
+    }
+    
     // Mark tutorial as completed
     localStorage.setItem('tutorialCompleted', 'true');
     localStorage.setItem('tutorialCompletedDate', new Date().toISOString());
@@ -1908,6 +2040,52 @@ async function tutorialComplete() {
         if (modal) modal.style.display = 'none';
         console.log('[Tutorial] Fallback hide executed');
     }
+    
+    // Collapse all sections except voice interaction and calendar
+    setTimeout(() => {
+        // List of all sections to collapse
+        const sectionsToCollapse = [
+            'timeDisplayContent',
+            'activityContent',
+            'notesContent',
+            'listsContent',
+            'commandsContent',
+            'apiKeysContent',
+            'activitySettingsContent',
+            'mistralSettingsContent',
+            'wakeWordContent'
+        ];
+        
+        // Collapse each section
+        sectionsToCollapse.forEach(sectionId => {
+            const section = document.getElementById(sectionId);
+            if (section) {
+                section.style.display = 'none';
+            }
+        });
+        
+        // Ensure voice interaction and calendar are visible
+        const voiceContent = document.getElementById('voiceInteractionContent');
+        if (voiceContent) voiceContent.style.display = 'block';
+        
+        const calendarContent = document.getElementById('calendarContent');
+        if (calendarContent) calendarContent.style.display = 'block';
+        
+        // Change calendar to list view
+        if (typeof changeCalendarView === 'function') {
+            changeCalendarView('listWeek');
+        }
+        
+        // Reload emergency contacts to display saved contact
+        if (typeof loadEmergencyContacts === 'function') {
+            loadEmergencyContacts();
+        }
+        
+        // Scroll to top
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        
+        console.log('[Tutorial] UI reset: sections collapsed, calendar in list view, emergency contacts loaded, scrolled to top');
+    }, 500);
     
     // Show success message after animation
     setTimeout(() => {

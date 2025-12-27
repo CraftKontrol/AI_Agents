@@ -2326,6 +2326,17 @@ body {
     text-decoration: none;
 }
 
+/* Force responsive width for FullCalendar tables */
+.fc-daygrid-body,
+.fc-daygrid-body-unbalanced,
+.fc-daygrid-body-natural,
+.fc-scrollgrid-sync-table,
+.fc-timegrid-body,
+.fc-timegrid-cols,
+.fc table[role="presentation"] {
+    width: 100% !important;
+}
+
 /* Day cells */
 .fc .fc-daygrid-day {
     background-color: var(--background-color);

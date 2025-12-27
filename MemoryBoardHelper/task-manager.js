@@ -781,10 +781,11 @@ async function checkExpiredRecurringTasks() {
                     console.log('[TaskManager] Regenerated expired task:', task.id, '→', nextTask.id);
                 }
 
-                // Mark original as completed
-                task.status = 'completed';
-                task.completedAt = new Date().toISOString();
-                await saveTask(task);
+                // Mark original as completed (use updateTask since it already exists)
+                await updateTask(task.id, {
+                    status: 'completed',
+                    completedAt: new Date().toISOString()
+                });
             }
         }
 
