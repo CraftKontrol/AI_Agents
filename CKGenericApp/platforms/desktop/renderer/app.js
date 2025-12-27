@@ -111,7 +111,12 @@ function setupEventListeners() {
             'scrapingbee',
             'scraperapi',
             'brightdata',
-            'scrapfly'
+            'scrapfly',
+            'googledrive_client_id',
+            'onedrive_client_id',
+            'dropbox_client_id',
+            'icloud_container_id',
+            'icloud_api_token'
         ];
         
         for (const keyName of keyFields) {
