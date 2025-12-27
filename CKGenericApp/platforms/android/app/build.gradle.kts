@@ -7,6 +7,9 @@ plugins {
     kotlin("plugin.serialization") version "1.9.20"
 }
 
+import java.io.FileInputStream
+import java.util.Properties
+
 // Function to get git commit count
 fun getGitCommitCount(): Int {
     return try {
@@ -41,6 +44,32 @@ android {
         }
     }
     
+    signingConfigs {
+        val keystoreProperties = Properties()
+        val keystorePropertiesFile = rootProject.file("local.properties")
+        if (keystorePropertiesFile.exists()) {
+            FileInputStream(keystorePropertiesFile).use { input ->
+                keystoreProperties.load(input)
+            }
+        }
+
+        create("release") {
+            val storeFilePath = keystoreProperties.getProperty("CK_RELEASE_STORE_FILE")
+                ?: error("CK_RELEASE_STORE_FILE is missing")
+            val storePasswordProp = keystoreProperties.getProperty("CK_RELEASE_STORE_PASSWORD")
+                ?: error("CK_RELEASE_STORE_PASSWORD is missing")
+            val keyAliasProp = keystoreProperties.getProperty("CK_RELEASE_KEY_ALIAS")
+                ?: error("CK_RELEASE_KEY_ALIAS is missing")
+            val keyPasswordProp = keystoreProperties.getProperty("CK_RELEASE_KEY_PASSWORD")
+                ?: storePasswordProp
+
+            storeFile = file(storeFilePath)
+            storePassword = storePasswordProp
+            keyAlias = keyAliasProp
+            keyPassword = keyPasswordProp
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
@@ -48,6 +77,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("release")
         }
         debug {
             isDebuggable = true
@@ -77,6 +107,14 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+}
+
+android.applicationVariants.all {
+    outputs
+        .map { it as com.android.build.gradle.internal.api.BaseVariantOutputImpl }
+        .forEach { output ->
+            output.outputFileName = "CKAndroid-v${versionName}.apk"
+        }
 }
 
 dependencies {

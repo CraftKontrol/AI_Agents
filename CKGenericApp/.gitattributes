@@ -1,0 +1,8 @@
+# GitHub Linguist language hints
+*.kt linguist-language=Kotlin
+*.kts linguist-language=Kotlin
+*.java linguist-language=Java
+*.xml linguist-language=XML
+*.gradle linguist-language=Kotlin
+*.gradle.kts linguist-language=Kotlin
+*.properties linguist-language=INI
