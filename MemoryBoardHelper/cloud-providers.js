@@ -59,7 +59,11 @@ class GoogleDriveProvider extends CloudProvider {
      * Set Client ID (from CKGenericApp)
      */
     setClientId(clientId) {
-        this.clientId = clientId;
+        const sanitized = sanitizeClientId(clientId);
+        if (sanitized !== clientId) {
+            console.warn('[GoogleDrive] Client ID sanitized (removed protocol/trailing slash)');
+        }
+        this.clientId = sanitized;
         this.saveCredentials();
     }
 
@@ -70,7 +74,8 @@ class GoogleDriveProvider extends CloudProvider {
         if (!this.clientId) {
             // Try to get from CKGenericApp
             if (typeof window.CKGenericApp !== 'undefined') {
-                this.clientId = window.CKGenericApp.getApiKey('googledrive_client_id');
+                const cid = window.CKGenericApp.getApiKey('googledrive_client_id');
+                this.clientId = sanitizeClientId(cid || '');
             }
             
             if (!this.clientId) {
@@ -364,6 +369,14 @@ class GoogleDriveProvider extends CloudProvider {
         
         console.log('[GoogleDrive] Logged out');
     }
+}
+
+// Remove protocol and trailing slashes from client IDs to avoid invalid_client
+function sanitizeClientId(id) {
+    if (!id) return '';
+    return id.trim()
+        .replace(/^https?:\/\//i, '')
+        .replace(/\/+$/, '');
 }
 
 // Global listener to catch PKCE redirects dispatched by Android
