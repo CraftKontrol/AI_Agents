@@ -6323,7 +6323,7 @@ function checkApiKeysAndHideSection() {
         const content = document.getElementById('apiKeysContent');
         if (content) content.style.display = 'none';
         const toggleBtn = document.getElementById('apiToggleBtn');
-        if (toggleBtn) toggleBtn.textContent = getLocalizedText('show');
+        if (toggleBtn) toggleBtn.innerHTML = '<span class="material-symbols-outlined">expand_more</span>';
     }
 }
 
