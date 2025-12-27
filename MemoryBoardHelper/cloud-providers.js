@@ -19,6 +19,11 @@ class GoogleDriveProvider extends CloudProvider {
         
         // Load saved credentials
         this.loadCredentials();
+
+        // Ensure PKCE redirect handler always has a live instance after reloads
+        if (typeof window !== 'undefined') {
+            window._ckGDProviderInstance = this;
+        }
     }
 
     /**
@@ -84,7 +89,7 @@ class GoogleDriveProvider extends CloudProvider {
         }
 
         try {
-            // Keep reference for PKCE redirect handler
+            // Keep reference for PKCE redirect handler (redundant with constructor guard, but safe)
             window._ckGDProviderInstance = this;
 
             // Use Android OAuth client + custom scheme so Google accepts sensitive scopes
