@@ -49,10 +49,12 @@ platforms/android/**/*.hprof
 platforms/desktop/node_modules/
 
 # Build outputs
+platforms/desktop/dist/
 platforms/desktop/out/
 platforms/desktop/release/
 
 # Built installers (Windows, macOS, Linux)
+platforms/desktop/**/*.exe
 platforms/desktop/**/*.dmg
 platforms/desktop/**/*.AppImage
 platforms/desktop/**/*.deb
