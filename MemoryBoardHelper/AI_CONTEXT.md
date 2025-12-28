@@ -53,6 +53,12 @@
 - `tutorial-system.js` - Interactive onboarding tutorial with step-by-step guidance (NEW)
 - `test-app.html/js` - Testing system with action-wrapper integration
 
+**Sync / Logs (Dec 2025):**
+- Providers reduced to **CKServerAPI** + **WebDAV** (Google/OneDrive/Dropbox/iCloud removed).
+- CKServerAPI: `ckserverapi-client.js` + `CKServerApiProvider` (in cloud-providers.js) call `sync_pull_mbh` / `sync_push_mbh`; config stored in `ckserver_config` (baseUrl, userId, tokenSync, tokenLog). First upload always wraps `{version, timestamp, deviceId, data}`. Conflict resolver handles `cloudData.data` or flat payloads.
+- Background logs: `sendCKBackgroundLog()` best-effort appends to CKServerAPI `log_append` when tokenLog is set; local `MemoryBoardHelper.log` kept for modal/export.
+- WebDAV: `WebDAVProvider` keeps PUT/GET JSON at `/memoryboard_data.json` with same metadata envelope.
+
 **Recent test resilience updates (Dec 2025):** search_task validation tolerates empty result sets when Mistral intent is `search_task`; alarm system check is bypassed in automated runs; web restaurant/weather tests accept geocoding/missing-source responses; weather queries fall back to Open-Meteo (with placeholder data) when no provider succeeds.
 
 **Performance Optimizations (Dec 22, 2025):**

@@ -4739,6 +4739,9 @@ function logMistralResponse(userMessage, mistralResult) {
         logs += logLine;
         localStorage.setItem('MemoryBoardHelper.log', logs);
 
+        // Envoi asynchrone vers CKServerAPI (best-effort)
+        sendCKBackgroundLog(logEntry, 'info');
+
         // Optionnel: téléchargement automatique du log (pour export manuel)
         // saveLogFile(logs);
     } catch (e) {
@@ -4755,6 +4758,27 @@ function saveLogFile(logs) {
     a.download = 'MemoryBoardHelper.log';
     a.click();
     URL.revokeObjectURL(url);
+}
+
+async function sendCKBackgroundLog(message, level = 'info') {
+    try {
+        const cfg = getCKServerConfig();
+        if (!cfg.baseUrl || !cfg.tokenLog) {
+            return; // Logging optional
+        }
+
+        const api = new CKServerApi(cfg.baseUrl, { tokenLog: cfg.tokenLog });
+        const msg = typeof message === 'string' ? message : JSON.stringify(message);
+        const trimmed = msg.length > 9500 ? msg.slice(0, 9500) : msg; // stay under 10KB
+        await api.logAppend({
+            deviceId: (window.storageSyncEngine && window.storageSyncEngine.deviceId) || 'MemoryBoardHelper',
+            userId: cfg.userId || '',
+            level,
+            msg: trimmed
+        });
+    } catch (error) {
+        console.warn('[CKServerAPI] Background log failed:', error.message || error);
+    }
 }
 
 // @DEPRECATED - Use action-wrapper.js executeAction('add_task') instead
@@ -6870,11 +6894,36 @@ async function restartTutorial() {
 
 // === Cloud Sync Functions ===
 
+function getCKServerConfig() {
+    try {
+        return JSON.parse(localStorage.getItem('ckserver_config') || '{}');
+    } catch (error) {
+        console.warn('[CKServerAPI] Failed to parse saved config:', error);
+        return {};
+    }
+}
+
+function saveCKServerConfig(cfg) {
+    localStorage.setItem('ckserver_config', JSON.stringify(cfg));
+}
+
+function buildCKProviderFromConfig() {
+    const cfg = getCKServerConfig();
+    const provider = new CKServerApiProvider();
+    provider.setConfig(cfg);
+    return provider;
+}
+
 /**
  * Load cloud sync settings
  */
 function loadCloudSyncSettings() {
-    const provider = localStorage.getItem('cloudProvider') || 'none';
+    const storedProvider = localStorage.getItem('cloudProvider') || 'none';
+    const allowedProviders = ['none', 'ckserverapi', 'webdav'];
+    const provider = allowedProviders.includes(storedProvider) ? storedProvider : 'none';
+    if (provider !== storedProvider) {
+        localStorage.setItem('cloudProvider', provider);
+    }
     const providerSelect = document.getElementById('cloudProvider');
     if (providerSelect) {
         providerSelect.value = provider;
@@ -6903,19 +6952,13 @@ function onCloudProviderChange() {
     const provider = document.getElementById('cloudProvider').value;
     localStorage.setItem('cloudProvider', provider);
 
-    // Hide all provider-specific settings
-    document.getElementById('providerSettings').style.display = 'none';
-    document.getElementById('googleDriveSettings').style.display = 'none';
-    document.getElementById('oneDriveSettings').style.display = 'none';
-    document.getElementById('dropboxSettings').style.display = 'none';
-    document.getElementById('icloudSettings').style.display = 'none';
+    const providerSettings = document.getElementById('providerSettings');
+    providerSettings.style.display = 'none';
+    document.getElementById('ckServerSettings').style.display = 'none';
     document.getElementById('webdavSettings').style.display = 'none';
-
-    // Hide sync controls by default
     document.getElementById('syncControls').style.display = 'none';
 
     if (provider === 'none') {
-        // Disable sync
         if (window.storageSyncEngine) {
             window.storageSyncEngine.disableSync();
         }
@@ -6923,140 +6966,55 @@ function onCloudProviderChange() {
         return;
     }
 
-    // Show provider-specific settings
-    document.getElementById('providerSettings').style.display = 'block';
+    providerSettings.style.display = 'block';
 
-    if (provider === 'googledrive') {
-        document.getElementById('googleDriveSettings').style.display = 'block';
-        
-        // Check if authenticated
-        const googleDriveProvider = new GoogleDriveProvider();
+    if (provider === 'ckserverapi') {
+        document.getElementById('ckServerSettings').style.display = 'block';
+        const cfg = getCKServerConfig();
 
-        // Prefill Client ID if stored
-        const gdInput = document.getElementById('googleDriveClientId');
-        if (gdInput) {
-            gdInput.value = googleDriveProvider.clientId || '';
-        }
+        document.getElementById('ckBaseUrl').value = cfg.baseUrl || '';
+        document.getElementById('ckUserId').value = cfg.userId || '';
+        document.getElementById('ckTokenSync').value = cfg.tokenSync || '';
+        document.getElementById('ckTokenLog').value = cfg.tokenLog || '';
 
-        if (googleDriveProvider.isAuthenticated()) {
-            document.getElementById('googleDriveAuthStatus').innerHTML = `
+        const ckProvider = buildCKProviderFromConfig();
+        if (ckProvider.isAuthenticated()) {
+            document.getElementById('ckServerAuthStatus').innerHTML = `
                 <span class="material-symbols-outlined">check_circle</span>
-                <span id="googleDriveAuthText">Authentifié</span>
+                <span id="ckServerAuthText">Connecté</span>
             `;
-            document.getElementById('googleDriveAuthBtn').innerHTML = `
+            document.getElementById('ckServerAuthBtn').innerHTML = `
                 <span class="material-symbols-outlined">logout</span>
-                Déconnecter
+                Déconnecter CKServerAPI
             `;
-            document.getElementById('googleDriveAuthBtn').onclick = async () => {
-                await googleDriveProvider.logout();
+            document.getElementById('ckServerAuthBtn').onclick = async () => {
+                await ckProvider.logout();
+                saveCKServerConfig({});
                 loadCloudSyncSettings();
             };
-
-            // Show sync controls
             document.getElementById('syncControls').style.display = 'block';
-
-            // Set provider in sync engine
             if (window.storageSyncEngine) {
-                window.storageSyncEngine.setProvider(googleDriveProvider);
+                window.storageSyncEngine.setProvider(ckProvider);
             }
-        }
-    } else if (provider === 'onedrive') {
-        document.getElementById('oneDriveSettings').style.display = 'block';
-        
-        const oneDriveProvider = new OneDriveProvider();
-
-        const odInput = document.getElementById('oneDriveClientId');
-        if (odInput) {
-            odInput.value = oneDriveProvider.clientId || '';
-        }
-
-        if (oneDriveProvider.isAuthenticated()) {
-            document.getElementById('oneDriveAuthStatus').innerHTML = `
-                <span class="material-symbols-outlined">check_circle</span>
-                <span id="oneDriveAuthText">Authentifié</span>
+        } else {
+            document.getElementById('ckServerAuthStatus').innerHTML = `
+                <span class="material-symbols-outlined">lock</span>
+                <span id="ckServerAuthText">Non configuré</span>
             `;
-            document.getElementById('oneDriveAuthBtn').innerHTML = `
-                <span class="material-symbols-outlined">logout</span>
-                Déconnecter
+            document.getElementById('ckServerAuthBtn').innerHTML = `
+                <span class="material-symbols-outlined">login</span>
+                Tester & Connecter CKServerAPI
             `;
-            document.getElementById('oneDriveAuthBtn').onclick = async () => {
-                await oneDriveProvider.logout();
-                loadCloudSyncSettings();
-            };
-
-            document.getElementById('syncControls').style.display = 'block';
-
-            if (window.storageSyncEngine) {
-                window.storageSyncEngine.setProvider(oneDriveProvider);
-            }
-        }
-    } else if (provider === 'dropbox') {
-        document.getElementById('dropboxSettings').style.display = 'block';
-        
-        const dropboxProvider = new DropboxProvider();
-
-        const dbInput = document.getElementById('dropboxClientId');
-        if (dbInput) {
-            dbInput.value = dropboxProvider.clientId || '';
-        }
-
-        if (dropboxProvider.isAuthenticated()) {
-            document.getElementById('dropboxAuthStatus').innerHTML = `
-                <span class="material-symbols-outlined">check_circle</span>
-                <span id="dropboxAuthText">Authentifié</span>
-            `;
-            document.getElementById('dropboxAuthBtn').innerHTML = `
-                <span class="material-symbols-outlined">logout</span>
-                Déconnecter
-            `;
-            document.getElementById('dropboxAuthBtn').onclick = async () => {
-                await dropboxProvider.logout();
-                loadCloudSyncSettings();
-            };
-
-            document.getElementById('syncControls').style.display = 'block';
-
-            if (window.storageSyncEngine) {
-                window.storageSyncEngine.setProvider(dropboxProvider);
-            }
-        }
-    } else if (provider === 'icloud') {
-        document.getElementById('icloudSettings').style.display = 'block';
-
-        const icloudProvider = new iCloudProvider();
-
-        // Prefill stored values
-        const containerInput = document.getElementById('icloudContainerId');
-        const tokenInput = document.getElementById('icloudApiToken');
-        const envSelect = document.getElementById('icloudEnvironment');
-        if (containerInput) containerInput.value = icloudProvider.containerId || '';
-        if (tokenInput) tokenInput.value = icloudProvider.apiToken || '';
-        if (envSelect) envSelect.value = icloudProvider.environment || 'production';
-
-        if (icloudProvider.isAuthenticated()) {
-            document.getElementById('icloudAuthStatus').innerHTML = `
-                <span class="material-symbols-outlined">check_circle</span>
-                <span id="icloudAuthText">Connecté</span>
-            `;
-            document.getElementById('icloudAuthBtn').innerHTML = `
-                <span class="material-symbols-outlined">logout</span>
-                Déconnecter
-            `;
-            document.getElementById('icloudAuthBtn').onclick = async () => {
-                await icloudProvider.logout();
-                loadCloudSyncSettings();
-            };
-
-            document.getElementById('syncControls').style.display = 'block';
-
-            if (window.storageSyncEngine) {
-                window.storageSyncEngine.setProvider(icloudProvider);
-            }
+            document.getElementById('ckServerAuthBtn').onclick = connectCKServerAPI;
         }
     } else if (provider === 'webdav') {
         document.getElementById('webdavSettings').style.display = 'block';
-        
         const webdavProvider = new WebDAVProvider();
+
+        document.getElementById('webdavUrl').value = webdavProvider.serverUrl || '';
+        document.getElementById('webdavUsername').value = webdavProvider.username || '';
+        document.getElementById('webdavPassword').value = webdavProvider.password || '';
+
         if (webdavProvider.isAuthenticated()) {
             document.getElementById('webdavAuthStatus').innerHTML = `
                 <span class="material-symbols-outlined">check_circle</span>
@@ -7085,155 +7043,46 @@ function onCloudProviderChange() {
     updateSyncStatus();
 }
 
-/**
- * Authenticate with Google Drive
- */
-async function authenticateGoogleDrive() {
+async function connectCKServerAPI() {
     try {
-        const provider = new GoogleDriveProvider();
-        const manualClientId = document.getElementById('googleDriveClientId')?.value.trim();
-        
-        if (manualClientId) {
-            provider.setClientId(manualClientId);
-        } else if (typeof window.CKGenericApp !== 'undefined') {
-            const clientId = window.CKGenericApp.getApiKey('googledrive_client_id');
-            if (clientId) {
-                provider.setClientId(clientId);
-            }
-        }
+        const baseUrl = document.getElementById('ckBaseUrl').value.trim();
+        const userId = document.getElementById('ckUserId').value.trim();
+        const tokenSync = document.getElementById('ckTokenSync').value.trim();
+        const tokenLog = document.getElementById('ckTokenLog').value.trim();
 
-        if (!provider.clientId) {
-            alert('Veuillez renseigner le Client ID Google Drive (ou configurer l\'API dans CKGenericApp/CKDesktop)');
+        if (!baseUrl || !userId || !tokenSync) {
+            alert('Veuillez renseigner la base URL, le userId et le token Sync CKServerAPI');
             return;
         }
 
-        await provider.authenticate();
-        
-        // Reload settings to update UI
-        setTimeout(() => {
-            loadCloudSyncSettings();
-        }, 1000);
-
-    } catch (error) {
-        console.error('[CloudSync] Authentication failed:', error);
-        alert('Échec de l\'authentification: ' + error.message);
-    }
-}
-
-/**
- * Authenticate with OneDrive
- */
-async function authenticateOneDrive() {
-    try {
-        const provider = new OneDriveProvider();
-        const manualClientId = document.getElementById('oneDriveClientId')?.value.trim();
-        
-        if (manualClientId) {
-            provider.setClientId(manualClientId);
-        } else if (typeof window.CKGenericApp !== 'undefined') {
-            const clientId = window.CKGenericApp.getApiKey('onedrive_client_id');
-            if (clientId) {
-                provider.setClientId(clientId);
-            }
-        }
-
-        if (!provider.clientId) {
-            alert('Veuillez renseigner le Client ID OneDrive (ou configurer l\'API dans CKGenericApp/CKDesktop)');
-            return;
-        }
-
-        await provider.authenticate();
-        
-        setTimeout(() => {
-            loadCloudSyncSettings();
-        }, 1000);
-
-    } catch (error) {
-        console.error('[CloudSync] OneDrive authentication failed:', error);
-        alert('Échec de l\'authentification OneDrive: ' + error.message);
-    }
-}
-
-/**
- * Authenticate with Dropbox
- */
-async function authenticateDropbox() {
-    try {
-        const provider = new DropboxProvider();
-        const manualClientId = document.getElementById('dropboxClientId')?.value.trim();
-        
-        if (manualClientId) {
-            provider.setClientId(manualClientId);
-        } else if (typeof window.CKGenericApp !== 'undefined') {
-            const clientId = window.CKGenericApp.getApiKey('dropbox_client_id');
-            if (clientId) {
-                provider.setClientId(clientId);
-            }
-        }
-
-        if (!provider.clientId) {
-            alert('Veuillez renseigner l\'App Key Dropbox (ou configurer l\'API dans CKGenericApp/CKDesktop)');
-            return;
-        }
-
-        await provider.authenticate();
-        
-        setTimeout(() => {
-            loadCloudSyncSettings();
-        }, 1000);
-
-    } catch (error) {
-        console.error('[CloudSync] Dropbox authentication failed:', error);
-        alert('Échec de l\'authentification Dropbox: ' + error.message);
-    }
-}
-
-/**
- * Authenticate with iCloud (CloudKit JS)
- */
-async function authenticateICloud() {
-    try {
-        const containerId = document.getElementById('icloudContainerId').value.trim();
-        const apiToken = document.getElementById('icloudApiToken').value.trim();
-        const environment = document.getElementById('icloudEnvironment').value || 'production';
-
-        if (!containerId || !apiToken) {
-            alert('Veuillez renseigner le Container ID et l\'API Token iCloud');
-            return;
-        }
-
-        const provider = new iCloudProvider();
-        provider.setCredentials(containerId, apiToken, environment);
-
+        const provider = new CKServerApiProvider();
+        provider.setConfig({ baseUrl, userId, tokenSync, tokenLog });
         await provider.authenticate();
 
-        document.getElementById('icloudAuthStatus').innerHTML = `
+        document.getElementById('ckServerAuthStatus').innerHTML = `
             <span class="material-symbols-outlined">check_circle</span>
-            <span id="icloudAuthText">Connecté</span>
+            <span id="ckServerAuthText">Connecté</span>
         `;
-        document.getElementById('icloudAuthBtn').innerHTML = `
+        document.getElementById('ckServerAuthBtn').innerHTML = `
             <span class="material-symbols-outlined">logout</span>
-            Déconnecter
+            Déconnecter CKServerAPI
         `;
-        document.getElementById('icloudAuthBtn').onclick = async () => {
+        document.getElementById('ckServerAuthBtn').onclick = async () => {
             await provider.logout();
+            saveCKServerConfig({});
             loadCloudSyncSettings();
         };
 
-        // Show sync controls
         document.getElementById('syncControls').style.display = 'block';
-
         if (window.storageSyncEngine) {
             window.storageSyncEngine.setProvider(provider);
         }
 
-        setTimeout(() => {
-            loadCloudSyncSettings();
-        }, 500);
-
+        updateSyncStatus();
+        alert('Connexion CKServerAPI réussie !');
     } catch (error) {
-        console.error('[CloudSync] iCloud authentication failed:', error);
-        alert('Échec de l\'authentification iCloud: ' + error.message);
+        console.error('[CloudSync] CKServerAPI authentication failed:', error);
+        alert('Échec de la connexion CKServerAPI: ' + error.message);
     }
 }
 
@@ -7355,21 +7204,15 @@ async function disconnectCloudProvider() {
     }
 
     const provider = localStorage.getItem('cloudProvider');
-    
-    if (provider === 'googledrive') {
-        const googleDriveProvider = new GoogleDriveProvider();
-        await googleDriveProvider.logout();
-    } else if (provider === 'onedrive') {
-        const oneDriveProvider = new OneDriveProvider();
-        await oneDriveProvider.logout();
-    } else if (provider === 'dropbox') {
-        const dropboxProvider = new DropboxProvider();
-        await dropboxProvider.logout();
-    } else if (provider === 'icloud') {
-        const icloudProvider = new iCloudProvider();
-        await icloudProvider.logout();
-        document.getElementById('icloudContainerId').value = '';
-        document.getElementById('icloudApiToken').value = '';
+
+    if (provider === 'ckserverapi') {
+        const ckProvider = buildCKProviderFromConfig();
+        await ckProvider.logout();
+        document.getElementById('ckBaseUrl').value = '';
+        document.getElementById('ckUserId').value = '';
+        document.getElementById('ckTokenSync').value = '';
+        document.getElementById('ckTokenLog').value = '';
+        saveCKServerConfig({});
     } else if (provider === 'webdav') {
         const webdavProvider = new WebDAVProvider();
         await webdavProvider.logout();

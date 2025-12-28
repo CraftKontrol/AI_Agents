@@ -179,9 +179,14 @@ class StorageSyncEngine {
             const cloudData = await this.provider.download();
 
             if (!cloudData) {
-                // No cloud data exists, upload local data
+                // No cloud data exists, upload local data with metadata
                 console.log('[StorageSync] No cloud data, uploading local data');
-                await this.provider.upload(localData);
+                await this.provider.upload({
+                    version: 1,
+                    timestamp: new Date().toISOString(),
+                    deviceId: this.deviceId,
+                    data: localData
+                });
                 this.lastSyncTime = new Date();
                 this.saveConfig();
                 this.notifyListeners({ 
@@ -195,9 +200,11 @@ class StorageSyncEngine {
             // 3. Conflict resolution
             const mergedData = this.resolveConflicts(localData, cloudData);
 
+            const cloudPayload = cloudData && cloudData.data ? cloudData.data : (cloudData || {});
+
             // 4. Check if there are changes
             const hasLocalChanges = JSON.stringify(localData) !== JSON.stringify(mergedData);
-            const hasCloudChanges = JSON.stringify(cloudData.data) !== JSON.stringify(mergedData);
+            const hasCloudChanges = JSON.stringify(cloudPayload) !== JSON.stringify(mergedData);
 
             if (hasLocalChanges) {
                 // Apply changes to local storage
@@ -277,6 +284,7 @@ class StorageSyncEngine {
      */
     resolveConflicts(localData, cloudData) {
         const merged = {};
+        const cloudPayload = cloudData && cloudData.data ? cloudData.data : (cloudData || {});
 
         // Helper function to merge array by ID with timestamp comparison
         const mergeArrayById = (localArray, cloudArray) => {
@@ -307,14 +315,14 @@ class StorageSyncEngine {
         };
 
         // Merge each data type
-        merged.tasks = mergeArrayById(localData.tasks, cloudData.data.tasks || []);
-        merged.notes = mergeArrayById(localData.notes, cloudData.data.notes || []);
-        merged.lists = mergeArrayById(localData.lists, cloudData.data.lists || []);
-        merged.conversations = mergeArrayById(localData.conversations, cloudData.data.conversations || []);
-        merged.settings = mergeArrayById(localData.settings, cloudData.data.settings || []);
-        merged.activities = mergeArrayById(localData.activities, cloudData.data.activities || []);
-        merged.dailyStats = mergeArrayById(localData.dailyStats, cloudData.data.dailyStats || []);
-        merged.activityGoals = mergeArrayById(localData.activityGoals, cloudData.data.activityGoals || []);
+        merged.tasks = mergeArrayById(localData.tasks, cloudPayload.tasks || []);
+        merged.notes = mergeArrayById(localData.notes, cloudPayload.notes || []);
+        merged.lists = mergeArrayById(localData.lists, cloudPayload.lists || []);
+        merged.conversations = mergeArrayById(localData.conversations, cloudPayload.conversations || []);
+        merged.settings = mergeArrayById(localData.settings, cloudPayload.settings || []);
+        merged.activities = mergeArrayById(localData.activities, cloudPayload.activities || []);
+        merged.dailyStats = mergeArrayById(localData.dailyStats, cloudPayload.dailyStats || []);
+        merged.activityGoals = mergeArrayById(localData.activityGoals, cloudPayload.activityGoals || []);
 
         return merged;
     }
