@@ -58,6 +58,8 @@
 - CKServerAPI: `ckserverapi-client.js` + `CKServerApiProvider` (in cloud-providers.js) call `sync_pull_mbh` / `sync_push_mbh`; config stored in `ckserver_config` (baseUrl, userId, tokenSync, tokenLog). First upload always wraps `{version, timestamp, deviceId, data}`. Conflict resolver handles `cloudData.data` or flat payloads.
 - Background logs: `sendCKBackgroundLog()` best-effort appends to CKServerAPI `log_append` when tokenLog is set; local `MemoryBoardHelper.log` kept for modal/export.
 - WebDAV: `WebDAVProvider` keeps PUT/GET JSON at `/memoryboard_data.json` with same metadata envelope.
+- Guard rails: CKServer provider creation now checks `window.CKServerApiProvider` before instantiation; UI prompts reload if the provider script failed to load instead of throwing a ReferenceError.
+- 404 bootstrap: CKServerAPI authenticate/pull treats `not_found`/404 as “no remote file yet” and will authenticate anyway; first upload creates the file.
 
 **Recent test resilience updates (Dec 2025):** search_task validation tolerates empty result sets when Mistral intent is `search_task`; alarm system check is bypassed in automated runs; web restaurant/weather tests accept geocoding/missing-source responses; weather queries fall back to Open-Meteo (with placeholder data) when no provider succeeds.
 

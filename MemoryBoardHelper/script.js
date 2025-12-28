@@ -6907,9 +6907,26 @@ function saveCKServerConfig(cfg) {
     localStorage.setItem('ckserver_config', JSON.stringify(cfg));
 }
 
+function getCKServerProviderClass() {
+    if (window.CKServerApiProvider) {
+        return window.CKServerApiProvider;
+    }
+
+    console.error('[CloudSync] CKServerApiProvider is not available. Check that cloud-providers.js is loaded before script.js');
+    if (typeof showError === 'function') {
+        showError('CKServerAPI indisponible : rechargez la page ou vérifiez le chargement des scripts.');
+    }
+    return null;
+}
+
 function buildCKProviderFromConfig() {
+    const ProviderClass = getCKServerProviderClass();
+    if (!ProviderClass) {
+        return null;
+    }
+
     const cfg = getCKServerConfig();
-    const provider = new CKServerApiProvider();
+    const provider = new ProviderClass();
     provider.setConfig(cfg);
     return provider;
 }
@@ -6978,6 +6995,19 @@ function onCloudProviderChange() {
         document.getElementById('ckTokenLog').value = cfg.tokenLog || '';
 
         const ckProvider = buildCKProviderFromConfig();
+        if (!ckProvider) {
+            document.getElementById('ckServerAuthStatus').innerHTML = `
+                <span class="material-symbols-outlined">warning</span>
+                <span id="ckServerAuthText">Module CKServerAPI manquant</span>
+            `;
+            document.getElementById('ckServerAuthBtn').innerHTML = `
+                <span class="material-symbols-outlined">refresh</span>
+                Recharger la page
+            `;
+            document.getElementById('ckServerAuthBtn').onclick = () => location.reload();
+            updateSyncStatus();
+            return;
+        }
         if (ckProvider.isAuthenticated()) {
             document.getElementById('ckServerAuthStatus').innerHTML = `
                 <span class="material-symbols-outlined">check_circle</span>
@@ -7055,7 +7085,12 @@ async function connectCKServerAPI() {
             return;
         }
 
-        const provider = new CKServerApiProvider();
+        const ProviderClass = getCKServerProviderClass();
+        if (!ProviderClass) {
+            return;
+        }
+
+        const provider = new ProviderClass();
         provider.setConfig({ baseUrl, userId, tokenSync, tokenLog });
         await provider.authenticate();
 
@@ -7207,7 +7242,9 @@ async function disconnectCloudProvider() {
 
     if (provider === 'ckserverapi') {
         const ckProvider = buildCKProviderFromConfig();
-        await ckProvider.logout();
+        if (ckProvider) {
+            await ckProvider.logout();
+        }
         document.getElementById('ckBaseUrl').value = '';
         document.getElementById('ckUserId').value = '';
         document.getElementById('ckTokenSync').value = '';
@@ -8337,8 +8374,5 @@ window.restartTutorial = restartTutorial;
 
 // Cloud sync functions
 window.onCloudProviderChange = onCloudProviderChange;
-window.authenticateGoogleDrive = authenticateGoogleDrive;
-window.authenticateOneDrive = authenticateOneDrive;
-window.authenticateDropbox = authenticateDropbox;
 window.authenticateWebDAV = authenticateWebDAV;
 window.updateSyncStatus = updateSyncStatus;
