@@ -8,9 +8,6 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.webkit.*
-import androidx.browser.customtabs.CustomTabsIntent
-import com.craftkontrol.ckgenericapp.webview.OAuthHelper.isGoogleOAuthUrl
-import com.craftkontrol.ckgenericapp.webview.OAuthHelper.rewriteOAuthUrl
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.craftkontrol.ckgenericapp.service.SensorMonitoringService
@@ -35,15 +32,7 @@ class CKWebViewClient(private val context: Context) : WebViewClient() {
             }
         }
 
-        // Enforce Google OAuth in a secure browser (Custom Tab) to satisfy policy
-        if (isGoogleOAuthUrl(url)) {
-            val rewritten = rewriteOAuthUrl(url, context)
-            Timber.d("Opening Google OAuth in Custom Tab (rewritten): $rewritten")
-            launchInCustomTab(context, rewritten)
-            return true
-        }
-        
-        // For OAuth/new-window flows (target="_blank" or window.open) keep navigation inside
+        // For new-window flows (target="_blank" or window.open) keep navigation inside
         // the current WebView so session/API keys remain available. Only special schemes above
         // are allowed to leave the WebView.
         val isMainFrame = request.isForMainFrame
@@ -76,22 +65,6 @@ class CKWebViewClient(private val context: Context) : WebViewClient() {
         super.onReceivedError(view, request, error)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             Timber.e("WebView error: ${error?.description}")
-        }
-    }
-}
-
-private fun launchInCustomTab(context: Context, url: String) {
-    try {
-        val customTabsIntent = CustomTabsIntent.Builder().build()
-        customTabsIntent.launchUrl(context, Uri.parse(url))
-    } catch (e: Exception) {
-        Timber.e(e, "Failed to open Custom Tab for OAuth, falling back to browser")
-        try {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            context.startActivity(intent)
-        } catch (ex: Exception) {
-            Timber.e(ex, "Failed to open browser for OAuth")
         }
     }
 }

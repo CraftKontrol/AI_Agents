@@ -111,7 +111,11 @@ function setupEventListeners() {
             'scrapingbee',
             'scraperapi',
             'brightdata',
-            'scrapfly'
+            'scrapfly',
+            'ckserver_base',
+            'ckserver_user',
+            'ckserver_token_sync',
+            'ckserver_token_log'
         ];
         
         for (const keyName of keyFields) {

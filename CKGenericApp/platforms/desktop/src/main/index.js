@@ -401,7 +401,10 @@ function openWebApp(appId) {
     scraperapi: store.get('apiKeys.scraperapi', ''),
     brightdata: store.get('apiKeys.brightdata', ''),
     scrapfly: store.get('apiKeys.scrapfly', ''),
-    // Cloud sync keys removed from desktop client
+    ckserver_base: store.get('apiKeys.ckserver_base', ''),
+    ckserver_user: store.get('apiKeys.ckserver_user', ''),
+    ckserver_token_sync: store.get('apiKeys.ckserver_token_sync', ''),
+    ckserver_token_log: store.get('apiKeys.ckserver_token_log', '')
   };
   
   // Create new window
@@ -461,7 +464,10 @@ function injectAPIKeys(webContents) {
     scraperapi: store.get('apiKeys.scraperapi', ''),
     brightdata: store.get('apiKeys.brightdata', ''),
     scrapfly: store.get('apiKeys.scrapfly', ''),
-    // Cloud sync keys removed from desktop client
+    ckserver_base: store.get('apiKeys.ckserver_base', ''),
+    ckserver_user: store.get('apiKeys.ckserver_user', ''),
+    ckserver_token_sync: store.get('apiKeys.ckserver_token_sync', ''),
+    ckserver_token_log: store.get('apiKeys.ckserver_token_log', '')
   };
   
   // Fallback: if google_stt is empty but google_tts has a value, use google_tts for both
@@ -497,6 +503,12 @@ function injectAPIKeys(webContents) {
     window.CKDesktop.getApiKey = function(keyName) {
       return window.CKDesktop.apiKeys[keyName] || '';
     };
+    window.CKDesktop.ckServer = {
+      baseUrl: window.CKDesktop.apiKeys.ckserver_base || '',
+      userId: window.CKDesktop.apiKeys.ckserver_user || '',
+      tokenSync: window.CKDesktop.apiKeys.ckserver_token_sync || '',
+      tokenLog: window.CKDesktop.apiKeys.ckserver_token_log || ''
+    };
     
     // Also inject as CKAndroid for compatibility
     if (!window.CKAndroid) {
@@ -505,6 +517,12 @@ function injectAPIKeys(webContents) {
     window.CKAndroid.apiKeys = ${JSON.stringify(apiKeys)};
     window.CKAndroid.getApiKey = function(keyName) {
       return window.CKAndroid.apiKeys[keyName] || '';
+    };
+    window.CKAndroid.ckServer = {
+      baseUrl: window.CKAndroid.apiKeys.ckserver_base || '',
+      userId: window.CKAndroid.apiKeys.ckserver_user || '',
+      tokenSync: window.CKAndroid.apiKeys.ckserver_token_sync || '',
+      tokenLog: window.CKAndroid.apiKeys.ckserver_token_log || ''
     };
     
     console.log('[CKDesktop] API keys injected:', Object.keys(window.CKDesktop.apiKeys));
@@ -548,7 +566,11 @@ function registerIPCHandlers() {
       scrapingbee: store.get('apiKeys.scrapingbee', ''),
       scraperapi: store.get('apiKeys.scraperapi', ''),
       brightdata: store.get('apiKeys.brightdata', ''),
-      scrapfly: store.get('apiKeys.scrapfly', '')
+      scrapfly: store.get('apiKeys.scrapfly', ''),
+      ckserver_base: store.get('apiKeys.ckserver_base', ''),
+      ckserver_user: store.get('apiKeys.ckserver_user', ''),
+      ckserver_token_sync: store.get('apiKeys.ckserver_token_sync', ''),
+      ckserver_token_log: store.get('apiKeys.ckserver_token_log', '')
     };
   });
   
@@ -620,7 +642,11 @@ function registerIPCHandlers() {
           scrapingbee: store.get('apiKeys.scrapingbee', ''),
           scraperapi: store.get('apiKeys.scraperapi', ''),
           brightdata: store.get('apiKeys.brightdata', ''),
-          scrapfly: store.get('apiKeys.scrapfly', '')
+          scrapfly: store.get('apiKeys.scrapfly', ''),
+          ckserver_base: store.get('apiKeys.ckserver_base', ''),
+          ckserver_user: store.get('apiKeys.ckserver_user', ''),
+          ckserver_token_sync: store.get('apiKeys.ckserver_token_sync', ''),
+          ckserver_token_log: store.get('apiKeys.ckserver_token_log', '')
         },
         settings: {
           monitoringEnabled: store.get('monitoringEnabled', true),

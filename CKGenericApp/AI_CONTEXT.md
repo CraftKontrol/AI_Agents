@@ -88,8 +88,8 @@ CKGenericApp/
 
 ## Shared Features Across Platforms
 
-### 1. API Key Management (12 Services)
-**Centralized, encrypted storage of API keys for all web apps:**
+### 1. API Key Management (12 Services + CKServer config)
+**Centralized, encrypted storage of API keys for all web apps, including CKServerAPI sync/log config:**
 
 | Service | Purpose | Used By |
 |---------|---------|---------|
@@ -105,6 +105,10 @@ CKGenericApp/
 | `scraperapi` | ScraperAPI | AI Search Agregator |
 | `brightdata` | Bright Data | AI Search Agregator |
 | `scrapfly` | ScrapFly | AI Search Agregator |
+| `ckserver_base` | CKServerAPI base URL | Memory Board Helper (sync/log), other CKServer-enabled apps |
+| `ckserver_user` | CKServerAPI user ID | Memory Board Helper (sync/log), other CKServer-enabled apps |
+| `ckserver_token_sync` | CKServerAPI sync token | Memory Board Helper (sync) |
+| `ckserver_token_log` | CKServerAPI log token | Memory Board Helper (background logging) |
 
 **Storage:**
 - **Android:** DataStore (encrypted preferences)
@@ -113,6 +117,7 @@ CKGenericApp/
 **Injection:**
 - Keys automatically injected into opened web apps
 - Exposed as `window.CKAndroid` (Android) and `window.CKDesktop` (Desktop)
+- CKServer config also exposed as `window.CKAndroid.ckServer` / `window.CKDesktop.ckServer`
 - Also exposed as `window.CKGenericApp` for cross-platform compatibility
 
 ### 2. JavaScript Bridge API

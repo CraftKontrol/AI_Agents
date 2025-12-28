@@ -78,7 +78,7 @@
 **Flow**: Web app calls bridge  AlarmScheduler registers  AlarmManager fires  AlarmReceiver shows notification  User taps  App opens
 
 ### Backup System (`backup/`)
-**CKBackupAgent**: Custom BackupAgent  `onFullBackup()` (DataStore + Room + WebView data to Google Drive), `onRestore()` (restore after reinstall)
+**CKBackupAgent**: Custom BackupAgent  `onFullBackup()` (DataStore + Room + WebView data via Android backup transport), `onRestore()` (restore after reinstall)
 **BackupHelper**: `requestBackup()` (immediate), `requestBackupIfNeeded()` (24h check), `isFirstLaunchAfterInstall()`, triggers on preference changes
 **Auto-triggers**: Preference changes, app pause, periodic checks  Registered in Manifest  Integrates with PreferencesManager
 
@@ -102,7 +102,7 @@
 
 ## Data Persistence
 
-**Auto Backup**: CKBackupAgent + BackupHelper  Backs up DataStore + Room + WebView data to Google Drive
+**Auto Backup**: CKBackupAgent + BackupHelper  Backs up DataStore + Room + WebView data through system backup transport
 **Triggers**: Preference changes, app pause, periodic (24h), first launch check
 **Config**: `backup_rules.xml` (legacy), `data_extraction_rules.xml` (API 31+)
 **Scope**: Includes `sharedpref/`, `database/`, `file/`, WebView dirs  Excludes `code_cache/`, `no_backup/`
@@ -172,7 +172,7 @@ adb logcat | findstr CKGenericApp  # View logs
 6. **Localization**: All text must use `stringResource(R.string.key)` for dynamic language updates
 7. **Permissions**: WebView permission requests forwarded to Activity for runtime permission checks
 
-## Supported API Keys
+**Supported API Keys & CKServer Config**
 
 **Stored in DataStore (`ApiKeysPreferences`):**
 - `mistral` - Mistral AI (AI Search, Memory Board, Astral Compute)
@@ -184,9 +184,10 @@ adb logcat | findstr CKGenericApp  # View logs
 - `weatherapi` - WeatherAPI (Meteo Agregator)
 - `tavily` - Tavily Search (AI Search Agregator)
 - `scrapingbee`, `scraperapi`, `brightdata`, `scrapfly` - Web scraping services (AI Search Agregator)
+- `ckserver_base`, `ckserver_user`, `ckserver_token_sync`, `ckserver_token_log` - CKServerAPI sync/log endpoints and tokens for Memory Board Helper (and other CKServer-enabled apps)
 
-**Injection**: All keys automatically injected into WebViews via `ApiKeyInjectingWebViewClient` as `window.CKGenericApp.apiKeys` object
-**Access**: `CKAndroid.getApiKey('keyName')` or `window.CKGenericApp.getApiKey('keyName')` from JavaScript
+**Injection**: All keys automatically injected into WebViews via ShortcutActivity WebViewClient as `window.CKGenericApp.apiKeys`; CKServer config mirrored to `window.CKGenericApp.ckServer`, `window.CKAndroid.ckServer`, and `window.CKDesktop.ckServer` for parity
+**Access**: `CKAndroid.getApiKey('keyName')`, `window.CKGenericApp.getApiKey('keyName')`, and `window.CKGenericApp.ckServer` (or `CKAndroid.ckServer`) from JavaScript
 
 ## Common Tasks
 

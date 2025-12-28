@@ -102,17 +102,7 @@
             android:windowSoftInputMode="adjustResize"
             android:launchMode="singleTask"
             android:excludeFromRecents="false"
-            android:persistableMode="persistNever" >
-            <!-- OAuth redirect handler for Google Drive: custom scheme deep link -->
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data
-                    android:scheme="com.googleusercontent.apps.102458138422-k90lf1qi27mrc522ltn4noihq9hjh1c9"
-                    android:host="oauthredirect" />
-            </intent-filter>
-        </activity>
+            android:persistableMode="persistNever" />
         
         <!-- Activity Alias for AI Search - separate task -->
         <activity-alias

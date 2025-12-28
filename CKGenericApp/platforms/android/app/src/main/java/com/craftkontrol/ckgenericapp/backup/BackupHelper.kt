@@ -33,7 +33,7 @@ class BackupHelper(private val context: Context) {
     }
 
     /**
-     * Request immediate backup to Google Drive
+     * Request immediate cloud backup
      * Call this when critical data changes
      */
     fun requestBackup() {

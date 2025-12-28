@@ -22,9 +22,6 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.browser.customtabs.CustomTabsIntent
-import com.craftkontrol.ckgenericapp.webview.OAuthHelper
-import com.craftkontrol.ckgenericapp.webview.OAuthHelper.isGoogleOAuthUrl
-import com.craftkontrol.ckgenericapp.webview.OAuthHelper.rewriteOAuthUrl
 import com.craftkontrol.ckgenericapp.domain.model.WebApp
 import com.craftkontrol.ckgenericapp.presentation.main.MainViewModel
 import com.craftkontrol.ckgenericapp.presentation.theme.CKGenericAppTheme
@@ -48,7 +45,6 @@ class ShortcutActivity : ComponentActivity() {
     var pendingWebViewPermissionRequest: android.webkit.PermissionRequest? = null
     var currentWebView: WebView? = null
     private var forceReload = false
-    private var pendingOAuthRedirect: android.net.Uri? = null
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -69,9 +65,6 @@ class ShortcutActivity : ComponentActivity() {
         
         renderContent()
 
-        // Handle potential OAuth redirect if activity was opened via deep link
-        handleOAuthRedirect(intent)
-
         sensorMonitoringService.startSensors()
         startSensorEventDispatcher()
     }
@@ -84,9 +77,6 @@ class ShortcutActivity : ComponentActivity() {
         val newAppId = intent.getStringExtra(EXTRA_APP_ID)
         Timber.d("ShortcutActivity onNewIntent with appId: $newAppId (current: $currentAppId)")
 
-        // Handle OAuth redirect intents (custom scheme)
-        handleOAuthRedirect(intent)
-        
         // With standard launch mode, each app gets its own instance
         // This should only be called if explicitly routing to an existing instance
         if (newAppId != null && newAppId != currentAppId) {
@@ -129,41 +119,6 @@ class ShortcutActivity : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         sensorMonitoringService.stopSensors()
-    }
-
-    private fun handleOAuthRedirect(intent: Intent?) {
-        val data = intent?.data ?: return
-        if (data.scheme == "com.googleusercontent.apps.102458138422-k90lf1qi27mrc522ltn4noihq9hjh1c9" && data.host == "oauthredirect") {
-            Timber.d("Received OAuth redirect: $data")
-            pendingOAuthRedirect = data
-            dispatchPendingOAuthToWebView()
-        }
-    }
-
-    fun dispatchPendingOAuthToWebView() {
-        val data = pendingOAuthRedirect ?: return
-        val code = (data.getQueryParameter("code") ?: "").replace("\"", "\\\"")
-        val state = (data.getQueryParameter("state") ?: "").replace("\"", "\\\"")
-        val error = (data.getQueryParameter("error") ?: "").replace("\"", "\\\"")
-
-        val (storedState, verifier) = OAuthHelper.getStoredState(this)
-        if (!storedState.isNullOrBlank() && storedState != state) {
-            Timber.w("OAuth state mismatch; ignoring redirect")
-            return
-        }
-
-        val safeVerifier = (verifier ?: "").replace("\"", "\\\"")
-
-        val js = """
-            (function() {
-                const detail = { code: "$code", state: "$state", error: "$error", codeVerifier: "$safeVerifier" };
-                window.dispatchEvent(new CustomEvent('ckoauth_redirect', { detail }));
-            })();
-        """.trimIndent()
-
-        currentWebView?.evaluateJavascript(js, null)
-        pendingOAuthRedirect = null
-        OAuthHelper.clearState(this)
     }
 
     private fun startSensorEventDispatcher() {
@@ -303,8 +258,6 @@ private fun ShortcutScreen(
                     permissionLauncher = permissionLauncher,
                     onWebViewCreated = { webView -> 
                         activity.currentWebView = webView
-                        // If an OAuth redirect arrived before WebView was ready, dispatch it now
-                        activity.dispatchPendingOAuthToWebView()
                     }
                 )
             }
@@ -488,16 +441,8 @@ private class ApiKeyInjectingWebViewClient(
             }
         }
 
-        // Enforce Google OAuth in a secure browser (Custom Tab) with custom redirect + PKCE
-        if (isGoogleOAuthUrl(url)) {
-            val rewritten = rewriteOAuthUrl(url, context)
-            Timber.d("Opening Google OAuth in Custom Tab (rewritten): $rewritten")
-            launchInCustomTab(context, rewritten)
-            return true
-        }
-        
-        // Keep OAuth/new-window flows (target="_blank" or window.open) inside the same
-        // WebView so session state + injected API keys stay available during Google Drive auth.
+        // Keep new-window flows (target="_blank" or window.open) inside the same
+        // WebView so session state + injected API keys stay available.
         val isMainFrame = request.isForMainFrame
         val hasGesture = request.hasGesture()
         if ((!isMainFrame || hasGesture) && view != null) {
@@ -534,6 +479,27 @@ private class ApiKeyInjectingWebViewClient(
                     window.CKGenericApp.getApiKey = function(keyName) {
                         return window.CKGenericApp.apiKeys[keyName] || null;
                     };
+                    const ckServer = {
+                        baseUrl: window.CKGenericApp.apiKeys['ckserver_base'] || '',
+                        userId: window.CKGenericApp.apiKeys['ckserver_user'] || '',
+                        tokenSync: window.CKGenericApp.apiKeys['ckserver_token_sync'] || '',
+                        tokenLog: window.CKGenericApp.apiKeys['ckserver_token_log'] || ''
+                    };
+                    window.CKGenericApp.ckServer = ckServer;
+
+                    if (!window.CKAndroid) {
+                        window.CKAndroid = {};
+                    }
+                    window.CKAndroid.apiKeys = window.CKGenericApp.apiKeys;
+                    window.CKAndroid.getApiKey = window.CKGenericApp.getApiKey;
+                    window.CKAndroid.ckServer = ckServer;
+
+                    if (!window.CKDesktop) {
+                        window.CKDesktop = {};
+                    }
+                    window.CKDesktop.apiKeys = window.CKGenericApp.apiKeys;
+                    window.CKDesktop.getApiKey = window.CKGenericApp.getApiKey;
+                    window.CKDesktop.ckServer = ckServer;
                     console.log('CKGenericApp: API keys injected (' + Object.keys(window.CKGenericApp.apiKeys).length + ' keys)');
                     console.log('CKGenericApp: About to dispatch event...');
                     
@@ -568,24 +534,3 @@ private class ApiKeyInjectingWebViewClient(
     }
 }
 
-private fun isGoogleOAuthUrl(url: String): Boolean {
-    return url.contains("accounts.google.com/o/oauth2", ignoreCase = true) ||
-        url.contains("accounts.google.com/signin/oauth", ignoreCase = true) ||
-        url.contains("oauth2.googleapis.com", ignoreCase = true)
-}
-
-private fun launchInCustomTab(context: android.content.Context, url: String) {
-    try {
-        val customTabsIntent = CustomTabsIntent.Builder().build()
-        customTabsIntent.launchUrl(context, android.net.Uri.parse(url))
-    } catch (e: Exception) {
-        Timber.e(e, "Failed to open Custom Tab for OAuth, falling back to browser")
-        try {
-            val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            context.startActivity(intent)
-        } catch (ex: Exception) {
-            Timber.e(ex, "Failed to open browser for OAuth")
-        }
-    }
-}

@@ -119,7 +119,7 @@ platforms/desktop/
 **Sections:**
 - Header with CK icon + settings button
 - Apps grid (dynamically populated)
-- API Keys section (collapsible, 12 fields)
+- API Keys section (collapsible, 16 fields including CKServerAPI base/user/sync/log)
 - Settings Modal (monitoring, language, backup, about)
 - Mock Electron API (lines 217-350) - activates in browser/Live Server
 
@@ -138,7 +138,7 @@ platforms/desktop/
 - `DOMContentLoaded` - Initializes app, loads settings/apps/keys
 - `loadApps()` - Fetches apps via IPC, calls renderApps()
 - `renderApps()` - Creates app cards with translated descriptions
-- `loadApiKeys()` - Populates 12 API key input fields
+- `loadApiKeys()` - Populates 16 API key input fields (adds ckserver_base/user/token_sync/token_log)
 - `setupEventListeners()` - Binds save/toggle/settings handlers
 - `openSettingsModal()` / `closeSettingsModal()` - Modal management
 - `loadSettings()` - Loads monitoring/notifications/language
@@ -148,7 +148,7 @@ platforms/desktop/
 
 **State:**
 - `apps` - Array of app objects
-- `apiKeys` - Object with 12 API key values
+- `apiKeys` - Object with 16 API key values (service keys + CKServerAPI config)
 - Uses `currentLanguage` from translations.js
 
 #### translations.js (288 lines)

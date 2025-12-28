@@ -408,6 +408,10 @@ fun ApiKeysSection(
     var deepgramTtsKey by remember(savedKeys) { mutableStateOf(savedKeys["deepgramtts"] ?: "") }
     var googleTtsKey by remember(savedKeys) { mutableStateOf(savedKeys["google_tts"] ?: "") }
     var googleSttKey by remember(savedKeys) { mutableStateOf(savedKeys["google_stt"] ?: "") }
+    var ckServerBase by remember(savedKeys) { mutableStateOf(savedKeys["ckserver_base"] ?: "") }
+    var ckServerUser by remember(savedKeys) { mutableStateOf(savedKeys["ckserver_user"] ?: "") }
+    var ckServerTokenSync by remember(savedKeys) { mutableStateOf(savedKeys["ckserver_token_sync"] ?: "") }
+    var ckServerTokenLog by remember(savedKeys) { mutableStateOf(savedKeys["ckserver_token_log"] ?: "") }
     
     // Visibility toggles
     var showMistral by remember { mutableStateOf(false) }
@@ -422,6 +426,10 @@ fun ApiKeysSection(
     var showDeepgramTts by remember { mutableStateOf(false) }
     var showGoogleTts by remember { mutableStateOf(false) }
     var showGoogleStt by remember { mutableStateOf(false) }
+    var showCkServerBase by remember { mutableStateOf(false) }
+    var showCkServerUser by remember { mutableStateOf(false) }
+    var showCkServerTokenSync by remember { mutableStateOf(false) }
+    var showCkServerTokenLog by remember { mutableStateOf(false) }
     
     // Debug log
     LaunchedEffect(savedKeys) {
@@ -552,6 +560,58 @@ fun ApiKeysSection(
             onSave = { viewModel.saveApiKey("scrapfly", scrapFlyKey) }
         )
         
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // CKServerAPI (Sync & Logs)
+        Text(
+            text = "CKServerAPI (Sync & Logs)",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        ApiKeyField(
+            label = "CKServerAPI Base URL (sync/log endpoint)",
+            value = ckServerBase,
+            onValueChange = { ckServerBase = it },
+            isVisible = showCkServerBase,
+            onVisibilityToggle = { showCkServerBase = !showCkServerBase },
+            onSave = { viewModel.saveApiKey("ckserver_base", ckServerBase) }
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        ApiKeyField(
+            label = "CKServerAPI User ID",
+            value = ckServerUser,
+            onValueChange = { ckServerUser = it },
+            isVisible = showCkServerUser,
+            onVisibilityToggle = { showCkServerUser = !showCkServerUser },
+            onSave = { viewModel.saveApiKey("ckserver_user", ckServerUser) }
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        ApiKeyField(
+            label = "CKServerAPI Token Sync",
+            value = ckServerTokenSync,
+            onValueChange = { ckServerTokenSync = it },
+            isVisible = showCkServerTokenSync,
+            onVisibilityToggle = { showCkServerTokenSync = !showCkServerTokenSync },
+            onSave = { viewModel.saveApiKey("ckserver_token_sync", ckServerTokenSync) }
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        ApiKeyField(
+            label = "CKServerAPI Token Log",
+            value = ckServerTokenLog,
+            onValueChange = { ckServerTokenLog = it },
+            isVisible = showCkServerTokenLog,
+            onVisibilityToggle = { showCkServerTokenLog = !showCkServerTokenLog },
+            onSave = { viewModel.saveApiKey("ckserver_token_log", ckServerTokenLog) }
+        )
+
         Spacer(modifier = Modifier.height(20.dp))
         
         // GOOGLE SERVICES
