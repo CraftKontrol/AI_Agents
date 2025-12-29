@@ -7342,17 +7342,38 @@ setInterval(() => {
 
 // Listen to sync events
 if (window.storageSyncEngine) {
-    window.storageSyncEngine.addEventListener((event) => {
+    window.storageSyncEngine.addEventListener(async (event) => {
         updateSyncStatus();
         
         if (event.type === 'sync-complete' && event.changes) {
             console.log('[CloudSync] Data synchronized, refreshing UI');
-            // Trigger UI refresh
-            if (typeof refreshCalendarEvents === 'function') {
-                refreshCalendarEvents();
+
+            const refreshers = [];
+
+            if (typeof refreshCalendar === 'function') {
+                refreshers.push(refreshCalendar());
+            } else if (typeof refreshCalendarEvents === 'function') {
+                refreshers.push(refreshCalendarEvents());
             }
+
             if (typeof displayTodayTasks === 'function') {
-                displayTodayTasks();
+                refreshers.push(displayTodayTasks());
+            }
+
+            if (typeof loadNotes === 'function') {
+                refreshers.push(loadNotes());
+            }
+
+            if (typeof loadLists === 'function') {
+                refreshers.push(loadLists());
+            }
+
+            if (typeof updateDashboard === 'function') {
+                refreshers.push(updateDashboard());
+            }
+
+            if (refreshers.length) {
+                await Promise.allSettled(refreshers);
             }
         }
     });

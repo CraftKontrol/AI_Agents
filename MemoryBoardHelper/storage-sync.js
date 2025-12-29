@@ -375,14 +375,32 @@ class StorageSyncEngine {
         }
 
         // Trigger UI refresh
-        if (typeof refreshCalendarEvents === 'function') {
-            refreshCalendarEvents();
+        const refreshers = [];
+
+        if (typeof refreshCalendar === 'function') {
+            refreshers.push(refreshCalendar());
+        } else if (typeof refreshCalendarEvents === 'function') {
+            refreshers.push(refreshCalendarEvents());
         }
+
         if (typeof displayTodayTasks === 'function') {
-            displayTodayTasks();
+            refreshers.push(displayTodayTasks());
         }
+
+        if (typeof loadNotes === 'function') {
+            refreshers.push(loadNotes());
+        }
+
+        if (typeof loadLists === 'function') {
+            refreshers.push(loadLists());
+        }
+
         if (typeof updateDashboard === 'function') {
-            updateDashboard();
+            refreshers.push(updateDashboard());
+        }
+
+        if (refreshers.length) {
+            await Promise.allSettled(refreshers);
         }
     }
 
