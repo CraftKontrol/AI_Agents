@@ -173,6 +173,7 @@ class StorageSyncEngine {
             console.log('[StorageSync] Starting sync...');
 
             // 1. Get local data
+            await this.enforceLocalTrimLimits();
             const localData = await this.getLocalData();
             
             // 2. Get cloud data
@@ -389,14 +390,21 @@ class StorageSyncEngine {
     sanitizeDataForUpload(data = {}) {
         const clone = JSON.parse(JSON.stringify(data));
 
-        const sortByTime = (arr = []) => {
-            return [...arr].sort((a, b) => this.getItemTimestamp(a) - this.getItemTimestamp(b));
+        const trimCollection = (arr = [], limit = 10) => {
+            if (!Array.isArray(arr) || arr.length === 0) return [];
+            return [...arr]
+                .sort((a, b) => this.getItemTimestamp(a) - this.getItemTimestamp(b))
+                .slice(-limit);
         };
 
-        const trimToLast = (arr = []) => sortByTime(arr).slice(-10);
-
-        clone.conversations = trimToLast(clone.conversations || []);
-        clone.activities = trimToLast(clone.activities || []);
+        // Aggressive trimming to stay under 5 MB server cap
+        clone.conversations = trimCollection(clone.conversations, 10);
+        clone.activities = trimCollection(clone.activities, 5).map(a => this.pruneActivityData(a));
+        clone.tasks = trimCollection(clone.tasks, 200);
+        clone.notes = trimCollection(clone.notes, 200);
+        clone.lists = trimCollection(clone.lists, 150);
+        clone.dailyStats = trimCollection(clone.dailyStats, 60);
+        clone.activityGoals = trimCollection(clone.activityGoals, 50);
 
         const scrubCollection = (items = []) => items.map(item => this.pruneLargeStrings(item));
         const keys = ['tasks', 'notes', 'lists', 'conversations', 'settings', 'activities', 'dailyStats', 'activityGoals'];
@@ -406,7 +414,83 @@ class StorageSyncEngine {
             }
         });
 
+        // Lightweight size telemetry in console to debug oversized payloads
+        try {
+            const bytes = new Blob([JSON.stringify(clone)]).size;
+            console.log('[StorageSync] Sanitized payload size (bytes):', bytes);
+        } catch (err) {
+            console.warn('[StorageSync] Failed to measure payload size', err);
+        }
+
         return clone;
+    }
+
+    /**
+     * Downsample and scrub activity objects to keep paths small.
+     */
+    pruneActivityData(activity = {}) {
+        const cleaned = this.pruneLargeStrings(activity);
+        if (cleaned && Array.isArray(cleaned.path)) {
+            cleaned.path = this.downsamplePath(cleaned.path, 200);
+        }
+        if (cleaned && Array.isArray(cleaned.points)) {
+            cleaned.points = this.downsamplePath(cleaned.points, 200);
+        }
+        if (cleaned && Array.isArray(cleaned.rawLocations)) {
+            cleaned.rawLocations = this.downsamplePath(cleaned.rawLocations, 200);
+        }
+        return cleaned;
+    }
+
+    downsamplePath(path = [], maxPoints = 200) {
+        if (!Array.isArray(path) || path.length <= maxPoints) return path;
+        const step = Math.ceil(path.length / maxPoints);
+        const sampled = [];
+        for (let i = 0; i < path.length; i += step) {
+            sampled.push(path[i]);
+        }
+        // Ensure we keep the last point for completeness
+        if (sampled[sampled.length - 1] !== path[path.length - 1]) {
+            sampled.push(path[path.length - 1]);
+        }
+        return sampled;
+    }
+
+    /**
+     * Enforce local IndexedDB limits so storage stays lightweight (mirrors upload trimming).
+     */
+    async enforceLocalTrimLimits() {
+        const limits = [
+            { store: 'conversations', limit: 10 },
+            { store: 'activities', limit: 5 },
+            { store: 'tasks', limit: 200 },
+            { store: 'notes', limit: 200 },
+            { store: 'lists', limit: 150 },
+            { store: 'dailyStats', limit: 60 },
+            { store: 'activityGoals', limit: 50 }
+        ];
+
+        for (const { store, limit } of limits) {
+            try {
+                await this.trimStoreToLimit(store, limit);
+            } catch (err) {
+                console.warn(`[StorageSync] Failed to trim ${store}`, err);
+            }
+        }
+    }
+
+    async trimStoreToLimit(storeName, limit) {
+        const items = await getAllFromStore(storeName);
+        if (!Array.isArray(items) || items.length <= limit) return;
+
+        const sorted = [...items].sort((a, b) => this.getItemTimestamp(a) - this.getItemTimestamp(b));
+        const toDelete = sorted.slice(0, Math.max(0, sorted.length - limit));
+        for (const item of toDelete) {
+            if (item && item.id !== undefined) {
+                await deleteFromStore(storeName, item.id);
+            }
+        }
+        console.log(`[StorageSync] Trimmed ${storeName}: kept ${limit}, removed ${toDelete.length}`);
     }
 
     /**
