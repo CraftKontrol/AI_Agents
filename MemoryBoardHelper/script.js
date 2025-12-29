@@ -7893,7 +7893,7 @@ async function loadLists() {
                             <button class="btn-delete-list" onclick="event.stopPropagation(); confirmDeleteList(${list.id})" title="Supprimer">🗑️</button>
                         </div>
                     </div>
-                    <ul class="list-items">
+                    <ul class="list-items" id="list-items-${list.id}">
                         ${list.items.map(item => `
                             <li class="${item.completed ? 'completed' : ''}">
                                 <input type="checkbox" ${item.completed ? 'checked' : ''} onclick="event.stopPropagation(); toggleListItem(${list.id}, '${escapeHtml(item.text)}')">
@@ -7953,6 +7953,9 @@ function viewList(id) {
 
 async function toggleListItem(listId, itemText) {
     try {
+        const listElement = document.getElementById(`list-items-${listId}`);
+        const savedScroll = listElement ? listElement.scrollTop : 0;
+
         const list = await getListById(listId);
         if (!list) return;
         
@@ -7966,6 +7969,12 @@ async function toggleListItem(listId, itemText) {
             playUiSound(item.completed ? 'ui_toggle_on' : 'ui_toggle_off');
             await updateList(list);
             await loadLists();
+
+            // Restore scroll position for a smoother UX
+            const newListEl = document.getElementById(`list-items-${listId}`);
+            if (newListEl && typeof savedScroll === 'number') {
+                newListEl.scrollTop = savedScroll;
+            }
         }
     } catch (error) {
         console.error('[Lists] Error toggling item:', error);
