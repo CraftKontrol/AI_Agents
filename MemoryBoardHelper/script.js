@@ -2625,8 +2625,12 @@ function initializeSpeechRecognition() {
     } else if (sttMethod === 'browser') {
         // Browser STT requested but not available, fallback to first available API
         console.log('[App] Browser speech recognition not available, falling back to API STT');
-        if (!sttMethod || sttMethod === 'browser') {
+        const fallback = fallbackToApiProvider('browser STT unavailable');
+        if (!fallback) {
             sttMethod = 'google'; // Default fallback
+            localStorage.setItem('sttProvider', 'google');
+            const sttSelect = document.getElementById('sttProvider');
+            if (sttSelect) sttSelect.value = 'google';
         }
     }
     
@@ -3128,6 +3132,7 @@ window.processSpeechTranscript = processSpeechTranscript;
 // Handle speech recognition error
 function handleSpeechError(event) {
     console.log('[App] Speech recognition error:', event.error);
+    const isNetworkError = event.error === 'network';
     isRecognitionActive = false;
     lastRecognitionActivity = Date.now(); // Update even on error to avoid false positives
     if (listeningMode === 'manual') {
@@ -3144,6 +3149,8 @@ function handleSpeechError(event) {
             }
         } else if (event.error === 'aborted') {
             console.log('[App] Recognition aborted (normal behavior)');
+        } else if (isNetworkError) {
+            console.warn('[App] Browser STT network error (manual mode)');
         }
     } else if (listeningMode === 'always-listening') {
         if (event.error === 'no-speech') {
@@ -3155,9 +3162,28 @@ function handleSpeechError(event) {
             updateModeUI();
         } else if (event.error === 'aborted') {
             console.log('[App] Recognition aborted');
+        } else if (isNetworkError) {
+            console.warn('[App] Browser STT network error (always-listening)');
         } else {
             console.error('[App] Unhandled error in always-listening:', event.error);
         }
+    }
+
+    if (isNetworkError && sttMethod === 'browser') {
+        const fallback = fallbackToApiProvider('browser STT network error');
+        if (fallback) {
+            if (listeningMode === 'manual') {
+                const voiceBtn = document.getElementById('voiceBtn');
+                if (voiceBtn) voiceBtn.classList.add('recording');
+                showListeningIndicator(true);
+                startAPISTT().catch(err => console.error('[App] API STT fallback failed:', err));
+            } else if (listeningMode === 'always-listening') {
+                isAlwaysListeningAPI = true;
+                startAlwaysListening();
+            }
+            return;
+        }
+        showError(getLocalizedText('recognitionFailed'));
     }
 }
 
@@ -3272,6 +3298,46 @@ function stopRecognitionHeartbeat() {
 let sttMethod = 'browser'; // 'browser', 'deepgram', 'google'
 let ttsProvider = 'browser'; // 'browser', 'deepgram', 'google'
 
+function getAvailableApiSttProvider() {
+    const deepgramKey = getApiKey('deepgram', 'apiKey_deepgram');
+    if (deepgramKey) return 'deepgram';
+    const googleKey = getApiKey('google_stt', 'googleSTTApiKey');
+    if (googleKey) return 'google';
+    return null;
+}
+
+function switchSTTProvider(provider, reason = '') {
+    if (!provider) return false;
+    if (provider === sttMethod) return true;
+    sttMethod = provider;
+    localStorage.setItem('sttProvider', provider);
+    const sttSelect = document.getElementById('sttProvider');
+    if (sttSelect) sttSelect.value = provider;
+    if (provider !== 'browser') {
+        stopRecognitionHeartbeat();
+        if (recognition && isRecognitionActive) {
+            try {
+                recognition.stop();
+            } catch (error) {
+                console.log('[STT] Recognition already stopped');
+            }
+            isRecognitionActive = false;
+        }
+    }
+    console.log(`[STT] Switched to ${provider}${reason ? ` (${reason})` : ''}`);
+    return true;
+}
+
+function fallbackToApiProvider(reason) {
+    const fallback = getAvailableApiSttProvider();
+    if (!fallback) {
+        console.warn('[STT] No API STT provider available for fallback');
+        return null;
+    }
+    switchSTTProvider(fallback, reason);
+    return fallback;
+}
+
 // Audio visualization
 let audioContext = null;
 let analyser = null;
@@ -3330,11 +3396,22 @@ function saveProviderSettings() {
 }
 
 function loadProviderSettings() {
-    const sttProvider = localStorage.getItem('sttProvider') || 'browser';
+    let sttProvider = localStorage.getItem('sttProvider') || 'browser';
     const ttsProviderValue = localStorage.getItem('ttsProvider') || 'browser';
     
     const sttSelect = document.getElementById('sttProvider');
     const ttsSelect = document.getElementById('ttsProvider');
+
+    const isDesktopEnvironment = typeof window.CKDesktop !== 'undefined';
+    const browserSTTUnsupported = !('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window);
+    if (sttProvider === 'browser' && (isDesktopEnvironment || browserSTTUnsupported)) {
+        const autoFallback = getAvailableApiSttProvider();
+        if (autoFallback) {
+            sttProvider = autoFallback;
+            localStorage.setItem('sttProvider', sttProvider);
+            console.log(`[Providers] Auto-switching STT to ${autoFallback} (desktop/unsupported browser STT)`);
+        }
+    }
     
     if (sttSelect) sttSelect.value = sttProvider;
     if (ttsSelect) ttsSelect.value = ttsProviderValue;
