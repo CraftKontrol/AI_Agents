@@ -2041,9 +2041,17 @@ registerAction(
         let apiKey = null;
         if (typeof window.CKDesktop !== 'undefined' && typeof window.CKDesktop.getApiKey === 'function') {
             apiKey = window.CKDesktop.getApiKey('tavily');
-        } else if (typeof window.CKAndroid !== 'undefined' && typeof window.CKAndroid.getApiKey === 'function') {
+        }
+
+        if (!apiKey && typeof window.CKAndroid !== 'undefined' && typeof window.CKAndroid.getApiKey === 'function') {
             apiKey = window.CKAndroid.getApiKey('tavily');
-        } else {
+        }
+
+        if (!apiKey && typeof window.CKGenericApp !== 'undefined' && typeof window.CKGenericApp.getApiKey === 'function') {
+            apiKey = window.CKGenericApp.getApiKey('tavily');
+        }
+
+        if (!apiKey) {
             apiKey = localStorage.getItem('apiKey_tavily');
         }
         
