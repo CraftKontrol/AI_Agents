@@ -298,7 +298,7 @@ class StorageSyncEngine {
         const deletedNoteMap = this.getDeletionTombstoneMap(localData.deletedNotes);
         const deletedListMap = this.getDeletionTombstoneMap(localData.deletedLists);
 
-        // Helper function to merge array by ID with timestamp comparison and deletion tombstones
+        // Helper function to merge array by ID with timestamp comparison and deletion tombstones (prevents resurrection)
         const mergeArrayById = (localArray, cloudArray, tombstoneMap) => {
             const map = new Map();
 
@@ -331,10 +331,31 @@ class StorageSyncEngine {
             return Array.from(map.values());
         };
 
+        // Helper to apply tombstones after merge (delete items newer than or equal to tombstone time)
+        const applyTombstones = (items, tombstoneMap) => {
+            if (!tombstoneMap || tombstoneMap.size === 0) return items;
+            return items.filter(item => {
+                if (!item || item.id === undefined) return false;
+                const tomb = tombstoneMap.get(item.id);
+                if (!tomb) return true;
+                const itemTs = this.getItemTimestamp(item);
+                return itemTs > tomb ? true : false; // keep only if item is newer than tombstone
+            });
+        };
+
         // Merge each data type (apply tombstones where relevant)
-        merged.tasks = mergeArrayById(localData.tasks, cloudPayload.tasks || [], deletedTaskMap);
-        merged.notes = mergeArrayById(localData.notes, cloudPayload.notes || [], deletedNoteMap);
-        merged.lists = mergeArrayById(localData.lists, cloudPayload.lists || [], deletedListMap);
+        merged.tasks = applyTombstones(
+            mergeArrayById(localData.tasks, cloudPayload.tasks || [], deletedTaskMap),
+            deletedTaskMap
+        );
+        merged.notes = applyTombstones(
+            mergeArrayById(localData.notes, cloudPayload.notes || [], deletedNoteMap),
+            deletedNoteMap
+        );
+        merged.lists = applyTombstones(
+            mergeArrayById(localData.lists, cloudPayload.lists || [], deletedListMap),
+            deletedListMap
+        );
         merged.conversations = mergeArrayById(localData.conversations, cloudPayload.conversations || []);
         merged.settings = mergeArrayById(localData.settings, cloudPayload.settings || []);
         merged.activities = mergeArrayById(localData.activities, cloudPayload.activities || []);
