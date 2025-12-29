@@ -181,11 +181,12 @@ class StorageSyncEngine {
             if (!cloudData) {
                 // No cloud data exists, upload local data with metadata
                 console.log('[StorageSync] No cloud data, uploading local data');
+                const uploadData = this.sanitizeDataForUpload(localData);
                 await this.provider.upload({
                     version: 1,
                     timestamp: new Date().toISOString(),
                     deviceId: this.deviceId,
-                    data: localData
+                    data: uploadData
                 });
                 this.lastSyncTime = new Date();
                 this.saveConfig();
@@ -215,11 +216,12 @@ class StorageSyncEngine {
             if (hasCloudChanges) {
                 // Upload changes to cloud
                 console.log('[StorageSync] Uploading local changes to cloud');
+                const uploadData = this.sanitizeDataForUpload(mergedData);
                 await this.provider.upload({
                     version: 1,
                     timestamp: new Date().toISOString(),
                     deviceId: this.deviceId,
-                    data: mergedData
+                    data: uploadData
                 });
             }
 
@@ -377,6 +379,60 @@ class StorageSyncEngine {
         // Try different timestamp fields
         const timestamp = item.timestamp || item.createdAt || item.date || item.time || 0;
         return typeof timestamp === 'string' ? new Date(timestamp).getTime() : timestamp;
+    }
+
+    /**
+     * Build a minimized payload for upload to keep under server size limits.
+     * - Conversations and activities: keep latest 10 only
+     * - Remove excessively large string fields (e.g., base64 blobs)
+     */
+    sanitizeDataForUpload(data = {}) {
+        const clone = JSON.parse(JSON.stringify(data));
+
+        const sortByTime = (arr = []) => {
+            return [...arr].sort((a, b) => this.getItemTimestamp(a) - this.getItemTimestamp(b));
+        };
+
+        const trimToLast = (arr = []) => sortByTime(arr).slice(-10);
+
+        clone.conversations = trimToLast(clone.conversations || []);
+        clone.activities = trimToLast(clone.activities || []);
+
+        const scrubCollection = (items = []) => items.map(item => this.pruneLargeStrings(item));
+        const keys = ['tasks', 'notes', 'lists', 'conversations', 'settings', 'activities', 'dailyStats', 'activityGoals'];
+        keys.forEach(key => {
+            if (Array.isArray(clone[key])) {
+                clone[key] = scrubCollection(clone[key]);
+            }
+        });
+
+        return clone;
+    }
+
+    /**
+     * Drop overly large string fields to avoid megabyte-scale payloads.
+     */
+    pruneLargeStrings(value, maxLength = 5000) {
+        if (value === null || value === undefined) return value;
+        if (typeof value === 'string') {
+            return value.length > maxLength ? undefined : value;
+        }
+        if (Array.isArray(value)) {
+            return value
+                .map(v => this.pruneLargeStrings(v, maxLength))
+                .filter(v => v !== undefined);
+        }
+        if (typeof value === 'object') {
+            const result = {};
+            for (const [k, v] of Object.entries(value)) {
+                const cleaned = this.pruneLargeStrings(v, maxLength);
+                if (cleaned !== undefined) {
+                    result[k] = cleaned;
+                }
+            }
+            return result;
+        }
+        return value;
     }
 
     /**
