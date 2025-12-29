@@ -434,28 +434,13 @@ class ActivityTracker {
             timeout: 10000,
             maximumAge: 0
         };
-
-        const onGpsError = (error) => {
-            console.error('[ActivityTracker] GPS error:', error);
-
-            // Some Android WebView implementations proxy network location through googleapis and may return 403 if API access is blocked.
-            // In that case, stop retrying to avoid log spam and rely on last known/default positions instead.
-            if (error && typeof error.message === 'string' && error.message.includes('403')) {
-                if (this.gpsWatchId) {
-                    navigator.geolocation.clearWatch(this.gpsWatchId);
-                    this.gpsWatchId = null;
-                }
-                this.gpsUnavailable = true;
-                console.warn('[ActivityTracker] GPS disabled after 403 from provider; falling back to last known/default position.');
-            }
-        };
-
+        
         this.gpsWatchId = navigator.geolocation.watchPosition(
             (position) => this.handleGPSUpdate(position),
-            onGpsError,
+            (error) => console.error('[ActivityTracker] GPS error:', error),
             options
         );
-
+        
         console.log('[ActivityTracker] GPS tracking started');
     }
     

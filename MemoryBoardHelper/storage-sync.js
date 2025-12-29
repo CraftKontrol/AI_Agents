@@ -341,6 +341,11 @@ class StorageSyncEngine {
         merged.dailyStats = mergeArrayById(localData.dailyStats, cloudPayload.dailyStats || []);
         merged.activityGoals = mergeArrayById(localData.activityGoals, cloudPayload.activityGoals || []);
 
+        // Merge tombstones so deletions propagate to other devices
+        merged.deletedTasks = this.mergeTombstones(localData.deletedTasks, cloudPayload.deletedTasks);
+        merged.deletedNotes = this.mergeTombstones(localData.deletedNotes, cloudPayload.deletedNotes);
+        merged.deletedLists = this.mergeTombstones(localData.deletedLists, cloudPayload.deletedLists);
+
         return merged;
     }
 
@@ -378,6 +383,25 @@ class StorageSyncEngine {
             }
         });
         return map;
+    }
+
+    /**
+     * Merge deletion tombstones (keep latest deletedAt per id)
+     */
+    mergeTombstones(local = [], cloud = []) {
+        const map = new Map();
+        const upsert = (entry) => {
+            if (!entry || entry.id === undefined || entry.deletedAt === undefined) return;
+            const existing = map.get(entry.id) || 0;
+            if (entry.deletedAt > existing) {
+                map.set(entry.id, entry.deletedAt);
+            }
+        };
+
+        local.forEach(upsert);
+        cloud?.forEach(upsert);
+
+        return Array.from(map.entries()).map(([id, deletedAt]) => ({ id, deletedAt }));
     }
 
     /**
