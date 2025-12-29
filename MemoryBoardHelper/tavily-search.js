@@ -7,8 +7,24 @@
  * @param {string} language - Language code (fr/it/en)
  * @returns {Promise<Array>} - Array of search results
  */
+function getTavilyApiKey() {
+    if (typeof window.CKDesktop !== 'undefined' && typeof window.CKDesktop.getApiKey === 'function') {
+        const key = window.CKDesktop.getApiKey('tavily');
+        if (key) return key;
+    }
+    if (typeof window.CKAndroid !== 'undefined' && typeof window.CKAndroid.getApiKey === 'function') {
+        const key = window.CKAndroid.getApiKey('tavily');
+        if (key) return key;
+    }
+    if (typeof window.CKGenericApp !== 'undefined' && typeof window.CKGenericApp.getApiKey === 'function') {
+        const key = window.CKGenericApp.getApiKey('tavily');
+        if (key) return key;
+    }
+    return localStorage.getItem('apiKey_tavily');
+}
+
 async function searchTavily(query, language = 'fr') {
-    const apiKey = localStorage.getItem('apiKey_tavily');
+    const apiKey = getTavilyApiKey();
     
     if (!apiKey) {
         console.error('[Tavily] No API key configured');
