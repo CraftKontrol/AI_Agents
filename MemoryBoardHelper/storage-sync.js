@@ -386,6 +386,18 @@ class StorageSyncEngine {
     }
 
     /**
+     * Persist deletion tombstones to localStorage
+     */
+    setDeletionTombstones(storeKey, tombstones = []) {
+        try {
+            const trimmed = Array.isArray(tombstones) ? tombstones.slice(-200) : [];
+            localStorage.setItem(`sync_deleted_${storeKey}`, JSON.stringify(trimmed));
+        } catch (error) {
+            console.warn('[StorageSync] Failed to save deletion tombstones:', error);
+        }
+    }
+
+    /**
      * Merge deletion tombstones (keep latest deletedAt per id)
      */
     mergeTombstones(local = [], cloud = []) {
@@ -440,6 +452,17 @@ class StorageSyncEngine {
             } catch (error) {
                 console.error(`[StorageSync] Failed to update ${storeName}:`, error);
             }
+        }
+
+        // Persist merged tombstones so future syncs keep deletions
+        if (mergedData.deletedTasks) {
+            this.setDeletionTombstones('tasks', mergedData.deletedTasks);
+        }
+        if (mergedData.deletedNotes) {
+            this.setDeletionTombstones('notes', mergedData.deletedNotes);
+        }
+        if (mergedData.deletedLists) {
+            this.setDeletionTombstones('lists', mergedData.deletedLists);
         }
 
         // Trigger UI refresh
