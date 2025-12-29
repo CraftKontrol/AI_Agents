@@ -377,9 +377,10 @@ class StorageSyncEngine {
      * Get timestamp from item
      */
     getItemTimestamp(item) {
-        // Try different timestamp fields
-        const timestamp = item.timestamp || item.createdAt || item.date || item.time || 0;
-        return typeof timestamp === 'string' ? new Date(timestamp).getTime() : timestamp;
+        // Prefer lastModified/updatedAt so recent edits (e.g., list checkbox toggles) win conflicts
+        const timestamp = item?.lastModified ?? item?.updatedAt ?? item?.timestamp ?? item?.createdAt ?? item?.date ?? item?.time ?? 0;
+        const parsed = typeof timestamp === 'string' ? new Date(timestamp).getTime() : timestamp;
+        return isNaN(parsed) ? 0 : parsed;
     }
 
     /**
