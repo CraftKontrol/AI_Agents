@@ -59,11 +59,24 @@
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: new URLSearchParams(data)
             });
-            if (!res.ok) {
-                const text = await res.text();
-                throw new Error(`HTTP ${res.status}: ${text}`);
+            // Parse body once for both success and error cases
+            let payload = null;
+            try {
+                payload = await res.json();
+            } catch (e) {
+                payload = await res.text();
             }
-            return res.json();
+
+            // Allow sync_pull_mbh 404 to bubble as a handled "not_found" instead of throwing
+            if (!res.ok) {
+                const msg = typeof payload === 'string' ? payload : JSON.stringify(payload);
+                if (res.status === 404) {
+                    return payload || { ok: false, error: 'not_found', status: 404, message: msg };
+                }
+                throw new Error(`HTTP ${res.status}: ${msg}`);
+            }
+
+            return payload;
         }
 
         _require(key) {
