@@ -325,7 +325,8 @@ class StorageSyncEngine {
                 } else {
                     const localTime = this.getItemTimestamp(item);
                     const cloudTime = this.getItemTimestamp(existing);
-                    if (localTime > cloudTime) {
+                    // Prefer local on tie or when timestamps are missing to avoid losing fresh UI edits (e.g., list checkboxes)
+                    if (localTime >= cloudTime) {
                         map.set(item.id, item);
                     }
                 }

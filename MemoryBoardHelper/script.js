@@ -7943,7 +7943,11 @@ async function toggleListItem(listId, itemText) {
         
         const item = list.items.find(i => i.text === itemText);
         if (item) {
+            const now = Date.now();
             item.completed = !item.completed;
+            item.lastModified = now; // mark item-level change for sync clarity
+            list.lastModified = now; // ensure list timestamp bumps so sync wins conflicts
+            list.updatedAt = now;
             playUiSound(item.completed ? 'ui_toggle_on' : 'ui_toggle_off');
             await updateList(list);
             await loadLists();
