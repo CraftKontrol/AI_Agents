@@ -85,6 +85,8 @@ function getLastGPSPosition() {
 /**
  * Initialize location manager - set up GPS tracking if available
  */
+let locationWatchId = null;
+
 function initializeLocationManager() {
     console.log('[LocationManager] Initializing...');
     
@@ -93,13 +95,23 @@ function initializeLocationManager() {
     
     // Start watching GPS position if available
     if (navigator.geolocation) {
-        navigator.geolocation.watchPosition(
+        const onError = (error) => {
+            console.warn('[LocationManager] GPS watch error:', error.message);
+            // Stop watch if provider returns 403 to avoid noisy retries on some Android WebViews using googleapis.
+            if (error && typeof error.message === 'string' && error.message.includes('403')) {
+                if (locationWatchId !== null) {
+                    navigator.geolocation.clearWatch(locationWatchId);
+                    locationWatchId = null;
+                    console.warn('[LocationManager] GPS watch stopped after 403; using last/default location only.');
+                }
+            }
+        };
+
+        locationWatchId = navigator.geolocation.watchPosition(
             (position) => {
                 saveLastGPSPosition(position.coords.latitude, position.coords.longitude);
             },
-            (error) => {
-                console.warn('[LocationManager] GPS watch error:', error.message);
-            },
+            onError,
             {
                 enableHighAccuracy: false, // Low accuracy for background tracking
                 timeout: 10000,
