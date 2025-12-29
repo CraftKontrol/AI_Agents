@@ -434,9 +434,8 @@ async function deleteTask(id) {
     } catch (error) {
         console.error('[Storage] Error deleting task:', error);
         deleteTaskFromLocalStorage(id);
-        } finally {
-            addDeletionTombstone('tasks', id);
-        }
+    } finally {
+        addDeletionTombstone('tasks', id);
     }
 }
 
