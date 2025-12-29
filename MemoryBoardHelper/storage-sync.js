@@ -266,6 +266,11 @@ class StorageSyncEngine {
             getAllFromStore('activityGoals')
         ]);
 
+        // Deletion tombstones to prevent resurrection of removed items
+        const deletedTasks = this.getDeletionTombstones('tasks');
+        const deletedNotes = this.getDeletionTombstones('notes');
+        const deletedLists = this.getDeletionTombstones('lists');
+
         return {
             tasks: tasks || [],
             notes: notes || [],
@@ -274,7 +279,10 @@ class StorageSyncEngine {
             settings: settings || [],
             activities: activities || [],
             dailyStats: dailyStats || [],
-            activityGoals: activityGoals || []
+            activityGoals: activityGoals || [],
+            deletedTasks,
+            deletedNotes,
+            deletedLists
         };
     }
 
@@ -286,12 +294,23 @@ class StorageSyncEngine {
         const merged = {};
         const cloudPayload = cloudData && cloudData.data ? cloudData.data : (cloudData || {});
 
-        // Helper function to merge array by ID with timestamp comparison
-        const mergeArrayById = (localArray, cloudArray) => {
+        const deletedTaskMap = this.getDeletionTombstoneMap(localData.deletedTasks);
+        const deletedNoteMap = this.getDeletionTombstoneMap(localData.deletedNotes);
+        const deletedListMap = this.getDeletionTombstoneMap(localData.deletedLists);
+
+        // Helper function to merge array by ID with timestamp comparison and deletion tombstones
+        const mergeArrayById = (localArray, cloudArray, tombstoneMap) => {
             const map = new Map();
 
-            // Add cloud items first
+            // Add cloud items first, skipping those tombstoned
             cloudArray.forEach(item => {
+                if (tombstoneMap && tombstoneMap.has(item.id)) {
+                    const deletedAt = tombstoneMap.get(item.id);
+                    const cloudTime = this.getItemTimestamp(item);
+                    if (deletedAt >= cloudTime) {
+                        return; // Skip resurrecting a deleted item
+                    }
+                }
                 map.set(item.id, item);
             });
 
@@ -301,10 +320,8 @@ class StorageSyncEngine {
                 if (!existing) {
                     map.set(item.id, item);
                 } else {
-                    // Compare timestamps
                     const localTime = this.getItemTimestamp(item);
                     const cloudTime = this.getItemTimestamp(existing);
-                    
                     if (localTime > cloudTime) {
                         map.set(item.id, item);
                     }
@@ -314,10 +331,10 @@ class StorageSyncEngine {
             return Array.from(map.values());
         };
 
-        // Merge each data type
-        merged.tasks = mergeArrayById(localData.tasks, cloudPayload.tasks || []);
-        merged.notes = mergeArrayById(localData.notes, cloudPayload.notes || []);
-        merged.lists = mergeArrayById(localData.lists, cloudPayload.lists || []);
+        // Merge each data type (apply tombstones where relevant)
+        merged.tasks = mergeArrayById(localData.tasks, cloudPayload.tasks || [], deletedTaskMap);
+        merged.notes = mergeArrayById(localData.notes, cloudPayload.notes || [], deletedNoteMap);
+        merged.lists = mergeArrayById(localData.lists, cloudPayload.lists || [], deletedListMap);
         merged.conversations = mergeArrayById(localData.conversations, cloudPayload.conversations || []);
         merged.settings = mergeArrayById(localData.settings, cloudPayload.settings || []);
         merged.activities = mergeArrayById(localData.activities, cloudPayload.activities || []);
@@ -334,6 +351,33 @@ class StorageSyncEngine {
         // Try different timestamp fields
         const timestamp = item.timestamp || item.createdAt || item.date || item.time || 0;
         return typeof timestamp === 'string' ? new Date(timestamp).getTime() : timestamp;
+    }
+
+    /**
+     * Read deletion tombstones from localStorage
+     */
+    getDeletionTombstones(storeKey) {
+        try {
+            const raw = localStorage.getItem(`sync_deleted_${storeKey}`);
+            const parsed = raw ? JSON.parse(raw) : [];
+            return Array.isArray(parsed) ? parsed : [];
+        } catch (error) {
+            console.warn('[StorageSync] Failed to read deletion tombstones:', error);
+            return [];
+        }
+    }
+
+    /**
+     * Build a map id -> deletedAt for quick lookups
+     */
+    getDeletionTombstoneMap(tombstones = []) {
+        const map = new Map();
+        tombstones.forEach(entry => {
+            if (entry && entry.id !== undefined && entry.deletedAt) {
+                map.set(entry.id, entry.deletedAt);
+            }
+        });
+        return map;
     }
 
     /**

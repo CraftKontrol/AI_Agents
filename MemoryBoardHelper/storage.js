@@ -311,6 +311,15 @@ async function deleteFromStore(storeName, id) {
 
         request.onsuccess = () => {
             console.log(`[Storage] Deleted from ${storeName}:`, id);
+
+            // Record deletion tombstone for sync conflict resolution
+            if (storeName === STORES.TASKS || storeName === 'tasks') {
+                addDeletionTombstone('tasks', id);
+            } else if (storeName === STORES.NOTES || storeName === 'notes') {
+                addDeletionTombstone('notes', id);
+            } else if (storeName === STORES.LISTS || storeName === 'lists') {
+                addDeletionTombstone('lists', id);
+            }
             
             // Trigger cloud sync on data change
             if (window.storageSyncEngine) {
@@ -425,6 +434,9 @@ async function deleteTask(id) {
     } catch (error) {
         console.error('[Storage] Error deleting task:', error);
         deleteTaskFromLocalStorage(id);
+        } finally {
+            addDeletionTombstone('tasks', id);
+        }
     }
 }
 
@@ -530,6 +542,24 @@ function getTaskFromLocalStorage(id) {
     return tasks.find(t => t.id === id);
 }
 
+// Tombstone helpers for sync conflict handling
+const TOMBSTONE_PREFIX = 'sync_deleted_';
+function addDeletionTombstone(storeKey, id) {
+    try {
+        if (id === undefined || id === null) return;
+        const key = `${TOMBSTONE_PREFIX}${storeKey}`;
+        const existing = JSON.parse(localStorage.getItem(key) || '[]');
+        existing.push({ id, deletedAt: Date.now() });
+        const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000; // 30 days
+        const trimmed = existing
+            .filter(entry => entry && entry.id !== undefined && entry.deletedAt >= cutoff)
+            .slice(-200);
+        localStorage.setItem(key, JSON.stringify(trimmed));
+    } catch (error) {
+        console.warn('[Storage] Failed to add deletion tombstone:', error);
+    }
+}
+
 // ===== NOTES MANAGEMENT =====
 async function createNote(noteData) {
     try {
@@ -586,6 +616,7 @@ async function deleteNote(id) {
         console.error('[Storage] Error deleting note:', error);
         deleteNoteFromLocalStorage(id);
     }
+    addDeletionTombstone('notes', id);
 }
 
 function saveNoteToLocalStorage(note) {
@@ -675,6 +706,7 @@ async function deleteList(id) {
         console.error('[Storage] Error deleting list:', error);
         deleteListFromLocalStorage(id);
     }
+    addDeletionTombstone('lists', id);
 }
 
 function saveListToLocalStorage(list) {
