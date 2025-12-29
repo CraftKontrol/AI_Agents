@@ -2961,6 +2961,7 @@ body {
     margin: 0;
     max-height: 320px;
     overflow-y: auto;
+    background-color: var(--surface-color);
     -webkit-overflow-scrolling: touch;
     scrollbar-width: thin;
     scrollbar-color: var(--border-color) transparent;
