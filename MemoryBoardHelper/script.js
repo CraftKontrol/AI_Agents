@@ -7036,6 +7036,16 @@ function loadCloudSyncSettings() {
         if (autoSyncCheckbox) {
             autoSyncCheckbox.checked = status.autoSync;
         }
+
+        // Auto-start sync on load when enabled and provider is ready
+        if (
+            status.autoSync &&
+            window.storageSyncEngine.provider &&
+            typeof window.storageSyncEngine.provider.isAuthenticated === 'function' &&
+            window.storageSyncEngine.provider.isAuthenticated()
+        ) {
+            window.storageSyncEngine.startAutoSync();
+        }
     }
 }
 
