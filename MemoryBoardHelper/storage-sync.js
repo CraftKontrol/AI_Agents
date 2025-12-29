@@ -371,6 +371,18 @@ class StorageSyncEngine {
         merged.deletedNotes = this.mergeTombstones(localData.deletedNotes, cloudPayload.deletedNotes);
         merged.deletedLists = this.mergeTombstones(localData.deletedLists, cloudPayload.deletedLists);
 
+        // Guard: if local data is newer overall for a store, keep local to avoid stomping fresh edits (e.g., list checkboxes)
+        const preferLocalIfNewer = (localArr = [], cloudArr = [], mergedArr = []) => {
+            const maxTs = arr => Math.max(0, ...arr.map(item => this.getItemTimestamp(item)));
+            const localMax = maxTs(localArr);
+            const cloudMax = maxTs(cloudArr);
+            return localMax > cloudMax ? localArr : mergedArr;
+        };
+
+        merged.tasks = preferLocalIfNewer(localData.tasks, cloudPayload.tasks || [], merged.tasks);
+        merged.notes = preferLocalIfNewer(localData.notes, cloudPayload.notes || [], merged.notes);
+        merged.lists = preferLocalIfNewer(localData.lists, cloudPayload.lists || [], merged.lists);
+
         return merged;
     }
 
