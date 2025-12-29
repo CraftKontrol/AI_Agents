@@ -7375,6 +7375,11 @@ function updateSyncStatus() {
     const lastSyncText = document.getElementById('lastSyncText');
     const deviceIdText = document.getElementById('deviceIdText');
 
+    // If the status card is hidden/removed, avoid breaking auto-refresh flows
+    if (!statusCard || !statusIcon || !statusText || !lastSyncText || !deviceIdText) {
+        return;
+    }
+
     if (!status.enabled || !status.provider) {
         statusIcon.textContent = 'cloud_off';
         statusText.textContent = 'Non synchronisé';
