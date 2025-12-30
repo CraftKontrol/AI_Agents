@@ -55,7 +55,7 @@
 
 **Sync / Logs (Dec 2025):**
 - Providers reduced to **CKServerAPI** + **WebDAV** (Google/OneDrive/Dropbox/iCloud removed).
-- CKServerAPI: `ckserverapi-client.js` + `CKServerApiProvider` (in cloud-providers.js) call `sync_pull_mbh` / `sync_push_mbh`; config stored in `ckserver_config` (baseUrl, userId, tokenSync, tokenLog). First upload always wraps `{version, timestamp, deviceId, data}`. Conflict resolver handles `cloudData.data` or flat payloads.
+- CKServerAPI: `ckserverapi-client.js` + `CKServerApiProvider` (in cloud-providers.js) call `sync_pull_mbh` / `sync_push_mbh`; config stored in `ckserver_config` (baseUrl, userId, auto tokens). Tokens auto-set to `ck-sync-memoryboardhelper` and `ck-log-memoryboardhelper`.
 - Upload payloads are sanitized before send: conversations → last 10; activities → last 5 with path/points downsampled to 200 samples; tasks/notes → last 200; lists → last 150; dailyStats → last 60; activityGoals → last 50; all string fields >5k chars dropped. Payload size logged in console to track oversize. The same limits are enforced locally in IndexedDB before sync so stored data stays small.
 - Background logs: `sendCKBackgroundLog()` best-effort appends to CKServerAPI `log_append` when tokenLog is set; local `MemoryBoardHelper.log` kept for modal/export.
 - WebDAV: `WebDAVProvider` keeps PUT/GET JSON at `/memoryboard_data.json` with same metadata envelope.

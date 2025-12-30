@@ -12,12 +12,26 @@ class CKServerApiProvider extends CloudProvider {
         this.api = null;
     }
 
+    defaultTokens() {
+        // Auto-scoped tokens for MemoryBoardHelper service
+        return {
+            tokenSync: 'ck-sync-memoryboardhelper',
+            tokenLog: 'ck-log-memoryboardhelper',
+            tokenAdmin: ''
+        };
+    }
+
     loadConfig() {
         try {
-            return JSON.parse(localStorage.getItem('ckserver_config') || '{}');
+            const stored = JSON.parse(localStorage.getItem('ckserver_config') || '{}');
+            const defaults = this.defaultTokens();
+            return {
+                ...defaults,
+                ...stored
+            };
         } catch (error) {
             console.warn('[CKServerAPI] Failed to parse config:', error);
-            return {};
+            return this.defaultTokens();
         }
     }
 
@@ -26,11 +40,12 @@ class CKServerApiProvider extends CloudProvider {
     }
 
     setConfig({ baseUrl, tokenSync, tokenLog, userId, tokenAdmin }) {
+        const defaults = this.defaultTokens();
         this.config = {
             baseUrl: (baseUrl || '').trim(),
-            tokenSync: (tokenSync || '').trim(),
-            tokenLog: (tokenLog || '').trim(),
-            tokenAdmin: (tokenAdmin || '').trim(),
+            tokenSync: (tokenSync || defaults.tokenSync).trim(),
+            tokenLog: (tokenLog || defaults.tokenLog).trim(),
+            tokenAdmin: (tokenAdmin || defaults.tokenAdmin).trim(),
             userId: (userId || '').trim()
         };
         this.api = null;

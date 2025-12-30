@@ -1130,17 +1130,11 @@
                                 <div class="input-group">
                                     <label for="ckTokenSync">
                                         <span class="material-symbols-outlined">key</span>
-                                        Token Sync
+                                        Token Sync (automatique)
                                     </label>
-                                    <input type="password" id="ckTokenSync" placeholder="ck-sync-xxxxxx">
+                                    <input type="text" id="ckTokenSync" value="ck-sync-memoryboardhelper" readonly>
                                 </div>
-                                <div class="input-group">
-                                    <label for="ckTokenLog">
-                                        <span class="material-symbols-outlined">key</span>
-                                        Token Log (optionnel, pour logs)
-                                    </label>
-                                    <input type="password" id="ckTokenLog" placeholder="ck-log-xxxxxx">
-                                </div>
+                                <div class="setting-hint">Les tokens CKServerAPI sont préconfigurés pour MemoryBoardHelper.</div>
                                 <div class="auth-status" id="ckServerAuthStatus">
                                     <span class="material-symbols-outlined">lock</span>
                                     <span id="ckServerAuthText">Non configuré</span>

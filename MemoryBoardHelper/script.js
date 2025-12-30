@@ -6972,11 +6972,16 @@ async function restartTutorial() {
 // === Cloud Sync Functions ===
 
 function getCKServerConfig() {
+    const defaults = {
+        tokenSync: 'ck-sync-memoryboardhelper',
+        tokenLog: 'ck-log-memoryboardhelper'
+    };
     try {
-        return JSON.parse(localStorage.getItem('ckserver_config') || '{}');
+        const stored = JSON.parse(localStorage.getItem('ckserver_config') || '{}');
+        return { ...defaults, ...stored };
     } catch (error) {
         console.warn('[CKServerAPI] Failed to parse saved config:', error);
-        return {};
+        return { ...defaults };
     }
 }
 
@@ -7078,8 +7083,7 @@ function onCloudProviderChange() {
 
         document.getElementById('ckBaseUrl').value = cfg.baseUrl || '';
         document.getElementById('ckUserId').value = cfg.userId || '';
-        document.getElementById('ckTokenSync').value = cfg.tokenSync || '';
-        document.getElementById('ckTokenLog').value = cfg.tokenLog || '';
+        document.getElementById('ckTokenSync').value = cfg.tokenSync || 'ck-sync-memoryboardhelper';
 
         const ckProvider = buildCKProviderFromConfig();
         if (!ckProvider) {
@@ -7164,11 +7168,11 @@ async function connectCKServerAPI() {
     try {
         const baseUrl = document.getElementById('ckBaseUrl').value.trim();
         const userId = document.getElementById('ckUserId').value.trim();
-        const tokenSync = document.getElementById('ckTokenSync').value.trim();
-        const tokenLog = document.getElementById('ckTokenLog').value.trim();
+        const tokenSync = document.getElementById('ckTokenSync').value.trim() || 'ck-sync-memoryboardhelper';
+        const tokenLog = 'ck-log-memoryboardhelper';
 
         if (!baseUrl || !userId || !tokenSync) {
-            alert('Veuillez renseigner la base URL, le userId et le token Sync CKServerAPI');
+            alert('Veuillez renseigner la base URL et l’utilisateur CKServerAPI');
             return;
         }
 
@@ -7335,7 +7339,6 @@ async function disconnectCloudProvider() {
         document.getElementById('ckBaseUrl').value = '';
         document.getElementById('ckUserId').value = '';
         document.getElementById('ckTokenSync').value = '';
-        document.getElementById('ckTokenLog').value = '';
         saveCKServerConfig({});
     } else if (provider === 'webdav') {
         const webdavProvider = new WebDAVProvider();
