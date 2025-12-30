@@ -7201,12 +7201,6 @@ async function connectCKServerAPI() {
         document.getElementById('syncControls').style.display = 'block';
         if (window.storageSyncEngine) {
             window.storageSyncEngine.setProvider(provider);
-            // Kick off auto-sync immediately after a successful connection
-            const autoSyncCheckbox = document.getElementById('autoSyncEnabled');
-            if (autoSyncCheckbox) {
-                autoSyncCheckbox.checked = true;
-            }
-            window.storageSyncEngine.startAutoSync();
         }
 
         updateSyncStatus();
@@ -7260,11 +7254,6 @@ async function authenticateWebDAV() {
         // Set provider in sync engine
         if (window.storageSyncEngine) {
             window.storageSyncEngine.setProvider(provider);
-            const autoSyncCheckbox = document.getElementById('autoSyncEnabled');
-            if (autoSyncCheckbox) {
-                autoSyncCheckbox.checked = true;
-            }
-            window.storageSyncEngine.startAutoSync();
         }
 
         alert('Connexion WebDAV réussie !');
