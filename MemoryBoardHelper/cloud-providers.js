@@ -68,7 +68,7 @@ class CKServerApiProvider extends CloudProvider {
     }
 
     isAuthenticated() {
-        return Boolean(this.config && this.config.baseUrl && this.config.tokenSync && this.config.userId);
+        return Boolean(this.config && this.config.baseUrl && this.config.userId);
     }
 
     async authenticate() {

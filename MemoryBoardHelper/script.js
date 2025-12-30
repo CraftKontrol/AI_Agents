@@ -7083,7 +7083,6 @@ function onCloudProviderChange() {
 
         document.getElementById('ckBaseUrl').value = cfg.baseUrl || '';
         document.getElementById('ckUserId').value = cfg.userId || '';
-        document.getElementById('ckTokenSync').value = cfg.tokenSync || 'ck-sync-memoryboardhelper';
 
         const ckProvider = buildCKProviderFromConfig();
         if (!ckProvider) {
@@ -7168,10 +7167,10 @@ async function connectCKServerAPI() {
     try {
         const baseUrl = document.getElementById('ckBaseUrl').value.trim();
         const userId = document.getElementById('ckUserId').value.trim();
-        const tokenSync = document.getElementById('ckTokenSync').value.trim() || 'ck-sync-memoryboardhelper';
+        const tokenSync = 'ck-sync-memoryboardhelper';
         const tokenLog = 'ck-log-memoryboardhelper';
 
-        if (!baseUrl || !userId || !tokenSync) {
+        if (!baseUrl || !userId) {
             alert('Veuillez renseigner la base URL et l’utilisateur CKServerAPI');
             return;
         }
@@ -7338,7 +7337,6 @@ async function disconnectCloudProvider() {
         }
         document.getElementById('ckBaseUrl').value = '';
         document.getElementById('ckUserId').value = '';
-        document.getElementById('ckTokenSync').value = '';
         saveCKServerConfig({});
     } else if (provider === 'webdav') {
         const webdavProvider = new WebDAVProvider();
