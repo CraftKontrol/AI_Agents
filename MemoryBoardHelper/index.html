@@ -12,22 +12,35 @@
     <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css' rel='stylesheet' />
     <!-- Leaflet CSS for OpenStreetMap -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="style.css" id="appStyle">
-    <script>
-    // Simple cache-busting version shared across local assets
-    window.__assetVersion = encodeURIComponent(document.lastModified || Date.now());
-    (function() {
-        var styleEl = document.getElementById('appStyle');
-        if (styleEl) {
-            var href = styleEl.getAttribute('href');
-            var sep = href.indexOf('?') === -1 ? '?' : '&';
-            styleEl.href = href + sep + window.__assetVersion;
-        }
-    })();
-    </script>
+    <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="favicon.ico" sizes="32x32">
     <meta name="theme-color" content="#1a1a1a">
+    <script>
+    // Cache-bust local assets on each refresh to avoid stale JS/CSS while keeping CDNs cached
+    (function() {
+        var version = Date.now().toString();
+        window.__assetVersion = version;
+
+        function bust(url) {
+            if (!url || /^https?:\/\//i.test(url) || url.startsWith('data:')) return url;
+            var parts = url.split('#');
+            var base = parts[0];
+            var hash = parts[1] ? '#' + parts[1] : '';
+            var sep = base.indexOf('?') >= 0 ? '&' : '?';
+            return base + sep + 'v=' + version + hash;
+        }
+
+        var css = document.querySelector('link[href="style.css"]');
+        if (css) css.href = bust(css.getAttribute('href'));
+
+        var manifest = document.querySelector('link[rel="manifest"]');
+        if (manifest) manifest.href = bust(manifest.getAttribute('href'));
+
+        var icon = document.querySelector('link[rel~="icon"]');
+        if (icon) icon.href = bust(icon.getAttribute('href'));
+    })();
+    </script>
 </head>
 <body>
     <header class="header">
@@ -1824,16 +1837,13 @@
         <span class="material-symbols-outlined">arrow_downward</span>
     </div>
 
-    <!-- FullCalendar JS -->
-    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
-    <!-- Leaflet JS for OpenStreetMap -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    
     <script>
-    // Sequentially load local scripts with a cache-busting query param while preserving order
+    // Sequential loader with per-refresh cache busting for local assets; CDN URLs untouched
     (function() {
-        var v = window.__assetVersion || encodeURIComponent(Date.now());
-        var localScripts = [
+        var version = window.__assetVersion || Date.now().toString();
+        var scripts = [
+            'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js',
+            'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
             'storage.js',
             'activity-storage.js',
             'activity-tracker.js',
@@ -1860,16 +1870,23 @@
             'script-task-popup.js'
         ];
 
-        function loadNext(idx) {
-            if (idx >= localScripts.length) return;
+        function bust(url) {
+            if (/^https?:\/\//i.test(url) || url.startsWith('data:')) return url;
+            var sep = url.indexOf('?') >= 0 ? '&' : '?';
+            return url + sep + 'v=' + version;
+        }
+
+        function loadSequential(index) {
+            if (index >= scripts.length) return;
             var s = document.createElement('script');
-            s.src = localScripts[idx] + '?v=' + v;
-            s.onload = function() { loadNext(idx + 1); };
-            s.onerror = function() { loadNext(idx + 1); };
+            s.src = bust(scripts[index]);
+            s.async = false;
+            s.onload = function() { loadSequential(index + 1); };
+            s.onerror = function() { loadSequential(index + 1); };
             document.body.appendChild(s);
         }
 
-        loadNext(0);
+        loadSequential(0);
     })();
     </script>
 </body>
