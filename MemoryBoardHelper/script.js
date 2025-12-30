@@ -6998,9 +6998,10 @@ function getCKServerConfig() {
         const stored = JSON.parse(localStorage.getItem('ckserver_config') || '{}');
         const cfg = { ...defaults, ...stored };
 
-        // Normalize userId to the expected fixed scope so logs land in logs/memoryboardhelper/{device}
-        const needsUserIdFix = !cfg.userId || /^device_/i.test(cfg.userId) || /^[a-f0-9]{6,12}$/i.test(cfg.userId);
-        if (needsUserIdFix || cfg.userId.toLowerCase() !== 'memoryboardhelper') {
+        // Normalize only when missing or obviously wrong (device ids / tokens), otherwise preserve custom folder
+        const looksLikeToken = cfg.userId === cfg.tokenSync || cfg.userId === cfg.tokenLog || cfg.userId === cfg.tokenAdmin;
+        const needsUserIdFix = !cfg.userId || /^device_/i.test(cfg.userId) || /^[a-f0-9]{6,12}$/i.test(cfg.userId) || looksLikeToken;
+        if (needsUserIdFix) {
             cfg.userId = 'memoryboardhelper';
         }
 
