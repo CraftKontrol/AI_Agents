@@ -1582,7 +1582,6 @@ body {
 
 .input-group input[type="text"],
 .input-group input[type="time"],
-.input-group input[type="url"],
 .input-group textarea,
 .input-group select {
     width: 100%;

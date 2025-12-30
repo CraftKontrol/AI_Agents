@@ -16,31 +16,6 @@
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="favicon.ico" sizes="32x32">
     <meta name="theme-color" content="#1a1a1a">
-    <script>
-    // Cache-bust local assets on each refresh to avoid stale JS/CSS while keeping CDNs cached
-    (function() {
-        var version = Date.now().toString();
-        window.__assetVersion = version;
-
-        function bust(url) {
-            if (!url || /^https?:\/\//i.test(url) || url.startsWith('data:')) return url;
-            var parts = url.split('#');
-            var base = parts[0];
-            var hash = parts[1] ? '#' + parts[1] : '';
-            var sep = base.indexOf('?') >= 0 ? '&' : '?';
-            return base + sep + 'v=' + version + hash;
-        }
-
-        var css = document.querySelector('link[href="style.css"]');
-        if (css) css.href = bust(css.getAttribute('href'));
-
-        var manifest = document.querySelector('link[rel="manifest"]');
-        if (manifest) manifest.href = bust(manifest.getAttribute('href'));
-
-        var icon = document.querySelector('link[rel~="icon"]');
-        if (icon) icon.href = bust(icon.getAttribute('href'));
-    })();
-    </script>
 </head>
 <body>
     <header class="header">
@@ -1143,7 +1118,7 @@
                                         <span class="material-symbols-outlined">link</span>
                                         Base URL CKServerAPI
                                     </label>
-                                    <input type="url" id="ckBaseUrl" placeholder="server adress ..">
+                                    <input type="url" id="ckBaseUrl" placeholder="https://www.artcraft-zone.com/CK">
                                 </div>
                                 <div class="input-group">
                                     <label for="ckUserId">
@@ -1837,57 +1812,34 @@
         <span class="material-symbols-outlined">arrow_downward</span>
     </div>
 
-    <script>
-    // Sequential loader with per-refresh cache busting for local assets; CDN URLs untouched
-    (function() {
-        var version = window.__assetVersion || Date.now().toString();
-        var scripts = [
-            'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js',
-            'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
-            'storage.js',
-            'activity-storage.js',
-            'activity-tracker.js',
-            'activity-stats.js',
-            'activity-ui.js',
-            'undo-system.js',
-            'mistral-agent.js',
-            'task-manager.js',
-            'alarm-system.js',
-            'calendar-integration.js',
-            'sound-system.js',
-            'tavily-search.js',
-            'gps-navigation.js',
-            'location-manager.js',
-            'weather.js',
-            'ckserverapi-client.js',
-            'storage-sync.js',
-            'cloud-providers.js',
-            'action-wrapper.js',
-            'tutorial-system.js',
-            'audio-visualizer-kawaii.js',
-            'script-response-handler.js',
-            'script.js',
-            'script-task-popup.js'
-        ];
-
-        function bust(url) {
-            if (/^https?:\/\//i.test(url) || url.startsWith('data:')) return url;
-            var sep = url.indexOf('?') >= 0 ? '&' : '?';
-            return url + sep + 'v=' + version;
-        }
-
-        function loadSequential(index) {
-            if (index >= scripts.length) return;
-            var s = document.createElement('script');
-            s.src = bust(scripts[index]);
-            s.async = false;
-            s.onload = function() { loadSequential(index + 1); };
-            s.onerror = function() { loadSequential(index + 1); };
-            document.body.appendChild(s);
-        }
-
-        loadSequential(0);
-    })();
-    </script>
+    <!-- FullCalendar JS -->
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
+    <!-- Leaflet JS for OpenStreetMap -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script src="storage.js"></script>
+    <script src="activity-storage.js"></script>
+    <script src="activity-tracker.js"></script>
+    <script src="activity-stats.js"></script>
+    <script src="activity-ui.js"></script>
+    <script src="undo-system.js"></script>
+    <script src="mistral-agent.js?v=20251222-1304"></script>
+    <script src="task-manager.js"></script>
+    <script src="alarm-system.js"></script>
+    <script src="calendar-integration.js"></script>
+    <script src="sound-system.js?v=20251224-1600"></script>
+    <script src="tavily-search.js"></script>
+    <script src="gps-navigation.js"></script>
+    <script src="location-manager.js"></script>
+    <script src="weather.js"></script>
+    <script src="ckserverapi-client.js?v=20251229"></script>
+    <script src="storage-sync.js"></script>
+    <script src="cloud-providers.js"></script>
+    <script src="action-wrapper.js?v=20251224-1600"></script>
+    <script src="tutorial-system.js"></script>
+    <script src="audio-visualizer-kawaii.js"></script>
+    <script src="script-response-handler.js"></script>
+    <script src="script.js"></script>
+    <script src="script-task-popup.js"></script>
 </body>
 </html>
