@@ -6974,11 +6974,22 @@ async function restartTutorial() {
 function getCKServerConfig() {
     const defaults = {
         tokenSync: 'ck-sync-memoryboardhelper',
-        tokenLog: 'ck-log-memoryboardhelper'
+        tokenLog: 'ck-log-memoryboardhelper',
+        userId: 'memoryboardhelper'
     };
     try {
         const stored = JSON.parse(localStorage.getItem('ckserver_config') || '{}');
-        return { ...defaults, ...stored };
+        const cfg = { ...defaults, ...stored };
+
+        // Normalize userId to the expected fixed scope so logs land in logs/memoryboardhelper/{device}
+        const needsUserIdFix = !cfg.userId || /^device_/i.test(cfg.userId) || /^[a-f0-9]{6,12}$/i.test(cfg.userId);
+        if (needsUserIdFix || cfg.userId.toLowerCase() !== 'memoryboardhelper') {
+            cfg.userId = 'memoryboardhelper';
+        }
+
+        // Persist normalized config so subsequent loads stay consistent
+        localStorage.setItem('ckserver_config', JSON.stringify(cfg));
+        return cfg;
     } catch (error) {
         console.warn('[CKServerAPI] Failed to parse saved config:', error);
         return { ...defaults };
@@ -7082,7 +7093,7 @@ function onCloudProviderChange() {
         const cfg = getCKServerConfig();
 
         document.getElementById('ckBaseUrl').value = cfg.baseUrl || '';
-        document.getElementById('ckUserId').value = cfg.userId || '';
+        document.getElementById('ckUserId').value = cfg.userId || 'memoryboardhelper';
 
         const ckProvider = buildCKProviderFromConfig();
         if (!ckProvider) {
@@ -7166,7 +7177,7 @@ function onCloudProviderChange() {
 async function connectCKServerAPI() {
     try {
         const baseUrl = document.getElementById('ckBaseUrl').value.trim();
-        const userId = document.getElementById('ckUserId').value.trim();
+        const userId = (document.getElementById('ckUserId').value.trim() || 'memoryboardhelper');
         const tokenSync = 'ck-sync-memoryboardhelper';
         const tokenLog = 'ck-log-memoryboardhelper';
 
