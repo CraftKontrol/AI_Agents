@@ -4841,18 +4841,35 @@ async function sendCKBackgroundLog(message, level = 'info') {
     try {
         const cfg = getCKServerConfig();
         if (!cfg.baseUrl || !cfg.tokenLog) {
+            console.info('[CKServerAPI][log] Skip background log: missing baseUrl or tokenLog', {
+                hasBaseUrl: Boolean(cfg.baseUrl),
+                hasTokenLog: Boolean(cfg.tokenLog)
+            });
             return; // Logging optional
         }
 
         const api = new CKServerApi(cfg.baseUrl, { tokenLog: cfg.tokenLog });
         const msg = typeof message === 'string' ? message : JSON.stringify(message);
         const trimmed = msg.length > 9500 ? msg.slice(0, 9500) : msg; // stay under 10KB
-        await api.logAppend({
-            deviceId: (window.storageSyncEngine && window.storageSyncEngine.deviceId) || 'MemoryBoardHelper',
+        const deviceId = (window.storageSyncEngine && window.storageSyncEngine.deviceId) || 'MemoryBoardHelper';
+
+        console.info('[CKServerAPI][log] Sending background log', {
+            baseUrl: cfg.baseUrl,
+            userId: cfg.userId || '',
+            deviceId,
+            level,
+            length: trimmed.length,
+            preview: trimmed.slice(0, 240)
+        });
+
+        const res = await api.logAppend({
+            deviceId,
             userId: cfg.userId || '',
             level,
             msg: trimmed
         });
+
+        console.info('[CKServerAPI][log] Log append response', res);
     } catch (error) {
         console.warn('[CKServerAPI] Background log failed:', error.message || error);
     }
