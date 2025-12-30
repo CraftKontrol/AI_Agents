@@ -26,12 +26,47 @@ class StorageSyncEngine {
      * Get or create unique device ID
      */
     getOrCreateDeviceId() {
-        let deviceId = localStorage.getItem('sync_deviceId');
-        if (!deviceId) {
-            deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        const stored = localStorage.getItem('sync_deviceId');
+        const newId = this.buildDeviceId();
+
+        // Keep existing if it already follows the new scheme; otherwise regenerate once
+        const isNewFormat = stored && /^device_[a-z]+_[a-z]+_[a-z0-9]+$/i.test(stored);
+        const deviceId = isNewFormat ? stored : newId;
+
+        if (!isNewFormat) {
             localStorage.setItem('sync_deviceId', deviceId);
         }
+
         return deviceId;
+    }
+
+    buildDeviceId() {
+        const hostType = this.detectHostType();
+        const browserName = this.detectBrowserName();
+        const browserId = Math.random().toString(36).slice(2, 10);
+
+        const safe = val => (val || '').toLowerCase().replace(/[^a-z0-9]/g, '') || 'web';
+        return `device_${safe(hostType)}_${safe(browserName)}_${safe(browserId)}`;
+    }
+
+    detectHostType() {
+        const ua = (navigator.userAgent || '').toLowerCase();
+        if (ua.includes('android')) return 'android';
+        if (ua.includes('iphone') || ua.includes('ipad') || ua.includes('ipod') || ua.includes('ios')) return 'ios';
+        if (ua.includes('mac os x') || ua.includes('macintosh')) return 'mac';
+        if (ua.includes('windows')) return 'windows';
+        if (ua.includes('linux')) return 'linux';
+        return 'web';
+    }
+
+    detectBrowserName() {
+        const ua = (navigator.userAgent || '').toLowerCase();
+        if (ua.includes('edg/')) return 'edge';
+        if (ua.includes('opr/') || ua.includes('opera')) return 'opera';
+        if (ua.includes('chrome')) return 'chrome';
+        if (ua.includes('safari')) return 'safari';
+        if (ua.includes('firefox')) return 'firefox';
+        return 'browser';
     }
 
     /**
