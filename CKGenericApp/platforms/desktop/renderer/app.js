@@ -113,9 +113,7 @@ function setupEventListeners() {
             'brightdata',
             'scrapfly',
             'ckserver_base',
-            'ckserver_user',
-            'ckserver_token_sync',
-            'ckserver_token_log'
+            'ckserver_user'
         ];
         
         for (const keyName of keyFields) {

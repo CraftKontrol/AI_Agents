@@ -89,7 +89,7 @@ CKGenericApp/
 ## Shared Features Across Platforms
 
 ### 1. API Key Management (12 Services + CKServer config)
-**Centralized, encrypted storage of API keys for all web apps, including CKServerAPI sync/log config:**
+**Centralized, encrypted storage of API keys for all web apps, including CKServerAPI base/user config:**
 
 | Service | Purpose | Used By |
 |---------|---------|---------|
@@ -107,8 +107,6 @@ CKGenericApp/
 | `scrapfly` | ScrapFly | AI Search Agregator |
 | `ckserver_base` | CKServerAPI base URL | Memory Board Helper (sync/log), other CKServer-enabled apps |
 | `ckserver_user` | CKServerAPI user ID | Memory Board Helper (sync/log), other CKServer-enabled apps |
-| `ckserver_token_sync` | CKServerAPI sync token | Memory Board Helper (sync) |
-| `ckserver_token_log` | CKServerAPI log token | Memory Board Helper (background logging) |
 
 **Storage:**
 - **Android:** DataStore (encrypted preferences)

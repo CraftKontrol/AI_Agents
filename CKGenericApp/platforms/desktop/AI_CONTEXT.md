@@ -119,7 +119,7 @@ platforms/desktop/
 **Sections:**
 - Header with CK icon + settings button
 - Apps grid (dynamically populated)
-- API Keys section (collapsible, 16 fields including CKServerAPI base/user/sync/log)
+- API Keys section (collapsible, 14 fields including CKServerAPI base/user)
 - Settings Modal (monitoring, language, backup, about)
 - Mock Electron API (lines 217-350) - activates in browser/Live Server
 
@@ -138,7 +138,7 @@ platforms/desktop/
 - `DOMContentLoaded` - Initializes app, loads settings/apps/keys
 - `loadApps()` - Fetches apps via IPC, calls renderApps()
 - `renderApps()` - Creates app cards with translated descriptions
-- `loadApiKeys()` - Populates 16 API key input fields (adds ckserver_base/user/token_sync/token_log)
+- `loadApiKeys()` - Populates all API key input fields (adds ckserver_base/user)
 - `setupEventListeners()` - Binds save/toggle/settings handlers
 - `openSettingsModal()` / `closeSettingsModal()` - Modal management
 - `loadSettings()` - Loads monitoring/notifications/language
@@ -148,7 +148,7 @@ platforms/desktop/
 
 **State:**
 - `apps` - Array of app objects
-- `apiKeys` - Object with 16 API key values (service keys + CKServerAPI config)
+- `apiKeys` - Object with 14 API key values (service keys + CKServerAPI base/user)
 - Uses `currentLanguage` from translations.js
 
 #### translations.js (288 lines)
@@ -398,6 +398,7 @@ npm run build:linux         # Linux build (requires Linux runner)
 6. **Version Display:** Shown in About section of Settings modal
 7. **Build Cleanup:** Use `build:direct` if ASAR files are locked by VSCode/editors
 8. **Mock API Detection:** Checks `typeof window.electronAPI === 'undefined'` to activate
+9. **Geolocation Provider:** `initializeApp()` sets `GOOGLE_API_KEY` from stored Google keys (geolocation/stt/tts) if no env var is present to prevent Chromium geolocation 403s.
 
 ## File Locations
 
@@ -428,6 +429,10 @@ npm run build:linux         # Linux build (requires Linux runner)
 **Issue:** App windows not injecting API keys
 - **Cause:** `injectAPIKeys()` not called or wrong timing
 - **Fix:** Call after `webContents.did-finish-load` event
+
+**Issue:** "Network location provider at 'https://www.googleapis.com/' : Returned error code 403."
+- **Cause:** Chromium geolocation provider needs a Google API key when any webview calls `navigator.geolocation`.
+- **Fix:** Provide a Google Geolocation API key (or reuse Google STT/TTS key) so `GOOGLE_API_KEY` can be set; you can also set the `GOOGLE_API_KEY` env var before launch if you prefer external configuration.
 
 ---
 

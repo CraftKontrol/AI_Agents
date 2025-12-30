@@ -13,6 +13,15 @@ const store = new Store({
   encryptionKey: 'craftkontrol-desktop-encryption-key-2025'
 });
 
+function cleanupLegacyApiKeys() {
+  ['apiKeys.ckserver_token_sync', 'apiKeys.ckserver_token_log'].forEach((key) => {
+    if (store.has(key)) {
+      store.delete(key);
+      log.info(`Removed legacy API key: ${key}`);
+    }
+  });
+}
+
 // Global references
 let mainWindow = null;
 let tray = null;
@@ -59,6 +68,12 @@ if (!gotTheLock) {
 async function initializeApp() {
   // Initialize default settings
   initializeDefaultSettings();
+
+  // Drop deprecated CKServer token entries
+  cleanupLegacyApiKeys();
+
+  // Configure Google API key to avoid geolocation 403 errors
+  configureGoogleApiKey();
   
   // Create main window
   createMainWindow();
@@ -77,6 +92,28 @@ async function initializeApp() {
   createMenu();
   
   log.info('CraftKontrol Desktop initialized');
+}
+
+function configureGoogleApiKey() {
+  // If the user already provided an env key, keep it
+  if (process.env.GOOGLE_API_KEY) {
+    log.info('GOOGLE_API_KEY already set from environment');
+    return;
+  }
+
+  // Reuse an existing Google key (STT/TTS) for Chromium geolocation provider
+  const storedKey =
+    store.get('apiKeys.google_geolocation', '') ||
+    store.get('apiKeys.google_stt', '') ||
+    store.get('apiKeys.google_tts', '');
+
+  if (storedKey) {
+    process.env.GOOGLE_API_KEY = storedKey;
+    app.commandLine.appendSwitch('google-api-key', storedKey);
+    log.info('GOOGLE_API_KEY configured from stored Google key');
+  } else {
+    log.warn('No Google API key found; geolocation requests may log 403 until a key is provided');
+  }
 }
 
 function initializeDefaultSettings() {
@@ -402,9 +439,7 @@ function openWebApp(appId) {
     brightdata: store.get('apiKeys.brightdata', ''),
     scrapfly: store.get('apiKeys.scrapfly', ''),
     ckserver_base: store.get('apiKeys.ckserver_base', ''),
-    ckserver_user: store.get('apiKeys.ckserver_user', ''),
-    ckserver_token_sync: store.get('apiKeys.ckserver_token_sync', ''),
-    ckserver_token_log: store.get('apiKeys.ckserver_token_log', '')
+    ckserver_user: store.get('apiKeys.ckserver_user', '')
   };
   
   // Create new window
@@ -465,9 +500,7 @@ function injectAPIKeys(webContents) {
     brightdata: store.get('apiKeys.brightdata', ''),
     scrapfly: store.get('apiKeys.scrapfly', ''),
     ckserver_base: store.get('apiKeys.ckserver_base', ''),
-    ckserver_user: store.get('apiKeys.ckserver_user', ''),
-    ckserver_token_sync: store.get('apiKeys.ckserver_token_sync', ''),
-    ckserver_token_log: store.get('apiKeys.ckserver_token_log', '')
+    ckserver_user: store.get('apiKeys.ckserver_user', '')
   };
   
   // Fallback: if google_stt is empty but google_tts has a value, use google_tts for both
@@ -505,9 +538,7 @@ function injectAPIKeys(webContents) {
     };
     window.CKDesktop.ckServer = {
       baseUrl: window.CKDesktop.apiKeys.ckserver_base || '',
-      userId: window.CKDesktop.apiKeys.ckserver_user || '',
-      tokenSync: window.CKDesktop.apiKeys.ckserver_token_sync || '',
-      tokenLog: window.CKDesktop.apiKeys.ckserver_token_log || ''
+      userId: window.CKDesktop.apiKeys.ckserver_user || ''
     };
     
     // Also inject as CKAndroid for compatibility
@@ -520,9 +551,7 @@ function injectAPIKeys(webContents) {
     };
     window.CKAndroid.ckServer = {
       baseUrl: window.CKAndroid.apiKeys.ckserver_base || '',
-      userId: window.CKAndroid.apiKeys.ckserver_user || '',
-      tokenSync: window.CKAndroid.apiKeys.ckserver_token_sync || '',
-      tokenLog: window.CKAndroid.apiKeys.ckserver_token_log || ''
+      userId: window.CKAndroid.apiKeys.ckserver_user || ''
     };
     
     console.log('[CKDesktop] API keys injected:', Object.keys(window.CKDesktop.apiKeys));
@@ -568,9 +597,7 @@ function registerIPCHandlers() {
       brightdata: store.get('apiKeys.brightdata', ''),
       scrapfly: store.get('apiKeys.scrapfly', ''),
       ckserver_base: store.get('apiKeys.ckserver_base', ''),
-      ckserver_user: store.get('apiKeys.ckserver_user', ''),
-      ckserver_token_sync: store.get('apiKeys.ckserver_token_sync', ''),
-      ckserver_token_log: store.get('apiKeys.ckserver_token_log', '')
+      ckserver_user: store.get('apiKeys.ckserver_user', '')
     };
   });
   
@@ -644,9 +671,7 @@ function registerIPCHandlers() {
           brightdata: store.get('apiKeys.brightdata', ''),
           scrapfly: store.get('apiKeys.scrapfly', ''),
           ckserver_base: store.get('apiKeys.ckserver_base', ''),
-          ckserver_user: store.get('apiKeys.ckserver_user', ''),
-          ckserver_token_sync: store.get('apiKeys.ckserver_token_sync', ''),
-          ckserver_token_log: store.get('apiKeys.ckserver_token_log', '')
+          ckserver_user: store.get('apiKeys.ckserver_user', '')
         },
         settings: {
           monitoringEnabled: store.get('monitoringEnabled', true),
