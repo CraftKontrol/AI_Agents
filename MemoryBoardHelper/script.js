@@ -7755,19 +7755,22 @@ function getCategoryName(category) {
 
 // ===== LISTS MANAGEMENT =====
 let editingListId = null;
+let listItemIdCounter = 1;
 
 function openAddListModal() {
     playUiSound('ui_open');
     document.getElementById('addListModal').style.display = 'flex';
     document.getElementById('listTitle').value = '';
     document.getElementById('listCategory').value = 'general';
+    listItemIdCounter = 1;
     document.getElementById('listItemsContainer').innerHTML = `
         <div class="list-item-input">
-            <input type="text" placeholder="Élément 1" class="list-item-field">
+            <input type="text" placeholder="Élément 1" class="list-item-field" id="listItem-1" name="listItems[]" aria-labelledby="listItemsLabel" aria-label="Élément 1">
             <button class="btn-remove-item" onclick="removeListItem(this)" style="display: none;">×</button>
         </div>
     `;
     editingListId = null;
+    syncListItemsLabel();
 }
 
 function closeAddListModal() {
@@ -7779,12 +7782,14 @@ function closeAddListModal() {
 function addListItem() {
     playUiSound('ui_click');
     const container = document.getElementById('listItemsContainer');
-    const itemCount = container.querySelectorAll('.list-item-input').length + 1;
+    const itemIndex = container.querySelectorAll('.list-item-input').length + 1;
+    listItemIdCounter += 1;
+    const inputId = `listItem-${listItemIdCounter}`;
     
     const itemDiv = document.createElement('div');
     itemDiv.className = 'list-item-input';
     itemDiv.innerHTML = `
-        <input type="text" placeholder="Élément ${itemCount}" class="list-item-field">
+        <input type="text" placeholder="Élément ${itemIndex}" class="list-item-field" id="${inputId}" name="listItems[]" aria-labelledby="listItemsLabel" aria-label="Élément ${itemIndex}">
         <button class="btn-remove-item" onclick="removeListItem(this)">×</button>
     `;
     
@@ -7792,6 +7797,7 @@ function addListItem() {
     
     // Afficher les boutons de suppression si plus d'un élément
     updateRemoveButtons();
+    syncListItemsLabel();
 }
 
 function removeListItem(button) {
@@ -7802,6 +7808,7 @@ function removeListItem(button) {
     if (items.length > 1) {
         button.closest('.list-item-input').remove();
         updateRemoveButtons();
+        syncListItemsLabel();
     }
 }
 
@@ -7813,6 +7820,13 @@ function updateRemoveButtons() {
     removeButtons.forEach(btn => {
         btn.style.display = items.length > 1 ? 'block' : 'none';
     });
+}
+
+function syncListItemsLabel() {
+    const label = document.getElementById('listItemsLabel');
+    if (!label) return;
+    const firstInput = document.querySelector('#listItemsContainer .list-item-field');
+    label.htmlFor = firstInput ? firstInput.id : '';
 }
 
 async function saveNewList() {
@@ -7933,15 +7947,21 @@ async function editList(id) {
         document.getElementById('listCategory').value = list.category;
         
         const container = document.getElementById('listItemsContainer');
-        container.innerHTML = list.items.map((item, index) => `
+        container.innerHTML = list.items.map((item, index) => {
+            const inputId = `listItem-${index + 1}`;
+            return `
             <div class="list-item-input">
-                <input type="text" placeholder="Élément ${index + 1}" class="list-item-field" value="${escapeHtml(item.text)}">
+                <input type="text" placeholder="Élément ${index + 1}" class="list-item-field" id="${inputId}" name="listItems[]" aria-labelledby="listItemsLabel" aria-label="Élément ${index + 1}" value="${escapeHtml(item.text)}">
                 <button class="btn-remove-item" onclick="removeListItem(this)" style="display: ${list.items.length > 1 ? 'block' : 'none'};">×</button>
             </div>
-        `).join('');
+        `;
+        }).join('');
         
+        listItemIdCounter = list.items.length;
         document.getElementById('addListModal').style.display = 'flex';
         document.getElementById('addListModalTitle').textContent = 'Modifier la liste';
+        syncListItemsLabel();
+        updateRemoveButtons();
     } catch (error) {
         console.error('[Lists] Error editing list:', error);
         showError('Erreur lors de l\'édition de la liste');
