@@ -973,6 +973,7 @@ body {
         width: 100%;
         max-width: 100%;
         max-height: calc(100vh - 300px);
+        min-height: calc(100vh - 300px);
         overflow-y: auto;
         overflow-x: hidden;
         -webkit-overflow-scrolling: touch;
