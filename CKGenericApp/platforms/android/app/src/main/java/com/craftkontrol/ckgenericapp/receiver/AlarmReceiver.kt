@@ -14,6 +14,7 @@ import com.craftkontrol.ckgenericapp.MainActivity
 import com.craftkontrol.ckgenericapp.R
 import com.craftkontrol.ckgenericapp.util.AlarmScheduler
 import com.craftkontrol.ckgenericapp.util.Constants
+import com.craftkontrol.ckgenericapp.util.ShortcutHelper
 import timber.log.Timber
 
 /**
@@ -47,9 +48,10 @@ class AlarmReceiver : BroadcastReceiver() {
         createAlarmNotificationChannel(context, notificationManager)
         
         // Create intent to open the specific app when notification is tapped
-        val intent = Intent(context, com.craftkontrol.ckgenericapp.presentation.shortcut.ShortcutActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra(com.craftkontrol.ckgenericapp.presentation.shortcut.ShortcutActivity.EXTRA_APP_ID, appId)
+        val intent = (ShortcutHelper.buildLaunchIntentForApp(appId)
+            ?: Intent(context, MainActivity::class.java).apply {
+                action = Intent.ACTION_VIEW
+            }).apply {
             putExtra("alarmId", alarmId)
             putExtra("taskType", taskType)
         }

@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='utf-8' standalone='yes' ?>
+<map>
+    <int name="today_steps" value="27" />
+    <long name="last_update" value="1767097044408" />
+    <boolean name="tracking_enabled" value="true" />
+</map>

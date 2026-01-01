@@ -37,6 +37,7 @@
 **CKWebChromeClient**: Permissions (camera/mic/location/file), progress, console logs, geolocation
 **WebViewJavaScriptInterface**: Android  JS bridge (exposed as `CKAndroid`): `postMessage()`, `showNotification()`, `getAppVersion()`, `getApiKey()`
 **WebViewConfigurator**: Centralized settings (JS enabled, DOM storage, media playback, mixed content allowed, debug mode) + `clearWebViewCache()` for forced fresh reload
+**Dynamic features**: MemoryBoardActivity now reuses `WebViewConfigurator` + `WebViewJavaScriptInterface` and pulls API keys via `SharedWebViewHelper` (ContentProvider `com.craftkontrol.ckgenericapp.apikeys`) so `CKAndroid` and injected keys exist inside the dynamic-feature WebView.
 
 **Critical Settings**: `javaScriptEnabled = true`  `domStorageEnabled = true`  `mediaPlaybackRequiresUserGesture = false`  `mixedContentMode = ALWAYS_ALLOW`  `cacheMode = LOAD_NO_CACHE` (force fresh content)
 **Cache Management**: Apps clear cache on every load (cache/history/formData) + No-Cache headers + `clearWebViewCache()` before loading URLs
@@ -59,15 +60,11 @@
 **BootReceiver**: Listens `BOOT_COMPLETED`/`QUICKBOOT_POWERON`  Restarts MonitoringService
 **AlarmReceiver**: Receives alarm intents  Shows notifications with full-screen intent  Opens app
 
-### Shortcut System (`util/ShortcutHelper.kt`, `ShortcutActivity.kt`)
-**ShortcutHelper**: `createShortcut()` (pinned shortcut), `generateAppIcon()` (colored bitmap with initials)
-**Intent**: Action `OPEN_APP.{appId}`  Identifier `{appId}`  Flags `NEW_TASK | MULTIPLE_TASK`  Extra `EXTRA_APP_ID`
-**ShortcutActivity**: Base activity (not exported)  Accessed via activity-alias per app  Maintains `currentWebView` reference for reload operations
-**Activity Aliases**: Each app has dedicated alias with unique `taskAffinity` (com.craftkontrol.ckgenericapp.{appId})  `singleTask` per alias
-**Lifecycle**: `onCreate` (extract appId, clear cache, load WebView with no-cache headers)  `onNewIntent` (force reload with cache clearing)  `onResume` (force reload if flag set)
-**Cache Behavior**: Every load clears cache/history/formData + Uses no-cache HTTP headers + Forces fresh content on every app open/reopen
-**Pull-to-Refresh**: Swipe down from top to force reload (clears cache + reloads with no-cache headers) - Material3 PullToRefreshContainer with nestedScroll
-**Multi-Instance**: Each app alias has unique taskAffinity creating isolated tasks - all apps run in separate parallel tasks independently
+### Shortcut System (`util/ShortcutHelper.kt`)
+**ShortcutHelper**: `createShortcut()` pins per-app shortcuts to standalone sub-app packages; refuses creation if target APK is missing; `SHORTCUT_VERSION=8` forces launcher refresh when mapping changes. `buildLaunchIntentForApp(appId)` resolves to `com.craftkontrol.<id>.OPEN_APP.<id>` actions within the matching package (`com.craftkontrol.ai_search`, `...astral_compute`, `...local_food`, `...memory_board`, `...meteo`, `...news`).
+**Intent Shape**: Action `com.craftkontrol.<id>.OPEN_APP.<id>`, categories `DEFAULT` + `com.android.launcher3.DEEP_SHORTCUT`, `setPackage(targetPackage)`, flag `FLAG_ACTIVITY_NEW_TASK`; no component set so launcher resolves exported main activity in sub-app module (`singleTask` + custom `taskAffinity`).
+**Legacy Fallback**: `ShortcutActivity` in base app remains for backward compatibility but preferred path is sub-app APK routing; callers should use `buildLaunchIntentForApp(appId)`.
+**Launcher/Shortcut Icons**: WebApp.icon names resolve first to `assets/icons/{name}.png` for shortcut bitmaps; matching copies live in base `res/drawable-nodpi/ic_{app}.png` and are referenced via `android:icon` on each dynamic feature activity so launcher entries show distinct icons.
 
 ### Alarm System (`util/AlarmScheduler.kt`, `AlarmReceiver.kt`)
 **Purpose**: Schedule alarms from web apps (Memory Helper tasks)
@@ -184,7 +181,7 @@ adb logcat | findstr CKGenericApp  # View logs
 - `weatherapi` - WeatherAPI (Meteo Agregator)
 - `tavily` - Tavily Search (AI Search Agregator)
 - `scrapingbee`, `scraperapi`, `brightdata`, `scrapfly` - Web scraping services (AI Search Agregator)
-- `ckserver_base`, `ckserver_user`, `ckserver_token_sync`, `ckserver_token_log` - CKServerAPI sync/log endpoints and tokens for Memory Board Helper (and other CKServer-enabled apps)
+- `ckserver_base`, `ckserver_user` - CKServerAPI base URL + user identifier for CKServer-enabled apps
 
 **Injection**: All keys automatically injected into WebViews via ShortcutActivity WebViewClient as `window.CKGenericApp.apiKeys`; CKServer config mirrored to `window.CKGenericApp.ckServer`, `window.CKAndroid.ckServer`, and `window.CKDesktop.ckServer` for parity
 **Access**: `CKAndroid.getApiKey('keyName')`, `window.CKGenericApp.getApiKey('keyName')`, and `window.CKGenericApp.ckServer` (or `CKAndroid.ckServer`) from JavaScript

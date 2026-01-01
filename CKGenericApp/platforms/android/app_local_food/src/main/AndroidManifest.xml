@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:dist="http://schemas.android.com/apk/distribution">
+
+    <dist:module
+        dist:instant="false"
+        dist:title="@string/app_name">
+        <dist:delivery>
+            <dist:install-time />
+        </dist:delivery>
+        <dist:fusing dist:include="true" />
+    </dist:module>
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="com.craftkontrol.ckgenericapp.permission.ACCESS_AUTH" />
+
+    <application>
+        <activity
+            android:name=".LocalFoodActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:taskAffinity="com.craftkontrol.local_food"
+            android:icon="@drawable/ic_local_food"
+            android:label="CK-Food"
+            android:theme="@style/Theme.CKGenericApp">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.craftkontrol.local_food.OPEN_APP.local_food" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="com.android.launcher3.DEEP_SHORTCUT" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

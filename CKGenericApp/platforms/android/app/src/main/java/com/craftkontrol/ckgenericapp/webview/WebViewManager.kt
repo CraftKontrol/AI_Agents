@@ -17,6 +17,7 @@ class CKWebViewClient(private val context: Context) : WebViewClient() {
     
     override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
         val url = request?.url?.toString() ?: return false
+        val uri = request.url
         
         // Handle special URL schemes (tel:, mailto:, sms:, etc.)
         if (url.startsWith("tel:") || url.startsWith("mailto:") || url.startsWith("sms:")) {
@@ -32,18 +33,28 @@ class CKWebViewClient(private val context: Context) : WebViewClient() {
             }
         }
 
-        // For new-window flows (target="_blank" or window.open) keep navigation inside
-        // the current WebView so session/API keys remain available. Only special schemes above
-        // are allowed to leave the WebView.
-        val isMainFrame = request.isForMainFrame
-        val hasGesture = request.hasGesture()
-        if ((!isMainFrame || hasGesture) && view != null) {
-            Timber.d("Handling new-window request inside WebView: $url")
-            view.loadUrl(url)
-            return true
+        // Open HTTP/HTTPS links in external browser if they're to a different domain
+        if (url.startsWith("http://") || url.startsWith("https://")) {
+            val currentUrl = view?.url
+            val currentDomain = currentUrl?.let { Uri.parse(it).host }
+            val targetDomain = uri?.host
+            
+            // If navigating to a different domain, open in external browser
+            if (currentDomain != null && targetDomain != null && currentDomain != targetDomain) {
+                try {
+                    val intent = Intent(Intent.ACTION_VIEW, uri)
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(intent)
+                    Timber.d("Opening external link in browser: $url")
+                    return true
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to open external link: $url")
+                    return false
+                }
+            }
         }
         
-        // Allow same-page navigation within WebView
+        // Allow same-domain navigation within WebView
         return false
     }
     

@@ -1,0 +1,26 @@
+<?xml version='1.0' encoding='utf-8' standalone='yes' ?>
+<map>
+    <set name="device-model/HWNAM android-min-sdk/26 fire-fcm/23.4.0 android-installer/ fire-core-ktx/20.4.2 fire-analytics-ktx/21.5.0 fire-analytics/21.5.0 fire-core/20.4.2 fire-android/31 fire-fcm-ktx/23.4.0 fire-installations/17.2.0 device-name/NAM-L29 device-brand/HUAWEI android-platform/ kotlin/1.9.22 fire-transport/18.1.7 android-target-sdk/34">
+        <string>2025-12-22</string>
+        <string>2025-12-25</string>
+        <string>2025-12-21</string>
+        <string>2025-12-20</string>
+    </set>
+    <long name="fire-count" value="13" />
+    <string name="last-used-date">2025-12-30</string>
+    <set name="device-model/HWNAM android-min-sdk/26 fire-fcm/23.4.0 android-installer/ fire-core-ktx/20.4.2 fire-analytics-ktx/21.5.0 fire-analytics/21.5.0 fire-core/20.4.2 fire-android/31 fire-fcm-ktx/23.4.0 device-brand/HUAWEI device-name/NAM-L29 fire-installations/17.2.0 android-platform/ kotlin/1.9.22 fire-transport/18.1.7 android-target-sdk/34">
+        <string>2025-12-27</string>
+        <string>2025-12-26</string>
+        <string>2025-12-29</string>
+        <string>2025-12-28</string>
+        <string>2025-12-30</string>
+    </set>
+    <set name="device-model/HWNAM android-min-sdk/26 fire-fcm/23.4.0 android-installer/ fire-analytics-ktx/21.5.0 fire-core-ktx/20.4.2 fire-analytics/21.5.0 fire-core/20.4.2 fire-android/31 fire-fcm-ktx/23.4.0 device-name/NAM-L29 fire-installations/17.2.0 device-brand/HUAWEI android-platform/ kotlin/1.9.22 fire-transport/18.1.7 android-target-sdk/34">
+        <string>2025-12-18</string>
+        <string>2025-12-23</string>
+        <string>2025-12-19</string>
+    </set>
+    <set name="device-model/HWNAM android-min-sdk/26 android-installer/ fire-fcm/23.4.0 fire-analytics-ktx/21.5.0 fire-core-ktx/20.4.2 fire-analytics/21.5.0 fire-core/20.4.2 fire-android/31 fire-fcm-ktx/23.4.0 fire-installations/17.2.0 device-name/NAM-L29 device-brand/HUAWEI android-platform/ kotlin/1.9.22 fire-transport/18.1.7 android-target-sdk/34">
+        <string>2025-12-24</string>
+    </set>
+</map>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">CKGenericApp</string>
+    <string name="app_name">CK-Center</string>
     
     <!-- Canaux de notification -->
     <string name="notification_channel_monitoring_name">Surveillance en arrière-plan</string>

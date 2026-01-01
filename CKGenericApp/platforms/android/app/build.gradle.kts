@@ -30,6 +30,14 @@ fun getGitCommitCount(): Int {
 android {
     namespace = "com.craftkontrol.ckgenericapp"
     compileSdk = 34
+    dynamicFeatures += listOf(
+        ":app_ai_search",
+        ":app_astral_compute",
+        ":app_local_food",
+        ":app_memory_board",
+        ":app_meteo",
+        ":app_news"
+    )
     
     defaultConfig {
         applicationId = "com.craftkontrol.ckgenericapp"
@@ -120,6 +128,7 @@ android.applicationVariants.all {
 dependencies {
     // Compose BOM - Version stable compatible
     implementation(platform("androidx.compose:compose-bom:2024.06.00"))
+    implementation(project(":core"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")

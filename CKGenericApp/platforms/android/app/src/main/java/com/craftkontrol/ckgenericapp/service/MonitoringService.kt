@@ -13,6 +13,7 @@ import androidx.core.app.NotificationCompat
 import com.craftkontrol.ckgenericapp.MainActivity
 import com.craftkontrol.ckgenericapp.R
 import com.craftkontrol.ckgenericapp.util.Constants
+import com.craftkontrol.ckgenericapp.util.ShortcutHelper
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -180,16 +181,8 @@ class MonitoringService : Service() {
     }
     
     fun showAlert(title: String, message: String, appId: String? = null) {
-        val intent = if (appId != null) {
-            // Open specific app via shortcut activity
-            Intent(this, com.craftkontrol.ckgenericapp.presentation.shortcut.ShortcutActivity::class.java).apply {
-                putExtra(com.craftkontrol.ckgenericapp.presentation.shortcut.ShortcutActivity.EXTRA_APP_ID, appId)
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            }
-        } else {
-            // Open main activity
-            Intent(this, MainActivity::class.java)
-        }
+        val intent = appId?.let { ShortcutHelper.buildLaunchIntentForApp(it) }
+            ?: Intent(this, MainActivity::class.java)
         
         val pendingIntent = PendingIntent.getActivity(
             this,

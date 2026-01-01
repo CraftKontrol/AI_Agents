@@ -2,6 +2,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Signature-only permission for shared auth/session provider -->
+    <permission
+        android:name="com.craftkontrol.ckgenericapp.permission.ACCESS_AUTH"
+        android:protectionLevel="signature" />
+
     <!-- Internet and Network -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -60,14 +65,22 @@
         android:backupAgent=".backup.CKBackupAgent"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@drawable/ic_launcher"
         android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_launcher_round"
+        android:roundIcon="@drawable/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.CKGenericApp"
         android:hardwareAccelerated="true"
         android:usesCleartextTraffic="true"
         tools:targetApi="31">
+
+        <!-- Expose API keys to sibling sub-apps via signature-protected content provider -->
+        <provider
+            android:name=".data.local.provider.ApiKeysProvider"
+            android:authorities="com.craftkontrol.ckgenericapp.apikeys"
+            android:exported="true"
+            android:readPermission="com.craftkontrol.ckgenericapp.permission.ACCESS_AUTH"
+            android:writePermission="com.craftkontrol.ckgenericapp.permission.ACCESS_AUTH" />
         
         <!-- Main Activity -->
         <activity
@@ -81,6 +94,37 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- Fallback handling for shortcut OPEN_APP actions routed to the base activity (no alias component) -->
+            <intent-filter>
+                <action android:name="com.craftkontrol.ckgenericapp.OPEN_APP.ai_search" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="com.android.launcher3.DEEP_SHORTCUT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.craftkontrol.ckgenericapp.OPEN_APP.astral_compute" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="com.android.launcher3.DEEP_SHORTCUT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.craftkontrol.ckgenericapp.OPEN_APP.local_food" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="com.android.launcher3.DEEP_SHORTCUT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.craftkontrol.ckgenericapp.OPEN_APP.memory_board" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="com.android.launcher3.DEEP_SHORTCUT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.craftkontrol.ckgenericapp.OPEN_APP.meteo" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="com.android.launcher3.DEEP_SHORTCUT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.craftkontrol.ckgenericapp.OPEN_APP.news" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="com.android.launcher3.DEEP_SHORTCUT" />
             </intent-filter>
             
             <!-- Deep linking support -->
@@ -96,11 +140,10 @@
         <!-- Shortcut Activity - Base activity (not exported directly) -->
         <activity
             android:name=".presentation.shortcut.ShortcutActivity"
-            android:exported="true"
+            android:exported="false"
             android:theme="@style/Theme.CKGenericApp"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:windowSoftInputMode="adjustResize"
-            android:launchMode="singleTask"
             android:excludeFromRecents="false"
             android:persistableMode="persistNever" />
         
@@ -109,10 +152,12 @@
             android:name=".ShortcutActivity_AiSearch"
             android:targetActivity=".presentation.shortcut.ShortcutActivity"
             android:exported="true"
+            android:launchMode="singleTask"
             android:taskAffinity="com.craftkontrol.ckgenericapp.ai_search">
             <intent-filter>
                 <action android:name="com.craftkontrol.ckgenericapp.OPEN_APP.ai_search" />
                 <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="com.android.launcher3.DEEP_SHORTCUT" />
             </intent-filter>
         </activity-alias>
         
@@ -121,10 +166,12 @@
             android:name=".ShortcutActivity_AstralCompute"
             android:targetActivity=".presentation.shortcut.ShortcutActivity"
             android:exported="true"
+            android:launchMode="singleTask"
             android:taskAffinity="com.craftkontrol.ckgenericapp.astral_compute">
             <intent-filter>
                 <action android:name="com.craftkontrol.ckgenericapp.OPEN_APP.astral_compute" />
                 <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="com.android.launcher3.DEEP_SHORTCUT" />
             </intent-filter>
         </activity-alias>
         
@@ -133,10 +180,12 @@
             android:name=".ShortcutActivity_LocalFood"
             android:targetActivity=".presentation.shortcut.ShortcutActivity"
             android:exported="true"
+            android:launchMode="singleTask"
             android:taskAffinity="com.craftkontrol.ckgenericapp.local_food">
             <intent-filter>
                 <action android:name="com.craftkontrol.ckgenericapp.OPEN_APP.local_food" />
                 <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="com.android.launcher3.DEEP_SHORTCUT" />
             </intent-filter>
         </activity-alias>
         
@@ -145,10 +194,12 @@
             android:name=".ShortcutActivity_MemoryBoard"
             android:targetActivity=".presentation.shortcut.ShortcutActivity"
             android:exported="true"
+            android:launchMode="singleTask"
             android:taskAffinity="com.craftkontrol.ckgenericapp.memory_board">
             <intent-filter>
                 <action android:name="com.craftkontrol.ckgenericapp.OPEN_APP.memory_board" />
                 <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="com.android.launcher3.DEEP_SHORTCUT" />
             </intent-filter>
         </activity-alias>
         
@@ -157,10 +208,12 @@
             android:name=".ShortcutActivity_Meteo"
             android:targetActivity=".presentation.shortcut.ShortcutActivity"
             android:exported="true"
+            android:launchMode="singleTask"
             android:taskAffinity="com.craftkontrol.ckgenericapp.meteo">
             <intent-filter>
                 <action android:name="com.craftkontrol.ckgenericapp.OPEN_APP.meteo" />
                 <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="com.android.launcher3.DEEP_SHORTCUT" />
             </intent-filter>
         </activity-alias>
         
@@ -169,10 +222,12 @@
             android:name=".ShortcutActivity_News"
             android:targetActivity=".presentation.shortcut.ShortcutActivity"
             android:exported="true"
+            android:launchMode="singleTask"
             android:taskAffinity="com.craftkontrol.ckgenericapp.news">
             <intent-filter>
                 <action android:name="com.craftkontrol.ckgenericapp.OPEN_APP.news" />
                 <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="com.android.launcher3.DEEP_SHORTCUT" />
             </intent-filter>
         </activity-alias>
         
@@ -208,6 +263,15 @@
             android:name=".receiver.AlarmReceiver"
             android:enabled="true"
             android:exported="false" />
+
+        <!-- Shared auth/session provider for sibling CraftKontrol apps (signature-protected) -->
+        <provider
+            android:name=".provider.AuthProvider"
+            android:authorities="com.craftkontrol.ckgenericapp.auth"
+            android:exported="true"
+            android:readPermission="com.craftkontrol.ckgenericapp.permission.ACCESS_AUTH"
+            android:writePermission="com.craftkontrol.ckgenericapp.permission.ACCESS_AUTH"
+            android:grantUriPermissions="false" />
         
         <!-- WorkManager initialization -->
         <provider

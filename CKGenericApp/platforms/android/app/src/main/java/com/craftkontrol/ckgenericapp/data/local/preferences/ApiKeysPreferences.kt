@@ -49,10 +49,12 @@ class ApiKeysPreferences @Inject constructor(
      * Get all API keys as a map
      */
     fun getAllApiKeys(): Flow<Map<String, String>> {
+        val legacyKeys = setOf("ckserver_token_sync", "ckserver_token_log")
         return dataStore.data.map { preferences ->
             preferences.asMap()
                 .filterKeys { it.name.startsWith("api_key_") }
                 .mapKeys { it.key.name.removePrefix("api_key_") }
+                .filterKeys { key -> key !in legacyKeys }
                 .mapValues { it.value.toString() }
         }
     }

@@ -9,6 +9,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
+import android.widget.Toast
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -256,6 +257,18 @@ fun MainScreen(
                         apps = uiState.apps,
                         onCreateShortcut = { app ->
                             viewModel.createShortcut(app)
+                        },
+                        onLaunchApp = { app ->
+                            val intent = com.craftkontrol.ckgenericapp.util.ShortcutHelper.buildLaunchIntentForApp(app.id)
+                            if (intent == null) {
+                                Toast.makeText(context, "Cible introuvable pour ${app.name}", Toast.LENGTH_SHORT).show()
+                            } else {
+                                try {
+                                    context.startActivity(intent)
+                                } catch (e: Exception) {
+                                    Toast.makeText(context, "Impossible d'ouvrir ${app.name}: ${e.message}", Toast.LENGTH_LONG).show()
+                                }
+                            }
                         }
                     )
                     
@@ -308,7 +321,8 @@ fun MainScreen(
 @Composable
 fun AppsManagementSection(
     apps: List<WebApp>,
-    onCreateShortcut: (WebApp) -> Unit
+    onCreateShortcut: (WebApp) -> Unit,
+    onLaunchApp: (WebApp) -> Unit
 ) {
     val context = LocalContext.current
     
@@ -329,7 +343,8 @@ fun AppsManagementSection(
         apps.forEach { app ->
             AppCard(
                 app = app,
-                onCreateShortcut = { onCreateShortcut(app) }
+                onCreateShortcut = { onCreateShortcut(app) },
+                onLaunchApp = { onLaunchApp(app) }
             )
             Spacer(modifier = Modifier.height(8.dp))
         }
@@ -339,7 +354,8 @@ fun AppsManagementSection(
 @Composable
 fun AppCard(
     app: WebApp,
-    onCreateShortcut: () -> Unit
+    onCreateShortcut: () -> Unit,
+    onLaunchApp: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -372,16 +388,28 @@ fun AppCard(
                     maxLines = 1
                 )
             }
-            
+
+            IconButton(
+                onClick = onLaunchApp,
+                modifier = Modifier.padding(start = 8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.OpenInNew,
+                    contentDescription = "Ouvrir l'app",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+
             IconButton(
                 onClick = onCreateShortcut,
-                modifier = Modifier.padding(start = 8.dp)
+                modifier = Modifier.padding(start = 4.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.AddToHomeScreen,
                     contentDescription = "Créer un raccourci",
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(28.dp)
                 )
             }
         }
@@ -410,8 +438,6 @@ fun ApiKeysSection(
     var googleSttKey by remember(savedKeys) { mutableStateOf(savedKeys["google_stt"] ?: "") }
     var ckServerBase by remember(savedKeys) { mutableStateOf(savedKeys["ckserver_base"] ?: "") }
     var ckServerUser by remember(savedKeys) { mutableStateOf(savedKeys["ckserver_user"] ?: "") }
-    var ckServerTokenSync by remember(savedKeys) { mutableStateOf(savedKeys["ckserver_token_sync"] ?: "") }
-    var ckServerTokenLog by remember(savedKeys) { mutableStateOf(savedKeys["ckserver_token_log"] ?: "") }
     
     // Visibility toggles
     var showMistral by remember { mutableStateOf(false) }
@@ -428,8 +454,6 @@ fun ApiKeysSection(
     var showGoogleStt by remember { mutableStateOf(false) }
     var showCkServerBase by remember { mutableStateOf(false) }
     var showCkServerUser by remember { mutableStateOf(false) }
-    var showCkServerTokenSync by remember { mutableStateOf(false) }
-    var showCkServerTokenLog by remember { mutableStateOf(false) }
     
     // Debug log
     LaunchedEffect(savedKeys) {
@@ -588,28 +612,6 @@ fun ApiKeysSection(
             isVisible = showCkServerUser,
             onVisibilityToggle = { showCkServerUser = !showCkServerUser },
             onSave = { viewModel.saveApiKey("ckserver_user", ckServerUser) }
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        ApiKeyField(
-            label = "CKServerAPI Token Sync",
-            value = ckServerTokenSync,
-            onValueChange = { ckServerTokenSync = it },
-            isVisible = showCkServerTokenSync,
-            onVisibilityToggle = { showCkServerTokenSync = !showCkServerTokenSync },
-            onSave = { viewModel.saveApiKey("ckserver_token_sync", ckServerTokenSync) }
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        ApiKeyField(
-            label = "CKServerAPI Token Log",
-            value = ckServerTokenLog,
-            onValueChange = { ckServerTokenLog = it },
-            isVisible = showCkServerTokenLog,
-            onVisibilityToggle = { showCkServerTokenLog = !showCkServerTokenLog },
-            onSave = { viewModel.saveApiKey("ckserver_token_log", ckServerTokenLog) }
         )
 
         Spacer(modifier = Modifier.height(20.dp))

@@ -1,6 +1,6 @@
 package com.craftkontrol.ckgenericapp.presentation.shortcut
 
-import com.craftkontrol.ckgenericapp.R
+import android.app.ActivityManager
 import android.content.Intent
 import android.os.Bundle
 import android.view.ViewGroup
@@ -13,19 +13,18 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-import android.widget.FrameLayout
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.browser.customtabs.CustomTabsIntent
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import com.craftkontrol.ckgenericapp.R
 import com.craftkontrol.ckgenericapp.domain.model.WebApp
-import com.craftkontrol.ckgenericapp.presentation.main.MainViewModel
 import com.craftkontrol.ckgenericapp.presentation.theme.CKGenericAppTheme
 import com.craftkontrol.ckgenericapp.service.SensorMonitoringService
+import com.craftkontrol.ckgenericapp.util.ShortcutHelper
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -44,7 +43,6 @@ class ShortcutActivity : ComponentActivity() {
     private var currentAppId: String? = null
     var pendingWebViewPermissionRequest: android.webkit.PermissionRequest? = null
     var currentWebView: WebView? = null
-    private var forceReload = false
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -57,7 +55,7 @@ class ShortcutActivity : ComponentActivity() {
         // Set task description to differentiate tasks in recents
         currentAppId?.let { appId ->
             try {
-                setTaskDescription(android.app.ActivityManager.TaskDescription(appId))
+                setTaskDescription(ActivityManager.TaskDescription(appId))
             } catch (e: Exception) {
                 Timber.e(e, "Failed to set task description")
             }
@@ -81,38 +79,9 @@ class ShortcutActivity : ComponentActivity() {
         // This should only be called if explicitly routing to an existing instance
         if (newAppId != null && newAppId != currentAppId) {
             currentAppId = newAppId
-            forceReload = true
             renderContent() // Re-render with new app
         } else {
-            // Same app reopened - force reload with cache clearing
-            Timber.d("Same app reopened - forcing fresh reload")
-            currentWebView?.let { webView ->
-                com.craftkontrol.ckgenericapp.webview.WebViewConfigurator.clearWebViewCache(webView)
-                val headers = mapOf(
-                    "Cache-Control" to "no-cache, no-store, must-revalidate",
-                    "Pragma" to "no-cache",
-                    "Expires" to "0"
-                )
-                webView.loadUrl(webView.url ?: "", headers)
-            }
-        }
-    }
-    
-    override fun onResume() {
-        super.onResume()
-        // Force reload when app comes to foreground
-        if (forceReload) {
-            Timber.d("onResume with forceReload flag - forcing fresh reload")
-            currentWebView?.let { webView ->
-                com.craftkontrol.ckgenericapp.webview.WebViewConfigurator.clearWebViewCache(webView)
-                val headers = mapOf(
-                    "Cache-Control" to "no-cache, no-store, must-revalidate",
-                    "Pragma" to "no-cache",
-                    "Expires" to "0"
-                )
-                webView.loadUrl(webView.url ?: "", headers)
-            }
-            forceReload = false
+            Timber.d("Same app reopened - keeping existing WebView state")
         }
     }
 
@@ -251,8 +220,21 @@ private fun ShortcutScreen(
                 }
             }
             app != null -> {
+                val loadedApp = app!!
+
+                LaunchedEffect(loadedApp.id) {
+                    try {
+                        val iconBitmap = ShortcutHelper.getAppIconBitmap(activity, loadedApp)
+                        activity.setTaskDescription(
+                            ActivityManager.TaskDescription(loadedApp.name, iconBitmap)
+                        )
+                    } catch (e: Exception) {
+                        Timber.w(e, "Failed to set task description for ${loadedApp.id}")
+                    }
+                }
+
                 StandaloneWebView(
-                    app = app!!,
+                    app = loadedApp,
                     apiKeys = apiKeys,
                     activity = activity,
                     permissionLauncher = permissionLauncher,
@@ -425,6 +407,7 @@ private class ApiKeyInjectingWebViewClient(
     
     override fun shouldOverrideUrlLoading(view: WebView?, request: android.webkit.WebResourceRequest?): Boolean {
         val url = request?.url?.toString() ?: return false
+        val uri = request.url
         val context = view?.context ?: return false
         
         // Handle special URL schemes (tel:, mailto:, sms:, etc.)
@@ -441,17 +424,30 @@ private class ApiKeyInjectingWebViewClient(
             }
         }
 
-        // Keep new-window flows (target="_blank" or window.open) inside the same
-        // WebView so session state + injected API keys stay available.
-        val isMainFrame = request.isForMainFrame
-        val hasGesture = request.hasGesture()
-        if ((!isMainFrame || hasGesture) && view != null) {
-            Timber.d("Handling new-window request inside WebView: $url")
-            view.loadUrl(url)
-            return true
+        // Open HTTP/HTTPS links in external browser if they're to a different domain
+        if (url.startsWith("http://") || url.startsWith("https://")) {
+            val currentUrl = view?.url
+            val appBaseUrl = app.url
+            val currentDomain = currentUrl?.let { android.net.Uri.parse(it).host }
+            val appDomain = android.net.Uri.parse(appBaseUrl).host
+            val targetDomain = uri?.host
+            
+            // If navigating to a different domain than the app's base domain, open in external browser
+            if (targetDomain != null && appDomain != null && targetDomain != appDomain) {
+                try {
+                    val intent = Intent(Intent.ACTION_VIEW, uri)
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(intent)
+                    Timber.d("Opening external link in browser: $url (app domain: $appDomain, target: $targetDomain)")
+                    return true
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to open external link: $url")
+                    return false
+                }
+            }
         }
         
-        // Allow same-page navigation within WebView
+        // Allow same-domain navigation within WebView
         return false
     }
     
@@ -464,12 +460,18 @@ private class ApiKeyInjectingWebViewClient(
         super.onPageFinished(view, url)
         Timber.d("Page loading finished: $url (forced fresh reload)")
         
-        // Inject API keys into JavaScript
-        if (apiKeys.isNotEmpty() && view != null) {
-            val keysJson = apiKeys.entries.joinToString(",") { (key, value) ->
+        // Inject API keys into JavaScript (also when empty for diagnostics)
+        if (view != null) {
+            val sanitizedApiKeys = apiKeys.filterKeys { key ->
+                key != "ckserver_token_sync" && key != "ckserver_token_log"
+            }
+
+            val keysJson = sanitizedApiKeys.entries.joinToString(",") { (key, value) ->
                 "\"$key\": \"${value.replace("\"", "\\\"")}\""
             }
-            
+
+            Timber.i("Injecting API keys into ${app.name}: count=${sanitizedApiKeys.size}, tavily=${sanitizedApiKeys["tavily"]?.length ?: 0} chars")
+
             val jsCode = """
                 (function() {
                     if (!window.CKGenericApp) {
@@ -481,18 +483,23 @@ private class ApiKeyInjectingWebViewClient(
                     };
                     const ckServer = {
                         baseUrl: window.CKGenericApp.apiKeys['ckserver_base'] || '',
-                        userId: window.CKGenericApp.apiKeys['ckserver_user'] || '',
-                        tokenSync: window.CKGenericApp.apiKeys['ckserver_token_sync'] || '',
-                        tokenLog: window.CKGenericApp.apiKeys['ckserver_token_log'] || ''
+                        userId: window.CKGenericApp.apiKeys['ckserver_user'] || ''
                     };
                     window.CKGenericApp.ckServer = ckServer;
 
-                    if (!window.CKAndroid) {
-                        window.CKAndroid = {};
-                    }
-                    window.CKAndroid.apiKeys = window.CKGenericApp.apiKeys;
-                    window.CKAndroid.getApiKey = window.CKGenericApp.getApiKey;
-                    window.CKAndroid.ckServer = ckServer;
+                    const nativeCKAndroid = window.CKAndroid;
+                    const mergedCKAndroid = (nativeCKAndroid && typeof nativeCKAndroid === 'object')
+                        ? nativeCKAndroid
+                        : {};
+
+                    mergedCKAndroid.apiKeys = window.CKGenericApp.apiKeys;
+                    mergedCKAndroid.getApiKey = function(keyName) {
+                        return window.CKGenericApp.apiKeys[keyName] || null;
+                    };
+                    mergedCKAndroid.ckServer = ckServer;
+
+                    // Preserve the original injected object to keep @JavascriptInterface methods callable
+                    window.CKAndroid = mergedCKAndroid;
 
                     if (!window.CKDesktop) {
                         window.CKDesktop = {};
@@ -500,7 +507,8 @@ private class ApiKeyInjectingWebViewClient(
                     window.CKDesktop.apiKeys = window.CKGenericApp.apiKeys;
                     window.CKDesktop.getApiKey = window.CKGenericApp.getApiKey;
                     window.CKDesktop.ckServer = ckServer;
-                    console.log('CKGenericApp: API keys injected (' + Object.keys(window.CKGenericApp.apiKeys).length + ' keys)');
+                    console.error('CKGenericApp: API keys injected (' + Object.keys(window.CKGenericApp.apiKeys).length + ' keys)');
+                    console.error('CKGenericApp: Tavily key present:', !!window.CKGenericApp.apiKeys['tavily']);
                     console.log('CKGenericApp: About to dispatch event...');
                     
                     // Dispatch custom event to notify page that API keys are available

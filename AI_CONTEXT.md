@@ -293,6 +293,7 @@ refreshInterval, autoRefreshTimer, filters {category, source, readStatus}
 
 **Architecture**: MVVM + Clean Architecture (Presentation → Domain → Data)
 **Stack**: Jetpack Compose, Material 3, Hilt DI, Room Database, DataStore Preferences
+**Packaging**: Multi-APK; main app hosts auth provider + signature permission, sub-apps (`ai_search`, `astral_compute`, `local_food`, `memory_board`, `meteo`, `news`) ship as standalone APKs
 
 **Layers**:
 1. **Presentation** (`presentation/`): Compose UI, ViewModels, Navigation, Theming, Localization
@@ -302,7 +303,7 @@ refreshInterval, autoRefreshTimer, filters {category, source, readStatus}
 **Key Components**:
 - **WebView Manager**: CKWebViewClient, CKWebChromeClient, WebViewJavaScriptInterface
 - **JavaScript Bridge**: `CKAndroid` exposed to web apps for API key access, notifications, alarms, sensors
-- **Shortcut System**: Per-app home screen shortcuts, isolated tasks, multi-instance support
+- **Shortcut System**: Pinned shortcuts target sub-app packages (`com.craftkontrol.<id>.OPEN_APP.<id>`); guards creation if APK missing; versioned (`SHORTCUT_VERSION=8`) to force refresh
 - **Cache Management**: Force-clear on every load, no-cache headers, settings screen control
 - **Alarm Scheduler**: Exact alarm support via AlarmManager, notification system
 - **Sensor Bridge**: Accelerometer + Gyroscope data for activity tracking (MemoryBoardHelper)
