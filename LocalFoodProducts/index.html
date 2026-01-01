@@ -175,6 +175,14 @@
     </footer>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="script.js"></script>
+    <script>
+        // Cache busting for JS
+        (function() {
+            const timestamp = new Date().getTime();
+            const script = document.createElement('script');
+            script.src = 'script.js?v=' + timestamp;
+            document.body.appendChild(script);
+        })();
+    </script>
 </body>
 </html>

@@ -8,7 +8,15 @@
     <meta http-equiv="Expires" content="0">
     <title>Meteo Aggregator</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css" id="app-css">
+    <script>
+        // Cache busting
+        (function() {
+            const timestamp = new Date().getTime();
+            const cssLink = document.getElementById('app-css');
+            if (cssLink) cssLink.href = 'style.css?v=' + timestamp;
+        })();
+    </script>
 </head>
 <body>
     <!-- Header -->
@@ -177,6 +185,14 @@
         <a href="https://www.artcraft-zone.com" target="_blank" rel="noopener noreferrer">www.artcraft-zone.com</a>
     </footer>
 
-    <script src="script.js"></script>
+    <script>
+        // Cache busting for JS
+        (function() {
+            const timestamp = new Date().getTime();
+            const script = document.createElement('script');
+            script.src = 'script.js?v=' + timestamp;
+            document.body.appendChild(script);
+        })();
+    </script>
 </body>
 </html>
