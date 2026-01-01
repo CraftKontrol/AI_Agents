@@ -10,7 +10,7 @@
 
 ## Architecture
 
-**Flow**: Load → Init inputs → Calculate → Display → Optional AI interpretation → Full chart shortcut (`generateAstralTheme()` chains calculation + Mistral in full-theme mode)
+**Flow**: Load → Init inputs → Calculate → Display → Optional AI interpretation → Daily shortcut (`generateDailyHoroscope()` chains calculation + standard Mistral) → Full chart shortcut (`generateAstralTheme()` chains calculation + Mistral in full-theme mode) → Numerology shortcut (`generateNumerologyProfile()` swaps UI to numerology tables and sends numerology prompt)
 
 **Global State**:
 - `currentLanguage` - 'fr'|'en'
@@ -67,7 +67,7 @@ const translations = {
 
 **8. Settings Modal**: Standard modal pattern. Click outside to close. Functions: `loadUserSettings()`, `saveUserSettings()`, `clearUserSettings()`.
 
-**9. AI Interpretation**: Default prompt uses profile if present. Full-theme prompt (via `generateAstralTheme()`) ignores profile and focuses solely on selected date/heure sky analysis. Model: `mistral-small-latest`, 1500 tokens
+**9. AI Interpretation**: Default prompt uses profile if present. Full-theme prompt (via `generateAstralTheme()`) ignores profile and focuses solely on selected date/heure sky analysis. Numerology prompt (via `generateNumerologyProfile()`) uses date input (+name if available) to build Life Path/Personal Year/etc and replaces results view with numerology tables. Model: `mistral-small-latest`, 900-1500 tokens depending on flow.
 **Full-screen overlay with centered content**:
 ```css
 .modal {

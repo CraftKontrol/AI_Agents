@@ -455,8 +455,17 @@ function calculateEphemeris(onComplete) {
 
 // Full chart generation: compute positions then launch AI interpretation
 function generateAstralTheme() {
+    setActiveAction('themeButton');
     calculateEphemeris(() => {
         getInterpretation(true);
+    });
+}
+
+// Daily horoscope: compute then run standard interpretation (profile-aware if available)
+function generateDailyHoroscope() {
+    setActiveAction('dailyButton');
+    calculateEphemeris(() => {
+        getInterpretation(false);
     });
 }
 
@@ -664,7 +673,7 @@ function calculateAspects(positions) {
 
 // Display Results
 function displayResults() {
-    document.getElementById('resultsContainer').style.display = 'block';
+    showAstroResults();
     
     // Display planetary positions
     displayPlanetaryPositions();
@@ -680,6 +689,19 @@ function displayResults() {
     
     // Trigger particle effects
     createFairyParticles();
+}
+
+function setActiveAction(actionId) {
+    const ids = ['dailyButton', 'themeButton', 'numerologyButton'];
+    ids.forEach(id => {
+        const btn = document.getElementById(id);
+        if (!btn) return;
+        if (id === actionId) {
+            btn.classList.add('action-active');
+        } else {
+            btn.classList.remove('action-active');
+        }
+    });
 }
 
 function displayPlanetaryPositions() {
@@ -1033,6 +1055,220 @@ Be concise, precise, and benevolent. Use accessible language.`);
         interpretBtn.disabled = false;
         interpretBtn.textContent = currentLanguage === 'fr' ? 'Générer l\'interprétation' : 'Generate Interpretation';
     }
+}
+
+// Numerology helpers
+function reduceToCoreNumber(value) {
+    const masterNumbers = [11, 22, 33];
+    let num = Math.abs(value);
+    while (num > 9 && !masterNumbers.includes(num)) {
+        num = num
+            .toString()
+            .split('')
+            .reduce((acc, digit) => acc + parseInt(digit, 10), 0);
+    }
+    return num;
+}
+
+function computeNameNumber(name) {
+    if (!name) return null;
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const total = name
+        .toUpperCase()
+        .replace(/[^A-Z]/g, '')
+        .split('')
+        .reduce((sum, letter) => {
+            const idx = alphabet.indexOf(letter);
+            if (idx === -1) return sum;
+            return sum + ((idx % 9) + 1);
+        }, 0);
+    return reduceToCoreNumber(total);
+}
+
+function prepareNumerologySummary() {
+    const dateInput = document.getElementById('dateInput').value;
+    if (!dateInput) return null;
+    const dateObj = new Date(dateInput + 'T00:00:00Z');
+    const year = dateObj.getUTCFullYear();
+    const month = dateObj.getUTCMonth() + 1;
+    const day = dateObj.getUTCDate();
+
+    const lifePath = reduceToCoreNumber(`${year}${month.toString().padStart(2, '0')}${day.toString().padStart(2, '0')}`);
+    const personalYear = reduceToCoreNumber(year + month + day);
+    const dayNumber = reduceToCoreNumber(day);
+    const monthNumber = reduceToCoreNumber(month);
+    const yearNumber = reduceToCoreNumber(year);
+
+    const userName = localStorage.getItem('astralUserName') || '';
+    const expressionNumber = computeNameNumber(userName);
+
+    return {
+        date: dateInput,
+        lifePath,
+        personalYear,
+        dayNumber,
+        monthNumber,
+        yearNumber,
+        expressionNumber,
+        userName
+    };
+}
+
+function formatNumerologySummary(summary) {
+    if (!summary) return '';
+    const { date, lifePath, personalYear, dayNumber, monthNumber, yearNumber, expressionNumber, userName } = summary;
+    const nameLine = expressionNumber !== null && userName ? `Name/Expression: ${expressionNumber} (${userName})` : '';
+    return [
+        `Date: ${date}`,
+        `Life Path: ${lifePath}`,
+        `Personal Year: ${personalYear}`,
+        `Day Number: ${dayNumber}`,
+        `Month Number: ${monthNumber}`,
+        `Year Number: ${yearNumber}`,
+        nameLine
+    ]
+        .filter(Boolean)
+        .join('\n');
+}
+
+function renderNumerologySummary(summary) {
+    const safeVal = (val) => (val === null || typeof val === 'undefined' ? '—' : val);
+    if (!summary) {
+        document.getElementById('numDate').textContent = '—';
+        document.getElementById('numLifePath').textContent = '—';
+        document.getElementById('numPersonalYear').textContent = '—';
+        document.getElementById('numDay').textContent = '—';
+        document.getElementById('numMonth').textContent = '—';
+        document.getElementById('numYear').textContent = '—';
+        document.getElementById('numExpression').textContent = '—';
+        return;
+    }
+    document.getElementById('numDate').textContent = safeVal(summary.date);
+    document.getElementById('numLifePath').textContent = safeVal(summary.lifePath);
+    document.getElementById('numPersonalYear').textContent = safeVal(summary.personalYear);
+    document.getElementById('numDay').textContent = safeVal(summary.dayNumber);
+    document.getElementById('numMonth').textContent = safeVal(summary.monthNumber);
+    document.getElementById('numYear').textContent = safeVal(summary.yearNumber);
+    document.getElementById('numExpression').textContent = summary.expressionNumber !== null ? summary.expressionNumber : '—';
+}
+
+function showAstroResults() {
+    document.getElementById('resultsContainer').style.display = 'block';
+    const astro = document.getElementById('astroResults');
+    const num = document.getElementById('numerologyResults');
+    if (astro) astro.style.display = 'block';
+    if (num) num.style.display = 'none';
+}
+
+function showNumerologyResults() {
+    document.getElementById('resultsContainer').style.display = 'block';
+    const astro = document.getElementById('astroResults');
+    const num = document.getElementById('numerologyResults');
+    if (astro) astro.style.display = 'none';
+    if (num) num.style.display = 'block';
+    const interpretationDiv = document.getElementById('numerologyInterpretation');
+    if (interpretationDiv) {
+        interpretationDiv.innerHTML = '';
+    }
+}
+
+// Numerology profile with dedicated Mistral prompt
+async function getNumerologyInterpretation() {
+    const apiKey = document.getElementById('apiKey').value.trim();
+    if (!apiKey) {
+        showError(currentLanguage === 'fr' ? 'Veuillez entrer votre clé API Mistral' : 'Please enter your Mistral API key');
+        showApiKeySection();
+        return;
+    }
+
+    const dateInput = document.getElementById('dateInput').value;
+    if (!dateInput) {
+        showError(currentLanguage === 'fr' ? 'Veuillez sélectionner une date' : 'Please select a date');
+        return;
+    }
+
+    saveApiKey();
+
+    const summary = prepareNumerologySummary();
+    const formattedSummary = formatNumerologySummary(summary);
+
+    // Render table values before API call
+    renderNumerologySummary(summary);
+    showNumerologyResults();
+
+    const interpretBtn = document.getElementById('numerologyButton');
+    interpretBtn.disabled = true;
+    interpretBtn.textContent = currentLanguage === 'fr' ? 'Calcul en cours...' : 'Generating...';
+
+    showLoading();
+    try {
+        const prompt = currentLanguage === 'fr'
+            ? `Réalise une ANALYSE NUMÉROLOGIQUE complète basée uniquement sur la date sélectionnée (et le nom si présent). Fournis un résultat structuré :
+
+1) Profil des nombres clefs (Life Path, Année personnelle, Jour/Mois/Année, Expression si nom disponible).
+2) Forces et défis associés à ces nombres (2-3 phrases).
+3) Conseils pratiques pour aujourd'hui et ce cycle (3-4 phrases).
+
+Résumé des données:
+${formattedSummary}
+
+Style: clair, concis, bienveillant.`
+            : `Perform a COMPLETE NUMEROLOGY analysis based solely on the selected date (and name if available). Provide a structured result:
+
+1) Key numbers profile (Life Path, Personal Year, Day/Month/Year, Expression if name available).
+2) Strengths and challenges linked to these numbers (2-3 sentences).
+3) Practical advice for today and this cycle (3-4 sentences).
+
+Data summary:
+${formattedSummary}
+
+Style: clear, concise, benevolent.`;
+
+        const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: 'mistral-small-latest',
+                messages: [
+                    {
+                        role: 'user',
+                        content: prompt
+                    }
+                ],
+                temperature: 0.7,
+                max_tokens: 900
+            })
+        });
+
+        if (!response.ok) {
+            if (response.status === 401) {
+                throw new Error(currentLanguage === 'fr' ? 'Clé API invalide' : 'Invalid API key');
+            } else if (response.status === 429) {
+                throw new Error(currentLanguage === 'fr' ? 'Limite de requêtes atteinte' : 'Rate limit exceeded');
+            } else {
+                throw new Error(`API error: ${response.status}`);
+            }
+        }
+
+        const data = await response.json();
+        const interpretation = data.choices[0].message.content;
+        const target = document.getElementById('numerologyInterpretation');
+        target.innerHTML = interpretation;
+    } catch (error) {
+        showError(error.message);
+    } finally {
+        interpretBtn.disabled = false;
+        interpretBtn.textContent = currentLanguage === 'fr' ? 'Faire un profil numérologique' : 'Generate numerology profile';
+        hideLoading();
+    }
+}
+
+function generateNumerologyProfile() {
+    setActiveAction('numerologyButton');
+    getNumerologyInterpretation();
 }
 
 function prepareDataSummary() {

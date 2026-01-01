@@ -344,42 +344,50 @@ body {
     gap: 10px;
 }
 
-/* Buttons */
+/* Unified Buttons */
+.btn,
 .btn-primary,
 .btn-secondary {
     padding: 12px 20px;
-    border: none;
+    border: 1px solid var(--primary-color);
     border-radius: 0;
     font-size: 15px;
     font-weight: 500;
     cursor: pointer;
-    transition: background-color 0.3s ease;
-}
-
-.btn-primary {
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
     background-color: var(--primary-color);
     color: #ffffff;
-}
-
-.btn-primary:hover {
-    background-color: #6ab0ff;
-}
-
-.btn-primary:disabled {
-    background-color: var(--text-muted);
-    cursor: not-allowed;
-    opacity: 0.6;
-}
-
-.btn-secondary {
-    background-color: transparent;
-    color: var(--text-color);
-    border: 1px solid var(--border-color);
     min-width: 60px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    text-align: center;
 }
 
+.btn:hover,
+.btn-primary:hover,
 .btn-secondary:hover {
-    background-color: var(--surface-elevated);
+    background-color: #6ab0ff;
+    border-color: #6ab0ff;
+}
+
+.btn:disabled,
+.btn-primary:disabled,
+.btn-secondary:disabled {
+    background-color: var(--text-muted);
+    border-color: var(--text-muted);
+    color: #1a1a1a;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.action-active {
+    outline: 2px solid var(--primary-dark);
+    outline-offset: 0;
+    box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.25);
+    background-color: var(--primary-dark);
+    border-color: var(--primary-dark);
 }
 
 /* Data Grid */
@@ -469,6 +477,34 @@ body {
     color: #ffffff;
     font-size: 18px;
     margin-bottom: 10px;
+}
+
+.numerology-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+}
+
+.num-card {
+    background-color: var(--background-color);
+    border: 1px solid var(--border-color);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.num-label {
+    color: var(--text-muted);
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.num-value {
+    color: var(--text-color);
+    font-size: 24px;
+    font-weight: 600;
 }
 
 /* Legend */

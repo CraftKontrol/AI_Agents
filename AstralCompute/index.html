@@ -107,126 +107,170 @@
                 </div>
             </div>
             <div class="button-group">
-                <button class="btn-primary" onclick="calculateEphemeris()" data-en="My daily horoscope" data-fr="Mon horoscope du jour">Mon horoscope du jour</button>
+                <button class="btn-primary" id="dailyButton" onclick="generateDailyHoroscope()" data-en="My daily horoscope" data-fr="Mon horoscope du jour">Mon horoscope du jour</button>
                 <button class="btn-secondary" id="themeButton" onclick="generateAstralTheme()" data-en="Generate full chart + AI" data-fr="Faire un thème astral">Faire un thème astral</button>
+                <button class="btn-secondary" id="numerologyButton" onclick="generateNumerologyProfile()" data-en="Generate numerology profile" data-fr="Faire un profil numérologique">Faire un profil numérologique</button>
             </div>
         </section>
 
         <!-- Results Container -->
         <div id="resultsContainer" style="display: none;">
-            
+            <div id="astroResults">
+                <!-- Interpretation first -->
+                <section class="data-section">
+                    <h2 data-en="AI Interpretation" data-fr="Interprétation IA">Interprétation IA</h2>
+                    <div class="legend">
+                        <span data-en="Astrological interpretation powered by Mistral AI" data-fr="Interprétation astrologique propulsée par Mistral IA">Interprétation astrologique propulsée par Mistral IA</span>
+                    </div>
+                    <button class="btn-primary" id="interpretBtn" onclick="getInterpretation()" data-en="Generate Interpretation" data-fr="Générer l'interprétation">Générer l'interprétation</button>
+                    <div id="interpretation" class="interpretation-display"></div>
+                </section>
 
-
-            <!-- Two Column Layout -->
-            <div class="data-grid">
-                
-                <!-- Left Column -->
-                <div class="data-column">
-                          <!-- Moon Phase -->
-                    <section class="data-section">
-                        <h2 data-en="Moon Phase" data-fr="Phase Lunaire">Phase Lunaire</h2>
-                        <div class="legend">
-                            <span data-en="Current lunar phase and illumination" data-fr="Phase lunaire actuelle et illumination">Phase lunaire actuelle et illumination</span>
-                        </div>
-                        <div id="moonPhase" class="moon-phase-display"></div>
-                    </section>
-
-
-                    <!-- Planetary Positions -->
-                    <section class="data-section">
-                        <h2 data-en="Planetary Positions" data-fr="Positions Planétaires">Positions Planétaires</h2>
-                        <div class="legend">
-                            <span data-en="Position in zodiac sign with degrees and minutes" data-fr="Position dans le signe du zodiaque avec degrés et minutes">Position dans le signe du zodiaque avec degrés et minutes</span>
-                            <span class="retrograde-legend">Ⓡ = <span data-en="Retrograde" data-fr="Rétrograde">Rétrograde</span></span>
-                        </div>
-                        <div id="planetaryPositions" class="positions-list"></div>
-                    </section>
-
-              
-
-                </div>
-
-                <!-- Right Column -->
-                <div class="data-column">
+                <!-- Two Column Layout -->
+                <div class="data-grid">
                     
-                    <!-- Aspects -->
-                    <section class="data-section">
-                        <h2 data-en="Planetary Aspects" data-fr="Aspects Planétaires">Aspects Planétaires</h2>
-                        <div class="legend">
-                            <span data-en="Major aspects between planets (±8° orb)" data-fr="Aspects majeurs entre planètes (±8° d'orbe)">Aspects majeurs entre planètes (±8° d'orbe)</span>
-                        </div>
-                        <div id="aspectsList" class="aspects-list"></div>
-                    </section>
+                    <!-- Left Column -->
+                    <div class="data-column">
+                        <!-- Moon Phase -->
+                        <section class="data-section">
+                            <h2 data-en="Moon Phase" data-fr="Phase Lunaire">Phase Lunaire</h2>
+                            <div class="legend">
+                                <span data-en="Current lunar phase and illumination" data-fr="Phase lunaire actuelle et illumination">Phase lunaire actuelle et illumination</span>
+                            </div>
+                            <div id="moonPhase" class="moon-phase-display"></div>
+                        </section>
 
-                   
+
+                        <!-- Planetary Positions -->
+                        <section class="data-section">
+                            <h2 data-en="Planetary Positions" data-fr="Positions Planétaires">Positions Planétaires</h2>
+                            <div class="legend">
+                                <span data-en="Position in zodiac sign with degrees and minutes" data-fr="Position dans le signe du zodiaque avec degrés et minutes">Position dans le signe du zodiaque avec degrés et minutes</span>
+                                <span class="retrograde-legend">Ⓡ = <span data-en="Retrograde" data-fr="Rétrograde">Rétrograde</span></span>
+                            </div>
+                            <div id="planetaryPositions" class="positions-list"></div>
+                        </section>
+
+                    </div>
+
+                    <!-- Right Column -->
+                    <div class="data-column">
+                        
+                        <!-- Aspects -->
+                        <section class="data-section">
+                            <h2 data-en="Planetary Aspects" data-fr="Aspects Planétaires">Aspects Planétaires</h2>
+                            <div class="legend">
+                                <span data-en="Major aspects between planets (±8° orb)" data-fr="Aspects majeurs entre planètes (±8° d'orbe)">Aspects majeurs entre planètes (±8° d'orbe)</span>
+                            </div>
+                            <div id="aspectsList" class="aspects-list"></div>
+                        </section>
+
+                    </div>
 
                 </div>
-
+                <!-- Astrological Chart -->
+                <section class="chart-section">
+                    <h2 data-en="Astrological Chart" data-fr="Carte Astrologique">Carte Astrologique</h2>
+                    <div class="legend">
+                        <span data-en="Planets positioned in zodiac wheel with aspects" data-fr="Planètes positionnées dans la roue du zodiaque avec aspects">Planètes positionnées dans la roue du zodiaque avec aspects</span>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="astroChart" width="600" height="600"></canvas>
+                    </div>
+                    <div class="chart-legend">
+                        <div class="legend-section">
+                            <h4 data-en="Planets" data-fr="Planètes">Planètes</h4>
+                            <div class="legend-items">
+                                <span>☉ <span data-en="Sun" data-fr="Soleil">Soleil</span></span>
+                                <span>☽ <span data-en="Moon" data-fr="Lune">Lune</span></span>
+                                <span>☿ <span data-en="Mercury" data-fr="Mercure">Mercure</span></span>
+                                <span>♀ <span data-en="Venus" data-fr="Vénus">Vénus</span></span>
+                                <span>♂ <span data-en="Mars" data-fr="Mars">Mars</span></span>
+                                <span>♃ <span data-en="Jupiter" data-fr="Jupiter">Jupiter</span></span>
+                                <span>♄ <span data-en="Saturn" data-fr="Saturne">Saturne</span></span>
+                                <span>♅ <span data-en="Uranus" data-fr="Uranus">Uranus</span></span>
+                                <span>♆ <span data-en="Neptune" data-fr="Neptune">Neptune</span></span>
+                                <span>♇ <span data-en="Pluto" data-fr="Pluton">Pluton</span></span>
+                            </div>
+                        </div>
+                        <div class="legend-section">
+                            <h4 data-en="Zodiac Signs" data-fr="Signes du Zodiaque">Signes du Zodiaque</h4>
+                            <div class="legend-items">
+                                <span>♈ <span data-en="Aries" data-fr="Bélier">Bélier</span></span>
+                                <span>♉ <span data-en="Taurus" data-fr="Taureau">Taureau</span></span>
+                                <span>♊ <span data-en="Gemini" data-fr="Gémeaux">Gémeaux</span></span>
+                                <span>♋ <span data-en="Cancer" data-fr="Cancer">Cancer</span></span>
+                                <span>♌ <span data-en="Leo" data-fr="Lion">Lion</span></span>
+                                <span>♍ <span data-en="Virgo" data-fr="Vierge">Vierge</span></span>
+                                <span>♎ <span data-en="Libra" data-fr="Balance">Balance</span></span>
+                                <span>♏ <span data-en="Scorpio" data-fr="Scorpion">Scorpion</span></span>
+                                <span>♐ <span data-en="Sagittarius" data-fr="Sagittaire">Sagittaire</span></span>
+                                <span>♑ <span data-en="Capricorn" data-fr="Capricorne">Capricorne</span></span>
+                                <span>♒ <span data-en="Aquarius" data-fr="Verseau">Verseau</span></span>
+                                <span>♓ <span data-en="Pisces" data-fr="Poissons">Poissons</span></span>
+                            </div>
+                        </div>
+                        <div class="legend-section">
+                            <h4 data-en="Aspects" data-fr="Aspects">Aspects</h4>
+                            <div class="legend-items">
+                                <span>☌ <span data-en="Conjunction" data-fr="Conjonction">Conjonction</span></span>
+                                <span>☍ <span data-en="Opposition" data-fr="Opposition">Opposition</span></span>
+                                <span>△ <span data-en="Trine" data-fr="Trigone">Trigone</span></span>
+                                <span>□ <span data-en="Square" data-fr="Carré">Carré</span></span>
+                                <span>⚹ <span data-en="Sextile" data-fr="Sextile">Sextile</span></span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
             </div>
-                        <!-- Astrological Chart -->
-            <section class="chart-section">
-                <h2 data-en="Astrological Chart" data-fr="Carte Astrologique">Carte Astrologique</h2>
-                <div class="legend">
-                    <span data-en="Planets positioned in zodiac wheel with aspects" data-fr="Planètes positionnées dans la roue du zodiaque avec aspects">Planètes positionnées dans la roue du zodiaque avec aspects</span>
-                </div>
-                <div class="chart-container">
-                    <canvas id="astroChart" width="600" height="600"></canvas>
-                </div>
-                <div class="chart-legend">
-                    <div class="legend-section">
-                        <h4 data-en="Planets" data-fr="Planètes">Planètes</h4>
-                        <div class="legend-items">
-                            <span>☉ <span data-en="Sun" data-fr="Soleil">Soleil</span></span>
-                            <span>☽ <span data-en="Moon" data-fr="Lune">Lune</span></span>
-                            <span>☿ <span data-en="Mercury" data-fr="Mercure">Mercure</span></span>
-                            <span>♀ <span data-en="Venus" data-fr="Vénus">Vénus</span></span>
-                            <span>♂ <span data-en="Mars" data-fr="Mars">Mars</span></span>
-                            <span>♃ <span data-en="Jupiter" data-fr="Jupiter">Jupiter</span></span>
-                            <span>♄ <span data-en="Saturn" data-fr="Saturne">Saturne</span></span>
-                            <span>♅ <span data-en="Uranus" data-fr="Uranus">Uranus</span></span>
-                            <span>♆ <span data-en="Neptune" data-fr="Neptune">Neptune</span></span>
-                            <span>♇ <span data-en="Pluto" data-fr="Pluton">Pluton</span></span>
-                        </div>
-                    </div>
-                    <div class="legend-section">
-                        <h4 data-en="Zodiac Signs" data-fr="Signes du Zodiaque">Signes du Zodiaque</h4>
-                        <div class="legend-items">
-                            <span>♈ <span data-en="Aries" data-fr="Bélier">Bélier</span></span>
-                            <span>♉ <span data-en="Taurus" data-fr="Taureau">Taureau</span></span>
-                            <span>♊ <span data-en="Gemini" data-fr="Gémeaux">Gémeaux</span></span>
-                            <span>♋ <span data-en="Cancer" data-fr="Cancer">Cancer</span></span>
-                            <span>♌ <span data-en="Leo" data-fr="Lion">Lion</span></span>
-                            <span>♍ <span data-en="Virgo" data-fr="Vierge">Vierge</span></span>
-                            <span>♎ <span data-en="Libra" data-fr="Balance">Balance</span></span>
-                            <span>♏ <span data-en="Scorpio" data-fr="Scorpion">Scorpion</span></span>
-                            <span>♐ <span data-en="Sagittarius" data-fr="Sagittaire">Sagittaire</span></span>
-                            <span>♑ <span data-en="Capricorn" data-fr="Capricorne">Capricorne</span></span>
-                            <span>♒ <span data-en="Aquarius" data-fr="Verseau">Verseau</span></span>
-                            <span>♓ <span data-en="Pisces" data-fr="Poissons">Poissons</span></span>
-                        </div>
-                    </div>
-                    <div class="legend-section">
-                        <h4 data-en="Aspects" data-fr="Aspects">Aspects</h4>
-                        <div class="legend-items">
-                            <span>☌ <span data-en="Conjunction" data-fr="Conjonction">Conjonction</span></span>
-                            <span>☍ <span data-en="Opposition" data-fr="Opposition">Opposition</span></span>
-                            <span>△ <span data-en="Trine" data-fr="Trigone">Trigone</span></span>
-                            <span>□ <span data-en="Square" data-fr="Carré">Carré</span></span>
-                            <span>⚹ <span data-en="Sextile" data-fr="Sextile">Sextile</span></span>
-                        </div>
-                    </div>
-                </div>
-            </section>
 
-             <!-- Interpretation Section -->
-                    <section class="data-section">
-                        <h2 data-en="AI Interpretation" data-fr="Interprétation IA">Interprétation IA</h2>
-                        <div class="legend">
-                            <span data-en="Astrological interpretation powered by Mistral AI" data-fr="Interprétation astrologique propulsée par Mistral IA">Interprétation astrologique propulsée par Mistral IA</span>
+            <div id="numerologyResults" style="display: none;">
+                <!-- Interpretation first -->
+                <section class="data-section">
+                    <h2 data-en="Numerology Interpretation" data-fr="Interprétation Numérologique">Interprétation Numérologique</h2>
+                    <div class="legend">
+                        <span data-en="Numerology interpretation powered by Mistral AI" data-fr="Interprétation numérologique propulsée par Mistral IA">Interprétation numérologique propulsée par Mistral IA</span>
+                    </div>
+                    <div id="numerologyInterpretation" class="interpretation-display"></div>
+                </section>
+
+                <section class="data-section">
+                    <h2 data-en="Numerology Profile" data-fr="Profil Numérologique">Profil Numérologique</h2>
+                    <div class="legend">
+                        <span data-en="Core numbers derived from the selected date (and name if provided)" data-fr="Nombres clefs dérivés de la date sélectionnée (et du nom si renseigné)">Nombres clefs dérivés de la date sélectionnée (et du nom si renseigné)</span>
+                    </div>
+                    <div class="numerology-grid">
+                        <div class="num-card">
+                            <div class="num-label" data-en="Date" data-fr="Date">Date</div>
+                            <div class="num-value" id="numDate">—</div>
                         </div>
-                        <button class="btn-primary" id="interpretBtn" onclick="getInterpretation()" data-en="Generate Interpretation" data-fr="Générer l'interprétation">Générer l'interprétation</button>
-                        <div id="interpretation" class="interpretation-display"></div>
-                    </section>
+                        <div class="num-card">
+                            <div class="num-label" data-en="Life Path" data-fr="Chemin de vie">Chemin de vie</div>
+                            <div class="num-value" id="numLifePath">—</div>
+                        </div>
+                        <div class="num-card">
+                            <div class="num-label" data-en="Personal Year" data-fr="Année personnelle">Année personnelle</div>
+                            <div class="num-value" id="numPersonalYear">—</div>
+                        </div>
+                        <div class="num-card">
+                            <div class="num-label" data-en="Day" data-fr="Jour">Jour</div>
+                            <div class="num-value" id="numDay">—</div>
+                        </div>
+                        <div class="num-card">
+                            <div class="num-label" data-en="Month" data-fr="Mois">Mois</div>
+                            <div class="num-value" id="numMonth">—</div>
+                        </div>
+                        <div class="num-card">
+                            <div class="num-label" data-en="Year" data-fr="Année">Année</div>
+                            <div class="num-value" id="numYear">—</div>
+                        </div>
+                        <div class="num-card">
+                            <div class="num-label" data-en="Expression" data-fr="Expression">Expression</div>
+                            <div class="num-value" id="numExpression">—</div>
+                        </div>
+                    </div>
+                </section>
+            </div>
         </div>
 
     </main>
