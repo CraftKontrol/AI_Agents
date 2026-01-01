@@ -12,15 +12,7 @@
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/main.min.css" rel="stylesheet" crossorigin="anonymous" />
     <!-- Leaflet CSS for OpenStreetMap -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="style.css" id="app-css">
-    <script>
-        // Cache busting
-        (function() {
-            const timestamp = new Date().getTime();
-            const cssLink = document.getElementById('app-css');
-            if (cssLink) cssLink.href = 'style.css?v=' + timestamp;
-        })();
-    </script>
+    <script>document.write('<link rel="stylesheet" href="style.css?v=' + Date.now() + '">');</script>
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="favicon.ico" sizes="32x32">
     <meta name="theme-color" content="#1a1a1a">
@@ -1844,23 +1836,13 @@
     <script src="storage-sync.js?v=20251230"></script>
     <script src="cloud-providers.js?v=20251230"></script>
     <script>
-        // Cache busting for all JS files
-        (function() {
-            const timestamp = new Date().getTime();
-            const scripts = [
-                'action-wrapper.js',
-                'tutorial-system.js',
-                'audio-visualizer-kawaii.js',
-                'script-response-handler.js',
-                'script.js',
-                'script-task-popup.js'
-            ];
-            scripts.forEach(function(src) {
-                const script = document.createElement('script');
-                script.src = src + '?v=' + timestamp;
-                document.body.appendChild(script);
-            });
-        })();
+        var t = Date.now();
+        document.write('<script src="action-wrapper.js?v=' + t + '"><\/script>');
+        document.write('<script src="tutorial-system.js?v=' + t + '"><\/script>');
+        document.write('<script src="audio-visualizer-kawaii.js?v=' + t + '"><\/script>');
+        document.write('<script src="script-response-handler.js?v=' + t + '"><\/script>');
+        document.write('<script src="script.js?v=' + t + '"><\/script>');
+        document.write('<script src="script-task-popup.js?v=' + t + '"><\/script>');
     </script>
 </body>
 </html>
