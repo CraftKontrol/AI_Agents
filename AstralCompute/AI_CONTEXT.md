@@ -10,7 +10,7 @@
 
 ## Architecture
 
-**Flow**: Load → Init inputs → Calculate → Display → Optional AI interpretation
+**Flow**: Load → Init inputs → Calculate → Display → Optional AI interpretation → Full chart shortcut (`generateAstralTheme()` chains calculation + Mistral in full-theme mode)
 
 **Global State**:
 - `currentLanguage` - 'fr'|'en'
@@ -67,7 +67,7 @@ const translations = {
 
 **8. Settings Modal**: Standard modal pattern. Click outside to close. Functions: `loadUserSettings()`, `saveUserSettings()`, `clearUserSettings()`.
 
-**9. AI Interpretation**: Requires user profile. 3-section prompt: personalized prediction, general interpretation, summary. Model: `mistral-small-latest`, 1500 tokens
+**9. AI Interpretation**: Default prompt uses profile if present. Full-theme prompt (via `generateAstralTheme()`) ignores profile and focuses solely on selected date/heure sky analysis. Model: `mistral-small-latest`, 1500 tokens
 **Full-screen overlay with centered content**:
 ```css
 .modal {

@@ -421,7 +421,7 @@ function hideLoading() {
 
 // Calculate Ephemeris (Simplified - Using mathematical calculations instead of Swiss Ephemeris)
 // Note: For production, you'd want to use actual Swiss Ephemeris library or API
-function calculateEphemeris() {
+function calculateEphemeris(onComplete) {
     hideError();
     
     const dateInput = document.getElementById('dateInput').value;
@@ -442,11 +442,22 @@ function calculateEphemeris() {
             
             displayResults();
             hideLoading();
+
+            if (typeof onComplete === 'function') {
+                onComplete();
+            }
         } catch (error) {
             hideLoading();
             showError(currentLanguage === 'fr' ? 'Erreur lors du calcul' : 'Calculation error');
         }
     }, 500);
+}
+
+// Full chart generation: compute positions then launch AI interpretation
+function generateAstralTheme() {
+    calculateEphemeris(() => {
+        getInterpretation(true);
+    });
 }
 
 // Simplified planetary position calculation
@@ -861,7 +872,7 @@ function drawAstrologicalChart() {
 }
 
 // Get Interpretation from Mistral API
-async function getInterpretation() {
+async function getInterpretation(isFullTheme = false) {
     const apiKey = document.getElementById('apiKey').value.trim();
     
     if (!apiKey) {
@@ -875,19 +886,10 @@ async function getInterpretation() {
         return;
     }
     
-    // Get user settings
-    const userName = localStorage.getItem('astralUserName');
-    const userBirthDate = localStorage.getItem('astralUserBirthDate');
-    const userBirthTime = localStorage.getItem('astralUserBirthTime');
-    
-    // Check if user profile exists
-    if (!userName && !userBirthDate) {
-        const message = currentLanguage === 'fr' 
-            ? 'Veuillez configurer votre profil (nom et date de naissance) dans les paramètres pour une interprétation personnalisée.'
-            : 'Please configure your profile (name and birth date) in settings for a personalized interpretation.';
-        showError(message);
-        return;
-    }
+    // Get user settings (optional; ignored when full theme mode is used)
+    const userName = isFullTheme ? null : localStorage.getItem('astralUserName');
+    const userBirthDate = isFullTheme ? null : localStorage.getItem('astralUserBirthDate');
+    const userBirthTime = isFullTheme ? null : localStorage.getItem('astralUserBirthTime');
     
     // Save API key if remember is checked
     saveApiKey();
@@ -900,17 +902,19 @@ async function getInterpretation() {
         // Prepare data summary
         const dataSummary = prepareDataSummary();
         
-        // Prepare user info
+        // Prepare user info (only when not in full theme mode)
         let userInfo = '';
-        if (userName) {
-            userInfo += currentLanguage === 'fr' ? `Nom: ${userName}\n` : `Name: ${userName}\n`;
-        }
-        if (userBirthDate) {
-            userInfo += currentLanguage === 'fr' ? `Date de naissance: ${userBirthDate}` : `Birth date: ${userBirthDate}`;
-            if (userBirthTime) {
-                userInfo += ` ${currentLanguage === 'fr' ? 'à' : 'at'} ${userBirthTime}`;
+        if (!isFullTheme) {
+            if (userName) {
+                userInfo += currentLanguage === 'fr' ? `Nom: ${userName}\n` : `Name: ${userName}\n`;
             }
-            userInfo += '\n';
+            if (userBirthDate) {
+                userInfo += currentLanguage === 'fr' ? `Date de naissance: ${userBirthDate}` : `Birth date: ${userBirthDate}`;
+                if (userBirthTime) {
+                    userInfo += ` ${currentLanguage === 'fr' ? 'à' : 'at'} ${userBirthTime}`;
+                }
+                userInfo += '\n';
+            }
         }
         
         // Get current date being analyzed
@@ -918,8 +922,34 @@ async function getInterpretation() {
         const timeInput = document.getElementById('timeInput').value;
         const currentDate = `${dateInput} ${timeInput} UTC`;
         
-        const prompt = currentLanguage === 'fr' 
-            ? `En tant qu'astrologue expert, fournissez une interprétation personnalisée structurée en 3 sections distinctes:
+          const prompt = isFullTheme
+                ? (currentLanguage === 'fr'
+                     ? `En tant qu'astrologue expert, génère une ANALYSE COMPLÈTE basée uniquement sur les positions calculées pour la date/heure sélectionnée (sans utiliser les données de profil utilisateur). Fournis une réponse structurée :
+
+1) **Climat du ciel** (4-5 phrases) : énergie générale du ciel et tonalités dominantes.
+2) **Transits majeurs** (liste concise) : impacts clés par planète ou aspect remarquable, avec effets probables.
+3) **Conseils pratiques** (3-4 phrases) : actions, attitudes ou points d'attention pour tirer parti du contexte astral.
+
+Date/heure analysées : ${currentDate}
+
+DONNÉES ASTROLOGIQUES :
+${dataSummary}
+
+Style : concis, précis, bienveillant, accessible.`
+                     : `As an expert astrologer, produce a COMPLETE ANALYSIS based solely on the calculated positions for the selected date/time (do not use user profile data). Provide a structured answer:
+
+1) **Sky climate** (4-5 sentences): overall energies and dominant tones.
+2) **Key transits** (concise list): major planetary/aspect highlights with likely effects.
+3) **Practical advice** (3-4 sentences): actions, attitudes, or focus points to leverage the current sky.
+
+Date/time analyzed: ${currentDate}
+
+ASTRO DATA:
+${dataSummary}
+
+Style: concise, precise, benevolent, accessible.`)
+                : (currentLanguage === 'fr'
+                     ? `En tant qu'astrologue expert, fournissez une interprétation personnalisée structurée en 3 sections distinctes:
 
 **INFORMATIONS:**
 ${userInfo}
@@ -931,16 +961,16 @@ ${dataSummary}
 **STRUCTURE DE L'INTERPRÉTATION:**
 
 1. **PRÉVISION PERSONNALISÉE DU JOUR** (3-4 phrases)
-   Basée sur la comparaison entre la date de naissance et les positions actuelles. Identifiez les transits importants affectant cette personne spécifiquement aujourd'hui.
+    Basée sur la comparaison entre la date de naissance et les positions actuelles. Identifiez les transits importants affectant cette personne spécifiquement aujourd'hui.
 
 2. **INTERPRÉTATION GÉNÉRALE DES POSITIONS** (3-4 phrases)
-   Analyse brève des énergies cosmiques du moment pour tous, indépendamment de la date de naissance.
+    Analyse brève des énergies cosmiques du moment pour tous, indépendamment de la date de naissance.
 
 3. **RÉSUMÉ SYNTHÉTIQUE** (2-3 phrases)
-   Conseil pratique et message clé à retenir pour la journée.
+    Conseil pratique et message clé à retenir pour la journée.
 
 Soyez concis, précis et bienveillant. Utilisez un langage accessible.`
-            : `As an expert astrologer, provide a personalized interpretation structured in 3 distinct sections:
+                     : `As an expert astrologer, provide a personalized interpretation structured in 3 distinct sections:
 
 **INFORMATION:**
 ${userInfo}
@@ -952,15 +982,15 @@ ${dataSummary}
 **INTERPRETATION STRUCTURE:**
 
 1. **PERSONALIZED DAY PREDICTION** (3-4 sentences)
-   Based on the comparison between birth date and current positions. Identify important transits affecting this person specifically today.
+    Based on the comparison between birth date and current positions. Identify important transits affecting this person specifically today.
 
 2. **GENERAL INTERPRETATION OF POSITIONS** (3-4 sentences)
-   Brief analysis of current cosmic energies for everyone, regardless of birth date.
+    Brief analysis of current cosmic energies for everyone, regardless of birth date.
 
 3. **SYNTHETIC SUMMARY** (2-3 sentences)
-   Practical advice and key message to remember for the day.
+    Practical advice and key message to remember for the day.
 
-Be concise, precise, and benevolent. Use accessible language.`;
+Be concise, precise, and benevolent. Use accessible language.`);
         
         const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
             method: 'POST',
