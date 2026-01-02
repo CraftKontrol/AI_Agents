@@ -20,7 +20,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.viewinterop.AndroidView
 import com.craftkontrol.ckgenericapp.util.AlarmScheduler
-import com.craftkontrol.ckgenericapp.webview.CKWebChromeClient
 import com.craftkontrol.ckgenericapp.webview.WebViewConfigurator
 import com.craftkontrol.ckgenericapp.webview.WebViewJavaScriptInterface
 import com.craftkontrol.core.webview.SharedWebViewHelper
@@ -108,11 +107,7 @@ fun MemoryBoardScreen(modifier: Modifier = Modifier) {
             onPageFinishedExtra = heightFix
         )
 
-        webView.webChromeClient = CKWebChromeClient(activity) { permissions, request ->
-            Timber.d("MemoryBoard permission request: ${permissions.joinToString()}")
-            Log.d("CKMemory", "Permission request: ${permissions.joinToString()}")
-            request.grant(permissions)
-        }
+        webView.webChromeClient = SharedWebViewHelper.buildChromeClient(activity)
         Log.i("CKMemory", "Loading MemoryBoardHelper URL…")
         webView.loadUrl("https://craftkontrol.github.io/AI_Agents/MemoryBoardHelper/")
         Log.i("CKMemory", "URL load initiated")
