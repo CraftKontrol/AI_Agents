@@ -1,10 +1,15 @@
 package com.craftkontrol.core.webview
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.webkit.GeolocationPermissions
+import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.core.content.ContextCompat
 import timber.log.Timber
 import android.util.Log
 
@@ -205,6 +210,43 @@ object SharedWebViewHelper {
                 
                 // Allow same-domain navigation within WebView
                 return false
+            }
+        }
+    }
+
+    /**
+     * Build a WebChromeClient that handles geolocation permissions
+     */
+    fun buildChromeClient(context: Context): WebChromeClient {
+        return object : WebChromeClient() {
+            override fun onGeolocationPermissionsShowPrompt(
+                origin: String?,
+                callback: GeolocationPermissions.Callback?
+            ) {
+                Log.i("SharedWebView", "Geolocation request from origin: $origin")
+                Timber.i("SharedWebView: Geolocation permission prompt from $origin")
+                
+                val hasPermission = ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED
+                
+                if (hasPermission) {
+                    Log.i("SharedWebView", "Granting geolocation permission to $origin")
+                    Timber.i("SharedWebView: Granting geolocation to $origin")
+                    callback?.invoke(origin, true, false)
+                } else {
+                    Log.w("SharedWebView", "Geolocation permission not granted by Android")
+                    Timber.w("SharedWebView: Location permission not granted, denying")
+                    callback?.invoke(origin, false, false)
+                }
+            }
+            
+            override fun onConsoleMessage(consoleMessage: android.webkit.ConsoleMessage?): Boolean {
+                consoleMessage?.let {
+                    Log.d("WebViewConsole", "[${it.messageLevel()}] ${it.message()} (${it.sourceId()}:${it.lineNumber()})")
+                }
+                return true
             }
         }
     }

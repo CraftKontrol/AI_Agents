@@ -51,6 +51,7 @@ fun AiSearchScreen(modifier: Modifier = Modifier) {
     LaunchedEffect(Unit) {
         apiKeysState.value = SharedWebViewHelper.fetchApiKeys(context)
         webView.webViewClient = SharedWebViewHelper.buildInjectingClient(apiKeysState.value)
+        webView.webChromeClient = SharedWebViewHelper.buildChromeClient(context)
         webView.loadUrl("https://craftkontrol.github.io/AI_Agents/AiSearchAgregator/")
     }
 
