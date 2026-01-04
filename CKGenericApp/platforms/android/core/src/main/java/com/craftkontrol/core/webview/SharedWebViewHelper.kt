@@ -217,7 +217,9 @@ object SharedWebViewHelper {
     /**
      * Build a WebChromeClient that handles ALL permissions (geo, mic, camera)
      * @param context Android context for permission checks
-     * @param onPermissionRequest Callback to request runtime permissions if needed
+     * @param onPermissionRequest Callback to request runtime permissions if needed.
+     *        Signature: (permissions: Array<String>, request: android.webkit.PermissionRequest) -> Unit
+     *        The callback receives the Android permissions to request and the WebView permission request object.
      */
     fun buildChromeClient(
         context: Context,
@@ -260,12 +262,12 @@ object SharedWebViewHelper {
                     }
                     
                     // Check if all required permissions are already granted
-                    val allGranted = permissions.isNotEmpty() && permissions.all { permission ->
+                    val allGranted = permissions.all { permission ->
                         ContextCompat.checkSelfPermission(context, permission) == 
                             PackageManager.PERMISSION_GRANTED
                     }
                     
-                    if (allGranted) {
+                    if (permissions.isNotEmpty() && allGranted) {
                         Log.i("SharedWebView", "All permissions already granted, granting WebView request")
                         Timber.i("SharedWebView: Permissions granted, allowing ${it.resources.joinToString()}")
                         it.grant(it.resources)
