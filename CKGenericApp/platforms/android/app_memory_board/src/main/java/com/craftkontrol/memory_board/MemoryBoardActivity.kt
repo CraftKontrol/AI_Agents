@@ -8,6 +8,7 @@ import android.view.ViewGroup
 import android.webkit.WebView
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -15,6 +16,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
@@ -43,6 +46,28 @@ fun MemoryBoardScreen(modifier: Modifier = Modifier) {
     val activity = LocalContext.current as Activity
     val apiKeysState = remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     val alarmScheduler = remember { AlarmScheduler(activity) }
+    var pendingPermissionRequest by remember { mutableStateOf<android.webkit.PermissionRequest?>(null) }
+    
+    // Permission launcher for mic/camera
+    val permissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        Log.i("CKMemory", "Permission result: $permissions")
+        
+        val allGranted = permissions.values.all { it }
+        
+        pendingPermissionRequest?.let { request ->
+            if (allGranted) {
+                Log.i("CKMemory", "Permissions granted, granting WebView request")
+                request.grant(request.resources)
+            } else {
+                Log.w("CKMemory", "Permissions denied, denying WebView request")
+                request.deny()
+            }
+            pendingPermissionRequest = null
+        }
+    }
+    
     val webView = remember {
         WebView(activity).apply {
             layoutParams = ViewGroup.LayoutParams(
@@ -107,7 +132,16 @@ fun MemoryBoardScreen(modifier: Modifier = Modifier) {
             onPageFinishedExtra = heightFix
         )
 
-        webView.webChromeClient = SharedWebViewHelper.buildChromeClient(activity)
+        // Set WebChromeClient with permission handler
+        webView.webChromeClient = SharedWebViewHelper.buildChromeClient(
+            activity,
+            onPermissionRequest = { permissions, request ->
+                Log.i("CKMemory", "Permission callback: ${permissions.joinToString()}")
+                pendingPermissionRequest = request
+                permissionLauncher.launch(permissions)
+            }
+        )
+        
         Log.i("CKMemory", "Loading MemoryBoardHelper URL…")
         webView.loadUrl("https://craftkontrol.github.io/AI_Agents/MemoryBoardHelper/")
         Log.i("CKMemory", "URL load initiated")

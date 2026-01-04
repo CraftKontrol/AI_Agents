@@ -2,11 +2,13 @@ package com.craftkontrol.local_food
 
 import android.annotation.SuppressLint
 import android.os.Bundle
+import android.util.Log
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -14,6 +16,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
@@ -36,6 +40,28 @@ class LocalFoodActivity : ComponentActivity() {
 fun LocalFoodScreen(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val apiKeysState = remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var pendingPermissionRequest by remember { mutableStateOf<android.webkit.PermissionRequest?>(null) }
+    
+    // Permission launcher for mic/camera
+    val permissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        Log.i("CKLocalFood", "Permission result: $permissions")
+        
+        val allGranted = permissions.values.all { it }
+        
+        pendingPermissionRequest?.let { request ->
+            if (allGranted) {
+                Log.i("CKLocalFood", "Permissions granted, granting WebView request")
+                request.grant(request.resources)
+            } else {
+                Log.w("CKLocalFood", "Permissions denied, denying WebView request")
+                request.deny()
+            }
+            pendingPermissionRequest = null
+        }
+    }
+    
     val webView = remember {
         WebView(context).apply {
             settings.javaScriptEnabled = true
@@ -51,7 +77,17 @@ fun LocalFoodScreen(modifier: Modifier = Modifier) {
     LaunchedEffect(Unit) {
         apiKeysState.value = SharedWebViewHelper.fetchApiKeys(context)
         webView.webViewClient = SharedWebViewHelper.buildInjectingClient(apiKeysState.value)
-        webView.webChromeClient = SharedWebViewHelper.buildChromeClient(context)
+        
+        // Set WebChromeClient with permission handler
+        webView.webChromeClient = SharedWebViewHelper.buildChromeClient(
+            context,
+            onPermissionRequest = { permissions, request ->
+                Log.i("CKLocalFood", "Permission callback: ${permissions.joinToString()}")
+                pendingPermissionRequest = request
+                permissionLauncher.launch(permissions)
+            }
+        )
+        
         webView.loadUrl("https://craftkontrol.github.io/AI_Agents/LocalFoodProducts/")
     }
 
