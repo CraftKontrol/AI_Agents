@@ -232,6 +232,7 @@ object SharedWebViewHelper {
                     Timber.i("SharedWebView: Permission request for ${it.resources.joinToString()}")
                     
                     val permissions = mutableListOf<String>()
+                    var hasProtectedMedia = false
                     
                     it.resources.forEach { resource ->
                         when (resource) {
@@ -244,14 +245,22 @@ object SharedWebViewHelper {
                                 permissions.add(Manifest.permission.RECORD_AUDIO)
                             }
                             android.webkit.PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID -> {
-                                Log.d("SharedWebView", "Requesting PROTECTED_MEDIA_ID permission")
-                                // Handle protected media (DRM)
+                                Log.d("SharedWebView", "Requesting PROTECTED_MEDIA_ID (DRM)")
+                                hasProtectedMedia = true
                             }
                         }
                     }
                     
+                    // If only protected media (DRM) is requested, grant immediately
+                    if (permissions.isEmpty() && hasProtectedMedia) {
+                        Log.i("SharedWebView", "Granting protected media request")
+                        Timber.i("SharedWebView: Granting protected media request")
+                        it.grant(it.resources)
+                        return
+                    }
+                    
                     // Check if all required permissions are already granted
-                    val allGranted = permissions.all { permission ->
+                    val allGranted = permissions.isNotEmpty() && permissions.all { permission ->
                         ContextCompat.checkSelfPermission(context, permission) == 
                             PackageManager.PERMISSION_GRANTED
                     }
@@ -260,7 +269,7 @@ object SharedWebViewHelper {
                         Log.i("SharedWebView", "All permissions already granted, granting WebView request")
                         Timber.i("SharedWebView: Permissions granted, allowing ${it.resources.joinToString()}")
                         it.grant(it.resources)
-                    } else {
+                    } else if (permissions.isNotEmpty()) {
                         Log.w("SharedWebView", "Permissions not granted: ${permissions.joinToString()}")
                         Timber.w("SharedWebView: Missing permissions, requesting runtime permissions")
                         
@@ -272,6 +281,10 @@ object SharedWebViewHelper {
                             Log.w("SharedWebView", "No permission callback, denying request")
                             it.deny()
                         }
+                    } else {
+                        // No recognized permissions requested, deny
+                        Log.w("SharedWebView", "No recognized permissions requested, denying")
+                        it.deny()
                     }
                 }
             }
