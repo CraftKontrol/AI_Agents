@@ -215,10 +215,83 @@ object SharedWebViewHelper {
     }
 
     /**
-     * Build a WebChromeClient that handles geolocation permissions
+     * Build a WebChromeClient that handles ALL permissions (geo, mic, camera)
+     * @param context Android context for permission checks
+     * @param onPermissionRequest Callback to request runtime permissions if needed.
+     *        Signature: (permissions: Array<String>, request: android.webkit.PermissionRequest) -> Unit
+     *        The callback receives the Android permissions to request and the WebView permission request object.
      */
-    fun buildChromeClient(context: Context): WebChromeClient {
+    fun buildChromeClient(
+        context: Context,
+        onPermissionRequest: ((Array<String>, android.webkit.PermissionRequest) -> Unit)? = null
+    ): WebChromeClient {
         return object : WebChromeClient() {
+            
+            // Handle WebView permission requests (mic, camera, protected media)
+            override fun onPermissionRequest(request: android.webkit.PermissionRequest?) {
+                request?.let {
+                    Log.i("SharedWebView", "WebView permission request: ${it.resources.joinToString()}")
+                    Timber.i("SharedWebView: Permission request for ${it.resources.joinToString()}")
+                    
+                    val permissions = mutableListOf<String>()
+                    var hasProtectedMedia = false
+                    
+                    it.resources.forEach { resource ->
+                        when (resource) {
+                            android.webkit.PermissionRequest.RESOURCE_VIDEO_CAPTURE -> {
+                                Log.d("SharedWebView", "Requesting CAMERA permission")
+                                permissions.add(Manifest.permission.CAMERA)
+                            }
+                            android.webkit.PermissionRequest.RESOURCE_AUDIO_CAPTURE -> {
+                                Log.d("SharedWebView", "Requesting RECORD_AUDIO permission")
+                                permissions.add(Manifest.permission.RECORD_AUDIO)
+                            }
+                            android.webkit.PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID -> {
+                                Log.d("SharedWebView", "Requesting PROTECTED_MEDIA_ID (DRM)")
+                                hasProtectedMedia = true
+                            }
+                        }
+                    }
+                    
+                    // If only protected media (DRM) is requested, grant immediately
+                    if (permissions.isEmpty() && hasProtectedMedia) {
+                        Log.i("SharedWebView", "Granting protected media request")
+                        Timber.i("SharedWebView: Granting protected media request")
+                        it.grant(it.resources)
+                        return
+                    }
+                    
+                    // Check if all required permissions are already granted
+                    val allGranted = permissions.all { permission ->
+                        ContextCompat.checkSelfPermission(context, permission) == 
+                            PackageManager.PERMISSION_GRANTED
+                    }
+                    
+                    if (permissions.isNotEmpty() && allGranted) {
+                        Log.i("SharedWebView", "All permissions already granted, granting WebView request")
+                        Timber.i("SharedWebView: Permissions granted, allowing ${it.resources.joinToString()}")
+                        it.grant(it.resources)
+                    } else if (permissions.isNotEmpty()) {
+                        Log.w("SharedWebView", "Permissions not granted: ${permissions.joinToString()}")
+                        Timber.w("SharedWebView: Missing permissions, requesting runtime permissions")
+                        
+                        // If callback provided, request permissions
+                        if (onPermissionRequest != null) {
+                            onPermissionRequest(permissions.toTypedArray(), it)
+                        } else {
+                            // No callback, deny request
+                            Log.w("SharedWebView", "No permission callback, denying request")
+                            it.deny()
+                        }
+                    } else {
+                        // No recognized permissions requested, deny
+                        Log.w("SharedWebView", "No recognized permissions requested, denying")
+                        it.deny()
+                    }
+                }
+            }
+            
+            // Handle geolocation permission requests
             override fun onGeolocationPermissionsShowPrompt(
                 origin: String?,
                 callback: GeolocationPermissions.Callback?
@@ -242,6 +315,7 @@ object SharedWebViewHelper {
                 }
             }
             
+            // Log console messages from web apps
             override fun onConsoleMessage(consoleMessage: android.webkit.ConsoleMessage?): Boolean {
                 consoleMessage?.let {
                     Log.d("WebViewConsole", "[${it.messageLevel()}] ${it.message()} (${it.sourceId()}:${it.lineNumber()})")
